@@ -2,7 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": [
     "src/index.{ts,tsx,js,jsx}",
-    "src/main.{ts,tsx,js,jsx}"
+    "src/main.{ts,tsx,js,jsx}",
+    "apps/web/scripts/*.ts",
+    "apps/worktree/src/**/*.test.ts"
   ],
   "workspaces": {
     "patterns": []
@@ -12,6 +14,17 @@
     "@google/__mocks__",
     "@hubspot/ui-extensions",
     "@tanstack/__mocks__"
+  ],
+  "dynamicallyLoaded": [
+    "apps/docs/**/*.mdx",
+    "apps/mcp/servers/*/src/middleware.ts",
+    "apps/mcp/servers/*/src/tools/**/*.ts",
+    "apps/mcp/servers/*/xmcp.config.ts",
+    "apps/sandbox/src/common/skills/*/src/*.ts",
+    "apps/sandbox/src/common/tools/*.ts",
+    "apps/web/autumn.config.ts",
+    "apps/web/public/sw.js",
+    "infra/integrations/hubspot/app/src/app/cards/*.tsx"
   ],
   "duplicates": {
     // Common additions (uncomment to enable):
