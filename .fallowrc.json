@@ -6,6 +6,9 @@
     "apps/web/scripts/*.ts",
     "apps/worktree/src/**/*.test.ts"
   ],
+  "ignorePatterns": [
+    "experiments/**"
+  ],
   "workspaces": {
     "patterns": []
   },
