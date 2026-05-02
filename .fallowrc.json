@@ -16,7 +16,8 @@
     "@daytonaio/__mocks__",
     "@google/__mocks__",
     "@hubspot/ui-extensions",
-    "@tanstack/__mocks__"
+    "@tanstack/__mocks__",
+    "babel-plugin-react-compiler"
   ],
   "dynamicallyLoaded": [
     "apps/docs/**/*.mdx",
