@@ -89,6 +89,32 @@ projects:
               - key: ADVERTISE_ROUTES
                 value: 10.0.0.0/8
 
+          - type: worker
+            name: cmdclaw-postgres-tailscale-staging
+            runtime: docker
+            region: frankfurt
+            plan: starter
+            numInstances: 1
+            autoDeployTrigger: off
+            dockerContext: docker/images/tailscale
+            dockerfilePath: docker/images/tailscale/Dockerfile
+            disk:
+              name: cmdclaw-postgres-tailscale-state
+              mountPath: /var/lib/tailscale
+              sizeGB: 1
+            envVars:
+              - fromGroup: staging
+              - key: TAILSCALE_VERSION
+                value: 1.96.4
+              - key: TAILSCALE_HOSTNAME
+                value: cmdclaw-postgres-tailscale-staging
+              - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
+                fromDatabase:
+                  name: cmdclaw-postgres-staging
+                  property: host
+              - key: TAILSCALE_TCP_FORWARD_PORTS
+                value: "5432:5432"
+
           - type: pserv
             name: cmdclaw-caddy-staging
             runtime: docker
@@ -484,6 +510,32 @@ projects:
                 value: 1.96.4
               - key: ADVERTISE_ROUTES
                 value: 10.0.0.0/8
+
+          - type: worker
+            name: cmdclaw-postgres-tailscale-prod
+            runtime: docker
+            region: frankfurt
+            plan: starter
+            numInstances: 1
+            autoDeployTrigger: off
+            dockerContext: docker/images/tailscale
+            dockerfilePath: docker/images/tailscale/Dockerfile
+            disk:
+              name: cmdclaw-postgres-tailscale-state-prod
+              mountPath: /var/lib/tailscale
+              sizeGB: 1
+            envVars:
+              - fromGroup: prod
+              - key: TAILSCALE_VERSION
+                value: 1.96.4
+              - key: TAILSCALE_HOSTNAME
+                value: cmdclaw-postgres-tailscale-prod
+              - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
+                fromDatabase:
+                  name: cmdclaw-postgres-prod
+                  property: host
+              - key: TAILSCALE_TCP_FORWARD_PORTS
+                value: "5432:5432"
 
           - type: pserv
             name: cmdclaw-caddy-prod
