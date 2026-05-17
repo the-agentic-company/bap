@@ -42,6 +42,74 @@ function isLocalServerUrl(serverUrl: string): boolean {
   }
 }
 
+function shouldUseRemoteTestLogin(): boolean {
+  return Boolean(
+    process.env.CMDCLAW_SERVER_SECRET?.trim() &&
+      (process.env.CI === "true" || process.env.E2E_LIVE === "1"),
+  );
+}
+
+async function readResponseErrorSnippet(res: Response): Promise<string> {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return await res.text();
+  }
+
+  const text = await res.text();
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.toLowerCase().startsWith("<!doctype html>")) {
+    return "HTML error page";
+  }
+  return normalized.slice(0, 240);
+}
+
+async function loginWithRemoteTestSession(serverUrl: string): Promise<CmdclawProfile> {
+  const secret = process.env.CMDCLAW_SERVER_SECRET?.trim();
+  if (!secret) {
+    throw new Error("CMDCLAW_SERVER_SECRET is required for remote test login.");
+  }
+
+  const email = process.env.CHAT_AUTH_EMAIL || process.env.E2E_TEST_EMAIL || DEFAULT_CHAT_AUTH_EMAIL;
+  const name = process.env.CHAT_AUTH_NAME || DEFAULT_CHAT_AUTH_NAME;
+  const ttlHours = parsePositiveInt(process.env.CHAT_SESSION_TTL_HOURS, 24);
+
+  console.log(`\nAuthenticating test session with ${serverUrl}\n`);
+
+  const res = await fetch(`${serverUrl}/api/internal/testing/cli-session`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, name, ttlHours }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to request remote test session: ${res.status} ${await readResponseErrorSnippet(res)}`);
+  }
+
+  const data = (await res.json()) as {
+    token?: string;
+    expiresAt?: string;
+  };
+
+  if (!data.token) {
+    throw new Error("Remote test session response did not include a token.");
+  }
+
+  const profile = {
+    serverUrl,
+    token: data.token,
+  };
+  defaultProfileStore.save(profile);
+
+  if (data.expiresAt) {
+    console.log(`Test session valid until ${data.expiresAt}`);
+  }
+
+  return profile;
+}
+
 function openUrlInBrowser(url: string): boolean {
   try {
     const commandByPlatform: Record<string, { cmd: string; args: string[] }> = {
@@ -254,6 +322,10 @@ export async function login(
 
   if (isLocalServerUrl(serverUrl)) {
     return bootstrapLocalProfileAndClose(serverUrl);
+  }
+
+  if (shouldUseRemoteTestLogin()) {
+    return loginWithRemoteTestSession(serverUrl);
   }
 
   return loginWithDeviceCode(serverUrl, options);

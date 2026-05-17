@@ -78,88 +78,18 @@ jobs:
       run_replay: true
     secrets: inherit
 
-  prod-db:
+  rollback-staging-render:
     needs:
-      - resolve
+      - staging-render
       - staging-verify
-    uses: ./.github/workflows/db-push.yml
-    with:
-      ref: ${{ needs.resolve.outputs.commit_sha }}
-      environment: prod
-    secrets: inherit
-
-  prod-daytona:
-    needs:
-      - resolve
-      - staging-verify
-    uses: ./.github/workflows/daytona-sandbox.yml
-    with:
-      ref: ${{ needs.resolve.outputs.commit_sha }}
-      environment: prod
-    secrets: inherit
-
-  prod-render:
-    needs:
-      - resolve
-      - prod-db
-      - prod-daytona
-    uses: ./.github/workflows/render-deploy.yml
-    with:
-      commit_sha: ${{ needs.resolve.outputs.commit_sha }}
-      environment: prod
-    secrets: inherit
-
-  prod-verify:
-    needs: prod-render
-    uses: ./.github/workflows/verify-deployment.yml
-    with:
-      environment: prod
-      base_url: https://app.cmdclaw.ai
-      run_replay: true
-    secrets: inherit
-
-  rollback-prod-render:
-    needs:
-      - prod-render
-      - prod-verify
-    if: ${{ always() && needs.prod-render.result == 'success' && needs.prod-verify.result == 'failure' }}
+    if: ${{ always() && needs.staging-render.result == 'success' && needs.staging-verify.result == 'failure' }}
     uses: ./.github/workflows/render-rollback.yml
     with:
-      environment: prod
-      web_deploy_id: ${{ needs.prod-render.outputs.previous_web_deploy_id }}
-      worker_deploy_id: ${{ needs.prod-render.outputs.previous_worker_deploy_id }}
-      mcp_deploy_id: ${{ needs.prod-render.outputs.previous_mcp_deploy_id }}
+      environment: staging
+      web_deploy_id: ${{ needs.staging-render.outputs.previous_web_deploy_id }}
+      worker_deploy_id: ${{ needs.staging-render.outputs.previous_worker_deploy_id }}
+      mcp_deploy_id: ${{ needs.staging-render.outputs.previous_mcp_deploy_id }}
     secrets: inherit
-
-  tag-release:
-    needs:
-      - resolve
-      - prod-verify
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.resolve.outputs.commit_sha }}
-          fetch-depth: 0
-
-      - name: Create production release tag
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          base_tag="$(date -u +v%Y.%-m.%-d)"
-          tag="${base_tag}"
-          suffix=2
-          while git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; do
-            tag="${base_tag}-${suffix}"
-            suffix="$((suffix + 1))"
-          done
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${tag}" -m "Production release ${tag}" "${{ needs.resolve.outputs.commit_sha }}"
-          git push origin "${tag}"
 
   notify-failure:
     needs:
@@ -168,12 +98,7 @@ jobs:
       - staging-daytona
       - staging-render
       - staging-verify
-      - prod-db
-      - prod-daytona
-      - prod-render
-      - prod-verify
-      - rollback-prod-render
-      - tag-release
+      - rollback-staging-render
     if: ${{ always() && failure() }}
     runs-on: ubuntu-latest
     env:
