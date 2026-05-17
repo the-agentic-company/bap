@@ -86,8 +86,6 @@ Set these repository or environment secrets before enabling the workflow:
 - `RENDER_PROD_MCP_SERVICE_ID` if MCP should deploy with the release
 - `DAYTONA_API_KEY`, or both `DAYTONA_JWT_TOKEN` and `DAYTONA_ORGANIZATION_ID`
 - `DAYTONA_API_URL` if the default Daytona API URL is not correct
-- `DAYTONA_SNAPSHOT_STAGING` if overriding `cmdclaw-agent-staging`
-- `DAYTONA_SNAPSHOT_PROD` if overriding `cmdclaw-agent-prod`
 - `DATABASE_URL_STAGING`
 - `DATABASE_URL_PROD`
 - `RELEASE_ALERT_WEBHOOK_URL` for optional failure alerts

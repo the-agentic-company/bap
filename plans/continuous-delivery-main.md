@@ -18,6 +18,7 @@ After this work, a user can push to `main` and observe the `Release Main` GitHub
 - [x] (2026-05-17 07:54Z) Updated release documentation to describe the new automatic release and rollback model.
 - [x] (2026-05-17 07:59Z) Added an initial replay fixture file that runs chat conversation and coworker builder workflow live tests.
 - [x] (2026-05-17 08:02Z) Validated YAML parsing and ran `bun run check` successfully.
+- [x] (2026-05-17 08:34Z) Removed Daytona snapshot override secrets from the workflow so staging and production always use the built-in stable names.
 
 ## Surprises & Discoveries
 
@@ -38,6 +39,10 @@ After this work, a user can push to `main` and observe the `Release Main` GitHub
 
 - Decision: Keep the previous production tag format `vYYYY.M.D` with numeric same-day suffixes.
   Rationale: The user preferred the existing release tag style and only wanted the trigger changed from tag-driven release to automatic `main` release.
+  Date/Author: 2026-05-17 / Codex.
+
+- Decision: Do not expose `DAYTONA_SNAPSHOT_STAGING` or `DAYTONA_SNAPSHOT_PROD` in the GitHub workflow.
+  Rationale: The release pipeline should use the standard snapshot names automatically: `cmdclaw-agent-staging` and `cmdclaw-agent-prod`.
   Date/Author: 2026-05-17 / Codex.
 
 - Decision: Use Render API deploy IDs for rollback instead of GHCR image tags.
@@ -98,7 +103,7 @@ The TypeScript helper scripts must typecheck. The release workflow should be vis
 
 Render deploy by commit is safe to retry. If a deploy fails, the workflow exits non-zero. Render rollback reuses a previous deploy artifact. Database schema changes are not automatically reversed; releases should use forward-compatible migration patterns so previous code can run after new additive schema changes.
 
-If a Daytona snapshot build fails, rerun the workflow after fixing credentials or Daytona availability. The Daytona build scripts replace existing stable snapshot names, so the environment continues using `cmdclaw-agent-staging` or `cmdclaw-agent-prod`.
+If a Daytona snapshot build fails, rerun the workflow after fixing credentials or Daytona availability. The Daytona build scripts replace existing stable snapshot names, so the environment continues using `cmdclaw-agent-staging` or `cmdclaw-agent-prod`. The GitHub workflow intentionally does not pass snapshot name override secrets.
 
 ## Artifacts and Notes
 

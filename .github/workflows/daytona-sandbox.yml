@@ -20,10 +20,6 @@ on:
         required: false
       DAYTONA_API_URL:
         required: false
-      DAYTONA_SNAPSHOT_STAGING:
-        required: false
-      DAYTONA_SNAPSHOT_PROD:
-        required: false
   workflow_dispatch:
     inputs:
       ref:
@@ -64,6 +60,4 @@ jobs:
           DAYTONA_JWT_TOKEN: ${{ secrets.DAYTONA_JWT_TOKEN }}
           DAYTONA_ORGANIZATION_ID: ${{ secrets.DAYTONA_ORGANIZATION_ID }}
           DAYTONA_API_URL: ${{ secrets.DAYTONA_API_URL }}
-          DAYTONA_SNAPSHOT_STAGING: ${{ secrets.DAYTONA_SNAPSHOT_STAGING }}
-          DAYTONA_SNAPSHOT_PROD: ${{ secrets.DAYTONA_SNAPSHOT_PROD }}
         run: bun run --cwd apps/sandbox daytona:build:${{ inputs.environment }}
