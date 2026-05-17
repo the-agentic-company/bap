@@ -19,6 +19,7 @@ After this work, a user can push to `main` and observe the `Release Main` GitHub
 - [x] (2026-05-17 07:59Z) Added an initial replay fixture file that runs chat conversation and coworker builder workflow live tests.
 - [x] (2026-05-17 08:02Z) Validated YAML parsing and ran `bun run check` successfully.
 - [x] (2026-05-17 08:34Z) Removed Daytona snapshot override secrets from the workflow so staging and production always use the built-in stable names.
+- [x] (2026-05-17 08:45Z) Changed Render deploy and rollback workflows to read generic Render secrets from the selected GitHub environment instead of passing environment-specific secret names through the caller.
 
 ## Surprises & Discoveries
 
@@ -43,6 +44,10 @@ After this work, a user can push to `main` and observe the `Release Main` GitHub
 
 - Decision: Do not expose `DAYTONA_SNAPSHOT_STAGING` or `DAYTONA_SNAPSHOT_PROD` in the GitHub workflow.
   Rationale: The release pipeline should use the standard snapshot names automatically: `cmdclaw-agent-staging` and `cmdclaw-agent-prod`.
+  Date/Author: 2026-05-17 / Codex.
+
+- Decision: Use generic Render secret names inside the `staging` and `prod` GitHub environments.
+  Rationale: Environment-scoped secrets are resolved by jobs that declare the environment. Passing `RENDER_STAGING_*` or `RENDER_PROD_*` from the caller can resolve to empty strings before the called workflow enters its environment.
   Date/Author: 2026-05-17 / Codex.
 
 - Decision: Use Render API deploy IDs for rollback instead of GHCR image tags.
@@ -147,4 +152,7 @@ It requires `RENDER_API_KEY`.
       ]
     }
 
-The release workflow requires the secrets listed in `RELEASING.md`.
+The release workflow requires the secrets listed in `RELEASING.md`. For Render,
+set `RENDER_API_KEY`, `RENDER_WEB_SERVICE_ID`, `RENDER_WORKER_SERVICE_ID`, and
+optionally `RENDER_MCP_SERVICE_ID` on each GitHub environment. The values differ
+between `staging` and `prod`, but the names are the same.

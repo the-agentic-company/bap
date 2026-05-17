@@ -67,11 +67,7 @@ jobs:
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
       environment: staging
-    secrets:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_WEB_SERVICE_ID: ${{ secrets.RENDER_STAGING_WEB_SERVICE_ID }}
-      RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_STAGING_WORKER_SERVICE_ID }}
-      RENDER_MCP_SERVICE_ID: ${{ secrets.RENDER_STAGING_MCP_SERVICE_ID }}
+    secrets: inherit
 
   staging-verify:
     needs: staging-render
@@ -111,11 +107,7 @@ jobs:
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
       environment: prod
-    secrets:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_WEB_SERVICE_ID: ${{ secrets.RENDER_PROD_WEB_SERVICE_ID }}
-      RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_PROD_WORKER_SERVICE_ID }}
-      RENDER_MCP_SERVICE_ID: ${{ secrets.RENDER_PROD_MCP_SERVICE_ID }}
+    secrets: inherit
 
   prod-verify:
     needs: prod-render
@@ -137,11 +129,7 @@ jobs:
       web_deploy_id: ${{ needs.prod-render.outputs.previous_web_deploy_id }}
       worker_deploy_id: ${{ needs.prod-render.outputs.previous_worker_deploy_id }}
       mcp_deploy_id: ${{ needs.prod-render.outputs.previous_mcp_deploy_id }}
-    secrets:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_WEB_SERVICE_ID: ${{ secrets.RENDER_PROD_WEB_SERVICE_ID }}
-      RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_PROD_WORKER_SERVICE_ID }}
-      RENDER_MCP_SERVICE_ID: ${{ secrets.RENDER_PROD_MCP_SERVICE_ID }}
+    secrets: inherit
 
   tag-release:
     needs:

@@ -22,11 +22,11 @@ on:
         default: ""
     secrets:
       RENDER_API_KEY:
-        required: true
+        required: false
       RENDER_WEB_SERVICE_ID:
-        required: true
+        required: false
       RENDER_WORKER_SERVICE_ID:
-        required: true
+        required: false
       RENDER_MCP_SERVICE_ID:
         required: false
 
@@ -35,6 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_WEB_SERVICE_ID: ${{ secrets.RENDER_WEB_SERVICE_ID }}
+      RENDER_WORKER_SERVICE_ID: ${{ secrets.RENDER_WORKER_SERVICE_ID }}
       RENDER_MCP_SERVICE_ID: ${{ secrets.RENDER_MCP_SERVICE_ID }}
     steps:
       - name: Checkout repository
@@ -45,18 +48,30 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [ -n "${RENDER_API_KEY}" ] || missing+=("RENDER_API_KEY")
+          [ -n "${RENDER_WEB_SERVICE_ID}" ] || missing+=("RENDER_WEB_SERVICE_ID")
+          [ -n "${RENDER_WORKER_SERVICE_ID}" ] || missing+=("RENDER_WORKER_SERVICE_ID")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing Render secret(s) for GitHub environment "%s": %s\n' \
+              "${{ inputs.environment }}" "${missing[*]}" >&2
+            printf 'Set these as secrets on the GitHub environment named "%s".\n' \
+              "${{ inputs.environment }}" >&2
+            exit 1
+          fi
+
       - name: Roll back web
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: bun scripts/release/render-deploy.ts rollback --service-id "${{ secrets.RENDER_WEB_SERVICE_ID }}" --deploy-id "${{ inputs.web_deploy_id }}"
+        run: bun scripts/release/render-deploy.ts rollback --service-id "${RENDER_WEB_SERVICE_ID}" --deploy-id "${{ inputs.web_deploy_id }}"
 
       - name: Roll back worker
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: bun scripts/release/render-deploy.ts rollback --service-id "${{ secrets.RENDER_WORKER_SERVICE_ID }}" --deploy-id "${{ inputs.worker_deploy_id }}"
+        run: bun scripts/release/render-deploy.ts rollback --service-id "${RENDER_WORKER_SERVICE_ID}" --deploy-id "${{ inputs.worker_deploy_id }}"
 
       - name: Roll back MCP
         if: ${{ env.RENDER_MCP_SERVICE_ID != '' && inputs.mcp_deploy_id != '' }}
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: bun scripts/release/render-deploy.ts rollback --service-id "${RENDER_MCP_SERVICE_ID}" --deploy-id "${{ inputs.mcp_deploy_id }}"
