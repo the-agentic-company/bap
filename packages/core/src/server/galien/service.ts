@@ -79,7 +79,7 @@ async function parseGalienErrorBody(response: Response) {
   return "";
 }
 
-export async function loginToGalienWithCredentials(input: {
+async function loginToGalienWithCredentials(input: {
   username: string;
   password: string;
 }): Promise<string> {

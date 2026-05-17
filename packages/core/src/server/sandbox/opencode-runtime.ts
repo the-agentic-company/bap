@@ -7,8 +7,8 @@ import {
 } from "./runtime/factory";
 import { createSandboxOpencodeClient } from "./runtime/runtime-client/opencode";
 
-export const OPENCODE_PORT = 4096;
-export const SANDBOX_AGENT_PORT = 2468;
+const OPENCODE_PORT = 4096;
+const SANDBOX_AGENT_PORT = 2468;
 const EXECUTOR_HOME = "/tmp/cmdclaw-executor/default";
 const EXECUTOR_SCOPE_DIR = `${EXECUTOR_HOME}/scope`;
 const EXECUTOR_DATA_DIR = `${EXECUTOR_HOME}/data`;
@@ -56,7 +56,7 @@ export function getSandboxReadinessUrl(serverUrl: string, model: string): string
   return joinUrlPath(serverUrl, "/health");
 }
 
-export function getOpencodeClientBaseUrl(serverUrl: string, model: string): string {
+function getOpencodeClientBaseUrl(serverUrl: string, model: string): string {
   const runtime = resolveSandboxAgentRuntimeForModel(model);
   if (runtime === "agentsdk") {
     return joinUrlPath(serverUrl, "/opencode");
@@ -64,7 +64,6 @@ export function getOpencodeClientBaseUrl(serverUrl: string, model: string): stri
   return serverUrl;
 }
 
-export { createSandboxOpencodeClient };
 
 export async function createSandboxRuntimeClient(options: {
   serverUrl: string;
@@ -84,7 +83,7 @@ export async function createSandboxRuntimeClient(options: {
   });
 }
 
-export async function createSandboxSessionBridge(options: {
+async function createSandboxSessionBridge(options: {
   serverUrl: string;
   model: string;
   fetch?: typeof fetch;
@@ -101,5 +100,3 @@ export async function createSandboxSessionBridge(options: {
     },
   });
 }
-
-export type { SandboxSessionBridge };

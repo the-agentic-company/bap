@@ -13,7 +13,7 @@ function replacePlaceholder(template: string, placeholder: string, value: string
   return template.replaceAll(`{{${placeholder}}}`, value);
 }
 
-export function buildTemplateInstructionsText(template: TemplateCatalogTemplate) {
+function buildTemplateInstructionsText(template: TemplateCatalogTemplate) {
   return template.agentInstructions.join("\n");
 }
 

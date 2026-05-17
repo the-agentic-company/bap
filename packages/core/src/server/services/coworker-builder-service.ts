@@ -35,7 +35,7 @@ const modelReferenceSchema = z
     }
   }, "Model must use provider/model format");
 
-export const coworkerBuilderScheduleSchema = z.discriminatedUnion("type", [
+const coworkerBuilderScheduleSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("interval"),
     intervalMinutes: z.number().min(60).max(10080),

@@ -14,7 +14,7 @@ const commonServerFlags = {
   },
 };
 
-export const coworkerListCommand = buildCommand({
+const coworkerListCommand = buildCommand({
   loader: async () => import("./list"),
   parameters: {
     flags: commonServerFlags,
@@ -31,7 +31,7 @@ export const coworkerListCommand = buildCommand({
   },
 });
 
-export const coworkerGetCommand = buildCommand({
+const coworkerGetCommand = buildCommand({
   loader: async () => import("./get"),
   parameters: {
     flags: commonServerFlags,
@@ -54,7 +54,7 @@ export const coworkerGetCommand = buildCommand({
   },
 });
 
-export const coworkerCreateCommand = buildCommand({
+const coworkerCreateCommand = buildCommand({
   loader: async () => import("./create"),
   parameters: {
     flags: {
@@ -242,7 +242,7 @@ export const coworkerBuildCommand = buildCommand({
   },
 });
 
-export const coworkerRunCommand = buildCommand({
+const coworkerRunCommand = buildCommand({
   loader: async () => import("./run"),
   parameters: {
     flags: {
@@ -286,7 +286,7 @@ export const coworkerRunCommand = buildCommand({
   },
 });
 
-export const coworkerLogsCommand = buildCommand({
+const coworkerLogsCommand = buildCommand({
   loader: async () => import("./logs"),
   parameters: {
     flags: {
@@ -323,7 +323,7 @@ export const coworkerLogsCommand = buildCommand({
   },
 });
 
-export const coworkerApproveCommand = buildCommand({
+const coworkerApproveCommand = buildCommand({
   loader: async () => import("./approve"),
   parameters: {
     flags: {

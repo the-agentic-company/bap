@@ -4,7 +4,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-export function toRuntimeEvent(event: unknown): RuntimeEvent | null {
+function toRuntimeEvent(event: unknown): RuntimeEvent | null {
   if (!isRecord(event) || typeof event.type !== "string") {
     return null;
   }

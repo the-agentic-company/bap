@@ -60,12 +60,6 @@ function Sheet(props: SheetProps) {
   );
 }
 
-type SheetTriggerProps = React.ComponentProps<typeof SheetPrimitive.Trigger>;
-
-function SheetTrigger(props: SheetTriggerProps) {
-  return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
-}
-
 type SheetCloseProps = React.ComponentProps<typeof SheetPrimitive.Close>;
 
 function SheetClose(props: SheetCloseProps) {
@@ -150,18 +144,6 @@ function SheetContent({
   );
 }
 
-type SheetHeaderProps = React.ComponentProps<"div">;
-
-function SheetHeader(props: SheetHeaderProps) {
-  return <div data-slot="sheet-header" {...props} />;
-}
-
-type SheetFooterProps = React.ComponentProps<"div">;
-
-function SheetFooter(props: SheetFooterProps) {
-  return <div data-slot="sheet-footer" {...props} />;
-}
-
 type SheetTitleProps = React.ComponentProps<typeof SheetPrimitive.Title>;
 
 function SheetTitle(props: SheetTitleProps) {
@@ -175,25 +157,18 @@ function SheetDescription(props: SheetDescriptionProps) {
 }
 
 export {
-  useSheet,
   Sheet,
   SheetPortal,
   SheetOverlay,
-  SheetTrigger,
   SheetClose,
   SheetContent,
-  SheetHeader,
-  SheetFooter,
   SheetTitle,
   SheetDescription,
   type SheetProps,
   type SheetPortalProps,
   type SheetOverlayProps,
-  type SheetTriggerProps,
   type SheetCloseProps,
   type SheetContentProps,
-  type SheetHeaderProps,
-  type SheetFooterProps,
   type SheetTitleProps,
   type SheetDescriptionProps,
 };

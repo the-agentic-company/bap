@@ -15,7 +15,7 @@ let loginRedirectInFlight = false;
 
 type SessionCheckResult = "session_present" | "session_missing" | "check_failed";
 
-export function shouldSkipLoginRedirect(pathname: string): boolean {
+function shouldSkipLoginRedirect(pathname: string): boolean {
   return (
     pathname === "/" ||
     pathname === "/login" ||

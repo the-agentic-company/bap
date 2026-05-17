@@ -102,7 +102,7 @@ export type DoneArtifactsData = {
   sandboxFiles: SandboxFileData[];
 };
 
-export type GenerationStartInput = {
+type GenerationStartInput = {
   conversationId?: string;
   content: string;
   model?: string;

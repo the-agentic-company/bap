@@ -65,7 +65,7 @@ function mapGenerationStatusToCoworkerRunStatus(
   return "error";
 }
 
-export function isDisabledCoworkerTriggerType(triggerType: string): boolean {
+function isDisabledCoworkerTriggerType(triggerType: string): boolean {
   return DISABLED_COWORKER_TRIGGER_TYPES.includes(
     triggerType as (typeof DISABLED_COWORKER_TRIGGER_TYPES)[number],
   );

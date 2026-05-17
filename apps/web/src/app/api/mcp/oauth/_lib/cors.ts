@@ -16,7 +16,7 @@ function isLoopbackOrigin(origin: string): boolean {
   }
 }
 
-export function getHostedMcpOauthCorsHeaders(origin: string | null): HeadersInit {
+function getHostedMcpOauthCorsHeaders(origin: string | null): HeadersInit {
   const isAllowed = origin && (trustedOrigins.has(origin) || isLoopbackOrigin(origin));
 
   return {

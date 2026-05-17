@@ -13,10 +13,6 @@ import { useCallback, useMemo, useRef } from "react";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import {
   runGenerationStream,
-  type ToolUseData,
-  type ThinkingData,
-  type GenerationPendingApprovalData,
-  type AuthNeededData,
   type SandboxFileData,
   type GenerationCallbacks,
 } from "@/lib/generation-stream";
@@ -82,14 +78,7 @@ async function waitForRetry(signal: AbortSignal, delayMs: number): Promise<boole
   });
 }
 
-export type {
-  ToolUseData,
-  ThinkingData,
-  GenerationPendingApprovalData,
-  AuthNeededData,
-  SandboxFileData,
-  GenerationCallbacks,
-};
+export type { SandboxFileData };
 
 function isConversationListInfiniteData(
   data: ConversationListCacheData | undefined,
@@ -582,20 +571,6 @@ export function useRequestGoogleAccess() {
   });
 }
 
-export function useCreateDemoPasswordAccount() {
-  return useMutation({
-    mutationFn: (input: { email: string; name?: string }) =>
-      client.admin.createDemoPasswordAccount(input),
-  });
-}
-
-export function useResetDemoPassword() {
-  return useMutation({
-    mutationFn: (input: { userId?: string; email?: string }) =>
-      client.admin.resetDemoPassword(input),
-  });
-}
-
 // Hook for toggling integration
 export function useToggleIntegration() {
   const queryClient = useQueryClient();
@@ -663,142 +638,12 @@ export function useLinkLinkedIn() {
   });
 }
 
-// ========== CUSTOM INTEGRATION HOOKS ==========
-
-export function useCustomIntegrationList() {
-  return useQuery({
-    queryKey: ["customIntegration", "list"],
-    queryFn: () => client.integration.listCustomIntegrations(),
-  });
-}
-
-export function useCustomIntegration(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["customIntegration", "get", slug],
-    queryFn: () => client.integration.getCustomIntegration({ slug: slug! }),
-    enabled: !!slug,
-  });
-}
-
-export function useCreateCustomIntegration() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      slug: string;
-      name: string;
-      description: string;
-      iconUrl?: string | null;
-      baseUrl: string;
-      authType: "oauth2" | "api_key" | "bearer_token";
-      oauthConfig?: {
-        authUrl: string;
-        tokenUrl: string;
-        scopes: string[];
-        pkce?: boolean;
-        authStyle?: "header" | "params";
-        extraAuthParams?: Record<string, string>;
-      } | null;
-      apiKeyConfig?: {
-        method: "header" | "query";
-        headerName?: string;
-        queryParam?: string;
-      } | null;
-      cliCode?: string;
-      cliInstructions?: string;
-      permissions?: { readOps: string[]; writeOps: string[] };
-      clientId?: string | null;
-      clientSecret?: string | null;
-      apiKey?: string | null;
-    }) => client.integration.createCustomIntegration(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customIntegration"] });
-    },
-  });
-}
-
-export function useSetCustomCredentials() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      customIntegrationId: string;
-      clientId?: string | null;
-      clientSecret?: string | null;
-      apiKey?: string | null;
-      displayName?: string | null;
-    }) => client.integration.setCustomCredentials(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customIntegration"] });
-    },
-  });
-}
-
-export function useDisconnectCustomIntegration() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (customIntegrationId: string) =>
-      client.integration.disconnectCustomIntegration({ customIntegrationId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customIntegration"] });
-    },
-  });
-}
-
-export function useToggleCustomIntegration() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      customIntegrationId,
-      enabled,
-    }: {
-      customIntegrationId: string;
-      enabled: boolean;
-    }) =>
-      client.integration.toggleCustomIntegration({
-        customIntegrationId,
-        enabled,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customIntegration"] });
-    },
-  });
-}
-
-export function useDeleteCustomIntegration() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => client.integration.deleteCustomIntegration({ id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customIntegration"] });
-    },
-  });
-}
-
-export function useGetCustomAuthUrl() {
-  return useMutation({
-    mutationFn: ({ slug, redirectUrl }: { slug: string; redirectUrl: string }) =>
-      client.integration.getCustomAuthUrl({ slug, redirectUrl }),
-  });
-}
-
 // ========== EXECUTOR SOURCE HOOKS ==========
 
 export function useExecutorSourceList() {
   return useQuery({
     queryKey: ["executorSource", "list"],
     queryFn: () => client.executorSource.list(),
-  });
-}
-
-export function useAdminExecutorSourceList(workspaceId: string | null) {
-  return useQuery({
-    queryKey: ["executorSource", "admin", workspaceId],
-    queryFn: () => client.executorSource.adminList({ workspaceId: workspaceId! }),
-    enabled: Boolean(workspaceId),
   });
 }
 
@@ -822,33 +667,6 @@ export function useCreateExecutorSource() {
       authPrefix?: string | null;
       enabled?: boolean;
     }) => client.executorSource.create(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
-    },
-  });
-}
-
-export function useAdminCreateExecutorSource() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      workspaceId: string;
-      kind: "mcp" | "openapi";
-      name: string;
-      namespace: string;
-      endpoint: string;
-      specUrl?: string | null;
-      transport?: string | null;
-      headers?: Record<string, string>;
-      queryParams?: Record<string, string>;
-      defaultHeaders?: Record<string, string>;
-      authType?: "none" | "api_key" | "bearer" | "oauth2";
-      authHeaderName?: string | null;
-      authQueryParam?: string | null;
-      authPrefix?: string | null;
-      enabled?: boolean;
-    }) => client.executorSource.adminCreate(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["executorSource"] });
     },
@@ -882,34 +700,6 @@ export function useUpdateExecutorSource() {
   });
 }
 
-export function useAdminUpdateExecutorSource() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      workspaceId: string;
-      id: string;
-      kind: "mcp" | "openapi";
-      name: string;
-      namespace: string;
-      endpoint: string;
-      specUrl?: string | null;
-      transport?: string | null;
-      headers?: Record<string, string>;
-      queryParams?: Record<string, string>;
-      defaultHeaders?: Record<string, string>;
-      authType?: "none" | "api_key" | "bearer" | "oauth2";
-      authHeaderName?: string | null;
-      authQueryParam?: string | null;
-      authPrefix?: string | null;
-      enabled?: boolean;
-    }) => client.executorSource.adminUpdate(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
-    },
-  });
-}
-
 export function useDeleteExecutorSource() {
   const queryClient = useQueryClient();
 
@@ -933,18 +723,6 @@ export function useStartExecutorSourceOAuth() {
   });
 }
 
-export function useAdminDeleteExecutorSource() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: { workspaceId: string; id: string }) =>
-      client.executorSource.adminDelete(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
-    },
-  });
-}
-
 export function useSetExecutorSourceCredential() {
   const queryClient = useQueryClient();
 
@@ -961,23 +739,6 @@ export function useSetExecutorSourceCredential() {
   });
 }
 
-export function useAdminSetExecutorSourceCredential() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      workspaceId: string;
-      workspaceExecutorSourceId: string;
-      secret: string;
-      displayName?: string | null;
-      enabled?: boolean;
-    }) => client.executorSource.adminSetCredential(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
-    },
-  });
-}
-
 export function useDisconnectExecutorSourceCredential() {
   const queryClient = useQueryClient();
 
@@ -986,102 +747,6 @@ export function useDisconnectExecutorSourceCredential() {
       client.executorSource.disconnectCredential({ workspaceExecutorSourceId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["executorSource"] });
-    },
-  });
-}
-
-export function useAdminDisconnectExecutorSourceCredential() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: { workspaceId: string; workspaceExecutorSourceId: string }) =>
-      client.executorSource.adminDisconnectCredential(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
-    },
-  });
-}
-
-export function useToggleExecutorSourceCredential() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      workspaceExecutorSourceId,
-      enabled,
-    }: {
-      workspaceExecutorSourceId: string;
-      enabled: boolean;
-    }) =>
-      client.executorSource.toggleCredential({
-        workspaceExecutorSourceId,
-        enabled,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
-    },
-  });
-}
-
-export function useAdminToggleExecutorSourceCredential() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      workspaceId: string;
-      workspaceExecutorSourceId: string;
-      enabled: boolean;
-    }) => client.executorSource.adminToggleCredential(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
-    },
-  });
-}
-
-// ========== INTEGRATION SKILL HOOKS ==========
-
-export function useIntegrationSkillListBySlug(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["integrationSkill", "listBySlug", slug],
-    queryFn: () => client.integrationSkill.listBySlug({ slug: slug! }),
-    enabled: !!slug,
-  });
-}
-
-export function useResolvedIntegrationSkill(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["integrationSkill", "resolved", slug],
-    queryFn: () => client.integrationSkill.getResolvedForUser({ slug: slug! }),
-    enabled: !!slug,
-  });
-}
-
-export function useCreateIntegrationSkillFromChat() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      slug: string;
-      title: string;
-      description: string;
-      files?: Array<{ path: string; content: string }>;
-      setAsPreferred?: boolean;
-    }) => client.integrationSkill.createFromChat(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["integrationSkill"] });
-    },
-  });
-}
-
-export function useSetIntegrationSkillPreference() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      slug: string;
-      preferredSource: "official" | "community";
-      preferredSkillId?: string;
-    }) => client.integrationSkill.setPreference(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["integrationSkill"] });
     },
   });
 }
@@ -1444,53 +1109,6 @@ export function useUpdateCoworker() {
   });
 }
 
-export function useEditCoworker() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: {
-      coworkerId: string;
-      baseUpdatedAt: string;
-      changes: {
-        prompt?: string;
-        model?: string;
-        toolAccessMode?: CoworkerToolAccessMode;
-        allowedIntegrations?: string[];
-        triggerType?: "manual" | "schedule" | "twitter.new_dm";
-        schedule?:
-          | {
-              type: "interval";
-              intervalMinutes: number;
-            }
-          | {
-              type: "daily";
-              time: string;
-              timezone?: string;
-            }
-          | {
-              type: "weekly";
-              time: string;
-              daysOfWeek: number[];
-              timezone?: string;
-            }
-          | {
-              type: "monthly";
-              time: string;
-              dayOfMonth: number;
-              timezone?: string;
-            }
-          | null;
-      };
-    }) => client.coworker.edit(input),
-    onSuccess: (_, input) => {
-      queryClient.invalidateQueries({ queryKey: ["coworker"] });
-      queryClient.invalidateQueries({
-        queryKey: ["coworker", "get", input.coworkerId],
-      });
-    },
-  });
-}
-
 export function useDeleteCoworker() {
   const queryClient = useQueryClient();
 
@@ -1765,28 +1383,6 @@ export function useCreateCoworkerTag() {
   });
 }
 
-export function useUpdateCoworkerTag() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { id: string; name?: string; color?: string | null }) =>
-      client.coworkerTag.update(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworkerTag"] });
-    },
-  });
-}
-
-export function useDeleteCoworkerTag() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => client.coworkerTag.delete({ id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworkerTag"] });
-      queryClient.invalidateQueries({ queryKey: ["coworker", "list"] });
-    },
-  });
-}
-
 export function useAssignCoworkerTag() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -1961,25 +1557,6 @@ export function useResetOnboarding() {
   });
 }
 
-export function useUserForwardingSettings() {
-  return useQuery({
-    queryKey: ["user", "forwarding"],
-    queryFn: () => client.user.forwarding(),
-  });
-}
-
-export function useSetDefaultForwardedCoworker() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (coworkerId: string | null) =>
-      client.user.setDefaultForwardedCoworker({ coworkerId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user", "forwarding"] });
-    },
-  });
-}
-
 export function useSetUserTimezone() {
   const queryClient = useQueryClient();
 
@@ -2020,18 +1597,6 @@ export function useAdminBillingUserOverview(targetUserId: string | null) {
     queryKey: ["billing", "admin-user-overview", targetUserId],
     queryFn: () => client.billing.adminUserOverview({ targetUserId: targetUserId! }),
     enabled: Boolean(targetUserId),
-  });
-}
-
-export function useCreateWorkspace() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ name }: { name: string }) => client.billing.createWorkspace({ name }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["billing"] });
-      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
-    },
   });
 }
 
@@ -2369,22 +1934,7 @@ export function useSetAdminSharedProviderApiKey() {
       queryClient.invalidateQueries({ queryKey: ["providerAuth"] });
     },
   });
-}
-
-// Hook for storing an API key-based subscription provider
-export function useSetProviderApiKey() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ provider, apiKey }: { provider: "kimi"; apiKey: string }) =>
-      client.providerAuth.setApiKey({ provider, apiKey }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["providerAuth"] });
-    },
-  });
-}
-
-// ========== GENERATION HOOKS ==========
+} // ========== GENERATION HOOKS ==========
 
 // Hook for generation-based streaming (new persistent generation system)
 export function useGeneration() {
@@ -2802,18 +2352,7 @@ export function useActiveGeneration(conversationId: string | undefined) {
       return false;
     },
   });
-}
-
-// Hook for getting generation status
-export function useGenerationStatus(generationId: string | undefined) {
-  return useQuery({
-    queryKey: ["generation", "status", generationId],
-    queryFn: () => client.generation.getGenerationStatus({ generationId: generationId! }),
-    enabled: !!generationId,
-  });
-}
-
-// Hook for downloading an attachment (returns presigned URL)
+} // Hook for downloading an attachment (returns presigned URL)
 export function useDownloadAttachment() {
   return useMutation({
     mutationFn: (attachmentId: string) => client.conversation.downloadAttachment({ attachmentId }),
@@ -2824,15 +2363,6 @@ export function useDownloadAttachment() {
 export function useDownloadSandboxFile() {
   return useMutation({
     mutationFn: (fileId: string) => client.conversation.downloadSandboxFile({ fileId }),
-  });
-}
-
-// Hook for getting sandbox files for a conversation
-export function useSandboxFiles(conversationId: string | undefined) {
-  return useQuery({
-    queryKey: ["sandboxFiles", conversationId],
-    queryFn: () => client.conversation.getSandboxFiles({ conversationId: conversationId! }),
-    enabled: !!conversationId,
   });
 }
 

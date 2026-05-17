@@ -10,8 +10,8 @@ import {
 } from "../utils/observability";
 
 const rawBaseQueueName = process.env.BULLMQ_QUEUE_NAME ?? "cmdclaw-default";
-export const daytonaRunawayCleanupQueueName = `${rawBaseQueueName.replaceAll(":", "-")}-daytona-runaway-cleanup`;
-export const daytonaRunawayCleanupRedisUrl =
+const daytonaRunawayCleanupQueueName = `${rawBaseQueueName.replaceAll(":", "-")}-daytona-runaway-cleanup`;
+const daytonaRunawayCleanupRedisUrl =
   process.env.REDIS_URL ?? "redis://localhost:6379";
 
 const redisOptions = {

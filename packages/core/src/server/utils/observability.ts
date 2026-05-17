@@ -523,11 +523,11 @@ export async function shutdownObservabilityRuntime(): Promise<void> {
   getPendingLogExports().clear();
 }
 
-export function getObservabilityTraceContextKey(): string {
+function getObservabilityTraceContextKey(): string {
   return QUEUE_TRACE_CONTEXT_KEY;
 }
 
-export function injectCurrentTraceContext(): TraceCarrier {
+function injectCurrentTraceContext(): TraceCarrier {
   const carrier: TraceCarrier = {};
   propagation.inject(context.active(), carrier);
   return carrier;

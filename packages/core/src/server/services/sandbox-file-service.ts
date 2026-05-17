@@ -65,7 +65,7 @@ function buildBase64ReadCommand(filePath: string): string {
   ].join("\n");
 }
 
-export async function readSandboxFileAsBuffer(
+async function readSandboxFileAsBuffer(
   sandbox: SandboxBackend,
   filePath: string,
 ): Promise<Buffer> {
@@ -201,7 +201,7 @@ export async function collectNewSandboxFiles(
  * Collect new files created in an E2B sandbox since a marker time.
  * Only collects files from /app and /home/user directories.
  */
-export async function collectNewE2BFiles(
+async function collectNewE2BFiles(
   sandbox: Sandbox,
   markerTime: number,
   excludePaths: string[] = [],

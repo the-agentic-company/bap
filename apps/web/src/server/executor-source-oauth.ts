@@ -1,5 +1,5 @@
 import type { McpOAuthSession } from "@cmdclaw/core/server/executor/mcp-oauth";
-import { consumePending, deletePending, getPending, storePending } from "@/server/ai/pending-oauth";
+import { consumePending, getPending, storePending } from "@/server/ai/pending-oauth";
 
 const EXECUTOR_SOURCE_OAUTH_PROVIDER_PREFIX = "executor_source:";
 
@@ -61,14 +61,6 @@ async function readExecutorSourceOAuthPending(
   };
 }
 
-export async function getExecutorSourceOAuthPending(state: string) {
-  return readExecutorSourceOAuthPending(state, getPending);
-}
-
 export async function consumeExecutorSourceOAuthPending(state: string) {
   return readExecutorSourceOAuthPending(state, consumePending);
-}
-
-export async function deleteExecutorSourceOAuthPending(state: string) {
-  await deletePending(state);
 }

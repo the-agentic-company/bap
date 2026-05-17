@@ -1,6 +1,6 @@
 import { buildCommand, buildRouteMap } from "@stricli/core";
 
-export const authLoginCommand = buildCommand({
+const authLoginCommand = buildCommand({
   loader: async () => import("./login"),
   parameters: {
     flags: {
@@ -35,7 +35,7 @@ export const authLoginCommand = buildCommand({
   },
 });
 
-export const authStatusCommand = buildCommand({
+const authStatusCommand = buildCommand({
   loader: async () => import("./status"),
   parameters: {
     flags: {
@@ -59,7 +59,7 @@ export const authStatusCommand = buildCommand({
   },
 });
 
-export const authLogoutCommand = buildCommand({
+const authLogoutCommand = buildCommand({
   loader: async () => import("./logout"),
   parameters: {
     flags: {

@@ -64,7 +64,7 @@ export function validateIntegrationSkillFilePath(filePath: string): boolean {
   return true;
 }
 
-export async function isKnownIntegrationSlug(slug: string): Promise<boolean> {
+async function isKnownIntegrationSlug(slug: string): Promise<boolean> {
   const builtInSlugs = new Set(integrationTypeEnum.enumValues);
   if (builtInSlugs.has(slug as (typeof integrationTypeEnum.enumValues)[number])) {
     return true;

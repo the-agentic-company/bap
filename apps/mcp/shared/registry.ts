@@ -56,7 +56,7 @@ export function getMcpServerDefinition(slug: string): McpServerDefinition | null
   return MCP_SERVER_REGISTRY[slug as McpServerSlug] ?? null;
 }
 
-export function buildMcpPublicUrl(baseUrl: string, slug: McpServerSlug, path = "/mcp"): string {
+function buildMcpPublicUrl(baseUrl: string, slug: McpServerSlug, path = "/mcp"): string {
   return new URL(`${MCP_SERVER_REGISTRY[slug].publicBasePath}${path}`, baseUrl).toString();
 }
 

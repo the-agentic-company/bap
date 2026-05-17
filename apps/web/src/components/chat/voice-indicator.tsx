@@ -73,20 +73,3 @@ export function VoiceIndicator({
 
   return null;
 }
-
-type VoiceHintProps = {
-  className?: string;
-};
-
-export function VoiceHint({ className }: VoiceHintProps) {
-  const isMac =
-    typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-  const shortcut = isMac ? "⌘K" : "Ctrl+K";
-
-  return (
-    <div className={cn("text-xs text-muted-foreground", className)}>
-      Hold <kbd className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">{shortcut}</kbd> to
-      record voice
-    </div>
-  );
-}

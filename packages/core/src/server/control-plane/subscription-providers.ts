@@ -228,7 +228,7 @@ async function getValidProviderAuthRecord(
   return result;
 }
 
-export async function getConnectedProviderAuthIdsForUser(userId: string): Promise<string[]> {
+async function getConnectedProviderAuthIdsForUser(userId: string): Promise<string[]> {
   if (isSelfHostedEdition()) {
     const status = await getCloudManagedProviderAuthStatus(userId);
     return status.connected;
@@ -244,7 +244,7 @@ export async function getConnectedProviderAuthIdsForUser(userId: string): Promis
   return auths.map((auth) => auth.provider);
 }
 
-export async function getSharedConnectedProviderAuthIds(): Promise<string[]> {
+async function getSharedConnectedProviderAuthIds(): Promise<string[]> {
   if (isSelfHostedEdition()) {
     return [];
   }
@@ -256,7 +256,7 @@ export async function getSharedConnectedProviderAuthIds(): Promise<string[]> {
   return auths.map((auth) => auth.provider);
 }
 
-export async function getProviderAuthAvailabilityForUser(userId: string): Promise<{
+async function getProviderAuthAvailabilityForUser(userId: string): Promise<{
   connected: string[];
   shared: string[];
 }> {

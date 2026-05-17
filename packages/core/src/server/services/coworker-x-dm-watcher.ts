@@ -242,7 +242,7 @@ async function triggerCoworkerFromXDm(coworkerId: string, dm: XDmSummary): Promi
   );
 }
 
-export async function pollXDmCoworkerTriggers(): Promise<{
+async function pollXDmCoworkerTriggers(): Promise<{
   checked: number;
   enqueued: number;
 }> {

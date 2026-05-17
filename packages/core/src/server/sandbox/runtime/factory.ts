@@ -9,7 +9,7 @@ import { opencodeRuntimeClientImplementation } from "./runtime-client/opencode";
 import { sandboxAgentSessionBridgeImplementation } from "./session-bridge/agent-sdk";
 import { opencodeSessionBridgeImplementation } from "./session-bridge/opencode";
 
-export function getSandboxRuntimeClientImplementation(input: {
+function getSandboxRuntimeClientImplementation(input: {
   runtime: SandboxAgentRuntime;
 }): SandboxRuntimeClientImplementation {
   if (input.runtime === "agentsdk") {
@@ -18,7 +18,7 @@ export function getSandboxRuntimeClientImplementation(input: {
   return opencodeRuntimeClientImplementation;
 }
 
-export function getSandboxSessionBridgeImplementation(input: {
+function getSandboxSessionBridgeImplementation(input: {
   runtime: SandboxAgentRuntime;
 }): SandboxSessionBridgeImplementation {
   if (input.runtime === "agentsdk") {

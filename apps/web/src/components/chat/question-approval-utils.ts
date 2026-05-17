@@ -94,7 +94,7 @@ export function parseQuestionRequestPayload(input: unknown): QuestionRequestPayl
   return questions.length > 0 ? { questions } : null;
 }
 
-export function extractApprovalLinkedToolUseId(input: unknown): string | undefined {
+function extractApprovalLinkedToolUseId(input: unknown): string | undefined {
   if (typeof input !== "object" || input === null) {
     return undefined;
   }

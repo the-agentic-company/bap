@@ -3,7 +3,7 @@ import { isAbsolute, join, resolve as resolvePath } from "node:path";
 
 import { formatWorktreeStackSlot } from "./stack";
 
-export const DEFAULT_SHARED_WORKTREE_ROOT = ".cmdclaw/worktrees";
+const DEFAULT_SHARED_WORKTREE_ROOT = ".cmdclaw/worktrees";
 export const SLOT_LEASE_STALE_GRACE_MS = 60_000;
 
 export type WorktreeSlotLease = {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getChatDraftKey, useChatDraftStore } from "./chat-draft-store";
 
-export type AttachmentData = {
+type AttachmentData = {
   name: string;
   mimeType: string;
   dataUrl: string;

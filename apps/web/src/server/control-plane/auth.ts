@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { env } from "@/env";
 import { auth } from "@/lib/auth";
 
-export const CONTROL_PLANE_INSTANCE_API_KEY_HEADER = "x-cmdclaw-instance-api-key";
+const CONTROL_PLANE_INSTANCE_API_KEY_HEADER = "x-cmdclaw-instance-api-key";
 const LINK_REQUEST_TTL_MS = 10 * 60 * 1000;
 
 export function assertCloudControlPlaneEnabled() {

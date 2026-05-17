@@ -85,7 +85,7 @@ export const COWORKER_AVAILABLE_INTEGRATION_TYPES: IntegrationType[] = ALL_INTEG
   (integration) => !isComingSoonIntegration(integration),
 );
 
-export const INTEGRATION_ICONS: Record<IntegrationType, LucideIcon> = {
+const INTEGRATION_ICONS: Record<IntegrationType, LucideIcon> = {
   google_gmail: Mail,
   outlook: Mail,
   outlook_calendar: Calendar,
@@ -125,7 +125,7 @@ export const INTEGRATION_DISPLAY_NAMES: Record<IntegrationType, string> = {
   twitter: "X (Twitter)",
 };
 
-export const INTEGRATION_COLORS: Record<IntegrationType, string> = {
+const INTEGRATION_COLORS: Record<IntegrationType, string> = {
   google_gmail: "text-red-500",
   outlook: "text-[#0A5CBD]",
   outlook_calendar: "text-[#0A5CBD]",

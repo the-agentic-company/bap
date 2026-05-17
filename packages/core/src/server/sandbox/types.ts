@@ -107,7 +107,7 @@ export type DaemonResponse =
 
 // ========== Device Capabilities ==========
 
-export interface DeviceCapabilities {
+interface DeviceCapabilities {
   /** Whether the daemon can execute commands (sandbox) */
   sandbox: boolean;
   /** Whether the daemon can proxy LLM requests (Ollama/LM Studio) */

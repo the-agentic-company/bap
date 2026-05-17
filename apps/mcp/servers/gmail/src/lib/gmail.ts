@@ -14,32 +14,32 @@ type GmailMessage = {
   payload?: GmailPart;
 };
 
-export type MailScope = "inbox" | "all" | "strict-all";
+type MailScope = "inbox" | "all" | "strict-all";
 
-export type GmailListParams = {
+type GmailListParams = {
   limit?: number;
   scope?: MailScope;
   includeSpamTrash?: boolean;
 };
 
-export type GmailSearchParams = GmailListParams & {
+type GmailSearchParams = GmailListParams & {
   query: string;
 };
 
-export type GmailLatestParams = {
+type GmailLatestParams = {
   query?: string;
   unread?: boolean;
   scope?: MailScope;
   includeSpamTrash?: boolean;
 };
 
-export type GmailUnreadParams = {
+type GmailUnreadParams = {
   query?: string;
   scope?: MailScope;
   includeSpamTrash?: boolean;
 };
 
-export type GmailSendParams = {
+type GmailSendParams = {
   to: string;
   subject: string;
   body: string;
@@ -47,7 +47,7 @@ export type GmailSendParams = {
   attachmentPaths?: string[];
 };
 
-export type GmailClient = ReturnType<typeof createGmailClient>;
+type GmailClient = ReturnType<typeof createGmailClient>;
 
 function extractBody(part: GmailPart): string {
   if (part.body?.data) {

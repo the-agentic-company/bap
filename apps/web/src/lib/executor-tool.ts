@@ -221,7 +221,7 @@ export function getExecutorMetadataInput(input: unknown): unknown {
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-export function extractExecutorToolPaths(code: string): string[] {
+function extractExecutorToolPaths(code: string): string[] {
   const matches: string[] = [];
 
   for (const match of code.matchAll(TOOL_BRACKET_PATH_PATTERN)) {

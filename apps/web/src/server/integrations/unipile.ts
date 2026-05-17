@@ -18,14 +18,6 @@ interface UnipileAccount {
   }>;
 }
 
-interface UnipileProfile {
-  provider_id: string;
-  display_name: string;
-  public_identifier: string;
-  headline?: string;
-  location?: string;
-}
-
 interface HostedAuthResponse {
   url: string;
   code: string;
@@ -79,23 +71,6 @@ export async function getUnipileAccount(accountId: string): Promise<UnipileAccou
     const error = await response.text();
     console.error("Failed to get Unipile account:", error);
     throw new Error("Failed to get Unipile account");
-  }
-
-  return response.json();
-}
-
-export async function getLinkedInProfile(accountId: string): Promise<UnipileProfile> {
-  const response = await fetch(`${getUnipileBaseUrl()}/api/v1/users/me?account_id=${accountId}`, {
-    headers: {
-      "X-API-KEY": env.UNIPILE_API_KEY!,
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error("Failed to get LinkedIn profile:", error);
-    throw new Error("Failed to get LinkedIn profile");
   }
 
   return response.json();

@@ -1,6 +1,5 @@
 "use client";
 
-import { type DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 import * as React from "react";
@@ -17,10 +16,6 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
       {...props}
     />
   );
-}
-
-function CommandDialog({ ...props }: DialogProps) {
-  return <div {...props} />;
 }
 
 function CommandInput({
@@ -78,19 +73,6 @@ function CommandGroup({
   );
 }
 
-function CommandSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Separator>) {
-  return (
-    <CommandPrimitive.Separator
-      data-slot="command-separator"
-      className={cn("bg-border -mx-1 h-px", className)}
-      {...props}
-    />
-  );
-}
-
 function CommandItem({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Item>) {
   return (
     <CommandPrimitive.Item
@@ -104,24 +86,4 @@ function CommandItem({ className, ...props }: React.ComponentProps<typeof Comman
   );
 }
 
-function CommandShortcut({ className, ...props }: React.ComponentProps<"span">) {
-  return (
-    <span
-      data-slot="command-shortcut"
-      className={cn("text-muted-foreground ml-auto text-xs tracking-widest", className)}
-      {...props}
-    />
-  );
-}
-
-export {
-  Command,
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-};
+export { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList };

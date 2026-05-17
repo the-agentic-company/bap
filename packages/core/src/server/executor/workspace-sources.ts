@@ -24,10 +24,10 @@ type DatabaseLike = typeof db;
 export type ExecutorSourceKind = "mcp" | "openapi";
 export type ExecutorSourceAuthType = "none" | "api_key" | "bearer" | "oauth2";
 
-export type WorkspaceExecutorSourceRecord = typeof workspaceExecutorSource.$inferSelect;
-export type WorkspaceExecutorSourceCredentialRecord =
+type WorkspaceExecutorSourceRecord = typeof workspaceExecutorSource.$inferSelect;
+type WorkspaceExecutorSourceCredentialRecord =
   typeof workspaceExecutorSourceCredential.$inferSelect;
-export type WorkspaceExecutorPackageRecord = typeof workspaceExecutorPackage.$inferSelect;
+type WorkspaceExecutorPackageRecord = typeof workspaceExecutorPackage.$inferSelect;
 
 type LocalExecutorConfigSource = Record<string, unknown> & {
   kind: ExecutorSourceKind;
@@ -839,7 +839,7 @@ export async function getWorkspaceExecutorNativeMcpOAuthBootstrapSources(input: 
   return Promise.all(oauthSources);
 }
 
-export async function rebuildWorkspaceExecutorPackage(input: {
+async function rebuildWorkspaceExecutorPackage(input: {
   database?: DatabaseLike;
   workspaceId: string;
   workspaceName?: string | null;

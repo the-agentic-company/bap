@@ -13,9 +13,6 @@ import {
 import { type ReactNode, useState } from "react";
 import { cn } from "@/lib/utils";
 
-// Re-export for convenience
-export { type ColumnDef } from "@tanstack/react-table";
-
 type DataTableProps<TData> = {
   columns: ColumnDef<TData, unknown>[];
   data: TData[];

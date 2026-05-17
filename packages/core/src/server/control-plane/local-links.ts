@@ -32,7 +32,7 @@ export async function upsertCloudAccountLinkForUser(userId: string, cloudUserId:
   return link;
 }
 
-export async function clearCloudAccountLinkForUser(userId: string) {
+async function clearCloudAccountLinkForUser(userId: string) {
   await db.delete(cloudAccountLink).where(eq(cloudAccountLink.userId, userId));
 }
 

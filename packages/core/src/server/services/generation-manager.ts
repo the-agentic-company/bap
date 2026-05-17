@@ -341,7 +341,7 @@ export type GenerationEvent =
       };
     };
 
-export type GenerationStreamEvent = GenerationEvent & {
+type GenerationStreamEvent = GenerationEvent & {
   cursor?: string;
 };
 
@@ -948,7 +948,7 @@ export function buildQuestionCommand(request: RuntimeQuestionRequest): string {
 
 type UserFileAttachment = { name: string; mimeType: string; dataUrl: string };
 
-export type ConversationQueuedMessageRecord = {
+type ConversationQueuedMessageRecord = {
   id: string;
   content: string;
   fileAttachments?: QueuedMessageAttachment[];

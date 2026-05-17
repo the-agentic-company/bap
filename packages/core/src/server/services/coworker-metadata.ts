@@ -42,7 +42,7 @@ function isBlank(value: string | null | undefined): boolean {
   return !value || value.trim().length === 0;
 }
 
-export function buildFallbackCoworkerName(agentDescription: string): string {
+function buildFallbackCoworkerName(agentDescription: string): string {
   const firstSentence = agentDescription
     .split(/[\n.!?]/)[0]
     ?.replace(/\s+/g, " ")

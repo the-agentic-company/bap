@@ -1,6 +1,6 @@
 import type { IntegrationType } from "../oauth/config";
 
-export type CloudAccountLink = {
+type CloudAccountLink = {
   cloudUserId: string;
   status: string;
   linkedAt: string;

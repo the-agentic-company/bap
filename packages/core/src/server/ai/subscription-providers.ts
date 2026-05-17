@@ -101,6 +101,6 @@ export function getProviderModels(provider: SubscriptionProviderID): Subscriptio
 /**
  * Get all subscription provider IDs.
  */
-export function getSubscriptionProviderIds(): SubscriptionProviderID[] {
+function getSubscriptionProviderIds(): SubscriptionProviderID[] {
   return Object.keys(SUBSCRIPTION_PROVIDERS) as SubscriptionProviderID[];
 }

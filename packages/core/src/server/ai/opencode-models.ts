@@ -75,7 +75,7 @@ export async function listOpencodeFreeModels(): Promise<ZenModelOption[]> {
   }
 }
 
-export async function isOpencodeFreeModel(modelID: string): Promise<boolean> {
+async function isOpencodeFreeModel(modelID: string): Promise<boolean> {
   const models = await listOpencodeFreeModels();
   // Only treat known IDs as OpenCode free models.
   // A broad suffix check ("-free") can misroute stale/foreign IDs.

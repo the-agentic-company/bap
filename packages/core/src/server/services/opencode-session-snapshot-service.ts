@@ -40,7 +40,7 @@ function shellEscape(value: string): string {
   return `'${value.replace(/'/g, `'\"'\"'`)}'`;
 }
 
-export function buildConversationSessionSnapshotStorageKey(conversationId: string): string {
+function buildConversationSessionSnapshotStorageKey(conversationId: string): string {
   return `opencode-session-snapshots/${conversationId}/latest.json`;
 }
 
@@ -48,7 +48,7 @@ export function buildOpencodeExportCommand(sessionId: string): string {
   return `opencode export ${shellEscape(sessionId)}`;
 }
 
-export function buildOpencodeImportCommand(filePath: string): string {
+function buildOpencodeImportCommand(filePath: string): string {
   return `opencode import ${shellEscape(filePath)}`;
 }
 
@@ -133,7 +133,7 @@ export function parseOpencodeSessionSnapshotPayload(raw: string): OpencodeSessio
   return normalizeOpencodeSessionSnapshotPayload(raw).payload;
 }
 
-export async function getConversationSessionSnapshot(conversationId: string) {
+async function getConversationSessionSnapshot(conversationId: string) {
   return (
     (await db.query.conversationSessionSnapshot.findFirst({
       where: eq(conversationSessionSnapshot.conversationId, conversationId),

@@ -10,11 +10,11 @@ export function resolveServerUrl(serverUrl?: string): string {
   return serverUrl || process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL;
 }
 
-export function loadStoredProfile(serverUrl?: string): CmdclawProfile | null {
+function loadStoredProfile(serverUrl?: string): CmdclawProfile | null {
   return defaultProfileStore.load(resolveServerUrl(serverUrl));
 }
 
-export function createAuthenticatedClient(params?: {
+function createAuthenticatedClient(params?: {
   serverUrl?: string;
   token?: string;
 }): { serverUrl: string; profile: CmdclawProfile; client: CmdclawApiClient } {

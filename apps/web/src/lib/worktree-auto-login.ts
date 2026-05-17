@@ -14,7 +14,7 @@ function toUrl(input: Request | URL | string): URL {
   return new URL(input.url);
 }
 
-export function isLoopbackAppHostname(hostname: string): boolean {
+function isLoopbackAppHostname(hostname: string): boolean {
   return LOOPBACK_APP_HOSTNAMES.has(hostname);
 }
 

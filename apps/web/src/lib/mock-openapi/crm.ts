@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-export const contactStatusSchema = z.enum(["lead", "customer", "inactive"]);
-export const dealStageSchema = z.enum(["prospecting", "qualified", "won", "lost"]);
+const contactStatusSchema = z.enum(["lead", "customer", "inactive"]);
+const dealStageSchema = z.enum(["prospecting", "qualified", "won", "lost"]);
 
-export const contactSchema = z.object({
+const contactSchema = z.object({
   id: z.string(),
   email: z.string().email(),
   firstName: z.string().min(1),
@@ -15,7 +15,7 @@ export const contactSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const dealSchema = z.object({
+const dealSchema = z.object({
   id: z.string(),
   name: z.string().min(1),
   contactId: z.string(),
@@ -89,7 +89,7 @@ const validationErrorResponseSchema = z.object({
   issues: z.array(validationIssueSchema),
 });
 
-export const mockContacts = [
+const mockContacts = [
   contactSchema.parse({
     id: "contact_ava_stone",
     email: "ava.stone@acme.test",
@@ -122,7 +122,7 @@ export const mockContacts = [
   }),
 ] as const;
 
-export const mockDeals = [
+const mockDeals = [
   dealSchema.parse({
     id: "deal_acme_expansion",
     name: "Acme Expansion",

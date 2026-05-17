@@ -33,7 +33,7 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return parsed;
 }
 
-export function isLocalServerUrl(serverUrl: string): boolean {
+function isLocalServerUrl(serverUrl: string): boolean {
   try {
     const url = new URL(serverUrl);
     return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
@@ -94,7 +94,7 @@ async function bootstrapLocalProfileAndClose(serverUrl: string): Promise<Cmdclaw
   }
 }
 
-export async function bootstrapLocalProfile(serverUrl: string): Promise<CmdclawProfile> {
+async function bootstrapLocalProfile(serverUrl: string): Promise<CmdclawProfile> {
   const now = new Date();
   const email = process.env.CHAT_AUTH_EMAIL || process.env.E2E_TEST_EMAIL || DEFAULT_CHAT_AUTH_EMAIL;
   const name = process.env.CHAT_AUTH_NAME || DEFAULT_CHAT_AUTH_NAME;
@@ -149,7 +149,7 @@ export async function bootstrapLocalProfile(serverUrl: string): Promise<CmdclawP
   return profile;
 }
 
-export async function loginWithDeviceCode(
+async function loginWithDeviceCode(
   serverUrl: string,
   options: LoginOptions = {},
 ): Promise<CmdclawProfile> {

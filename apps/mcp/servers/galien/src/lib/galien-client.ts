@@ -22,7 +22,7 @@ export type GalienCredentials = {
   username: string;
   password: string;
 };
-export type CreateVisitReportPayload = {
+type CreateVisitReportPayload = {
   clientId?: number;
   contactPersonId?: number;
   contactOutcomeId?: number;

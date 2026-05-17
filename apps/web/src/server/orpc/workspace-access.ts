@@ -7,7 +7,7 @@ import { workspace as workspaceTable } from "@cmdclaw/db/schema";
 import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
 
-export function isWorkspaceAdminRole(role: string | null | undefined): boolean {
+function isWorkspaceAdminRole(role: string | null | undefined): boolean {
   return role === "owner" || role === "admin";
 }
 

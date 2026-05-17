@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 
 // Allowed MIME types for skill documents
-export const ALLOWED_MIME_TYPES = [
+const ALLOWED_MIME_TYPES = [
   // Documents
   "application/pdf",
   "application/msword",
@@ -18,13 +18,13 @@ export const ALLOWED_MIME_TYPES = [
   "image/svg+xml",
 ] as const;
 
-export type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
+type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
 
 // Maximum file size: 10MB
-export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 // Maximum files per skill
-export const MAX_DOCUMENTS_PER_SKILL = 20;
+const MAX_DOCUMENTS_PER_SKILL = 20;
 
 export function validateFileUpload(
   filename: string,

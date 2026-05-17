@@ -10,8 +10,8 @@ import {
 } from "../utils/observability";
 
 const rawBaseQueueName = process.env.BULLMQ_QUEUE_NAME ?? "cmdclaw-default";
-export const sandboxUsageSnapshotQueueName = `${rawBaseQueueName.replaceAll(":", "-")}-sandbox-usage-snapshot`;
-export const sandboxUsageSnapshotRedisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
+const sandboxUsageSnapshotQueueName = `${rawBaseQueueName.replaceAll(":", "-")}-sandbox-usage-snapshot`;
+const sandboxUsageSnapshotRedisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
 
 const redisOptions = {
   maxRetriesPerRequest: null,

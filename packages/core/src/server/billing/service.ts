@@ -408,7 +408,7 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
   return createWorkspaceForUser(userId, workspaceName);
 }
 
-export async function backfillLegacyWorkspaceDataForUser(userId: string, workspaceId: string) {
+async function backfillLegacyWorkspaceDataForUser(userId: string, workspaceId: string) {
   await db
     .update(conversation)
     .set({ workspaceId })
@@ -446,7 +446,7 @@ export async function requireActiveWorkspaceForUser(userId: string) {
   return activeWorkspace;
 }
 
-export async function resolveBillingOwnerForConversation(
+async function resolveBillingOwnerForConversation(
   conversationId: string,
 ): Promise<BillingOwner> {
   const conv = await db.query.conversation.findFirst({
@@ -577,7 +577,7 @@ export async function setActiveWorkspace(userId: string, workspaceId: string | n
   await db.update(user).set({ activeWorkspaceId: workspaceId }).where(eq(user.id, userId));
 }
 
-export async function upsertConversationWorkspace(
+async function upsertConversationWorkspace(
   userId: string,
   conversationId: string,
   workspaceId: string | null,
@@ -598,7 +598,7 @@ export async function upsertConversationWorkspace(
     .where(and(eq(conversation.id, conversationId), eq(conversation.userId, userId)));
 }
 
-export async function ensureBillingCustomer(
+async function ensureBillingCustomer(
   owner: BillingOwner,
   customerData?: {
     name?: string | null;

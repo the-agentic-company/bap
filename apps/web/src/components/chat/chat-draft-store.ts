@@ -6,7 +6,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 const STORAGE_KEY = "chat-drafts-v1";
 export const NEW_CHAT_DRAFT_KEY = "__new_chat__";
 
-export type ChatDraft = {
+type ChatDraft = {
   text: string;
   updatedAt: number;
 };

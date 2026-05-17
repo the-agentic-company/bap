@@ -7,7 +7,7 @@ const DEFAULT_CHILD_HOST = "127.0.0.1";
 const DEFAULT_CHILD_BASE_PORT = 4101;
 const READY_TIMEOUT_MS = 15_000;
 
-export type ManagedGatewayChild = {
+type ManagedGatewayChild = {
   slug: McpServerSlug;
   port: number;
   target: string;

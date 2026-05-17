@@ -111,21 +111,7 @@ export function buildHostedMcpAuthorizationServerMetadata(request: Request) {
   };
 }
 
-export function buildHostedMcpProtectedResourceMetadata(params: {
-  request: Request;
-  resourcePath: `/${string}`;
-  resourceName: string;
-  scopes: string[];
-}) {
-  return {
-    resource: buildRequestAwareUrl(params.resourcePath, params.request).toString(),
-    authorization_servers: [buildIssuerUrl(params.request).toString()],
-    scopes_supported: params.scopes,
-    resource_name: params.resourceName,
-  };
-}
-
-export function redirectUriMatches(requested: string, registered: string): boolean {
+function redirectUriMatches(requested: string, registered: string): boolean {
   if (requested === registered) {
     return true;
   }
@@ -151,7 +137,7 @@ export function redirectUriMatches(requested: string, registered: string): boole
   );
 }
 
-export function resolveHostedMcpResource(resource: string | URL): {
+function resolveHostedMcpResource(resource: string | URL): {
   audience: HostedMcpAudience;
   resource: string;
   resourceName: string;

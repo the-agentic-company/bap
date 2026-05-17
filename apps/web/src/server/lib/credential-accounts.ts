@@ -32,7 +32,7 @@ function unwrapAuthUser(
   return null;
 }
 
-export function defaultCredentialUserName(email: string): string {
+function defaultCredentialUserName(email: string): string {
   const localPart = email.split("@")[0] ?? "CmdClaw User";
   const normalized = localPart.replace(/[._+-]+/g, " ").trim();
   if (!normalized) {

@@ -29,7 +29,7 @@ function compactProperties(properties: PostHogProperties): Record<string, string
   ) as Record<string, string | number | boolean | null>;
 }
 
-export async function capturePostHogEvent(params: CaptureEventParams): Promise<void> {
+async function capturePostHogEvent(params: CaptureEventParams): Promise<void> {
   const apiKey = getPostHogKey();
   if (!apiKey) {
     return;

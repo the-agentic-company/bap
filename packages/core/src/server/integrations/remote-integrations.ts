@@ -6,10 +6,10 @@ import { env } from "../../env";
 import type { IntegrationType } from "../oauth/config";
 import { getEnabledIntegrationTypes, getTokensForIntegrations } from "./cli-env";
 
-export const REMOTE_INTEGRATION_TARGET_ENVS = ["staging", "prod"] as const;
+const REMOTE_INTEGRATION_TARGET_ENVS = ["staging", "prod"] as const;
 export type RemoteIntegrationTargetEnv = (typeof REMOTE_INTEGRATION_TARGET_ENVS)[number];
 
-export const REMOTE_INTEGRATION_SUPPORTED_TYPES = [
+const REMOTE_INTEGRATION_SUPPORTED_TYPES = [
   "google_gmail",
   "outlook",
   "outlook_calendar",

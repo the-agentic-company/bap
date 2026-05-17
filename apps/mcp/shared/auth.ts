@@ -66,7 +66,7 @@ function getPublicOrigin(req: AuthenticatedMcpRequest): string | null {
   return `${protocol}://${host}`;
 }
 
-export function buildProtectedResourceMetadataUrl(
+function buildProtectedResourceMetadataUrl(
   req: AuthenticatedMcpRequest,
   slug: HostedMcpAudience,
 ): string | null {

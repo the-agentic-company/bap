@@ -92,7 +92,7 @@ const adminExecutorSourceInputSchema = adminExecutorSourceBaseSchema.superRefine
   validateExecutorSourceInput,
 );
 
-export const executorSourceUpdateInputSchema = executorSourceBaseSchema
+const executorSourceUpdateInputSchema = executorSourceBaseSchema
   .extend({ id: z.string() })
   .superRefine(validateExecutorSourceInput);
 

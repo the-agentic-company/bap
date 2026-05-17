@@ -1,4 +1,3 @@
-import { type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { getIntegrationLogo } from "@/lib/integration-icons";
 import { cn } from "@/lib/utils";
@@ -33,35 +32,6 @@ export function IntegrationLogo({ integration, size = 16, className }: Integrati
       height={size}
       className={cn("shrink-0", className)}
     />
-  );
-}
-
-interface PreviewHeaderProps {
-  icon?: LucideIcon;
-  iconColor?: string;
-  integration?: string;
-  operation: string;
-  operationLabel?: string;
-  className?: string;
-}
-
-export function PreviewHeader({
-  icon: Icon,
-  iconColor,
-  integration,
-  operation,
-  operationLabel,
-  className,
-}: PreviewHeaderProps) {
-  return (
-    <div className={cn("flex items-center gap-2 mb-3", className)}>
-      {integration ? (
-        <IntegrationLogo integration={integration} size={16} />
-      ) : (
-        Icon && <Icon className={cn("h-4 w-4", iconColor)} />
-      )}
-      <span className="text-sm font-medium">{operationLabel || operation}</span>
-    </div>
   );
 }
 
@@ -111,15 +81,6 @@ export function PreviewContent({ children, className }: PreviewContentProps) {
       {children}
     </div>
   );
-}
-
-interface PreviewGridProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function PreviewGrid({ children, className }: PreviewGridProps) {
-  return <div className={cn("grid grid-cols-2 gap-2", className)}>{children}</div>;
 }
 
 interface PreviewBadgeProps {

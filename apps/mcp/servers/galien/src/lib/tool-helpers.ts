@@ -9,7 +9,7 @@ import {
 } from "./galien-client";
 import { getManagedGalienToolCredentials } from "./galien-auth";
 
-export const galienScalarSchema = z.union([z.string(), z.number(), z.boolean()]);
+const galienScalarSchema = z.union([z.string(), z.number(), z.boolean()]);
 export const galienQueryValueSchema = z.union([galienScalarSchema, z.array(galienScalarSchema)]);
 export const galienIsoDateTimeSchema = z
   .string()

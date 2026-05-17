@@ -13,7 +13,7 @@ import {
 import { getValidTokensForUser, getValidCustomTokens } from "./token-refresh";
 
 // Token-based integrations map to their access token env var
-export const TOKEN_ENV_VAR_MAP: Record<Exclude<IntegrationType, "linkedin">, string> = {
+const TOKEN_ENV_VAR_MAP: Record<Exclude<IntegrationType, "linkedin">, string> = {
   google_gmail: "GMAIL_ACCESS_TOKEN",
   outlook: "OUTLOOK_ACCESS_TOKEN",
   outlook_calendar: "OUTLOOK_CALENDAR_ACCESS_TOKEN",
@@ -240,7 +240,7 @@ export async function getCliInstructionsWithCustom(
   }
 }
 
-export function getCliInstructions(connectedIntegrations: IntegrationType[]): string {
+function getCliInstructions(connectedIntegrations: IntegrationType[]): string {
   // Helper to show connection status
   const statusTag = (type: IntegrationType) =>
     connectedIntegrations.includes(type) ? "✓ Connected" : "⚡ Auth Required";

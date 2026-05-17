@@ -1534,14 +1534,14 @@ async function replayConversationHistory(
   });
 }
 
-export async function getOrCreateSession(
+async function getOrCreateSession(
   config: OpenCodeSessionConfig,
   options?: OpenCodeSessionOptions,
 ): Promise<OpenCodeSessionResult> {
   return getOrCreateSessionForCloudProvider(getPreferredCloudSandboxProvider(), config, options);
 }
 
-export async function getOrCreateSessionForCloudProvider(
+async function getOrCreateSessionForCloudProvider(
   provider: "e2b" | "daytona" | "docker",
   config: OpenCodeSessionConfig,
   options?: OpenCodeSessionOptions,

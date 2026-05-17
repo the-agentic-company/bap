@@ -5,7 +5,7 @@
 
 import type { ToolDefinition } from "./llm-backend";
 
-export const bashTool: ToolDefinition = {
+const bashTool: ToolDefinition = {
   name: "bash",
   description:
     "Execute a bash command in the sandbox. Use this for running scripts, installing packages, " +
@@ -27,7 +27,7 @@ export const bashTool: ToolDefinition = {
   },
 };
 
-export const writeFileTool: ToolDefinition = {
+const writeFileTool: ToolDefinition = {
   name: "write_file",
   description:
     "Write content to a file, creating it if it doesn't exist or overwriting if it does. " +
@@ -48,7 +48,7 @@ export const writeFileTool: ToolDefinition = {
   },
 };
 
-export const readFileTool: ToolDefinition = {
+const readFileTool: ToolDefinition = {
   name: "read_file",
   description: "Read the contents of a file. Returns the full file content as a string.",
   input_schema: {
@@ -63,7 +63,7 @@ export const readFileTool: ToolDefinition = {
   },
 };
 
-export const listFilesTool: ToolDefinition = {
+const listFilesTool: ToolDefinition = {
   name: "list_files",
   description: "List files and directories at a given path. Returns a listing similar to 'ls -la'.",
   input_schema: {
@@ -78,7 +78,7 @@ export const listFilesTool: ToolDefinition = {
   },
 };
 
-export const searchFilesTool: ToolDefinition = {
+const searchFilesTool: ToolDefinition = {
   name: "search_files",
   description:
     "Search for files matching a pattern using glob syntax. Returns matching file paths.",
@@ -98,7 +98,7 @@ export const searchFilesTool: ToolDefinition = {
   },
 };
 
-export const searchContentTool: ToolDefinition = {
+const searchContentTool: ToolDefinition = {
   name: "search_content",
   description:
     "Search file contents for a text pattern using grep/ripgrep. " +
@@ -123,7 +123,7 @@ export const searchContentTool: ToolDefinition = {
   },
 };
 
-export const memorySearchTool: ToolDefinition = {
+const memorySearchTool: ToolDefinition = {
   name: "memory_search",
   description:
     "Search persistent memory (long-term, daily logs, and session transcripts) using semantic + keyword search.",
@@ -146,7 +146,7 @@ export const memorySearchTool: ToolDefinition = {
   },
 };
 
-export const memoryGetTool: ToolDefinition = {
+const memoryGetTool: ToolDefinition = {
   name: "memory_get",
   description:
     "Read a specific memory file by path (MEMORY.md, memory/YYYY-MM-DD.md, or sessions/YYYY-MM-DD-HHMMSS-<slug>.md).",
@@ -159,7 +159,7 @@ export const memoryGetTool: ToolDefinition = {
   },
 };
 
-export const memoryWriteTool: ToolDefinition = {
+const memoryWriteTool: ToolDefinition = {
   name: "memory_write",
   description:
     "Write durable information to memory. Use type=longterm for persistent facts, " +
@@ -192,7 +192,7 @@ export const memoryWriteTool: ToolDefinition = {
   },
 };
 
-export const sendFileTool: ToolDefinition = {
+const sendFileTool: ToolDefinition = {
   name: "send_file",
   description:
     "Send a file from the sandbox to the user. Use this when you've created a file " +
@@ -230,60 +230,4 @@ export function getDirectModeTools(): ToolDefinition[] {
     memoryWriteTool,
     sendFileTool,
   ];
-}
-
-/**
- * Map a tool call to a bash command for sandbox execution.
- * Some tools (write_file, read_file, etc.) are implemented as
- * bash commands under the hood.
- */
-export function toolCallToCommand(
-  toolName: string,
-  input: Record<string, unknown>,
-): { command: string; isWrite: boolean } | null {
-  switch (toolName) {
-    case "bash":
-      return {
-        command: input.command as string,
-        isWrite: false, // permission checker will determine
-      };
-
-    case "write_file":
-      // Use heredoc for safe file writing
-      return {
-        command: `mkdir -p "$(dirname "${input.path}")" && cat > "${input.path}" << 'BAPEOF'\n${input.content}\nBAPEOF`,
-        isWrite: true,
-      };
-
-    case "read_file":
-      return {
-        command: `cat "${input.path}"`,
-        isWrite: false,
-      };
-
-    case "list_files":
-      return {
-        command: `ls -la "${input.path || "."}"`,
-        isWrite: false,
-      };
-
-    case "search_files":
-      return {
-        command: input.path
-          ? `find "${input.path}" -name "${input.pattern}" 2>/dev/null | head -100`
-          : `find . -name "${input.pattern}" 2>/dev/null | head -100`,
-        isWrite: false,
-      };
-
-    case "search_content": {
-      const include = input.include ? `--include="${input.include}"` : "";
-      return {
-        command: `grep -rn ${include} "${input.pattern}" "${input.path || "."}" 2>/dev/null | head -100`,
-        isWrite: false,
-      };
-    }
-
-    default:
-      return null;
-  }
 }

@@ -111,7 +111,7 @@ async function getSlackUserInfo(
 
 // ─── Markdown conversion ────────────────────────────────────
 
-export function convertMarkdownToSlack(text: string): string {
+function convertMarkdownToSlack(text: string): string {
   return renderMessageToSlack(text);
 }
 

@@ -3,6 +3,8 @@
   "entry": [
     "src/index.{ts,tsx,js,jsx}",
     "src/main.{ts,tsx,js,jsx}",
+    "apps/cli/src/commands/**/{approve,build,create,get,list,logs,login,logout,run,status}.ts",
+    "apps/web/src/components/*-root-shell.tsx",
     "apps/web/scripts/*.ts",
     "apps/worktree/src/**/*.test.ts"
   ],

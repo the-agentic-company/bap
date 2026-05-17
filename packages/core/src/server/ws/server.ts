@@ -51,7 +51,7 @@ const IS_STATELESS_RUNTIME = isStatelessServerlessRuntime();
 /**
  * Send a message to a connected device.
  */
-export function sendToDevice(deviceId: string, message: DaemonMessage): boolean {
+function sendToDevice(deviceId: string, message: DaemonMessage): boolean {
   if (IS_STATELESS_RUNTIME) {
     return false;
   }
@@ -71,7 +71,7 @@ export function sendToDevice(deviceId: string, message: DaemonMessage): boolean 
 /**
  * Send a message and wait for the corresponding response.
  */
-export function waitForResponse(
+function waitForResponse(
   deviceId: string,
   message: DaemonMessage & { id: string },
   timeoutMs = REQUEST_TIMEOUT_MS,
@@ -103,7 +103,7 @@ export function waitForResponse(
 /**
  * Check if a device is currently connected.
  */
-export function isDeviceOnline(deviceId: string): boolean {
+function isDeviceOnline(deviceId: string): boolean {
   if (IS_STATELESS_RUNTIME) {
     return false;
   }
@@ -113,7 +113,7 @@ export function isDeviceOnline(deviceId: string): boolean {
 /**
  * Get the WebSocket for a connected device.
  */
-export function getDeviceSocket(deviceId: string): ServerWebSocket<WebSocketData> | undefined {
+function getDeviceSocket(deviceId: string): ServerWebSocket<WebSocketData> | undefined {
   if (IS_STATELESS_RUNTIME) {
     return undefined;
   }
@@ -123,7 +123,7 @@ export function getDeviceSocket(deviceId: string): ServerWebSocket<WebSocketData
 /**
  * Get all connected device IDs for a user.
  */
-export function getOnlineDevicesForUser(userId: string): string[] {
+function getOnlineDevicesForUser(userId: string): string[] {
   if (IS_STATELESS_RUNTIME) {
     return [];
   }

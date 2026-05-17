@@ -96,15 +96,7 @@ export const DEFAULT_EXECUTOR_SOURCE_FORM: ExecutorSourceFormState = {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
-export function formatStringMap(value: Record<string, string> | null | undefined): string {
-  if (!value || Object.keys(value).length === 0) {
-    return "";
-  }
-
-  return JSON.stringify(value, null, 2);
-}
-
-export function parseStringMap(value: string, label: string): Record<string, string> | undefined {
+function parseStringMap(value: string, label: string): Record<string, string> | undefined {
   const trimmedValue = value.trim();
   if (!trimmedValue) {
     return undefined;
@@ -144,26 +136,6 @@ export function normalizeExecutorSourceNamespace(value: string): string {
   }
 
   return normalized;
-}
-
-export function getSourceFormState(source: ExecutorSourceListItem): ExecutorSourceFormState {
-  return {
-    kind: source.kind,
-    name: source.name,
-    namespace: source.namespace,
-    endpoint: source.endpoint,
-    specUrl: source.specUrl ?? "",
-    transport: source.transport ?? "streamable-http",
-    headersText: formatStringMap(source.headers),
-    queryParamsText: formatStringMap(source.queryParams),
-    defaultHeadersText: formatStringMap(source.defaultHeaders),
-    authType: source.authType,
-    authHeaderName: source.authHeaderName ?? "",
-    authQueryParam: source.authQueryParam ?? "",
-    authPrefix: source.authPrefix ?? "",
-    secret: "",
-    displayName: source.credentialDisplayName ?? "",
-  };
 }
 
 export function buildMutationInputFromForm(
@@ -207,7 +179,7 @@ export function buildMutationInputFromForm(
 
 // ─── Components ─────────────────────────────────────────────────────────────────
 
-export function JsonMapField({
+function JsonMapField({
   id,
   label,
   placeholder,

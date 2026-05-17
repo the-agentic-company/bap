@@ -284,7 +284,7 @@ export async function getOrCreateBareSandbox(
 /**
  * Get or create a sandbox with OpenCode server running inside
  */
-export async function getOrCreateSandbox(
+async function getOrCreateSandbox(
   config: SandboxConfig,
   onLifecycle?: SessionInitLifecycleCallback,
   telemetry?: ObservabilityContext,
@@ -956,7 +956,7 @@ export async function killSandbox(
 /**
  * Cleanup all sandboxes (call on server shutdown)
  */
-export async function cleanupAllSandboxes(): Promise<void> {
+async function cleanupAllSandboxes(): Promise<void> {
   const knownSandboxes = await db.query.conversationRuntime.findMany({
     where: isNotNull(conversationRuntime.sandboxId),
     columns: { sandboxId: true },
@@ -988,7 +988,7 @@ export function isE2BConfigured(): boolean {
 /**
  * Write user's skills to the sandbox as AGENTS.md format
  */
-export async function writeSkillsToSandbox(sandbox: Sandbox, userId: string): Promise<string[]> {
+async function writeSkillsToSandbox(sandbox: Sandbox, userId: string): Promise<string[]> {
   const skills = await listAccessibleEnabledSkillsForUser(userId);
 
   if (skills.length === 0) {
@@ -1061,7 +1061,7 @@ export async function writeSkillsToSandbox(sandbox: Sandbox, userId: string): Pr
 /**
  * Get the system prompt addition for skills
  */
-export function getSkillsSystemPrompt(skillNames: string[]): string {
+function getSkillsSystemPrompt(skillNames: string[]): string {
   if (skillNames.length === 0) {
     return "";
   }
@@ -1083,7 +1083,7 @@ Read the SKILL.md file in each skill directory when relevant to the user's reque
 /**
  * Write resolved community integration skills selected by the user to sandbox.
  */
-export async function writeResolvedIntegrationSkillsToSandbox(
+async function writeResolvedIntegrationSkillsToSandbox(
   sandbox: Sandbox,
   userId: string,
   allowedSlugs?: string[],
@@ -1120,7 +1120,7 @@ export async function writeResolvedIntegrationSkillsToSandbox(
   return written;
 }
 
-export function getIntegrationSkillsSystemPrompt(skillSlugs: string[]): string {
+function getIntegrationSkillsSystemPrompt(skillSlugs: string[]): string {
   if (skillSlugs.length === 0) {
     return "";
   }
@@ -1221,8 +1221,6 @@ export class E2BSandboxBackend implements SandboxBackend {
 // ---------------------------------------------------------------------------
 // Admin utilities for listing and killing sandboxes
 // ---------------------------------------------------------------------------
-
-export type { SandboxInfo } from "e2b";
 
 export async function listAllE2BSandboxes(): Promise<
   Array<{

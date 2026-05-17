@@ -71,11 +71,11 @@ const DEFAULT_SCORE_THRESHOLD = 0.35;
 const MEMORY_BASE_PATH = "/app/cmdclaw";
 const SESSION_BASE_PATH = "/app/cmdclaw/sessions";
 
-export function getMemoryBasePath(): string {
+function getMemoryBasePath(): string {
   return MEMORY_BASE_PATH;
 }
 
-export function getSessionBasePath(): string {
+function getSessionBasePath(): string {
   return SESSION_BASE_PATH;
 }
 
@@ -221,7 +221,7 @@ When you learn something durable, write it to memory_write (daily logs for ongoi
 `;
 }
 
-export async function ensureMemoryFile(params: {
+async function ensureMemoryFile(params: {
   userId: string;
   type: MemoryFileType;
   date: Date | null;
@@ -486,7 +486,7 @@ export async function readMemoryFile(
   };
 }
 
-export async function listMemoryFiles(
+async function listMemoryFiles(
   userId: string,
 ): Promise<Array<{ path: string; text: string }>> {
   const files = await db.query.memoryFile.findMany({
@@ -522,7 +522,7 @@ export async function readSessionTranscriptByPath(
   };
 }
 
-export async function listSessionTranscripts(
+async function listSessionTranscripts(
   userId: string,
 ): Promise<Array<{ path: string; text: string }>> {
   const transcripts = await db.query.sessionTranscript.findMany({
@@ -536,7 +536,7 @@ export async function listSessionTranscripts(
   }));
 }
 
-export async function writeSessionTranscript(input: {
+async function writeSessionTranscript(input: {
   userId: string;
   conversationId?: string | null;
   sessionId?: string | null;
@@ -714,7 +714,7 @@ export async function writeSessionTranscriptFromConversation(input: {
   });
 }
 
-export async function searchMemory(input: MemorySearchInput): Promise<MemorySearchResult[]> {
+async function searchMemory(input: MemorySearchInput): Promise<MemorySearchResult[]> {
   const limit = Math.max(1, Math.min(input.limit ?? DEFAULT_SEARCH_LIMIT, 20));
   const settings = await resolveMemorySettings(input.userId);
 

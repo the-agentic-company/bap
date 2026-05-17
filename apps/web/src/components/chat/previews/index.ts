@@ -42,27 +42,3 @@ export const INTEGRATION_PREVIEWS: Record<string, IntegrationPreviewConfig> = {
   airtable: { component: AirtablePreview, displayName: "Airtable" },
   hubspot: { component: HubspotPreview, displayName: "HubSpot" },
 };
-
-/**
- * Get the preview component for a given integration
- *
- * @param integration - The integration name (e.g., "slack", "google_gmail")
- * @returns The preview component or null if not found
- */
-export function getPreviewComponent(integration: string): PreviewComponent | null {
-  return INTEGRATION_PREVIEWS[integration]?.component || null;
-}
-
-/**
- * Check if a specific integration has a custom preview
- */
-export function hasCustomPreview(integration: string): boolean {
-  return integration in INTEGRATION_PREVIEWS;
-}
-
-/**
- * Get all integration keys
- */
-export function getIntegrationKeys(): string[] {
-  return Object.keys(INTEGRATION_PREVIEWS);
-}

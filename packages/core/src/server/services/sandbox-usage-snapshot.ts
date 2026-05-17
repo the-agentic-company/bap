@@ -8,7 +8,7 @@ import {
 } from "../queues/sandbox-usage-snapshot";
 
 const SANDBOX_USAGE_SNAPSHOT_SCHEDULE = "*/5 * * * *";
-export const SANDBOX_USAGE_SNAPSHOT_SCHEDULER_ID = "sandbox:usage-snapshot";
+const SANDBOX_USAGE_SNAPSHOT_SCHEDULER_ID = "sandbox:usage-snapshot";
 
 function resolveSchedulerTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || process.env.TZ || "UTC";

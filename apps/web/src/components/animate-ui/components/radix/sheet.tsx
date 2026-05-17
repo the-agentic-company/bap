@@ -2,24 +2,16 @@ import { XIcon } from "lucide-react";
 import * as React from "react";
 import {
   Sheet as SheetPrimitive,
-  SheetTrigger as SheetTriggerPrimitive,
   SheetOverlay as SheetOverlayPrimitive,
   SheetClose as SheetClosePrimitive,
   SheetPortal as SheetPortalPrimitive,
   SheetContent as SheetContentPrimitive,
-  SheetHeader as SheetHeaderPrimitive,
-  SheetFooter as SheetFooterPrimitive,
   SheetTitle as SheetTitlePrimitive,
   SheetDescription as SheetDescriptionPrimitive,
   type SheetProps as SheetPrimitiveProps,
-  type SheetTriggerProps as SheetTriggerPrimitiveProps,
   type SheetOverlayProps as SheetOverlayPrimitiveProps,
   type SheetCloseProps as SheetClosePrimitiveProps,
   type SheetContentProps as SheetContentPrimitiveProps,
-  type SheetHeaderProps as SheetHeaderPrimitiveProps,
-  type SheetFooterProps as SheetFooterPrimitiveProps,
-  type SheetTitleProps as SheetTitlePrimitiveProps,
-  type SheetDescriptionProps as SheetDescriptionPrimitiveProps,
 } from "@/components/animate-ui/primitives/radix/sheet";
 import { cn } from "@/lib/utils";
 
@@ -27,12 +19,6 @@ type SheetProps = SheetPrimitiveProps;
 
 function Sheet(props: SheetProps) {
   return <SheetPrimitive {...props} />;
-}
-
-type SheetTriggerProps = SheetTriggerPrimitiveProps;
-
-function SheetTrigger(props: SheetTriggerProps) {
-  return <SheetTriggerPrimitive {...props} />;
 }
 
 type SheetOverlayProps = SheetOverlayPrimitiveProps;
@@ -96,54 +82,11 @@ function SheetContent({
   );
 }
 
-type SheetHeaderProps = SheetHeaderPrimitiveProps;
-
-function SheetHeader({ className, ...props }: SheetHeaderProps) {
-  return <SheetHeaderPrimitive className={cn("flex flex-col gap-1.5 p-4", className)} {...props} />;
-}
-
-type SheetFooterProps = SheetFooterPrimitiveProps;
-
-function SheetFooter({ className, ...props }: SheetFooterProps) {
-  return (
-    <SheetFooterPrimitive className={cn("mt-auto flex flex-col gap-2 p-4", className)} {...props} />
-  );
-}
-
-type SheetTitleProps = SheetTitlePrimitiveProps;
-
-function SheetTitle({ className, ...props }: SheetTitleProps) {
-  return (
-    <SheetTitlePrimitive className={cn("text-foreground font-semibold", className)} {...props} />
-  );
-}
-
-type SheetDescriptionProps = SheetDescriptionPrimitiveProps;
-
-function SheetDescription({ className, ...props }: SheetDescriptionProps) {
-  return (
-    <SheetDescriptionPrimitive
-      className={cn("text-muted-foreground text-sm", className)}
-      {...props}
-    />
-  );
-}
-
 export {
   Sheet,
-  SheetTrigger,
   SheetClose,
   SheetContent,
-  SheetHeader,
-  SheetFooter,
-  SheetTitle,
-  SheetDescription,
   type SheetProps,
-  type SheetTriggerProps,
   type SheetCloseProps,
   type SheetContentProps,
-  type SheetHeaderProps,
-  type SheetFooterProps,
-  type SheetTitleProps,
-  type SheetDescriptionProps,
 };

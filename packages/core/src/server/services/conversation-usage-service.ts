@@ -7,9 +7,9 @@ import {
 import { getOrCreateConversationRuntime } from "../sandbox/core/orchestrator";
 import { resolveRuntimeSelection } from "../sandbox/selection/policy-resolver";
 
-export type ConversationUsageSource = "live_session" | "restored_snapshot";
+type ConversationUsageSource = "live_session" | "restored_snapshot";
 
-export type ConversationUsage = {
+type ConversationUsage = {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
@@ -69,7 +69,7 @@ export function aggregateConversationUsageFromSessionMessages(
   };
 }
 
-export async function getConversationUsageFromOpenCodeSession(input: {
+async function getConversationUsageFromOpenCodeSession(input: {
   conversationId: string;
   userId: string;
   model?: string | null;

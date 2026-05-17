@@ -88,10 +88,10 @@ export class DockerSandboxBackend implements SandboxBackend {
   }
 }
 
-export function isDockerConfigured(): boolean {
+function isDockerConfigured(): boolean {
   return isDockerLikelyConfigured();
 }
 
-export async function isDockerReachable(): Promise<boolean> {
+async function isDockerReachable(): Promise<boolean> {
   return canConnectDockerDaemon();
 }

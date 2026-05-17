@@ -8,7 +8,7 @@ const OPS_DAILY_DIGEST_TIME = "09:00";
 const DEFAULT_DIGEST_TIMEZONE = "Europe/Dublin";
 const MAX_USER_PREVIEW_COUNT = 10;
 
-export const DAILY_TELEMETRY_DIGEST_SCHEDULER_ID = "telemetry:daily-digest";
+const DAILY_TELEMETRY_DIGEST_SCHEDULER_ID = "telemetry:daily-digest";
 
 type UserPreview = {
   id: string;

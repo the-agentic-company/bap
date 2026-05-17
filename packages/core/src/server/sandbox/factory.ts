@@ -125,7 +125,7 @@ export function getPreferredCloudSandboxProvider(): CloudSandboxProvider {
 /**
  * Get a SandboxBackend for a generation.
  */
-export function getSandboxBackend(conversationId: string, userId: string): SandboxBackend {
+function getSandboxBackend(conversationId: string, userId: string): SandboxBackend {
   // Silence lint about unused params while preserving public API.
   void conversationId;
   void userId;
