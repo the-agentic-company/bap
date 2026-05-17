@@ -47,6 +47,11 @@ const SNAPSHOT_ENV_NAMES: Record<SnapshotStage, string> = {
   prod: "DAYTONA_SNAPSHOT_PROD",
 };
 
+function readNonEmptyEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
 function getDaytonaConfig(): DaytonaBuildConfig {
   const apiKey = process.env.DAYTONA_API_KEY;
   const jwtToken = process.env.DAYTONA_JWT_TOKEN;
@@ -72,13 +77,13 @@ function getDaytonaConfig(): DaytonaBuildConfig {
 export function getSnapshotName(stage: SnapshotStage): string {
   if (stage === "dev") {
     return (
-      process.env.E2B_DAYTONA_SANDBOX_NAME ??
-      process.env.DAYTONA_SNAPSHOT_DEV ??
+      readNonEmptyEnv("E2B_DAYTONA_SANDBOX_NAME") ??
+      readNonEmptyEnv("DAYTONA_SNAPSHOT_DEV") ??
       SNAPSHOT_DEFAULTS.dev
     );
   }
 
-  return process.env[SNAPSHOT_ENV_NAMES[stage]] ?? SNAPSHOT_DEFAULTS[stage];
+  return readNonEmptyEnv(SNAPSHOT_ENV_NAMES[stage]) ?? SNAPSHOT_DEFAULTS[stage];
 }
 
 function describeStage(stage: SnapshotStage): string {
