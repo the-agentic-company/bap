@@ -8,9 +8,10 @@
 #
 # Notes:
 # - Keep secrets out of this blueprint and sync them from Infisical after the
-#   resources exist. Use separate Render environment groups scoped to
-#   cmdclaw/staging and cmdclaw/production so web, worker, and MCP can share
-#   secrets without staging and production sharing credentials.
+#   resources exist. Use separate Render environment groups named `staging`
+#   and `prod` so web, worker, and MCP can share secrets without staging and
+#   production sharing credentials. Keep those groups managed outside this
+#   blueprint; services reference them with `fromGroup`.
 # - Render environment groups do not override service-level variables with the
 #   same key, so any secrets provided by Infisical must not also be declared
 #   directly on these services in this blueprint.
@@ -36,10 +37,6 @@ projects:
   - name: cmdclaw
     environments:
       - name: staging
-        envVarGroups:
-          - name: staging
-            envVars: []
-
         databases:
           - name: cmdclaw-postgres-staging
             region: frankfurt
@@ -436,10 +433,6 @@ projects:
                 value: cmdclaw-agent-staging
 
       - name: production
-        envVarGroups:
-          - name: prod
-            envVars: []
-
         databases:
           - name: cmdclaw-postgres-prod
             region: frankfurt
