@@ -43,4 +43,8 @@ describe("normalizeCmdclawArgv", () => {
   it("preserves explicit top-level commands", () => {
     expect(normalizeCmdclawArgv(["coworker", "list"])).toEqual(["coworker", "list"]);
   });
+
+  it("preserves the hi command", () => {
+    expect(normalizeCmdclawArgv(["hi"])).toEqual(["hi"]);
+  });
 });
