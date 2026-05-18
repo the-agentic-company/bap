@@ -2,10 +2,7 @@ import { Queue, QueueEvents, Worker, type ConnectionOptions, type Processor } fr
 import { EMAIL_FORWARDED_TRIGGER_TYPE } from "../../lib/email-forwarding";
 import { buildRedisOptions } from "../redis/connection-options";
 import { processForwardedEmailEvent } from "../services/coworker-email-forwarding";
-import {
-  isDisabledCoworkerTriggerError,
-  triggerCoworkerRun,
-} from "../services/coworker-service";
+import { isDisabledCoworkerTriggerError, triggerCoworkerRun } from "../services/coworker-service";
 import {
   attachTraceContext,
   extractTraceContextFromPayload,
@@ -40,6 +37,7 @@ export const CONVERSATION_LOADING_CLEANUP_JOB_NAME = "conversation:loading-clean
 export const CONVERSATION_QUEUED_MESSAGE_PROCESS_JOB_NAME = "conversation:queued-message-process";
 export const SLACK_EVENT_JOB_NAME = "slack:event-callback";
 export const DAILY_TELEMETRY_DIGEST_JOB_NAME = "telemetry:daily-digest";
+export const FAILURE_ALERT_LINEAR_SYNC_JOB_NAME = "failure-alert:linear-sync";
 
 export function buildQueueJobId(parts: Array<string | number | null | undefined>): string {
   const joined = parts
@@ -228,9 +226,8 @@ const handlers: Record<string, JobHandler> = {
     }
   },
   [CONVERSATION_LOADING_CLEANUP_JOB_NAME]: async () => {
-    const { cleanupStaleConversationLoadingStates } = await import(
-      "../services/conversation-loading-cleanup"
-    );
+    const { cleanupStaleConversationLoadingStates } =
+      await import("../services/conversation-loading-cleanup");
     const summary = await cleanupStaleConversationLoadingStates();
     if (summary.stale > 0) {
       console.warn("[worker] stale conversation loading cleanup summary", summary);
@@ -257,6 +254,19 @@ const handlers: Record<string, JobHandler> = {
     const { postDailyTelemetryDigest } = await import("../services/telemetry-digest");
     const summary = await postDailyTelemetryDigest();
     console.info("[worker] posted daily telemetry digest", summary);
+  },
+  [FAILURE_ALERT_LINEAR_SYNC_JOB_NAME]: async (job) => {
+    const groupId = job.data?.groupId;
+    if (!groupId || typeof groupId !== "string") {
+      throw new Error(`Missing groupId in failure alert Linear sync job "${job.id}"`);
+    }
+
+    const { syncFailureAlertGroupToLinear } = await import("../services/failure-alert-service");
+    const result = await syncFailureAlertGroupToLinear({ groupId });
+    console.info("[worker] synced failure alert group to Linear", {
+      groupId,
+      ...result,
+    });
   },
 };
 
@@ -448,11 +458,8 @@ function patchQueueAdd(targetQueue: Queue<JobPayload, unknown, string>): void {
   }
 
   const originalAdd = targetQueue.add.bind(targetQueue);
-  targetQueue.add = ((
-    name,
-    data,
-    opts,
-  ) => originalAdd(name, attachTraceContext(data), opts)) as typeof targetQueue.add;
+  targetQueue.add = ((name, data, opts) =>
+    originalAdd(name, attachTraceContext(data), opts)) as typeof targetQueue.add;
   queueWithPatchFlag.__cmdclawTracedAddPatched = true;
 }
 
@@ -505,10 +512,7 @@ export const startQueues = () => {
   };
 };
 
-export const stopQueues = async (
-  worker: Worker,
-  queueEvents: QueueEvents,
-) => {
+export const stopQueues = async (worker: Worker, queueEvents: QueueEvents) => {
   const closers: Promise<unknown>[] = [worker.close(), queueEvents.close()];
   stopQueueMetricsPolling();
   if (queue) {

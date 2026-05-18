@@ -113,7 +113,10 @@ export const hostedMcpOauthClient = pgTable(
     clientId: text("client_id").primaryKey(),
     tokenEndpointAuthMethod: text("token_endpoint_auth_method").default("none").notNull(),
     redirectUris: text("redirect_uris").array().notNull(),
-    grantTypes: text("grant_types").array().notNull().default(["authorization_code", "refresh_token"]),
+    grantTypes: text("grant_types")
+      .array()
+      .notNull()
+      .default(["authorization_code", "refresh_token"]),
     responseTypes: text("response_types").array().notNull().default(["code"]),
     clientName: text("client_name"),
     clientUri: text("client_uri"),
@@ -944,7 +947,9 @@ export const generation = pgTable(
     deadlineAt: timestamp("deadline_at")
       .default(sql`now() + interval '15 minutes'`)
       .notNull(),
-    remainingRunMs: integer("remaining_run_ms").default(15 * 60 * 1000).notNull(),
+    remainingRunMs: integer("remaining_run_ms")
+      .default(15 * 60 * 1000)
+      .notNull(),
     suspendedAt: timestamp("suspended_at"),
     resumeInterruptId: text("resume_interrupt_id"),
     lastRuntimeEventAt: timestamp("last_runtime_event_at").defaultNow().notNull(),
@@ -1249,6 +1254,9 @@ export const coworkerRun = pgTable(
     generationId: text("generation_id").references(() => generation.id, {
       onDelete: "set null",
     }),
+    conversationId: text("conversation_id").references(() => conversation.id, {
+      onDelete: "set null",
+    }),
     startedAt: timestamp("started_at").defaultNow().notNull(),
     finishedAt: timestamp("finished_at"),
     errorMessage: text("error_message"),
@@ -1260,6 +1268,7 @@ export const coworkerRun = pgTable(
     index("coworker_run_workspace_id_idx").on(table.workspaceId),
     index("coworker_run_status_idx").on(table.status),
     index("coworker_run_started_at_idx").on(table.startedAt),
+    index("coworker_run_conversation_id_idx").on(table.conversationId),
   ],
 );
 
@@ -1349,6 +1358,87 @@ export const coworkerTag = pgTable(
   (table) => [
     index("coworker_tag_workspace_id_idx").on(table.workspaceId),
     uniqueIndex("coworker_tag_workspace_name_idx").on(table.workspaceId, table.name),
+  ],
+);
+
+export type FailureAlertKind = "chat" | "coworker";
+export type FailureAlertStatus = "open" | "resolved" | "ignored";
+
+export const failureAlertGroup = pgTable(
+  "failure_alert_group",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    signatureHash: text("signature_hash").notNull(),
+    environment: text("environment").notNull(),
+    kind: text("kind").$type<FailureAlertKind>().notNull(),
+    journey: text("journey").notNull(),
+    completionReason: text("completion_reason"),
+    normalizedError: text("normalized_error").notNull(),
+    title: text("title").notNull(),
+    model: text("model"),
+    runtimeHarness: text("runtime_harness"),
+    sandboxProvider: text("sandbox_provider"),
+    status: text("status").$type<FailureAlertStatus>().default("open").notNull(),
+    occurrenceCount: integer("occurrence_count").default(0).notNull(),
+    firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+    linearIssueId: text("linear_issue_id"),
+    linearIssueIdentifier: text("linear_issue_identifier"),
+    linearIssueUrl: text("linear_issue_url"),
+    linearLastSyncedAt: timestamp("linear_last_synced_at"),
+    lastCommentedOccurrenceCount: integer("last_commented_occurrence_count").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("failure_alert_group_signature_hash_idx").on(table.signatureHash),
+    index("failure_alert_group_environment_status_idx").on(table.environment, table.status),
+    index("failure_alert_group_last_seen_at_idx").on(table.lastSeenAt),
+    index("failure_alert_group_linear_issue_id_idx").on(table.linearIssueId),
+  ],
+);
+
+export const failureAlertOccurrence = pgTable(
+  "failure_alert_occurrence",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => failureAlertGroup.id, { onDelete: "cascade" }),
+    generationId: text("generation_id")
+      .notNull()
+      .references(() => generation.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id, { onDelete: "cascade" }),
+    coworkerRunId: text("coworker_run_id").references(() => coworkerRun.id, {
+      onDelete: "set null",
+    }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    userEmail: text("user_email"),
+    rawError: text("raw_error").notNull(),
+    normalizedError: text("normalized_error").notNull(),
+    completionReason: text("completion_reason"),
+    traceId: text("trace_id"),
+    model: text("model"),
+    runtimeHarness: text("runtime_harness"),
+    sandboxProvider: text("sandbox_provider"),
+    startedAt: timestamp("started_at").notNull(),
+    failedAt: timestamp("failed_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("failure_alert_occurrence_generation_id_idx").on(table.generationId),
+    index("failure_alert_occurrence_group_failed_at_idx").on(table.groupId, table.failedAt),
+    index("failure_alert_occurrence_conversation_id_idx").on(table.conversationId),
+    index("failure_alert_occurrence_coworker_run_id_idx").on(table.coworkerRunId),
   ],
 );
 
@@ -1513,6 +1603,7 @@ export const conversationRelations = relations(conversation, ({ one, many }) => 
   }),
   billingLedgers: many(billingLedger),
   queuedMessages: many(conversationQueuedMessage),
+  coworkerRuns: many(coworkerRun),
 }));
 
 export const conversationRuntimeRelations = relations(conversationRuntime, ({ one, many }) => ({
@@ -1745,6 +1836,10 @@ export const coworkerRunRelations = relations(coworkerRun, ({ one, many }) => ({
   generation: one(generation, {
     fields: [coworkerRun.generationId],
     references: [generation.id],
+  }),
+  conversation: one(conversation, {
+    fields: [coworkerRun.conversationId],
+    references: [conversation.id],
   }),
   events: many(coworkerRunEvent),
 }));
@@ -2587,15 +2682,12 @@ export const workspaceExecutorSourceCredentialRelations = relations(
   }),
 );
 
-export const workspaceExecutorPackageRelations = relations(
-  workspaceExecutorPackage,
-  ({ one }) => ({
-    workspace: one(workspace, {
-      fields: [workspaceExecutorPackage.workspaceId],
-      references: [workspace.id],
-    }),
+export const workspaceExecutorPackageRelations = relations(workspaceExecutorPackage, ({ one }) => ({
+  workspace: one(workspace, {
+    fields: [workspaceExecutorPackage.workspaceId],
+    references: [workspace.id],
   }),
-);
+}));
 
 export const integrationSkillSourceEnum = pgEnum("integration_skill_source", [
   "official",

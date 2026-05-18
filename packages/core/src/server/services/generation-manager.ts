@@ -130,6 +130,7 @@ import {
   type GenerationInterruptEventPayload,
   type GenerationInterruptRecord,
 } from "./generation-interrupt-service";
+import { captureGenerationFailureAlert } from "./failure-alert-service";
 import { GenerationStartError } from "./generation-start-error";
 import { createCommunityIntegrationSkill } from "./integration-skill-service";
 import { writeSessionTranscriptFromConversation } from "./memory-service";
@@ -226,10 +227,7 @@ async function writeRuntimeEnvToSandbox(
   });
 }
 
-function buildRuntimeEnvSourcedCommand(params: {
-  command: string;
-  workdir?: string;
-}): string {
+function buildRuntimeEnvSourcedCommand(params: { command: string; workdir?: string }): string {
   const workdir = params.workdir?.trim() || "/app";
   const script = [
     "set -o allexport",
@@ -820,7 +818,9 @@ function hashStableProviderRequestPayload(payload: unknown): string {
   return createHash("sha256").update(stableJsonStringify(payload)).digest("hex").slice(0, 24);
 }
 
-function extractOpenCodeCallIdFromProviderRequestId(providerRequestId: string | null | undefined): string | null {
+function extractOpenCodeCallIdFromProviderRequestId(
+  providerRequestId: string | null | undefined,
+): string | null {
   const marker = ":opencode:";
   if (!providerRequestId?.includes(marker)) {
     return null;
@@ -830,7 +830,10 @@ function extractOpenCodeCallIdFromProviderRequestId(providerRequestId: string | 
 }
 
 function getRuntimeToolRefForInterrupt(
-  ctx: Pick<GenerationContext, "contentParts" | "openCodeRuntimeTools" | "sessionId"> | null | undefined,
+  ctx:
+    | Pick<GenerationContext, "contentParts" | "openCodeRuntimeTools" | "sessionId">
+    | null
+    | undefined,
   params: {
     providerRequestId?: string | null;
     runtimeTool?: OpenCodeRuntimeToolRef;
@@ -1028,7 +1031,7 @@ function safeJsonStringify(value: unknown): string | null {
 
 function summarizeUnknownValue(value: unknown, maxLength = 500): string {
   const raw =
-    typeof value === "string" ? value : safeJsonStringify(value) ?? formatErrorMessage(value);
+    typeof value === "string" ? value : (safeJsonStringify(value) ?? formatErrorMessage(value));
   return raw.length > maxLength ? `${raw.slice(0, maxLength)}...` : raw;
 }
 
@@ -1087,7 +1090,9 @@ class ExecutorPromptReadyError extends Error {
   }
 }
 
-function buildExecutorSourceHealthInstructions(statuses: ExecutorOauthSourceStatus[]): string | null {
+function buildExecutorSourceHealthInstructions(
+  statuses: ExecutorOauthSourceStatus[],
+): string | null {
   if (statuses.length === 0) {
     return null;
   }
@@ -1098,7 +1103,9 @@ function buildExecutorSourceHealthInstructions(statuses: ExecutorOauthSourceStat
     ...statuses.map((source) => {
       if (source.status === "available") {
         return `- ${source.namespace} (${source.name}): available${
-          source.toolCount === null ? "" : `, ${source.toolCount} tool${source.toolCount === 1 ? "" : "s"}`
+          source.toolCount === null
+            ? ""
+            : `, ${source.toolCount} tool${source.toolCount === 1 ? "" : "s"}`
         }`;
       }
       return `- ${source.namespace} (${source.name}): ${source.status}, reason=${source.reason}, error=${source.error}`;
@@ -1283,7 +1290,9 @@ export function extractRuntimeExportState(payload: unknown): RuntimeExportState 
   if (parts.length === 0) {
     return "broken";
   }
-  const stoppedForInput = parts.some((part) => part?.type === "step-finish" && part.reason === "stop");
+  const stoppedForInput = parts.some(
+    (part) => part?.type === "step-finish" && part.reason === "stop",
+  );
   const inFlightTools = parts.filter(isExportedToolInFlight);
   if (stoppedForInput) {
     if (inFlightTools.some(isExportedToolWaitingForAuth)) {
@@ -2236,7 +2245,10 @@ class GenerationManager {
       try {
         const statusResult = await runtimeClient.status();
         if (statusResult.error) {
-          console.warn("[GenerationManager] OpenCode status poll returned an error:", statusResult.error);
+          console.warn(
+            "[GenerationManager] OpenCode status poll returned an error:",
+            statusResult.error,
+          );
           return "unknown";
         }
 
@@ -2248,7 +2260,10 @@ class GenerationManager {
           observedActiveStatus = true;
         } else {
           const messagesResult = await runtimeClient.messages({ sessionID: sessionId, limit: 20 });
-          if (!messagesResult.error && extractAssistantTextFromSessionMessagesPayload(messagesResult.data)) {
+          if (
+            !messagesResult.error &&
+            extractAssistantTextFromSessionMessagesPayload(messagesResult.data)
+          ) {
             return "idle";
           }
           if (observedActiveStatus) {
@@ -2395,7 +2410,10 @@ class GenerationManager {
   ): Promise<never> {
     const latest = await generationInterruptService.getInterrupt(interrupt.id);
     if (!latest || latest.status !== "pending") {
-      throw new GenerationSuspendedError(interrupt.id, interrupt.kind === "auth" ? "auth" : "approval");
+      throw new GenerationSuspendedError(
+        interrupt.id,
+        interrupt.kind === "auth" ? "auth" : "approval",
+      );
     }
 
     const enrichedInterrupt = await this.enrichPluginWriteInterruptRuntimeTool(ctx, latest);
@@ -2405,10 +2423,7 @@ class GenerationManager {
     return await this.suspendGenerationForInterrupt(ctx, parkedInterrupt);
   }
 
-  private scheduleApprovalPark(
-    ctx: GenerationContext,
-    interrupt: GenerationInterruptRecord,
-  ): void {
+  private scheduleApprovalPark(ctx: GenerationContext, interrupt: GenerationInterruptRecord): void {
     if (ctx.approvalParkTimeoutId) {
       clearTimeout(ctx.approvalParkTimeoutId);
     }
@@ -3257,9 +3272,10 @@ class GenerationManager {
   }): Promise<{ generationId: string; conversationId: string }> {
     const { content, userId, model, autoApprove } = params;
     const runDeadlineMs = resolveGenerationRunDeadlineMs(params.debugRunDeadlineMs);
-    const debugApprovalHotWaitMs = params.debugApprovalHotWaitMs === undefined
-      ? undefined
-      : resolveApprovalHotWaitMs(params.debugApprovalHotWaitMs);
+    const debugApprovalHotWaitMs =
+      params.debugApprovalHotWaitMs === undefined
+        ? undefined
+        : resolveApprovalHotWaitMs(params.debugApprovalHotWaitMs);
     const fileAttachments = params.fileAttachments;
     const requestedModel = model?.trim();
     if (requestedModel) {
@@ -3592,7 +3608,10 @@ class GenerationManager {
         conversationId: conv.id,
         status: "running",
         executionPolicy,
-        debugInfo: buildInitialDebugInfo(params.remoteIntegrationSource, params.allowedIntegrations),
+        debugInfo: buildInitialDebugInfo(
+          params.remoteIntegrationSource,
+          params.allowedIntegrations,
+        ),
         contentParts: [],
         inputTokens: 0,
         outputTokens: 0,
@@ -3774,7 +3793,10 @@ class GenerationManager {
         conversationId: newConv.id,
         status: "running",
         executionPolicy,
-        debugInfo: buildInitialDebugInfo(params.remoteIntegrationSource, params.allowedIntegrations),
+        debugInfo: buildInitialDebugInfo(
+          params.remoteIntegrationSource,
+          params.allowedIntegrations,
+        ),
         contentParts: [],
         inputTokens: 0,
         outputTokens: 0,
@@ -4070,7 +4092,8 @@ class GenerationManager {
         )
       ) {
         this.setCompletionReason(ctx, "run_deadline");
-        ctx.errorMessage = "We stopped this run because it exceeded the 15 minute wall-clock limit.";
+        ctx.errorMessage =
+          "We stopped this run because it exceeded the 15 minute wall-clock limit.";
         await this.finishGeneration(ctx, "error");
         return;
       }
@@ -4842,20 +4865,22 @@ class GenerationManager {
       };
     }
 
-    const staleRunningIds = staleRows.filter((row) => row.status === "running").map((row) => row.id);
+    const staleRunningIds = staleRows
+      .filter((row) => row.status === "running")
+      .map((row) => row.id);
     const staleApprovalIds = staleRows
       .filter((row) => row.status === "awaiting_approval")
       .map((row) => row.id);
-    const staleAuthIds = staleRows.filter((row) => row.status === "awaiting_auth").map((row) => row.id);
+    const staleAuthIds = staleRows
+      .filter((row) => row.status === "awaiting_auth")
+      .map((row) => row.id);
     const staleWaitingIds = [...staleApprovalIds, ...staleAuthIds];
 
     const completedAt = new Date();
     const staleRunningMessage =
       "Generation was marked as stale by the worker reaper after exceeding max running age.";
-    const staleApprovalMessage =
-      "Approval request expired before the run could continue.";
-    const staleAuthMessage =
-      "Authentication request expired before the run could continue.";
+    const staleApprovalMessage = "Approval request expired before the run could continue.";
+    const staleAuthMessage = "Authentication request expired before the run could continue.";
 
     if (staleRunningIds.length > 0) {
       await Promise.all(
@@ -4877,7 +4902,8 @@ class GenerationManager {
 
     if (staleWaitingIds.length > 0) {
       for (const id of staleWaitingIds) {
-        const pendingInterrupt = await generationInterruptService.getPendingInterruptForGeneration(id);
+        const pendingInterrupt =
+          await generationInterruptService.getPendingInterruptForGeneration(id);
         if (pendingInterrupt) {
           await generationInterruptService.resolveInterrupt({
             interruptId: pendingInterrupt.id,
@@ -5154,7 +5180,10 @@ class GenerationManager {
       })
       .where(eq(conversation.id, genRecord.conversationId));
     if (linkedRun?.id) {
-      await db.update(coworkerRun).set({ status: "running" }).where(eq(coworkerRun.id, linkedRun.id));
+      await db
+        .update(coworkerRun)
+        .set({ status: "running" })
+        .where(eq(coworkerRun.id, linkedRun.id));
     }
 
     return true;
@@ -5762,13 +5791,15 @@ class GenerationManager {
       return { status: "error", error, outputForStream: { error } };
     }
     if (!ctx.sandbox) {
-      const error = "Approved integration write could not run because the sandbox was not attached.";
+      const error =
+        "Approved integration write could not run because the sandbox was not attached.";
       return { status: "error", error, outputForStream: { error } };
     }
 
     const command = interrupt.display.command;
     if (!command) {
-      const error = "Approved integration write could not run because the saved command is missing.";
+      const error =
+        "Approved integration write could not run because the saved command is missing.";
       return { status: "error", error, outputForStream: { error } };
     }
     const toolInput =
@@ -5776,10 +5807,9 @@ class GenerationManager {
         ? (interrupt.display.toolInput as Record<string, unknown>)
         : {};
     const workdir = typeof toolInput.workdir === "string" ? toolInput.workdir : undefined;
-    const result = await ctx.sandbox.execute(
-      buildRuntimeEnvSourcedCommand({ command, workdir }),
-      { timeout: 120_000 },
-    );
+    const result = await ctx.sandbox.execute(buildRuntimeEnvSourcedCommand({ command, workdir }), {
+      timeout: 120_000,
+    });
     if (result.exitCode !== 0) {
       const errorText =
         result.stderr.trim() ||
@@ -5879,8 +5909,7 @@ class GenerationManager {
         return [
           {
             type: "text",
-            text:
-              "Continue the interrupted assistant turn from the restored tool result. Do not rerun the already approved command.",
+            text: "Continue the interrupted assistant turn from the restored tool result. Do not rerun the already approved command.",
           },
         ];
       },
@@ -5907,7 +5936,9 @@ class GenerationManager {
         answers.map((answer) => answer.trim()).filter((answer) => answer.length > 0),
       ) ?? [];
     const answerSummary =
-      flattenedAnswers.length > 0 ? ` The resolved answer was: ${flattenedAnswers.join(", ")}.` : "";
+      flattenedAnswers.length > 0
+        ? ` The resolved answer was: ${flattenedAnswers.join(", ")}.`
+        : "";
     return [
       {
         type: "text",
@@ -6036,7 +6067,9 @@ class GenerationManager {
       requireLiveSession?: boolean;
       resumeInterruptId?: string;
       modeLabel?: string;
-      onRuntimeAttached?: (runtimeClient: RuntimeHarnessClient) => Promise<RuntimePromptPart[] | void>;
+      onRuntimeAttached?: (
+        runtimeClient: RuntimeHarnessClient,
+      ) => Promise<RuntimePromptPart[] | void>;
       completeAfterRuntimeAttached?: boolean;
       skipUsageCaptureAfterRuntimeAttached?: boolean;
     },
@@ -6055,7 +6088,8 @@ class GenerationManager {
 
       if (requireLiveSession && !ctx.sessionId) {
         this.setCompletionReason(ctx, "broken_runtime_state");
-        ctx.errorMessage = "The live runtime could not be reattached because the session ID was missing.";
+        ctx.errorMessage =
+          "The live runtime could not be reattached because the session ID was missing.";
         await this.finishGeneration(ctx, "error");
         return;
       }
@@ -6098,10 +6132,9 @@ class GenerationManager {
 
       if (session.sessionSource === "created_session") {
         this.setCompletionReason(ctx, "sandbox_missing");
-        ctx.errorMessage =
-          requireLiveSession
-            ? "The live runtime could not be reattached because the original sandbox was no longer available."
-            : "The suspended runtime could not be resumed because no session snapshot was restored.";
+        ctx.errorMessage = requireLiveSession
+          ? "The live runtime could not be reattached because the original sandbox was no longer available."
+          : "The suspended runtime could not be resumed because no session snapshot was restored.";
         await this.finishGeneration(ctx, "error");
         return;
       }
@@ -6263,7 +6296,11 @@ class GenerationManager {
         }
 
         if (isOpenCodeActionableEvent(event)) {
-          const actionableResult = await this.handleOpenCodeActionableEvent(ctx, runtimeClient, event);
+          const actionableResult = await this.handleOpenCodeActionableEvent(
+            ctx,
+            runtimeClient,
+            event,
+          );
           if (actionableResult.type === "permission") {
             opencodePermissionCount += 1;
           } else if (actionableResult.type === "question") {
@@ -6315,7 +6352,9 @@ class GenerationManager {
       }
 
       if (!sawSessionIdle && !ctx.abortController.signal.aborted) {
-        throw new Error("Live recovery reattach ended before the runtime reached a terminal state.");
+        throw new Error(
+          "Live recovery reattach ended before the runtime reached a terminal state.",
+        );
       }
 
       await this.captureUsageFromRuntimeSession(ctx, runtimeClient, session.session.id);
@@ -6806,22 +6845,18 @@ class GenerationManager {
 
       const runtimeContextWritePromise = (async () => {
         try {
-          await runPrePromptStep(
-            "runtime_context_write",
-            "writeRuntimeContextMs",
-            async () => {
-              if (ctx.runtimeId && ctx.runtimeCallbackToken && ctx.runtimeTurnSeq) {
-                const runtimeContext: RuntimeContextFile = {
-                  runtimeId: ctx.runtimeId,
-                  turnSeq: ctx.runtimeTurnSeq,
-                  callbackToken: ctx.runtimeCallbackToken,
-                  updatedAt: new Date().toISOString(),
-                };
-                await writeRuntimeContextToSandbox(runtimeSandbox, runtimeContext);
-              }
-              await writeRuntimeEnvToSandbox(runtimeSandbox, sandboxRuntimeEnv);
-            },
-          );
+          await runPrePromptStep("runtime_context_write", "writeRuntimeContextMs", async () => {
+            if (ctx.runtimeId && ctx.runtimeCallbackToken && ctx.runtimeTurnSeq) {
+              const runtimeContext: RuntimeContextFile = {
+                runtimeId: ctx.runtimeId,
+                turnSeq: ctx.runtimeTurnSeq,
+                callbackToken: ctx.runtimeCallbackToken,
+                updatedAt: new Date().toISOString(),
+              };
+              await writeRuntimeContextToSandbox(runtimeSandbox, runtimeContext);
+            }
+            await writeRuntimeEnvToSandbox(runtimeSandbox, sandboxRuntimeEnv);
+          });
         } catch (error) {
           console.error("[GenerationManager] Failed to write runtime metadata to sandbox:", error);
         }
@@ -6880,9 +6915,7 @@ class GenerationManager {
                 oauthSourceStatuses: ExecutorOauthSourceStatus[];
               } = { oauthCacheHits: 0, oauthRefreshFailures: [], oauthSourceStatuses: [] };
               try {
-                result = executorBootstrap?.finalize
-                  ? await executorBootstrap.finalize()
-                  : result;
+                result = executorBootstrap?.finalize ? await executorBootstrap.finalize() : result;
                 const sourceHealthInstructions = buildExecutorSourceHealthInstructions(
                   result.oauthSourceStatuses,
                 );
@@ -6932,10 +6965,7 @@ class GenerationManager {
                   executorLogContext(),
                 );
               } catch (error) {
-                console.error(
-                  "[GenerationManager] Executor OAuth reconcile failed:",
-                  error,
-                );
+                console.error("[GenerationManager] Executor OAuth reconcile failed:", error);
                 logServerEvent(
                   "error",
                   "EXECUTOR_PREP_FINALIZE_FAILED",
@@ -7014,10 +7044,14 @@ class GenerationManager {
 
         if (ctx.agentSandboxMode === "reused") {
           try {
-            const parsed = await runPrePromptStep("cache_read", "readPrePromptCacheMs", async () => {
-              const rawCache = await runtimeSandbox.readFile(PRE_PROMPT_CACHE_PATH);
-              return JSON.parse(String(rawCache)) as Partial<PrePromptCacheRecord>;
-            });
+            const parsed = await runPrePromptStep(
+              "cache_read",
+              "readPrePromptCacheMs",
+              async () => {
+                const rawCache = await runtimeSandbox.readFile(PRE_PROMPT_CACHE_PATH);
+                return JSON.parse(String(rawCache)) as Partial<PrePromptCacheRecord>;
+              },
+            );
             if (parsed.cacheKey === prePromptCacheKey) {
               prePromptCacheHit = true;
               if (Array.isArray(parsed.writtenSkills)) {
@@ -7058,126 +7092,122 @@ class GenerationManager {
         }
 
         try {
-          await runPrePromptStep(
-            "skill_asset_prepare",
-            "prepareSkillAssetsMs",
-            async () => {
-              const skillsWritePromise = runPrePromptStep(
-                "skills_write",
-                "writeSkillsToSandboxMs",
-                async () =>
-                  await writeSkillsToSandbox(
-                    runtimeSandbox,
-                    ctx.userId,
-                    customSkillNames.length > 0 ? customSkillNames : undefined,
-                  ),
-              );
+          await runPrePromptStep("skill_asset_prepare", "prepareSkillAssetsMs", async () => {
+            const skillsWritePromise = runPrePromptStep(
+              "skills_write",
+              "writeSkillsToSandboxMs",
+              async () =>
+                await writeSkillsToSandbox(
+                  runtimeSandbox,
+                  ctx.userId,
+                  customSkillNames.length > 0 ? customSkillNames : undefined,
+                ),
+            );
 
-              const customIntegrationCliWritePromise = runPrePromptStep(
-                "custom_integration_cli_write",
-                "writeCustomIntegrationCliMs",
-                async () => {
-                  await Promise.all(
-                    eligibleCustomCreds.map(async (cred) => {
-                      const integ = cred.customIntegration;
-                      const cliPath = `/app/cli/custom-${integ.slug}.ts`;
-                      await runtimeSandbox.writeFile(cliPath, integ.cliCode);
-                    }),
-                  );
-                },
-              );
+            const customIntegrationCliWritePromise = runPrePromptStep(
+              "custom_integration_cli_write",
+              "writeCustomIntegrationCliMs",
+              async () => {
+                await Promise.all(
+                  eligibleCustomCreds.map(async (cred) => {
+                    const integ = cred.customIntegration;
+                    const cliPath = `/app/cli/custom-${integ.slug}.ts`;
+                    await runtimeSandbox.writeFile(cliPath, integ.cliCode);
+                  }),
+                );
+              },
+            );
 
-              const customPerms: Record<string, { read: string[]; write: string[] }> = {};
-              for (const cred of eligibleCustomCreds) {
-                const integ = cred.customIntegration;
-                customPerms[`custom-${integ.slug}`] = {
-                  read: integ.permissions.readOps,
-                  write: integ.permissions.writeOps,
-                };
-              }
-
-              const customIntegrationPermissionsWritePromise =
-                Object.keys(customPerms).length > 0
-                  ? runPrePromptStep(
-                      "custom_integration_permissions_write",
-                      "writeCustomIntegrationPermissionsMs",
-                      async () => {
-                        await runtimeSandbox.exec(
-                          `echo 'export CUSTOM_INTEGRATION_PERMISSIONS=${JSON.stringify(JSON.stringify(customPerms)).slice(1, -1)}' >> ~/.bashrc`,
-                        );
-                      },
-                    )
-                  : Promise.resolve();
-
-              const allowedSkillSlugs = new Set<string>(allowedIntegrations);
-              for (const cred of eligibleCustomCreds) {
-                allowedSkillSlugs.add(cred.customIntegration.slug);
-              }
-
-              const integrationSkillsWritePromise = runPrePromptStep(
-                "integration_skills_write",
-                "writeIntegrationSkillsMs",
-                async () =>
-                  await writeResolvedIntegrationSkillsToSandbox(
-                    runtimeSandbox,
-                    ctx.userId,
-                    Array.from(allowedSkillSlugs),
-                  ),
-              );
-
-              const [
-                resolvedWrittenSkills,
-                _customIntegrationCliWrite,
-                _customIntegrationPermissionsWrite,
-                resolvedWrittenIntegrationSkills,
-              ] = await Promise.all([
-                skillsWritePromise,
-                customIntegrationCliWritePromise,
-                customIntegrationPermissionsWritePromise,
-                integrationSkillsWritePromise,
-              ]);
-
-              writtenSkills = resolvedWrittenSkills;
-              writtenIntegrationSkills = resolvedWrittenIntegrationSkills;
-              startPostPromptCacheWrite = async () => {
-                this.markPhase(ctx, "post_prompt_cache_write_started");
-                const startedAt = Date.now();
-                try {
-                  await runtimeSandbox.ensureDir(path.dirname(PRE_PROMPT_CACHE_PATH));
-                  const nextCacheRecord: PrePromptCacheRecord = {
-                    version: 1,
-                    cacheKey: prePromptCacheKey,
-                    writtenSkills,
-                    writtenIntegrationSkills,
-                    updatedAt: new Date().toISOString(),
-                  };
-                  await runtimeSandbox.writeFile(
-                    PRE_PROMPT_CACHE_PATH,
-                    JSON.stringify(nextCacheRecord, null, 2),
-                  );
-                  logServerEvent(
-                    "info",
-                    "POST_PROMPT_CACHE_WRITE_COMPLETED",
-                    {},
-                    {
-                      source: "generation-manager",
-                      traceId: ctx.traceId,
-                      generationId: ctx.id,
-                      conversationId: ctx.conversationId,
-                      userId: ctx.userId,
-                      sandboxId: runtimeSandbox.sandboxId,
-                      sessionId: ctx.sessionId,
-                    },
-                  );
-                } catch (error) {
-                  console.error("[GenerationManager] Failed to write pre-prompt cache:", error);
-                } finally {
-                  prePromptBreakdown.writePrePromptCacheMs = Date.now() - startedAt;
-                  this.markPhase(ctx, "post_prompt_cache_write_completed");
-                }
+            const customPerms: Record<string, { read: string[]; write: string[] }> = {};
+            for (const cred of eligibleCustomCreds) {
+              const integ = cred.customIntegration;
+              customPerms[`custom-${integ.slug}`] = {
+                read: integ.permissions.readOps,
+                write: integ.permissions.writeOps,
               };
-            },
-          );
+            }
+
+            const customIntegrationPermissionsWritePromise =
+              Object.keys(customPerms).length > 0
+                ? runPrePromptStep(
+                    "custom_integration_permissions_write",
+                    "writeCustomIntegrationPermissionsMs",
+                    async () => {
+                      await runtimeSandbox.exec(
+                        `echo 'export CUSTOM_INTEGRATION_PERMISSIONS=${JSON.stringify(JSON.stringify(customPerms)).slice(1, -1)}' >> ~/.bashrc`,
+                      );
+                    },
+                  )
+                : Promise.resolve();
+
+            const allowedSkillSlugs = new Set<string>(allowedIntegrations);
+            for (const cred of eligibleCustomCreds) {
+              allowedSkillSlugs.add(cred.customIntegration.slug);
+            }
+
+            const integrationSkillsWritePromise = runPrePromptStep(
+              "integration_skills_write",
+              "writeIntegrationSkillsMs",
+              async () =>
+                await writeResolvedIntegrationSkillsToSandbox(
+                  runtimeSandbox,
+                  ctx.userId,
+                  Array.from(allowedSkillSlugs),
+                ),
+            );
+
+            const [
+              resolvedWrittenSkills,
+              _customIntegrationCliWrite,
+              _customIntegrationPermissionsWrite,
+              resolvedWrittenIntegrationSkills,
+            ] = await Promise.all([
+              skillsWritePromise,
+              customIntegrationCliWritePromise,
+              customIntegrationPermissionsWritePromise,
+              integrationSkillsWritePromise,
+            ]);
+
+            writtenSkills = resolvedWrittenSkills;
+            writtenIntegrationSkills = resolvedWrittenIntegrationSkills;
+            startPostPromptCacheWrite = async () => {
+              this.markPhase(ctx, "post_prompt_cache_write_started");
+              const startedAt = Date.now();
+              try {
+                await runtimeSandbox.ensureDir(path.dirname(PRE_PROMPT_CACHE_PATH));
+                const nextCacheRecord: PrePromptCacheRecord = {
+                  version: 1,
+                  cacheKey: prePromptCacheKey,
+                  writtenSkills,
+                  writtenIntegrationSkills,
+                  updatedAt: new Date().toISOString(),
+                };
+                await runtimeSandbox.writeFile(
+                  PRE_PROMPT_CACHE_PATH,
+                  JSON.stringify(nextCacheRecord, null, 2),
+                );
+                logServerEvent(
+                  "info",
+                  "POST_PROMPT_CACHE_WRITE_COMPLETED",
+                  {},
+                  {
+                    source: "generation-manager",
+                    traceId: ctx.traceId,
+                    generationId: ctx.id,
+                    conversationId: ctx.conversationId,
+                    userId: ctx.userId,
+                    sandboxId: runtimeSandbox.sandboxId,
+                    sessionId: ctx.sessionId,
+                  },
+                );
+              } catch (error) {
+                console.error("[GenerationManager] Failed to write pre-prompt cache:", error);
+              } finally {
+                prePromptBreakdown.writePrePromptCacheMs = Date.now() - startedAt;
+                this.markPhase(ctx, "post_prompt_cache_write_completed");
+              }
+            };
+          });
         } catch (error) {
           console.error("[Generation] Failed to write custom integration CLI code:", error);
         }
@@ -7629,9 +7659,9 @@ class GenerationManager {
         : { data: null, error: null };
       const promptResult =
         rawPromptResult && typeof rawPromptResult === "object"
-          ? ("data" in rawPromptResult || "error" in rawPromptResult
-              ? rawPromptResult
-              : { data: rawPromptResult, error: null })
+          ? "data" in rawPromptResult || "error" in rawPromptResult
+            ? rawPromptResult
+            : { data: rawPromptResult, error: null }
           : { data: rawPromptResult ?? null, error: null };
       if (promptResult.error) {
         const promptResultErrorMessage = formatErrorMessage(promptResult.error);
@@ -8133,7 +8163,8 @@ class GenerationManager {
           ? request.tool.callId
           : undefined;
     const toolUseId =
-      linkedToolUseId ?? `opencode-question-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      linkedToolUseId ??
+      `opencode-question-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const command = buildQuestionCommand(request);
     const toolInput = request as unknown as Record<string, unknown>;
 
@@ -9674,7 +9705,9 @@ class GenerationManager {
     ctx: Pick<GenerationContext, "conversationId" | "sessionId" | "sandbox">,
   ): Promise<void> {
     if (!ctx.sessionId || !ctx.sandbox) {
-      throw new Error(`Cannot snapshot conversation ${ctx.conversationId}: missing runtime session`);
+      throw new Error(
+        `Cannot snapshot conversation ${ctx.conversationId}: missing runtime session`,
+      );
     }
 
     await saveConversationSessionSnapshot({
@@ -9910,8 +9943,10 @@ class GenerationManager {
   ): Promise<never> {
     const now = new Date();
     const remainingRunMs = this.refreshRemainingRunBudget(ctx, now);
-    const nextStatus: GenerationStatus = interrupt.kind === "auth" ? "awaiting_auth" : "awaiting_approval";
-    const nextConversationStatus = interrupt.kind === "auth" ? "awaiting_auth" : "awaiting_approval";
+    const nextStatus: GenerationStatus =
+      interrupt.kind === "auth" ? "awaiting_auth" : "awaiting_approval";
+    const nextConversationStatus =
+      interrupt.kind === "auth" ? "awaiting_auth" : "awaiting_approval";
 
     ctx.status = nextStatus;
     ctx.currentInterruptId = interrupt.id;
@@ -9984,9 +10019,7 @@ class GenerationManager {
     );
   }
 
-  private async pollExternalInterruptAndSuspendIfNeeded(
-    ctx: GenerationContext,
-  ): Promise<void> {
+  private async pollExternalInterruptAndSuspendIfNeeded(ctx: GenerationContext): Promise<void> {
     if (ctx.currentInterruptId) {
       const current = await generationInterruptService.getInterrupt(ctx.currentInterruptId);
       if (current && current.status !== "pending") {
@@ -10010,7 +10043,10 @@ class GenerationManager {
       return;
     }
 
-    const enrichedInterrupt = await this.enrichPluginWriteInterruptRuntimeTool(ctx, pendingInterrupt);
+    const enrichedInterrupt = await this.enrichPluginWriteInterruptRuntimeTool(
+      ctx,
+      pendingInterrupt,
+    );
     ctx.currentInterruptId = enrichedInterrupt.id;
     ctx.status = enrichedInterrupt.kind === "auth" ? "awaiting_auth" : "awaiting_approval";
     this.scheduleApprovalPark(ctx, enrichedInterrupt);
@@ -10221,6 +10257,18 @@ class GenerationManager {
           completedAt: new Date(),
         })
         .where(eq(generation.id, ctx.id));
+
+      if (status === "error") {
+        try {
+          await captureGenerationFailureAlert({ generationId: ctx.id });
+        } catch (error) {
+          console.error("[GenerationManager] Failed to capture failure alert", {
+            generationId: ctx.id,
+            conversationId: ctx.conversationId,
+            error,
+          });
+        }
+      }
 
       const assistantMessagePersisted = Boolean(messageId);
 
