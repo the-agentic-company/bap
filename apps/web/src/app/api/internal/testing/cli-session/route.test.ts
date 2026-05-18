@@ -1,20 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  findFirstMock,
-  insertMock,
-  insertValuesMock,
-  updateMock,
-  updateSetMock,
-  updateWhereMock,
-} = vi.hoisted(() => ({
-  findFirstMock: vi.fn(),
-  insertMock: vi.fn(),
-  insertValuesMock: vi.fn(),
-  updateMock: vi.fn(),
-  updateSetMock: vi.fn(),
-  updateWhereMock: vi.fn(),
-}));
+const { findFirstMock, insertMock, insertValuesMock, updateMock, updateSetMock, updateWhereMock } =
+  vi.hoisted(() => ({
+    findFirstMock: vi.fn(),
+    insertMock: vi.fn(),
+    insertValuesMock: vi.fn(),
+    updateMock: vi.fn(),
+    updateSetMock: vi.fn(),
+    updateWhereMock: vi.fn(),
+  }));
 
 vi.mock("@/env", () => ({
   env: {
