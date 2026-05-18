@@ -8,6 +8,20 @@ import {
   type RawSloBucket,
 } from "../../scripts/slo-backfill";
 
+function sampleAt(
+  samples: ReturnType<typeof buildCumulativeSloSamples>,
+  timestamp: string,
+  journey: string,
+  result: string,
+): number | undefined {
+  return samples.find(
+    (sample) =>
+      sample.timestampMs === Date.parse(timestamp) &&
+      sample.journey === journey &&
+      sample.result === result,
+  )?.value;
+}
+
 describe("slo backfill", () => {
   test("uses a 30-day window ending at the previous whole hour", () => {
     const window = resolveSloBackfillWindow(new Date("2026-05-17T05:34:20.000Z"));
@@ -76,6 +90,67 @@ describe("slo backfill", () => {
     ).toBe(0);
   });
 
+  test("keeps overlapping counter samples stable when the backfill window shifts", () => {
+    const firstWindow = {
+      from: new Date("2026-05-17T00:00:00.000Z"),
+      toExclusive: new Date("2026-05-17T03:00:00.000Z"),
+    };
+    const secondWindow = {
+      from: new Date("2026-05-17T01:00:00.000Z"),
+      toExclusive: new Date("2026-05-17T04:00:00.000Z"),
+    };
+
+    const firstSamples = buildCumulativeSloSamples(
+      [
+        {
+          bucket: new Date("2026-05-17T00:00:00.000Z"),
+          journey: "chat",
+          result: "good",
+          count: 10,
+          isSeed: true,
+        },
+        {
+          bucket: new Date("2026-05-17T00:00:00.000Z"),
+          journey: "chat",
+          result: "good",
+          count: 2,
+        },
+        {
+          bucket: new Date("2026-05-17T01:00:00.000Z"),
+          journey: "coworker_builder",
+          result: "bad",
+          count: 1,
+        },
+      ],
+      firstWindow,
+    );
+    const secondSamples = buildCumulativeSloSamples(
+      [
+        {
+          bucket: new Date("2026-05-17T01:00:00.000Z"),
+          journey: "chat",
+          result: "good",
+          count: 12,
+          isSeed: true,
+        },
+        {
+          bucket: new Date("2026-05-17T01:00:00.000Z"),
+          journey: "coworker_builder",
+          result: "bad",
+          count: 1,
+        },
+      ],
+      secondWindow,
+    );
+
+    expect(sampleAt(firstSamples, "2026-05-17T01:00:00.000Z", "chat", "good")).toBe(
+      sampleAt(secondSamples, "2026-05-17T01:00:00.000Z", "chat", "good"),
+    );
+    expect(sampleAt(firstSamples, "2026-05-17T02:00:00.000Z", "coworker_builder", "bad")).toBe(
+      sampleAt(secondSamples, "2026-05-17T02:00:00.000Z", "coworker_builder", "bad"),
+    );
+  });
+
   test("renders Prometheus import rows with millisecond timestamps", () => {
     const rows = renderPrometheusImportRows([
       {
@@ -129,6 +204,10 @@ describe("slo backfill", () => {
     expect(sql).toContain("when c.type = 'coworker' then 'coworker_chat'");
     expect(sql).toContain("left join coworker_run cr on cr.generation_id = g.id");
     expect(sql).toContain("and cr.id is null");
+    expect(sql).toContain("seed_events as");
+    expect(sql).toContain('true as "isSeed"');
+    expect(sql).toContain("where event_at < $1");
+    expect(sql).toContain("where event_at >= $1");
     expect(sql).toContain("where g.status in ('completed', 'error')");
     expect(sql).toContain("where cr.status in ('completed', 'error')");
     expect(values).toEqual([window.from, window.toExclusive]);

@@ -23,6 +23,7 @@ export type RawSloBucket = {
   journey: Exclude<SloJourney, "global">;
   result: SloResult;
   count: number | string;
+  isSeed?: boolean | string;
 };
 
 export type SloSample = {
@@ -89,6 +90,10 @@ function parseCount(value: number | string): number {
   return count;
 }
 
+function parseIsSeed(value: boolean | string | undefined): boolean {
+  return value === true || value === "true";
+}
+
 export async function aggregateSloBuckets(
   db: Queryable,
   options: AggregateSloBucketOptions,
@@ -97,10 +102,7 @@ export async function aggregateSloBuckets(
     `
       with generation_events as (
         select
-          date_trunc(
-            'hour',
-            coalesce(g.completed_at, g.last_runtime_event_at, g.started_at)
-          ) as bucket,
+          coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) as event_at,
           case
             when exists (
               select 1
@@ -110,42 +112,66 @@ export async function aggregateSloBuckets(
             when c.type = 'coworker' then 'coworker_chat'
             else 'chat'
           end as journey,
-          case when g.status = 'error' then 'bad' else 'good' end as result,
-          count(*)::bigint as count
+          case when g.status = 'error' then 'bad' else 'good' end as result
         from generation g
         join conversation c on c.id = g.conversation_id
         left join coworker_run cr on cr.generation_id = g.id
         where g.status in ('completed', 'error')
           and cr.id is null
-          and coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) >= $1
           and coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) < $2
-        group by 1, 2, 3
       ),
       coworker_run_events as (
         select
-          date_trunc('hour', coalesce(cr.finished_at, cr.started_at)) as bucket,
+          coalesce(cr.finished_at, cr.started_at) as event_at,
           'coworker_run' as journey,
-          case when cr.status = 'error' then 'bad' else 'good' end as result,
-          count(*)::bigint as count
+          case when cr.status = 'error' then 'bad' else 'good' end as result
         from coworker_run cr
         where cr.status in ('completed', 'error')
-          and coalesce(cr.finished_at, cr.started_at) >= $1
           and coalesce(cr.finished_at, cr.started_at) < $2
-        group by 1, 2, 3
       ),
       all_events as (
         select * from generation_events
         union all
         select * from coworker_run_events
+      ),
+      seed_events as (
+        select
+          $1::timestamp as bucket,
+          journey,
+          result,
+          count(*)::bigint as count,
+          true as "isSeed"
+        from all_events
+        where event_at < $1
+        group by 1, 2, 3
+      ),
+      window_events as (
+        select
+          date_trunc('hour', event_at) as bucket,
+          journey,
+          result,
+          count(*)::bigint as count,
+          false as "isSeed"
+        from all_events
+        where event_at >= $1
+        group by 1, 2, 3
       )
       select
         bucket,
         journey,
         result,
-        sum(count)::text as count
-      from all_events
-      group by 1, 2, 3
-      order by 1, 2, 3
+        count::text as count,
+        "isSeed"
+      from seed_events
+      union all
+      select
+        bucket,
+        journey,
+        result,
+        count::text as count,
+        "isSeed"
+      from window_events
+      order by 1, 2, 3, 5
     `,
     [options.from, options.toExclusive],
   );
@@ -164,22 +190,25 @@ export function buildCumulativeSloSamples(
   }
 
   const bucketCounts = new Map<string, number>();
+  const seedCounts = new Map<string, number>();
   for (const bucket of rawBuckets) {
     const bucketMs = parseBucketTime(bucket.bucket);
-    if (bucketMs < fromMs || bucketMs >= toExclusiveMs) {
+    const isSeed = parseIsSeed(bucket.isSeed);
+    if ((!isSeed && bucketMs < fromMs) || bucketMs >= toExclusiveMs) {
       continue;
     }
 
     const value = parseCount(bucket.count);
     const journeyKey = seriesKey(bucket.journey, bucket.result);
     const globalKey = seriesKey("global", bucket.result);
-    bucketCounts.set(
+    const targetCounts = isSeed ? seedCounts : bucketCounts;
+    targetCounts.set(
       `${bucketMs}:${journeyKey}`,
-      (bucketCounts.get(`${bucketMs}:${journeyKey}`) ?? 0) + value,
+      (targetCounts.get(`${bucketMs}:${journeyKey}`) ?? 0) + value,
     );
-    bucketCounts.set(
+    targetCounts.set(
       `${bucketMs}:${globalKey}`,
-      (bucketCounts.get(`${bucketMs}:${globalKey}`) ?? 0) + value,
+      (targetCounts.get(`${bucketMs}:${globalKey}`) ?? 0) + value,
     );
   }
 
@@ -189,8 +218,9 @@ export function buildCumulativeSloSamples(
   for (const journey of SLO_JOURNEYS) {
     for (const result of SLO_RESULTS) {
       const key = seriesKey(journey, result);
-      totals.set(key, 0);
-      samples.push({ timestampMs: fromMs, journey, result, value: 0 });
+      const seedValue = seedCounts.get(`${fromMs}:${key}`) ?? 0;
+      totals.set(key, seedValue);
+      samples.push({ timestampMs: fromMs, journey, result, value: seedValue });
     }
   }
 
