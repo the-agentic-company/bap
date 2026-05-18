@@ -3,11 +3,13 @@ pre-commit:
     secrets:
       run: gitleaks protect --staged --config .gitleaks.toml --redact
     lint:
-      run: bun run --cwd apps/web lint
+      glob: "apps/web/**/*.{ts,tsx,js,jsx}"
+      run: bunx --bun oxlint --config apps/web/.oxlintrc.json --tsconfig apps/web/tsconfig.json {staged_files}
     typecheck:
       run: bun run check:web && bun run check:worker
     format:
-      run: bun run --cwd apps/web format:write
+      glob: "apps/web/**/*.{ts,tsx,js,jsx,mdx}"
+      run: bunx --bun oxfmt --write {staged_files}
       stage_fixed: true
 
 
