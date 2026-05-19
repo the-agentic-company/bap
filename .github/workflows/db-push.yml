@@ -44,6 +44,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
       - name: Push DB changes
         env:
           DATABASE_URL_PROD: ${{ secrets.DATABASE_URL_PROD }}
