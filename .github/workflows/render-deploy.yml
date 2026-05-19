@@ -14,42 +14,36 @@ on:
     outputs:
       previous_web_deploy_id:
         description: "Previous successful web deploy ID"
-        value: ${{ jobs.deploy.outputs.previous_web_deploy_id }}
+        value: ${{ jobs.deploy-web.outputs.previous_web_deploy_id }}
       previous_worker_deploy_id:
         description: "Previous successful worker deploy ID"
-        value: ${{ jobs.deploy.outputs.previous_worker_deploy_id }}
+        value: ${{ jobs.deploy-worker.outputs.previous_worker_deploy_id }}
       previous_mcp_deploy_id:
         description: "Previous successful MCP deploy ID"
-        value: ${{ jobs.deploy.outputs.previous_mcp_deploy_id }}
+        value: ${{ jobs.deploy-mcp.outputs.previous_mcp_deploy_id }}
       web_deploy_id:
         description: "New web deploy ID"
-        value: ${{ jobs.deploy.outputs.web_deploy_id }}
+        value: ${{ jobs.deploy-web.outputs.web_deploy_id }}
       worker_deploy_id:
         description: "New worker deploy ID"
-        value: ${{ jobs.deploy.outputs.worker_deploy_id }}
+        value: ${{ jobs.deploy-worker.outputs.worker_deploy_id }}
       mcp_deploy_id:
         description: "New MCP deploy ID"
-        value: ${{ jobs.deploy.outputs.mcp_deploy_id }}
+        value: ${{ jobs.deploy-mcp.outputs.mcp_deploy_id }}
     secrets:
       RENDER_API_KEY:
         required: false
 
 jobs:
-  deploy:
+  deploy-web:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_WEB_SERVICE_NAME: cmdclaw-web-${{ inputs.environment }}
-      RENDER_WORKER_SERVICE_NAME: cmdclaw-worker-${{ inputs.environment }}
-      RENDER_MCP_SERVICE_NAME: cmdclaw-mcp-${{ inputs.environment }}
     outputs:
       previous_web_deploy_id: ${{ steps.previous-web.outputs.deploy_id }}
-      previous_worker_deploy_id: ${{ steps.previous-worker.outputs.deploy_id }}
-      previous_mcp_deploy_id: ${{ steps.previous-mcp.outputs.deploy_id }}
       web_deploy_id: ${{ steps.deploy-web.outputs.deploy_id }}
-      worker_deploy_id: ${{ steps.deploy-worker.outputs.deploy_id }}
-      mcp_deploy_id: ${{ steps.deploy-mcp.outputs.deploy_id }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -81,9 +75,89 @@ jobs:
         id: previous-web
         run: bun scripts/release/render-deploy.ts previous-success --service-name "${RENDER_WEB_SERVICE_NAME}"
 
+      - name: Deploy web
+        id: deploy-web
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_WEB_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"
+
+  deploy-worker:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_WORKER_SERVICE_NAME: cmdclaw-worker-${{ inputs.environment }}
+    outputs:
+      previous_worker_deploy_id: ${{ steps.previous-worker.outputs.deploy_id }}
+      worker_deploy_id: ${{ steps.deploy-worker.outputs.deploy_id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit_sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [ -n "${RENDER_API_KEY}" ] || missing+=("RENDER_API_KEY")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing Render secret(s) for GitHub environment "%s": %s\n' \
+              "${{ inputs.environment }}" "${missing[*]}" >&2
+            printf 'Set these as secrets on the GitHub environment named "%s".\n' \
+              "${{ inputs.environment }}" >&2
+            exit 1
+          fi
+
       - name: Capture previous worker deploy
         id: previous-worker
         run: bun scripts/release/render-deploy.ts previous-success --service-name "${RENDER_WORKER_SERVICE_NAME}"
+
+      - name: Deploy worker
+        id: deploy-worker
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_WORKER_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"
+
+  deploy-mcp:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_MCP_SERVICE_NAME: cmdclaw-mcp-${{ inputs.environment }}
+    outputs:
+      previous_mcp_deploy_id: ${{ steps.previous-mcp.outputs.deploy_id }}
+      mcp_deploy_id: ${{ steps.deploy-mcp.outputs.deploy_id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit_sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [ -n "${RENDER_API_KEY}" ] || missing+=("RENDER_API_KEY")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing Render secret(s) for GitHub environment "%s": %s\n' \
+              "${{ inputs.environment }}" "${missing[*]}" >&2
+            printf 'Set these as secrets on the GitHub environment named "%s".\n' \
+              "${{ inputs.environment }}" >&2
+            exit 1
+          fi
 
       - name: Capture previous MCP deploy
         id: previous-mcp
@@ -92,11 +166,3 @@ jobs:
       - name: Deploy MCP
         id: deploy-mcp
         run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_MCP_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"
-
-      - name: Deploy web
-        id: deploy-web
-        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_WEB_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"
-
-      - name: Deploy worker
-        id: deploy-worker
-        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_WORKER_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"

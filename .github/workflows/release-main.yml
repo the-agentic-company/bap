@@ -62,7 +62,6 @@ jobs:
     needs:
       - resolve
       - staging-db
-      - staging-daytona
     uses: ./.github/workflows/render-deploy.yml
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
@@ -70,7 +69,10 @@ jobs:
     secrets: inherit
 
   staging-verify:
-    needs: staging-render
+    needs:
+      - staging-db
+      - staging-daytona
+      - staging-render
     uses: ./.github/workflows/verify-deployment.yml
     with:
       environment: staging
