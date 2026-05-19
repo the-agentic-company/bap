@@ -195,23 +195,28 @@ jobs:
     if: ${{ always() && failure() }}
     runs-on: ubuntu-latest
     env:
-      RELEASE_ALERT_WEBHOOK_URL: ${{ secrets.RELEASE_ALERT_WEBHOOK_URL }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
     steps:
       - name: Report failure
         run: |
           echo "Release failed for commit ${{ needs.resolve.outputs.commit_sha }}"
           echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-      - name: Send alert webhook
-        if: ${{ env.RELEASE_ALERT_WEBHOOK_URL != '' }}
+      - name: Send Slack alert
+        if: ${{ env.SLACK_BOT_TOKEN != '' }}
         shell: bash
         run: |
           set -euo pipefail
 
           payload="$(jq -n \
+            --arg channel "#ops-alerts" \
             --arg text "CmdClaw release failed for ${{ needs.resolve.outputs.commit_sha }}: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            '{text: $text}')"
-          curl --fail --show-error --silent \
-            -H "Content-Type: application/json" \
+            '{channel: $channel, text: $text}')"
+
+          response="$(curl --fail --show-error --silent \
+            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+            -H "Content-Type: application/json; charset=utf-8" \
             -d "${payload}" \
-            "${RELEASE_ALERT_WEBHOOK_URL}"
+            https://slack.com/api/chat.postMessage)"
+
+          echo "${response}" | jq -e '.ok == true' >/dev/null
