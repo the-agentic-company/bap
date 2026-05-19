@@ -23,6 +23,11 @@ vi.mock("@daytonaio/sdk", () => ({
   }),
 }));
 
+vi.mock("./runtime/factory", () => ({
+  createSandboxRuntimeClientByRuntime: vi.fn().mockResolvedValue({}),
+  createSandboxSessionBridgeByRuntime: vi.fn().mockResolvedValue({}),
+}));
+
 describe("getOrCreateSandboxForCloudProvider", () => {
   beforeEach(() => {
     conversationRuntimeFindFirstMock.mockReset();
