@@ -165,18 +165,19 @@ jobs:
   #         git tag -a "${tag}" -m "Production release ${tag}" "${{ needs.resolve.outputs.commit_sha }}"
   #         git push origin "${tag}"
 
-  rollback-staging-render:
-    needs:
-      - staging-render
-      - staging-verify
-    if: ${{ always() && needs.staging-render.result == 'success' && needs.staging-verify.result == 'failure' }}
-    uses: ./.github/workflows/render-rollback.yml
-    with:
-      environment: staging
-      web_deploy_id: ${{ needs.staging-render.outputs.previous_web_deploy_id }}
-      worker_deploy_id: ${{ needs.staging-render.outputs.previous_worker_deploy_id }}
-      mcp_deploy_id: ${{ needs.staging-render.outputs.previous_mcp_deploy_id }}
-    secrets: inherit
+  # Keep failed staging deploys in place while debugging release verification.
+  # rollback-staging-render:
+  #   needs:
+  #     - staging-render
+  #     - staging-verify
+  #   if: ${{ always() && needs.staging-render.result == 'success' && needs.staging-verify.result == 'failure' }}
+  #   uses: ./.github/workflows/render-rollback.yml
+  #   with:
+  #     environment: staging
+  #     web_deploy_id: ${{ needs.staging-render.outputs.previous_web_deploy_id }}
+  #     worker_deploy_id: ${{ needs.staging-render.outputs.previous_worker_deploy_id }}
+  #     mcp_deploy_id: ${{ needs.staging-render.outputs.previous_mcp_deploy_id }}
+  #   secrets: inherit
 
   notify-failure:
     needs:
@@ -185,7 +186,7 @@ jobs:
       - staging-daytona
       - staging-render
       - staging-verify
-      - rollback-staging-render
+      # - rollback-staging-render
       # - prod-db
       # - prod-daytona
       # - prod-render
