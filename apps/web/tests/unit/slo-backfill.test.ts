@@ -56,7 +56,7 @@ describe("slo backfill", () => {
       },
       {
         bucket: new Date("2026-05-17T03:00:00.000Z"),
-        journey: "coworker_chat",
+        journey: "unknown_coworker_generation",
         result: "bad",
         count: 99,
       },
@@ -84,7 +84,7 @@ describe("slo backfill", () => {
       samples.find(
         (sample) =>
           sample.timestampMs === Date.parse("2026-05-17T03:00:00.000Z") &&
-          sample.journey === "coworker_chat" &&
+          sample.journey === "unknown_coworker_generation" &&
           sample.result === "bad",
       )?.value,
     ).toBe(0);
@@ -182,7 +182,7 @@ describe("slo backfill", () => {
     });
   });
 
-  test("aggregation query classifies terminal events and omits coworker run generations", async () => {
+  test("aggregation query classifies terminal events and omits initial coworker run generations", async () => {
     const query = vi.fn(async (_sql: string, _values?: unknown[]) => ({
       rows: [] as RawSloBucket[],
     }));
@@ -201,7 +201,10 @@ describe("slo backfill", () => {
     const [sql, values] = call;
     expect(sql).toContain("exists");
     expect(sql).toContain("cw.builder_conversation_id = g.conversation_id");
-    expect(sql).toContain("when c.type = 'coworker' then 'coworker_chat'");
+    expect(sql).toContain("cr_by_conversation.conversation_id = g.conversation_id");
+    expect(sql).toContain("run_generation.conversation_id = g.conversation_id");
+    expect(sql).toContain("then 'coworker_run'");
+    expect(sql).toContain("when c.type = 'coworker' then 'unknown_coworker_generation'");
     expect(sql).toContain("left join coworker_run cr on cr.generation_id = g.id");
     expect(sql).toContain("and cr.id is null");
     expect(sql).toContain("seed_events as");

@@ -43,7 +43,7 @@
               },
               {
                 "color": "green",
-                "value": 0.95
+                "value": 0.9
               }
             ]
           },
@@ -52,12 +52,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
+        "h": 5,
+        "w": 6,
         "x": 0,
         "y": 0
       },
-      "id": 1,
+      "id": 11,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
@@ -82,13 +82,356 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "1 - (sum(increase(cmdclaw_slo_events_total{journey=\"global\",result=\"bad\"}[30d])) / sum(increase(cmdclaw_slo_events_total{journey=\"global\"}[30d])))",
-          "legendFormat": "global",
+          "expr": "1 - (sum(increase(cmdclaw_slo_events_total{journey=\"global\",result=\"bad\"}[1d])) / clamp_min(sum(increase(cmdclaw_slo_events_total{journey=\"global\"}[1d])), 1))",
+          "legendFormat": "global 1d",
+          "refId": "A"
+        }
+      ],
+      "title": "Global 1d Availability",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 12,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.1.7",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "1 - (sum(increase(cmdclaw_slo_events_total{journey=\"global\",result=\"bad\"}[3d])) / clamp_min(sum(increase(cmdclaw_slo_events_total{journey=\"global\"}[3d])), 1))",
+          "legendFormat": "global 3d",
+          "refId": "A"
+        }
+      ],
+      "title": "Global 3d Availability",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.1.7",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "1 - (sum(increase(cmdclaw_slo_events_total{journey=\"global\",result=\"bad\"}[7d])) / clamp_min(sum(increase(cmdclaw_slo_events_total{journey=\"global\"}[7d])), 1))",
+          "legendFormat": "global 7d",
+          "refId": "A"
+        }
+      ],
+      "title": "Global 7d Availability",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.1.7",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "1 - (sum(increase(cmdclaw_slo_events_total{journey=\"global\",result=\"bad\"}[30d])) / clamp_min(sum(increase(cmdclaw_slo_events_total{journey=\"global\"}[30d])), 1))",
+          "legendFormat": "global 30d",
           "refId": "A"
         }
       ],
       "title": "Global 30d Availability",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 5
+      },
+      "id": 15,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.1.7",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "min(1 - (sum by (journey) (increase(cmdclaw_slo_events_total{journey!=\"global\",result=\"bad\"}[$slo_window])) / clamp_min(sum by (journey) (increase(cmdclaw_slo_events_total{journey!=\"global\"}[$slo_window])), 1)))",
+          "legendFormat": "worst journey",
+          "refId": "A"
+        }
+      ],
+      "title": "Worst Journey Availability ($slo_window)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 16,
+        "x": 8,
+        "y": 5
+      },
+      "id": 16,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "12.1.7",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "sum by (journey) (increase(cmdclaw_slo_events_total{journey!=\"global\"}[$slo_window]))",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{journey}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Event Volume by Journey ($slo_window)",
+      "type": "table"
     },
     {
       "datasource": {
@@ -119,7 +462,7 @@
               },
               {
                 "color": "green",
-                "value": 0.95
+                "value": 0.9
               }
             ]
           },
@@ -129,9 +472,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 16,
-        "x": 8,
-        "y": 0
+        "w": 24,
+        "x": 0,
+        "y": 10
       },
       "id": 2,
       "options": {
@@ -151,12 +494,12 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "1 - (sum by (journey) (increase(cmdclaw_slo_events_total{result=\"bad\"}[30d])) / sum by (journey) (increase(cmdclaw_slo_events_total[30d])))",
+          "expr": "1 - (sum by (journey) (increase(cmdclaw_slo_events_total{journey!=\"global\",result=\"bad\"}[$slo_window])) / clamp_min(sum by (journey) (increase(cmdclaw_slo_events_total{journey!=\"global\"}[$slo_window])), 1))",
           "legendFormat": "{{journey}}",
           "refId": "A"
         }
       ],
-      "title": "30d Availability by Journey",
+      "title": "Availability by Journey ($slo_window)",
       "type": "timeseries"
     },
     {
@@ -185,7 +528,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 18
       },
       "id": 3,
       "options": {
@@ -205,12 +548,12 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (journey) (increase(cmdclaw_slo_events_total{result=\"bad\"}[30d])) / sum by (journey) (increase(cmdclaw_slo_events_total[30d]))",
+          "expr": "sum by (journey) (increase(cmdclaw_slo_events_total{journey!=\"global\",result=\"bad\"}[$slo_window])) / clamp_min(sum by (journey) (increase(cmdclaw_slo_events_total{journey!=\"global\"}[$slo_window])), 1)",
           "legendFormat": "{{journey}}",
           "refId": "A"
         }
       ],
-      "title": "30d Error Rate by Journey",
+      "title": "Error Rate by Journey ($slo_window)",
       "type": "timeseries"
     },
     {
@@ -239,7 +582,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 8
+        "y": 18
       },
       "id": 4,
       "options": {
@@ -259,12 +602,12 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (journey) (rate(cmdclaw_slo_events_total{result=\"bad\"}[1d1h43m])) / sum by (journey) (rate(cmdclaw_slo_events_total[1d1h43m])) / 0.05",
+          "expr": "sum by (journey) (rate(cmdclaw_slo_events_total{journey!=\"global\",result=\"bad\"}[$slo_window])) / clamp_min(sum by (journey) (rate(cmdclaw_slo_events_total{journey!=\"global\"}[$slo_window])), 1) / 0.10",
           "legendFormat": "{{journey}}",
           "refId": "A"
         }
       ],
-      "title": "Long Window Error Budget Burn Rate",
+      "title": "Fast Error Budget Burn Rate ($slo_window)",
       "type": "timeseries"
     },
     {
@@ -302,7 +645,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 26
       },
       "id": 5,
       "options": {
@@ -324,14 +667,14 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (journey, result) (increase(cmdclaw_slo_events_total[30d]))",
+          "expr": "sum by (journey, result) (increase(cmdclaw_slo_events_total{journey!=\"global\"}[$slo_window]))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{journey}} {{result}}",
           "refId": "A"
         }
       ],
-      "title": "30d Event Counts",
+      "title": "Event Counts ($slo_window)",
       "type": "table"
     }
   ],
@@ -343,15 +686,54 @@
     "slo"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "7d",
+          "value": "7d"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "SLO window",
+        "multi": false,
+        "name": "slo_window",
+        "options": [
+          {
+            "selected": false,
+            "text": "1d",
+            "value": "1d"
+          },
+          {
+            "selected": false,
+            "text": "3d",
+            "value": "3d"
+          },
+          {
+            "selected": true,
+            "text": "7d",
+            "value": "7d"
+          },
+          {
+            "selected": false,
+            "text": "30d",
+            "value": "30d"
+          }
+        ],
+        "query": "1d,3d,7d,30d",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
   },
   "time": {
-    "from": "now-30d",
+    "from": "now-7d",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "CmdClaw SLOs",
   "uid": "cmdclaw-slo",
-  "version": 1
+  "version": 4
 }

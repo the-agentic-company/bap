@@ -9,8 +9,8 @@ export const SLO_JOURNEYS = [
   "global",
   "chat",
   "coworker_builder",
-  "coworker_chat",
   "coworker_run",
+  "unknown_coworker_generation",
 ] as const;
 
 export const SLO_RESULTS = ["good", "bad"] as const;
@@ -109,7 +109,15 @@ export async function aggregateSloBuckets(
               from coworker cw
               where cw.builder_conversation_id = g.conversation_id
             ) then 'coworker_builder'
-            when c.type = 'coworker' then 'coworker_chat'
+            when exists (
+              select 1
+              from coworker_run cr_by_conversation
+              left join generation run_generation
+                on run_generation.id = cr_by_conversation.generation_id
+              where cr_by_conversation.conversation_id = g.conversation_id
+                 or run_generation.conversation_id = g.conversation_id
+            ) then 'coworker_run'
+            when c.type = 'coworker' then 'unknown_coworker_generation'
             else 'chat'
           end as journey,
           case when g.status = 'error' then 'bad' else 'good' end as result
