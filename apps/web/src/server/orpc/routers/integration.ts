@@ -612,6 +612,10 @@ const getAuthUrl = protectedProcedure
       params.set("prompt", "consent");
     }
 
+    if (input.type === "outlook" || input.type === "outlook_calendar") {
+      params.set("prompt", "select_account");
+    }
+
     if (input.type === "notion") {
       params.set("owner", "user");
     }

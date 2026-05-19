@@ -82,6 +82,10 @@ export async function GET(request: Request) {
       params.set("prompt", "consent");
     }
 
+    if (type === "outlook" || type === "outlook_calendar") {
+      params.set("prompt", "select_account");
+    }
+
     if (type === "notion") {
       params.set("owner", "user");
     }

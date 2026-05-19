@@ -325,6 +325,30 @@ describe("integrationRouter", () => {
     expect(notionUrl.searchParams.get("owner")).toBe("user");
   });
 
+  it("prompts Microsoft users to pick an account when generating Outlook auth URLs", async () => {
+    const context = createContext();
+
+    const outlook = (await integrationRouterAny.getAuthUrl({
+      input: {
+        type: "outlook",
+        redirectUrl: "https://app.example.com/integrations",
+      },
+      context,
+    })) as { authUrl: string };
+    const outlookUrl = new URL(outlook.authUrl);
+    expect(outlookUrl.searchParams.get("prompt")).toBe("select_account");
+
+    const outlookCalendar = (await integrationRouterAny.getAuthUrl({
+      input: {
+        type: "outlook_calendar",
+        redirectUrl: "https://app.example.com/integrations",
+      },
+      context,
+    })) as { authUrl: string };
+    const outlookCalendarUrl = new URL(outlookCalendar.authUrl);
+    expect(outlookCalendarUrl.searchParams.get("prompt")).toBe("select_account");
+  });
+
   it("blocks google auth URL generation for non-allowlisted non-admin users", async () => {
     const context = createContext();
     context.db.query.user.findFirst.mockResolvedValueOnce({

@@ -85,4 +85,28 @@ describe("GET /api/control-plane/integrations/connect", () => {
     };
     expect(decodedState.redirectUrl).toBe("https://app.example.com/toolbox");
   });
+
+  it("prompts Microsoft users to pick an Outlook account when connecting", async () => {
+    const response = await GET(
+      new Request("https://app.example.com/api/control-plane/integrations/connect?type=outlook"),
+    );
+
+    expect(response.status).toBe(307);
+    const location = new URL(getLocation(response));
+
+    expect(location.searchParams.get("prompt")).toBe("select_account");
+  });
+
+  it("prompts Microsoft users to pick an Outlook Calendar account when connecting", async () => {
+    const response = await GET(
+      new Request(
+        "https://app.example.com/api/control-plane/integrations/connect?type=outlook_calendar",
+      ),
+    );
+
+    expect(response.status).toBe(307);
+    const location = new URL(getLocation(response));
+
+    expect(location.searchParams.get("prompt")).toBe("select_account");
+  });
 });
