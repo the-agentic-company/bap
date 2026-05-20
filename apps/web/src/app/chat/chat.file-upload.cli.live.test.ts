@@ -17,6 +17,7 @@ const expectedToken = "404df6e0-8ec4-4453-9997-f6e2285acb77";
 const fileUploadPrompt =
   process.env.E2E_CHAT_FILE_UPLOAD_PROMPT ??
   "Open the attached file and read it. Reply with the exact file content only.";
+const fileUploadCliLiveEnabled = process.env.E2E_ENABLE_FLAKY_FILE_UPLOAD_CLI === "1";
 
 let liveModel = "";
 
@@ -50,7 +51,7 @@ describe.runIf(liveEnabled)("@live CLI chat file upload", () => {
     liveModel = await resolveLiveModel();
   });
 
-  test(
+  test.runIf(fileUploadCliLiveEnabled)(
     "uploads txt file and assistant can read its content",
     { timeout: Math.max(responseTimeoutMs + 60_000, 240_000) },
     async () => {

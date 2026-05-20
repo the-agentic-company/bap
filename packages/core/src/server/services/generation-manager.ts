@@ -7335,7 +7335,7 @@ class GenerationManager {
                 ctx.userStagedFilePaths?.add(sandboxPath);
                 promptParts.push({
                   type: "text",
-                  text: `The user uploaded a file: ${sandboxPath} (${a.mimeType}). You can read and process it using the sandbox tools.`,
+                  text: `The user uploaded a file: ${sandboxPath} (${a.mimeType}).`,
                 });
                 stagedUploadCount += 1;
                 if (a.mimeType.startsWith("image/")) {

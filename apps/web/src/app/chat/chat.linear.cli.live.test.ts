@@ -29,7 +29,7 @@ describe.runIf(liveEnabled)("@live CLI chat linear", () => {
       expect(result.stdout).not.toContain("[error]");
       expect(result.stdout).not.toContain("[auth_needed]");
       expect(result.stdout).toContain("[tool_use] executor_execute");
-      expect(result.stdout).toMatch(/"id":\s*"linear"/);
+      expect(result.stdout).toMatch(/"sourceId":\s*"linear"/);
       expect(result.stdout).toContain("Linear MCP");
       expect(result.stdout).toMatch(/"toolCount":\s*(?:[1-9]\d*)/);
       expect(result.stdout).toContain("BAP-310");
