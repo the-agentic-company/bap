@@ -2,26 +2,6 @@ groups:
   - name: cmdclaw-__CMDCLAW_ALERT_ENV__-runtime
     interval: 30s
     rules:
-      - alert: CmdClawWebDown
-        expr: absent_over_time(cmdclaw_runtime_up{service_name="cmdclaw-web"}[10m])
-        for: 5m
-        labels:
-          severity: critical
-          service_name: cmdclaw-web
-        annotations:
-          summary: CmdClaw web runtime has stopped exporting telemetry.
-          description: The __CMDCLAW_ALERT_ENV__ web process has not reported cmdclaw_runtime_up for 10 minutes.
-
-      - alert: CmdClawWorkerDown
-        expr: absent_over_time(cmdclaw_runtime_up{service_name="cmdclaw-worker"}[10m])
-        for: 5m
-        labels:
-          severity: critical
-          service_name: cmdclaw-worker
-        annotations:
-          summary: CmdClaw worker runtime has stopped exporting telemetry.
-          description: The __CMDCLAW_ALERT_ENV__ worker process has not reported cmdclaw_runtime_up for 10 minutes.
-
       - alert: CmdClawRpcErrorRateElevated
         expr: |
           (
