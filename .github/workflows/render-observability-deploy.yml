@@ -1,0 +1,192 @@
+name: Deploy Render Observability Services
+
+on:
+  workflow_call:
+    inputs:
+      commit_sha:
+        description: "Git commit SHA to deploy"
+        required: true
+        type: string
+      environment:
+        description: "Environment to target"
+        required: true
+        type: string
+      deploy_grafana:
+        description: "Deploy Grafana"
+        required: false
+        type: boolean
+        default: false
+      deploy_vmalert:
+        description: "Deploy vmalert"
+        required: false
+        type: boolean
+        default: false
+      deploy_alertmanager:
+        description: "Deploy Alertmanager"
+        required: false
+        type: boolean
+        default: false
+      deploy_vector:
+        description: "Deploy Vector"
+        required: false
+        type: boolean
+        default: false
+      deploy_caddy:
+        description: "Deploy observability Caddy ingress"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      RENDER_API_KEY:
+        required: false
+
+jobs:
+  deploy-grafana:
+    if: ${{ inputs.deploy_grafana }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_NAME: cmdclaw-grafana-${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit_sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${RENDER_API_KEY}" ] || {
+            echo 'Missing RENDER_API_KEY' >&2
+            exit 1
+          }
+
+      - name: Deploy Grafana
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"
+
+  deploy-vmalert:
+    if: ${{ inputs.deploy_vmalert }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_NAME: cmdclaw-vmalert-${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit_sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${RENDER_API_KEY}" ] || {
+            echo 'Missing RENDER_API_KEY' >&2
+            exit 1
+          }
+
+      - name: Deploy vmalert
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"
+
+  deploy-alertmanager:
+    if: ${{ inputs.deploy_alertmanager }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_NAME: cmdclaw-alertmanager-${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit_sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${RENDER_API_KEY}" ] || {
+            echo 'Missing RENDER_API_KEY' >&2
+            exit 1
+          }
+
+      - name: Deploy Alertmanager
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"
+
+  deploy-vector:
+    if: ${{ inputs.deploy_vector }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_NAME: cmdclaw-vector-${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit_sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${RENDER_API_KEY}" ] || {
+            echo 'Missing RENDER_API_KEY' >&2
+            exit 1
+          }
+
+      - name: Deploy Vector
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"
+
+  deploy-caddy:
+    if: ${{ inputs.deploy_caddy }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_NAME: cmdclaw-caddy-${{ inputs.environment }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit_sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${RENDER_API_KEY}" ] || {
+            echo 'Missing RENDER_API_KEY' >&2
+            exit 1
+          }
+
+      - name: Deploy Caddy
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --commit "${{ inputs.commit_sha }}"

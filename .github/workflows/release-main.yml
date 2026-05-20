@@ -42,6 +42,100 @@ jobs:
           git merge-base --is-ancestor "${commit_sha}" origin/main
           echo "commit_sha=${commit_sha}" >> "$GITHUB_OUTPUT"
 
+  observability-changes:
+    needs: resolve
+    runs-on: ubuntu-latest
+    outputs:
+      any: ${{ steps.changes.outputs.any }}
+      grafana: ${{ steps.changes.outputs.grafana }}
+      vmalert: ${{ steps.changes.outputs.vmalert }}
+      alertmanager: ${{ steps.changes.outputs.alertmanager }}
+      vector: ${{ steps.changes.outputs.vector }}
+      caddy: ${{ steps.changes.outputs.caddy }}
+      verify_grafana: ${{ steps.changes.outputs.verify_grafana }}
+      verify_vmalert: ${{ steps.changes.outputs.verify_vmalert }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Detect observability changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            grafana=true
+            vmalert=true
+            alertmanager=true
+            vector=true
+            caddy=true
+          else
+            before="${{ github.event.before }}"
+            head="${{ needs.resolve.outputs.commit_sha }}"
+
+            if [ -z "${before}" ] || [[ "${before}" =~ ^0+$ ]]; then
+              before="$(git rev-parse "${head}^")"
+            fi
+
+            git diff --name-only "${before}" "${head}" > /tmp/release-main-files.txt
+
+            changed() {
+              grep -Eq "$1" /tmp/release-main-files.txt
+            }
+
+            blueprint=false
+            changed '^render\.yaml$' && blueprint=true
+
+            grafana=false
+            vmalert=false
+            alertmanager=false
+            vector=false
+            caddy=false
+
+            if [ "${blueprint}" = true ]; then
+              grafana=true
+              vmalert=true
+              alertmanager=true
+              vector=true
+              caddy=true
+            fi
+
+            changed '^docker/images/grafana/' && grafana=true
+            changed '^docker/images/vmalert/' && vmalert=true
+            changed '^docker/images/alertmanager/' && alertmanager=true
+            changed '^docker/images/vector/' && vector=true
+            changed '^docker/images/caddy/' && caddy=true
+          fi
+
+          any=false
+          if [ "${grafana}" = true ] || [ "${vmalert}" = true ] || [ "${alertmanager}" = true ] || [ "${vector}" = true ] || [ "${caddy}" = true ]; then
+            any=true
+          fi
+
+          verify_grafana=false
+          verify_vmalert=false
+          if [ "${grafana}" = true ] || [ "${caddy}" = true ]; then
+            verify_grafana=true
+          fi
+          if [ "${vmalert}" = true ] || [ "${caddy}" = true ]; then
+            verify_vmalert=true
+          fi
+
+          {
+            echo "any=${any}"
+            echo "grafana=${grafana}"
+            echo "vmalert=${vmalert}"
+            echo "alertmanager=${alertmanager}"
+            echo "vector=${vector}"
+            echo "caddy=${caddy}"
+            echo "verify_grafana=${verify_grafana}"
+            echo "verify_vmalert=${verify_vmalert}"
+          } >> "$GITHUB_OUTPUT"
+
   staging-db:
     needs: resolve
     uses: ./.github/workflows/db-push.yml
@@ -67,6 +161,33 @@ jobs:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
       environment: staging
     secrets: inherit
+
+  staging-observability:
+    needs:
+      - resolve
+      - observability-changes
+    if: ${{ needs.observability-changes.outputs.any == 'true' }}
+    uses: ./.github/workflows/render-observability-deploy.yml
+    with:
+      commit_sha: ${{ needs.resolve.outputs.commit_sha }}
+      environment: staging
+      deploy_grafana: ${{ needs.observability-changes.outputs.grafana == 'true' }}
+      deploy_vmalert: ${{ needs.observability-changes.outputs.vmalert == 'true' }}
+      deploy_alertmanager: ${{ needs.observability-changes.outputs.alertmanager == 'true' }}
+      deploy_vector: ${{ needs.observability-changes.outputs.vector == 'true' }}
+      deploy_caddy: ${{ needs.observability-changes.outputs.caddy == 'true' }}
+    secrets: inherit
+
+  staging-observability-verify:
+    needs:
+      - observability-changes
+      - staging-observability
+    if: ${{ needs.observability-changes.outputs.verify_grafana == 'true' || needs.observability-changes.outputs.verify_vmalert == 'true' }}
+    uses: ./.github/workflows/verify-observability.yml
+    with:
+      environment: staging
+      verify_grafana: ${{ needs.observability-changes.outputs.verify_grafana == 'true' }}
+      verify_vmalert: ${{ needs.observability-changes.outputs.verify_vmalert == 'true' }}
 
   staging-verify:
     needs:
@@ -184,9 +305,12 @@ jobs:
   notify-failure:
     needs:
       - resolve
+      - observability-changes
       - staging-db
       - staging-daytona
       - staging-render
+      - staging-observability
+      - staging-observability-verify
       - staging-verify
       # - rollback-staging-render
       # - prod-db
