@@ -1,5 +1,20 @@
 import type { ProviderAuthSource } from "../../lib/provider-auth-source";
 import type { ExecutionEnvironment } from "../execution/execution-environment";
+import {
+  buildDefaultQuestionAnswers,
+  buildQuestionCommand,
+  limitToolResultContent,
+  type OpenCodeActionableEvent,
+  type OpenCodeRuntimeToolRef,
+} from "./opencode/opencode-event-translator";
+import {
+  captureOpenCodeUsageFromSession,
+  handleOpenCodeActionableEvent,
+  sendOpenCodeApprovalRuntimeDecision,
+  updateOpenCodeToolPart,
+  type OpenCodeApprovalCapableClient,
+  type OpenCodeApprovalRuntimeRequest,
+} from "./opencode/opencode-runtime-driver";
 
 export interface RuntimeDriver {
   startTurn(input: RuntimeStartTurnInput): Promise<RuntimeTurn>;
@@ -161,3 +176,14 @@ export type RuntimeDecisionResolution =
       decision: "approve" | "deny";
       answers?: string[][];
     };
+
+export type RuntimeActionableEvent = OpenCodeActionableEvent;
+export type RuntimeToolRef = OpenCodeRuntimeToolRef;
+export type RuntimeApprovalCapableClient = OpenCodeApprovalCapableClient;
+export type RuntimeApprovalRequest = OpenCodeApprovalRuntimeRequest;
+
+export const handleRuntimeActionableEvent = handleOpenCodeActionableEvent;
+export const sendRuntimeApprovalDecision = sendOpenCodeApprovalRuntimeDecision;
+export const updateRuntimeToolPart = updateOpenCodeToolPart;
+export const captureRuntimeUsageFromSession = captureOpenCodeUsageFromSession;
+export { buildDefaultQuestionAnswers, buildQuestionCommand, limitToolResultContent };

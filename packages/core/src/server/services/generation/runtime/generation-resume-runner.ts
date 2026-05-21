@@ -1,12 +1,12 @@
 import type { ContentPart } from "@cmdclaw/db/schema";
-import { limitToolResultContent } from "../../../runtime/opencode/opencode-event-translator";
+import { limitToolResultContent } from "../../../runtime/runtime-driver";
 import {
   generationInterruptService,
   type GenerationInterruptRecord,
 } from "../../generation-interrupt-service";
 import type { GenerationLifecycleStore } from "../core/lifecycle-store";
 import type { DecisionFlow } from "../decisions/decision-flow";
-import type { OpenCodeRecoveryReattachOptions } from "./opencode-recovery-runner";
+import type { OpenCodeRecoveryReattachOptions } from "../../../runtime/opencode/opencode-recovery-runner";
 import type { GenerationContext, GenerationEvent } from "../types";
 import type { GenerationContextState } from "./generation-context-state";
 

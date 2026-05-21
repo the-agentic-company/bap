@@ -2,18 +2,18 @@ import {
   OpenCodeEventTranslator,
   type OpenCodeActionableEvent,
   type OpenCodeTrackedEvent,
-} from "../../../runtime/opencode/opencode-event-translator";
+} from "./opencode-event-translator";
 import {
   OpenCodeRuntimeEventLoop,
   type OpenCodeApprovalCapableClient,
-} from "../../../runtime/opencode/opencode-runtime-driver";
+} from "./opencode-runtime-driver";
 import {
   parseCoworkerEditApplyEnvelope,
   parseCoworkerInvocationEnvelope,
-} from "../../../../lib/coworker-runtime-cli";
-import { logServerEvent } from "../../../utils/observability";
-import { getToolUseMetadata } from "../streams/replay-events";
-import type { GenerationContext, GenerationEvent } from "../types";
+} from "../../../lib/coworker-runtime-cli";
+import { logServerEvent } from "../../utils/observability";
+import { getToolUseMetadata } from "../../services/generation/streams/replay-events";
+import type { GenerationContext, GenerationEvent } from "../../services/generation/types";
 
 export type OpenCodeTurnEventLoopMode = "normal" | "recovery_reattach";
 

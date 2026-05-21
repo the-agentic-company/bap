@@ -13,7 +13,7 @@ type TestContext = {
   assistantMessageIds: Set<string>;
   messageRoles: Map<string, string>;
   pendingMessageParts: Map<string, { firstQueuedAtMs: number; parts: RuntimePart[] }>;
-  openCodeRuntimeTools: Map<
+  runtimeTools: Map<
     string,
     {
       sessionId?: string;
@@ -36,7 +36,7 @@ function createContext(overrides: Partial<TestContext> = {}): TestContext {
     assistantMessageIds: new Set(),
     messageRoles: new Map(),
     pendingMessageParts: new Map(),
-    openCodeRuntimeTools: new Map(),
+    runtimeTools: new Map(),
     ...overrides,
   };
 }

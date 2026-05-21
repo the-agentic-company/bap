@@ -9,7 +9,8 @@ import type {
 import type { ProviderAuthSource } from "../../../lib/provider-auth-source";
 import type { RuntimePart } from "../../sandbox/core/types";
 import type { SandboxBackend } from "../../sandbox/types";
-import type { OpenCodeRuntimeToolRef } from "../../runtime/opencode/opencode-event-translator";
+import type { ExecutionEnvironment } from "../../execution/execution-environment";
+import type { RuntimeToolRef } from "../../runtime/runtime-driver";
 import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
@@ -206,6 +207,7 @@ export interface GenerationContext {
   userId: string;
   workspaceId?: string | null;
   sandboxId?: string;
+  executionEnvironment?: ExecutionEnvironment;
   status: GenerationStatus;
   executionPolicy: GenerationExecutionPolicy;
   deadlineAt: Date;
@@ -252,7 +254,7 @@ export interface GenerationContext {
       parts: RuntimePart[];
     }
   >;
-  openCodeRuntimeTools: Map<string, OpenCodeRuntimeToolRef>;
+  runtimeTools: Map<string, RuntimeToolRef>;
   backendType: GenerationBackendType;
   sandboxProviderOverride?: "e2b" | "daytona" | "docker";
   coworkerId?: string;

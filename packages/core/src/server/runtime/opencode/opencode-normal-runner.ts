@@ -1,57 +1,57 @@
 import { db } from "@cmdclaw/db/client";
 import { conversation } from "@cmdclaw/db/schema";
 import { eq } from "drizzle-orm";
-import { env } from "../../../../env";
-import { splitCoworkerAllowedSkillSlugs } from "../../../../lib/coworker-tool-policy";
-import { parseModelReference } from "../../../../lib/model-reference";
-import type { RuntimeContextFile } from "../../../../lib/runtime-context";
+import { env } from "../../../env";
+import { splitCoworkerAllowedSkillSlugs } from "../../../lib/coworker-tool-policy";
+import { parseModelReference } from "../../../lib/model-reference";
+import type { RuntimeContextFile } from "../../../lib/runtime-context";
 import {
   stageExecutorPrePrompt,
   ExecutorPromptReadyError,
-} from "../../../execution/executor-preprompt";
-import { stagePrePromptAssets } from "../../../execution/pre-prompt-assets";
-import { stageRuntimePromptAttachments } from "../../../execution/prompt-attachments";
+} from "../../execution/executor-preprompt";
+import { createExecutionEnvironmentFactory } from "../../execution/execution-environment-factory";
+import type { ExecutionEnvironmentSession } from "../../execution/execution-environment";
+import { stagePrePromptAssets } from "../../execution/pre-prompt-assets";
+import { stageRuntimePromptAttachments } from "../../execution/prompt-attachments";
 import {
   writeRuntimeContextToSandbox,
   writeRuntimeEnvToSandbox,
-} from "../../../execution/runtime-context";
-import { resolveRuntimeEnvironmentForTurn } from "../../../execution/runtime-env";
-import { composeOpencodePromptSpec } from "../../../prompts/opencode-runtime-prompt";
+} from "../../execution/runtime-context";
+import { resolveRuntimeEnvironmentForTurn } from "../../execution/runtime-env";
+import { composeOpencodePromptSpec } from "../../prompts/opencode-runtime-prompt";
 import {
   isOpaqueDiagnosticMessage,
   resolveOpenCodePromptCompletion,
   waitForOpenCodeTerminalStateAfterEarlyStreamEnd,
-} from "../../../runtime/opencode/opencode-runtime-driver";
+} from "./opencode-runtime-driver";
 import type {
   RuntimeHarnessClient,
   RuntimeMcpServer,
   RuntimePromptPart,
-} from "../../../sandbox/core/types";
-import {
-  getOrCreateConversationSandbox,
-  getOrCreateConversationRuntime,
-} from "../../../sandbox/core/orchestrator";
+  RuntimeSelection,
+  SandboxHandle,
+} from "../../sandbox/core/types";
 import {
   buildMemorySystemPrompt,
   syncMemoryFilesToSandbox,
-} from "../../../sandbox/prep/memory-prep";
+} from "../../sandbox/prep/memory-prep";
 import {
   getIntegrationSkillsSystemPrompt,
   getSkillsSystemPrompt,
-} from "../../../sandbox/prep/skills-prep";
-import { logServerEvent } from "../../../utils/observability";
+} from "../../sandbox/prep/skills-prep";
+import { logServerEvent } from "../../utils/observability";
 import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
-} from "../../lifecycle-policy";
-import { GenerationSuspendedError } from "../core/turn-suspension";
-import { buildOpencodePromptSpecInputForContext } from "../prompts/opencode-prompt-context";
+} from "../../services/lifecycle-policy";
+import { GenerationSuspendedError } from "../../services/generation/core/turn-suspension";
+import { buildOpencodePromptSpecInputForContext } from "../../services/generation/prompts/opencode-prompt-context";
 import type {
   GenerationContext,
   GenerationEvent,
   GenerationStatus,
   RemoteRunDebugPhase,
-} from "../types";
+} from "../../services/generation/types";
 import type { OpenCodeTurnEventBridge } from "./opencode-turn-events";
 
 const OPENCODE_EARLY_STREAM_REATTACH_ATTEMPTS = 2;
@@ -89,32 +89,24 @@ type NormalRunnerCallbacks = {
   bindRuntimeSandboxToContext: (
     ctx: GenerationContext,
     input: {
-      runtimeSandbox: Awaited<
-        ReturnType<typeof getOrCreateConversationSandbox>
-      >["sandbox"];
-      runtimeMetadata?: Awaited<
-        ReturnType<typeof getOrCreateConversationSandbox>
-      >["metadata"];
+      runtimeSandbox: SandboxHandle;
+      runtimeMetadata?: RuntimeSelection;
+      executionEnvironment?: ExecutionEnvironmentSession["environment"];
     },
   ) => Promise<void>;
   bindRuntimeSessionToContext: (
     ctx: GenerationContext,
     input: {
-      runtimeSandbox: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["sandbox"];
-      runtimeMetadata?: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["metadata"];
+      runtimeSandbox: SandboxHandle;
+      runtimeMetadata?: RuntimeSelection;
+      executionEnvironment?: ExecutionEnvironmentSession["environment"];
       sessionId: string;
     },
   ) => Promise<void>;
   persistRuntimeSessionBinding: (
     ctx: GenerationContext,
     input: {
-      runtimeMetadata?: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["metadata"];
+      runtimeMetadata?: RuntimeSelection;
       sessionId: string;
     },
   ) => Promise<void>;
@@ -343,15 +335,9 @@ export class OpenCodeNormalRunner {
       const initWarnAfterMs = 15_000;
 
       let sessionId: string | undefined;
-      let runtimeSandbox: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["sandbox"];
-      let runtimeMetadata:
-        | Awaited<ReturnType<typeof getOrCreateConversationRuntime>>["metadata"]
-        | undefined;
-      let runtimeInit: Awaited<
-        ReturnType<typeof getOrCreateConversationSandbox>
-      >;
+      let runtimeSandbox: SandboxHandle;
+      let runtimeMetadata: RuntimeSelection | undefined;
+      let runtimeInit: ExecutionEnvironmentSession;
 
       ctx.agentSandboxReadyAt = undefined;
       ctx.agentSandboxMode = undefined;
@@ -390,8 +376,11 @@ export class OpenCodeNormalRunner {
       }, initWarnAfterMs);
 
       try {
+        const executionFactory = createExecutionEnvironmentFactory({
+          defaultProvider: ctx.sandboxProviderOverride,
+        });
         runtimeInit = await withTimeout(
-          getOrCreateConversationSandbox(
+          executionFactory.providerFor(ctx.sandboxProviderOverride).acquire(
             {
               conversationId: ctx.conversationId,
               generationId: ctx.id,
@@ -400,9 +389,6 @@ export class OpenCodeNormalRunner {
               openAIAuthSource: ctx.authSource,
               anthropicApiKey: env.ANTHROPIC_API_KEY || "",
               integrationEnvs,
-            },
-            {
-              sandboxProviderOverride: ctx.sandboxProviderOverride,
               title: conv?.title || "Conversation",
               replayHistory: hasExistingMessages,
               allowSnapshotRestore:
@@ -444,7 +430,7 @@ export class OpenCodeNormalRunner {
           buildPreparingTimeoutMessage(),
         );
         runtimeSandbox = runtimeInit.sandbox;
-        runtimeMetadata = runtimeInit.metadata;
+        runtimeMetadata = runtimeInit.metadata.selection;
       } catch (error) {
         this.callbacks.markPhase(ctx, "sandbox_init_failed");
         this.callbacks.broadcast(ctx, {
@@ -476,6 +462,7 @@ export class OpenCodeNormalRunner {
       await this.callbacks.bindRuntimeSandboxToContext(ctx, {
         runtimeSandbox,
         runtimeMetadata,
+        executionEnvironment: runtimeInit.environment,
       });
       if (ctx.remoteIntegrationSource) {
         this.callbacks.recordRemoteRunPhase(ctx, "sandbox_created");
@@ -520,15 +507,13 @@ export class OpenCodeNormalRunner {
       }, initWarnAfterMs);
 
       let resolveExecutorSessionMcpServers: (
-        value:
-          | import("../../../sandbox/core/types").RuntimeMcpServer[]
-          | undefined,
+        value: RuntimeMcpServer[] | undefined,
       ) => void = () => {};
       let rejectExecutorSessionMcpServers: (
         reason?: unknown,
       ) => void = () => {};
       const executorSessionMcpServersPromise: Promise<
-        import("../../../sandbox/core/types").RuntimeMcpServer[] | undefined
+        RuntimeMcpServer[] | undefined
       > =
         runtimeMetadata?.runtimeHarness === "opencode"
           ? new Promise((resolve, reject) => {
@@ -545,8 +530,8 @@ export class OpenCodeNormalRunner {
             remainingPreparingTimeoutMs(),
             buildPreparingTimeoutMessage(),
           );
-          client = session.harnessClient;
-          sessionId = session.session.id;
+          client = session.runtimeClient;
+          sessionId = session.sessionId;
           await this.callbacks.persistRuntimeSessionBinding(ctx, {
             runtimeMetadata,
             sessionId,

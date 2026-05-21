@@ -11,14 +11,12 @@ import type { RuntimeHarnessClient } from "../../sandbox/core/types";
 import {
   buildDefaultQuestionAnswers,
   buildQuestionCommand,
-  type OpenCodeActionableEvent,
-  type OpenCodeRuntimeToolRef,
-} from "../../runtime/opencode/opencode-event-translator";
-import {
-  captureOpenCodeUsageFromSession,
-  sendOpenCodeApprovalRuntimeDecision,
-  type OpenCodeApprovalCapableClient,
-} from "../../runtime/opencode/opencode-runtime-driver";
+  captureRuntimeUsageFromSession,
+  sendRuntimeApprovalDecision,
+  type RuntimeActionableEvent,
+  type RuntimeApprovalCapableClient,
+  type RuntimeToolRef,
+} from "../../runtime/runtime-driver";
 import { SandboxSlotLeaseCoordinator } from "../../execution/sandbox-slot-lease";
 import {
   extractRuntimeExportState,
@@ -66,12 +64,12 @@ import { importIntegrationSkillDraftsFromSandbox } from "./skills/integration-sk
 import { GenerationEventLog } from "./streams/generation-event-log";
 import { GenerationContextState } from "./runtime/generation-context-state";
 import { GenerationResumeRunner } from "./runtime/generation-resume-runner";
-import { OpenCodeTurnEventBridge } from "./runtime/opencode-turn-events";
-import { OpenCodeNormalRunner } from "./runtime/opencode-normal-runner";
+import { OpenCodeTurnEventBridge } from "../../runtime/opencode/opencode-turn-events";
+import { OpenCodeNormalRunner } from "../../runtime/opencode/opencode-normal-runner";
 import {
   OpenCodeRecoveryRunner,
   type OpenCodeRecoveryReattachOptions,
-} from "./runtime/opencode-recovery-runner";
+} from "../../runtime/opencode/opencode-recovery-runner";
 import {
   TurnIntake,
   type StartCoworkerGenerationInput,
@@ -96,7 +94,7 @@ import {
 
 export type { GenerationEvent };
 
-type ApprovalCapableClient = OpenCodeApprovalCapableClient;
+type ApprovalCapableClient = RuntimeApprovalCapableClient;
 
 const APPROVAL_TIMEOUT_MS = generationLifecyclePolicy.approvalTimeoutMs;
 const CANCELLATION_POLL_INTERVAL_MS = 1000;
@@ -399,7 +397,7 @@ class GenerationManager {
     markRuntimeActivity: (ctx) => this.contextState.markRuntimeActivity(ctx),
     refreshCancellationSignal: (ctx) => this.refreshCancellationSignal(ctx),
     handleActionableEvent: (ctx, client, event) =>
-      this.handleOpenCodeActionableEvent(ctx, client, event),
+      this.handleRuntimeActionableEvent(ctx, client, event),
   });
   private readonly openCodeNormalRunner = new OpenCodeNormalRunner({
     bootstrapTimeoutMs: AGENT_PREPARING_TIMEOUT_MS,
@@ -1071,7 +1069,7 @@ class GenerationManager {
     sessionId: string,
   ): Promise<void> {
     try {
-      const usage = await captureOpenCodeUsageFromSession(
+      const usage = await captureRuntimeUsageFromSession(
         runtimeClient,
         sessionId,
       );
@@ -1091,12 +1089,12 @@ class GenerationManager {
     }
   }
 
-  private async handleOpenCodeActionableEvent(
+  private async handleRuntimeActionableEvent(
     ctx: GenerationContext,
     client: ApprovalCapableClient,
-    event: OpenCodeActionableEvent,
+    event: RuntimeActionableEvent,
   ): Promise<{ type: "none" | "permission" | "question" }> {
-    return this.decisionFlow.handleOpenCodeActionableEvent({
+    return this.decisionFlow.handleRuntimeActionableEvent({
       ctx,
       client,
       event,
@@ -1117,8 +1115,8 @@ class GenerationManager {
     await this.decisionFlow.applyResolvedInterruptToRuntime({
       ctx,
       interruptId,
-      sendOpenCodeDecision: (request) =>
-        sendOpenCodeApprovalRuntimeDecision(runtimeClient, request),
+      sendRuntimeDecision: (request) =>
+        sendRuntimeApprovalDecision(runtimeClient, request),
       broadcastResolvedEvent: (event) => this.broadcast(ctx, event),
     });
   }
@@ -1244,7 +1242,7 @@ class GenerationManager {
       operation: string;
       command: string;
       providerRequestId?: string;
-      runtimeTool?: OpenCodeRuntimeToolRef;
+      runtimeTool?: RuntimeToolRef;
     },
   ): Promise<{
     decision: "allow" | "deny" | "pending";

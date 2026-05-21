@@ -116,17 +116,92 @@ export function extractEmbeddedJsonObject(raw: string): string {
   throw new SyntaxError("OpenCode session snapshot payload does not contain valid JSON");
 }
 
+function* extractEmbeddedJsonObjects(raw: string): Generator<unknown> {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return;
+  }
+
+  try {
+    yield JSON.parse(trimmed);
+    return;
+  } catch {
+    // Fall back to scanning mixed CLI output for embedded JSON objects.
+  }
+
+  for (let start = trimmed.indexOf("{"); start !== -1; start = trimmed.indexOf("{", start + 1)) {
+    let depth = 0;
+    let inString = false;
+    let isEscaped = false;
+
+    for (let index = start; index < trimmed.length; index += 1) {
+      const char = trimmed[index];
+
+      if (inString) {
+        if (isEscaped) {
+          isEscaped = false;
+          continue;
+        }
+        if (char === "\\") {
+          isEscaped = true;
+          continue;
+        }
+        if (char === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (char === "{" || char === "[") {
+        depth += 1;
+        continue;
+      }
+
+      if (char === "}" || char === "]") {
+        depth -= 1;
+        if (depth === 0) {
+          const candidate = trimmed.slice(start, index + 1);
+          try {
+            yield JSON.parse(candidate);
+          } catch {
+            // Keep scanning after incomplete or non-JSON brace sequences.
+          }
+          break;
+        }
+      }
+    }
+  }
+}
+
 export function normalizeOpencodeSessionSnapshotPayload(raw: string): {
   payload: OpencodeSessionSnapshotPayload;
   raw: string;
 } {
-  const payload = opencodeSessionSnapshotSchema.parse(
-    JSON.parse(extractEmbeddedJsonObject(raw)),
-  );
-  return {
-    payload,
-    raw: JSON.stringify(payload),
-  };
+  let sawJson = false;
+  let lastValidationError: z.ZodError | undefined;
+
+  for (const candidate of extractEmbeddedJsonObjects(raw)) {
+    sawJson = true;
+    const parsed = opencodeSessionSnapshotSchema.safeParse(candidate);
+    if (parsed.success) {
+      return {
+        payload: parsed.data,
+        raw: JSON.stringify(parsed.data),
+      };
+    }
+    lastValidationError = parsed.error;
+  }
+
+  if (!sawJson) {
+    throw new SyntaxError("OpenCode session snapshot payload does not contain valid JSON");
+  }
+
+  throw lastValidationError ?? new SyntaxError("OpenCode session snapshot payload is invalid");
 }
 
 export function parseOpencodeSessionSnapshotPayload(raw: string): OpencodeSessionSnapshotPayload {

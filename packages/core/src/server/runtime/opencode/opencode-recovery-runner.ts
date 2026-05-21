@@ -1,27 +1,30 @@
 import { db } from "@cmdclaw/db/client";
 import { conversation } from "@cmdclaw/db/schema";
 import { eq } from "drizzle-orm";
-import { env } from "../../../../env";
-import { parseModelReference } from "../../../../lib/model-reference";
+import { env } from "../../../env";
+import { parseModelReference } from "../../../lib/model-reference";
 import type {
   RuntimeHarnessClient,
   RuntimePromptPart,
-} from "../../../sandbox/core/types";
-import { getOrCreateConversationRuntime } from "../../../sandbox/core/orchestrator";
-import { logServerEvent } from "../../../utils/observability";
+  RuntimeSelection,
+  SandboxHandle,
+} from "../../sandbox/core/types";
+import { createExecutionEnvironmentFactory } from "../../execution/execution-environment-factory";
+import type { ExecutionRuntimeSession } from "../../execution/execution-environment";
+import { logServerEvent } from "../../utils/observability";
 import {
   writeRuntimeContextToSandbox,
   writeRuntimeEnvToSandbox,
-} from "../../../execution/runtime-context";
+} from "../../execution/runtime-context";
 import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
-} from "../../lifecycle-policy";
+} from "../../services/lifecycle-policy";
 import {
   GenerationSuspendedError,
-} from "../core/turn-suspension";
-import { composeContinuationPromptSpec } from "../prompts/opencode-prompt-context";
-import type { GenerationContext, GenerationEvent, GenerationStatus } from "../types";
+} from "../../services/generation/core/turn-suspension";
+import { composeContinuationPromptSpec } from "../../services/generation/prompts/opencode-prompt-context";
+import type { GenerationContext, GenerationEvent, GenerationStatus } from "../../services/generation/types";
 import { OpenCodeTurnEventBridge } from "./opencode-turn-events";
 
 export type OpenCodeRecoveryReattachOptions = {
@@ -54,8 +57,9 @@ type OpenCodeRecoveryRunnerCallbacks = {
   bindRuntimeSessionToContext: (
     ctx: GenerationContext,
     input: {
-      runtimeSandbox: Awaited<ReturnType<typeof getOrCreateConversationRuntime>>["sandbox"];
-      runtimeMetadata: Awaited<ReturnType<typeof getOrCreateConversationRuntime>>["metadata"];
+      runtimeSandbox: SandboxHandle;
+      runtimeMetadata: RuntimeSelection;
+      executionEnvironment?: ExecutionRuntimeSession["environment"];
       sessionId: string;
     },
   ) => Promise<void>;
@@ -147,8 +151,11 @@ export class OpenCodeRecoveryRunner {
         columns: { title: true },
       });
 
+      const executionFactory = createExecutionEnvironmentFactory({
+        defaultProvider: ctx.sandboxProviderOverride,
+      });
       const session = await withTimeout(
-        getOrCreateConversationRuntime(
+        executionFactory.providerFor(ctx.sandboxProviderOverride).acquireRuntime(
           {
             conversationId: ctx.conversationId,
             generationId: ctx.id,
@@ -157,9 +164,6 @@ export class OpenCodeRecoveryRunner {
             openAIAuthSource: ctx.authSource,
             anthropicApiKey: env.ANTHROPIC_API_KEY || "",
             integrationEnvs: {},
-          },
-          {
-            sandboxProviderOverride: ctx.sandboxProviderOverride,
             title: conv?.title || "Conversation",
             replayHistory: false,
             allowSnapshotRestore: options?.allowSnapshotRestore ?? false,
@@ -176,7 +180,7 @@ export class OpenCodeRecoveryRunner {
         `Agent preparation timed out after ${Math.round(this.callbacks.bootstrapTimeoutMs / 1000)} seconds.`,
       );
 
-      runtimeClient = session.harnessClient;
+      runtimeClient = session.runtimeClient;
 
       if (session.sessionSource === "created_session") {
         this.callbacks.setCompletionReason(ctx, "sandbox_missing");
@@ -195,7 +199,7 @@ export class OpenCodeRecoveryRunner {
         return;
       }
 
-      if (ctx.sessionId && session.session.id !== ctx.sessionId) {
+      if (ctx.sessionId && session.sessionId !== ctx.sessionId) {
         this.callbacks.setCompletionReason(ctx, "broken_runtime_state");
         ctx.errorMessage =
           "The live runtime could not be reattached because the session no longer matched the active generation.";
@@ -205,19 +209,24 @@ export class OpenCodeRecoveryRunner {
 
       await this.callbacks.bindRuntimeSessionToContext(ctx, {
         runtimeSandbox: session.sandbox,
-        runtimeMetadata: session.metadata,
-        sessionId: session.session.id,
+        runtimeMetadata: session.metadata.selection ?? {
+          sandboxProvider: session.metadata.provider,
+          runtimeHarness: session.metadata.runtimeHarness ?? "opencode",
+          runtimeProtocolVersion: session.metadata.runtimeProtocolVersion ?? "opencode-v2",
+        },
+        executionEnvironment: session.environment,
+        sessionId: session.sessionId,
       });
       this.callbacks.broadcast(ctx, {
         type: "status_change",
         status: `${modeLabel}_attached`,
         metadata: {
           runtimeId: ctx.runtimeId,
-          sandboxProvider: session.metadata.sandboxProvider,
+          sandboxProvider: session.metadata.provider,
           runtimeHarness: session.metadata.runtimeHarness,
           runtimeProtocolVersion: session.metadata.runtimeProtocolVersion,
           sandboxId: session.sandbox.sandboxId,
-          sessionId: session.session.id,
+          sessionId: session.sessionId,
         },
       });
       if (ctx.runtimeId && ctx.runtimeCallbackToken && ctx.runtimeTurnSeq) {
@@ -247,7 +256,7 @@ export class OpenCodeRecoveryRunner {
           await this.callbacks.captureUsageFromRuntimeSession(
             ctx,
             runtimeClient,
-            session.session.id,
+            session.sessionId,
           );
         }
         await this.callbacks.finishGeneration(ctx, "completed");
@@ -327,7 +336,7 @@ export class OpenCodeRecoveryRunner {
         );
       }
 
-      await this.callbacks.captureUsageFromRuntimeSession(ctx, runtimeClient, session.session.id);
+      await this.callbacks.captureUsageFromRuntimeSession(ctx, runtimeClient, session.sessionId);
 
       if (ctx.sandbox) {
         try {

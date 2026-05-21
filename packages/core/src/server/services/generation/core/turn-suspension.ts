@@ -1,4 +1,5 @@
 import type { RuntimeHarnessClient } from "../../../sandbox/core/types";
+import type { ReleaseEnvironmentInput } from "../../../execution/execution-environment";
 import { conversationRuntimeService } from "../../conversation-runtime-service";
 import type { GenerationInterruptRecord } from "../../generation-interrupt-service";
 import { saveConversationSessionSnapshot } from "../../opencode-session-snapshot-service";
@@ -53,8 +54,16 @@ async function awaitWithTimeout<T>(
 }
 
 async function saveSessionSnapshot(
-  ctx: Pick<GenerationContext, "conversationId" | "sessionId" | "sandbox">,
+  ctx: Pick<
+    GenerationContext,
+    "conversationId" | "sessionId" | "sandbox" | "executionEnvironment"
+  >,
 ): Promise<void> {
+  if (ctx.executionEnvironment) {
+    await ctx.executionEnvironment.snapshot({ reason: "decision_park" });
+    return;
+  }
+
   if (!ctx.sessionId || !ctx.sandbox) {
     throw new Error(`Cannot snapshot conversation ${ctx.conversationId}: missing runtime session`);
   }
@@ -81,7 +90,10 @@ export class GenerationTurnSuspender {
   constructor(private readonly deps: TurnSuspenderDependencies) {}
 
   async saveSessionSnapshotIfPossible(
-    ctx: Pick<GenerationContext, "conversationId" | "sessionId" | "sandbox">,
+    ctx: Pick<
+      GenerationContext,
+      "conversationId" | "sessionId" | "sandbox" | "executionEnvironment"
+    >,
     reason: string,
   ): Promise<void> {
     if (!ctx.sessionId || !ctx.sandbox) {
@@ -144,7 +156,7 @@ export class GenerationTurnSuspender {
     });
 
     try {
-      await ctx.sandbox?.teardown();
+      await this.releaseExecutionEnvironment(ctx, "paused");
     } catch (error) {
       console.warn("[GenerationManager] Failed to teardown sandbox during run deadline park", {
         generationId: ctx.id,
@@ -192,7 +204,7 @@ export class GenerationTurnSuspender {
     });
 
     try {
-      await ctx.sandbox?.teardown();
+      await this.releaseExecutionEnvironment(ctx, "paused");
     } catch (error) {
       console.warn("[GenerationManager] Failed to teardown sandbox during interrupt park", {
         generationId: ctx.id,
@@ -243,7 +255,7 @@ export class GenerationTurnSuspender {
     ctx: GenerationContext,
     reason: "run deadline" | "interrupt",
   ): Promise<void> {
-    if (!ctx.sessionId || !ctx.sandbox) {
+    if (!ctx.executionEnvironment && (!ctx.sessionId || !ctx.sandbox)) {
       return;
     }
 
@@ -270,9 +282,24 @@ export class GenerationTurnSuspender {
       await conversationRuntimeService.suspendRuntime(ctx.runtimeId);
     }
     ctx.sandbox = undefined;
+    ctx.executionEnvironment = undefined;
     ctx.sandboxId = undefined;
     ctx.sessionId = undefined;
     await this.deps.releaseSandboxSlotLease(ctx);
     this.deps.evictActiveGenerationContext(ctx.id);
+  }
+
+  private async releaseExecutionEnvironment(
+    ctx: GenerationContext,
+    reason: ReleaseEnvironmentInput["reason"],
+  ): Promise<void> {
+    if (ctx.executionEnvironment) {
+      await ctx.executionEnvironment.release({
+        environmentId: ctx.executionEnvironment.id,
+        reason,
+      });
+      return;
+    }
+    await ctx.sandbox?.teardown();
   }
 }

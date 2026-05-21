@@ -13,6 +13,7 @@ import { generationLifecyclePolicy } from "../../lifecycle-policy";
 import { createSandboxBackend } from "../../../execution/sandbox-backend-adapter";
 import { resolveRuntimeEnvironmentForTurn } from "../../../execution/runtime-env";
 import type { getOrCreateConversationRuntime } from "../../../sandbox/core/orchestrator";
+import type { ExecutionEnvironment } from "../../../execution/execution-environment";
 
 type GenerationContextStateDependencies = {
   lifecycleStore: GenerationLifecycleStore;
@@ -239,9 +240,11 @@ export class GenerationContextState {
       runtimeMetadata?: Awaited<
         ReturnType<typeof getOrCreateConversationRuntime>
       >["metadata"];
+      executionEnvironment?: ExecutionEnvironment;
     },
   ): Promise<void> {
     ctx.sandboxId = params.runtimeSandbox.sandboxId;
+    ctx.executionEnvironment = params.executionEnvironment;
 
     await this.deps.lifecycleStore.bindRuntimeSandbox({
       generationId: ctx.id,
@@ -263,6 +266,7 @@ export class GenerationContextState {
       runtimeMetadata?: Awaited<
         ReturnType<typeof getOrCreateConversationRuntime>
       >["metadata"];
+      executionEnvironment?: ExecutionEnvironment;
       sessionId: string;
     },
   ): Promise<void> {

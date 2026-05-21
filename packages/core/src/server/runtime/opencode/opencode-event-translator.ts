@@ -53,7 +53,7 @@ export interface OpenCodeTranslationContext {
       parts: RuntimePart[];
     }
   >;
-  openCodeRuntimeTools: Map<string, OpenCodeRuntimeToolRef>;
+  runtimeTools: Map<string, OpenCodeRuntimeToolRef>;
 }
 
 type CurrentTextPart = { type: "text"; text: string } | null;
@@ -357,8 +357,8 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
       const toolName = part.tool;
       const toolInput = "input" in part.state ? (part.state.input as Record<string, unknown>) : {};
       if (part.messageID) {
-        ctx.openCodeRuntimeTools ??= new Map();
-        ctx.openCodeRuntimeTools.set(toolUseId, {
+        ctx.runtimeTools ??= new Map();
+        ctx.runtimeTools.set(toolUseId, {
           sessionId: ctx.sessionId,
           messageId: part.messageID,
           partId: part.id,

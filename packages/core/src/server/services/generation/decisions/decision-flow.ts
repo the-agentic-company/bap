@@ -9,17 +9,15 @@ import type {
   RuntimePromptPart,
   RuntimeQuestionRequest,
 } from "../../../sandbox/core/types";
-import type {
-  OpenCodeActionableEvent,
-  OpenCodeRuntimeToolRef,
-} from "../../../runtime/opencode/opencode-event-translator";
 import {
-  handleOpenCodeActionableEvent as handleOpenCodeRuntimeActionableEvent,
-  sendOpenCodeApprovalRuntimeDecision,
-  updateOpenCodeToolPart,
-  type OpenCodeApprovalCapableClient,
-  type OpenCodeApprovalRuntimeRequest,
-} from "../../../runtime/opencode/opencode-runtime-driver";
+  handleRuntimeActionableEvent,
+  sendRuntimeApprovalDecision,
+  updateRuntimeToolPart,
+  type RuntimeActionableEvent,
+  type RuntimeApprovalCapableClient,
+  type RuntimeApprovalRequest,
+  type RuntimeToolRef,
+} from "../../../runtime/runtime-driver";
 import { buildRuntimeEnvSourcedCommand } from "../../../execution/runtime-env";
 import type { SandboxBackend } from "../../../sandbox/types";
 import { conversationRuntimeService } from "../../conversation-runtime-service";
@@ -54,7 +52,7 @@ export type ActiveDecisionContext = {
   status?: string;
   currentInterruptId?: string;
   contentParts: ContentPart[];
-  openCodeRuntimeTools: Map<string, OpenCodeRuntimeToolRef>;
+  runtimeTools: Map<string, RuntimeToolRef>;
   sessionId?: string;
 };
 
@@ -157,16 +155,16 @@ export function getRuntimeToolRefForInterrupt(
   ctx: ActiveDecisionContext | null | undefined,
   params: {
     providerRequestId?: string | null;
-    runtimeTool?: OpenCodeRuntimeToolRef;
+    runtimeTool?: RuntimeToolRef;
     command: string;
   },
-): OpenCodeRuntimeToolRef | undefined {
+): RuntimeToolRef | undefined {
   if (params.runtimeTool) {
     return params.runtimeTool;
   }
   const callId = extractOpenCodeCallIdFromProviderRequestId(params.providerRequestId);
   if (callId) {
-    const fromMap = ctx?.openCodeRuntimeTools.get(callId);
+    const fromMap = ctx?.runtimeTools.get(callId);
     if (fromMap) {
       return fromMap;
     }
@@ -180,7 +178,7 @@ export function getRuntimeToolRefForInterrupt(
   if (!matchingToolUse) {
     return undefined;
   }
-  return ctx?.openCodeRuntimeTools.get(matchingToolUse.id);
+  return ctx?.runtimeTools.get(matchingToolUse.id);
 }
 
 export class DecisionFlow {
@@ -255,7 +253,7 @@ export class DecisionFlow {
     if (_input.request.kind === "plugin_write") {
       const result = await this.requestPluginApproval(_input.generationId, {
         ..._input.request,
-        runtimeTool: _input.request.runtimeTool as OpenCodeRuntimeToolRef | undefined,
+        runtimeTool: _input.request.runtimeTool as RuntimeToolRef | undefined,
       });
       if (result.decision === "allow") {
         return { outcome: "accepted" };
@@ -353,7 +351,7 @@ export class DecisionFlow {
       operation: string;
       command: string;
       providerRequestId?: string;
-      runtimeTool?: OpenCodeRuntimeToolRef;
+      runtimeTool?: RuntimeToolRef;
     },
   ): Promise<{
     decision: "allow" | "deny" | "pending";
@@ -591,7 +589,7 @@ export class DecisionFlow {
     interrupt: GenerationInterruptRecord;
     sandbox?: SandboxBackend;
     runtimeClient: RuntimeHarnessClient;
-    runtimeTool: OpenCodeRuntimeToolRef;
+    runtimeTool: RuntimeToolRef;
   }): Promise<ParkedPluginWriteApplicationResult> {
     const execution = await this.executeApprovedParkedPluginWriteCommand({
       interrupt: input.interrupt,
@@ -603,7 +601,7 @@ export class DecisionFlow {
         : input.runtimeTool.input;
 
     if (execution.status === "completed") {
-      await updateOpenCodeToolPart(input.runtimeClient, input.runtimeTool, {
+      await updateRuntimeToolPart(input.runtimeClient, input.runtimeTool, {
         status: "completed",
         input: toolInput,
         output: execution.output,
@@ -618,7 +616,7 @@ export class DecisionFlow {
       };
     }
 
-    await updateOpenCodeToolPart(input.runtimeClient, input.runtimeTool, {
+    await updateRuntimeToolPart(input.runtimeClient, input.runtimeTool, {
       status: "error",
       input: toolInput,
       error: execution.error,
@@ -1129,7 +1127,7 @@ export class DecisionFlow {
     return { applied: true };
   }
 
-  async waitForOpenCodeApprovalDecision(
+  async waitForRuntimeApprovalDecision(
     interruptId: string,
     maxWaitMs: number,
     timeoutMs = generationLifecyclePolicy.approvalTimeoutMs,
@@ -1171,12 +1169,12 @@ export class DecisionFlow {
     }
   }
 
-  async applyOpenCodeApprovalDecision(input: {
+  async applyRuntimeApprovalDecision(input: {
     ctx: ActiveDecisionContext;
     interruptId: string;
     decision: "allow" | "deny";
     questionAnswers?: string[][];
-    sendRuntimeDecision: (request: OpenCodeApprovalRuntimeRequest) => Promise<void>;
+    sendRuntimeDecision: (request: RuntimeApprovalRequest) => Promise<void>;
   }): Promise<GenerationInterruptRecord | null> {
     const interrupt = await generationInterruptService.getInterrupt(input.interruptId);
     const toolUseId = interrupt?.providerToolUseId ?? `opencode-${input.ctx.id}`;
@@ -1305,7 +1303,7 @@ export class DecisionFlow {
       currentInterruptId?: string;
     };
     interruptId: string;
-    sendOpenCodeDecision: (request: OpenCodeApprovalRuntimeRequest) => Promise<void>;
+    sendRuntimeDecision: (request: RuntimeApprovalRequest) => Promise<void>;
     broadcastResolvedEvent: (event: GenerationEvent) => void;
   }): Promise<void> {
     const interrupt = await generationInterruptService.getInterrupt(input.interruptId);
@@ -1317,12 +1315,12 @@ export class DecisionFlow {
     }
 
     if (interrupt.provider === "opencode") {
-      await this.applyOpenCodeApprovalDecision({
+      await this.applyRuntimeApprovalDecision({
         ctx: input.ctx,
         interruptId: interrupt.id,
         decision: interrupt.status === "accepted" ? "allow" : "deny",
         questionAnswers: interrupt.responsePayload?.questionAnswers,
-        sendRuntimeDecision: input.sendOpenCodeDecision,
+        sendRuntimeDecision: input.sendRuntimeDecision,
       });
       await generationInterruptService.markInterruptApplied(interrupt.id);
     } else {
@@ -1334,21 +1332,21 @@ export class DecisionFlow {
     await this.dependencies.lifecycleStore.clearAppliedResumeInterrupt(input.ctx.id);
   }
 
-  async handleOpenCodeActionableEvent(input: {
+  async handleRuntimeActionableEvent(input: {
     ctx: ActiveDecisionContext & {
       runtimeId?: string | null;
       runtimeTurnSeq?: number | null;
       autoApprove?: boolean;
     };
-    client: OpenCodeApprovalCapableClient;
-    event: OpenCodeActionableEvent;
+    client: RuntimeApprovalCapableClient;
+    event: RuntimeActionableEvent;
     hotWaitMs: number;
     timeoutMs: number;
     saveProgress: () => Promise<void>;
     broadcast: (event: GenerationEvent) => void;
     parkForInterrupt: (interrupt: GenerationInterruptRecord) => Promise<void>;
   }): Promise<{ type: "none" | "permission" | "question" }> {
-    const result = await handleOpenCodeRuntimeActionableEvent({
+    const result = await handleRuntimeActionableEvent({
       event: input.event,
       client: input.client,
       autoApprove: input.ctx.autoApprove ?? false,
@@ -1382,16 +1380,16 @@ export class DecisionFlow {
 
     if (result.type === "permission") {
       if (result.action === "queue") {
-        const interrupt = await this.requestOpenCodeApproval({
+        const interrupt = await this.requestRuntimeApproval({
           ctx: input.ctx,
-          openCodeRequest: {
+          runtimeRequest: {
             kind: "permission",
             request: result.request,
           },
           pendingApproval: result.pendingApproval,
         });
         input.broadcast(this.projectPendingEvent(interrupt));
-        const resolved = await this.waitForOpenCodeApprovalDecision(
+        const resolved = await this.waitForRuntimeApprovalDecision(
           interrupt.id,
           input.hotWaitMs,
           input.timeoutMs,
@@ -1399,13 +1397,13 @@ export class DecisionFlow {
         if (!resolved) {
           await input.parkForInterrupt(interrupt);
         } else {
-          await this.applyOpenCodeApprovalDecision({
+          await this.applyRuntimeApprovalDecision({
             ctx: input.ctx,
             interruptId: interrupt.id,
             decision: resolved.decision,
             questionAnswers: resolved.questionAnswers,
             sendRuntimeDecision: (request) =>
-              sendOpenCodeApprovalRuntimeDecision(input.client, request),
+              sendRuntimeApprovalDecision(input.client, request),
           });
         }
       }
@@ -1437,9 +1435,9 @@ export class DecisionFlow {
       await input.saveProgress();
     }
 
-    const interrupt = await this.requestOpenCodeApproval({
+    const interrupt = await this.requestRuntimeApproval({
       ctx: input.ctx,
-      openCodeRequest: {
+      runtimeRequest: {
         kind: "question",
         request: result.request,
         defaultAnswers: result.defaultAnswers,
@@ -1447,7 +1445,7 @@ export class DecisionFlow {
       pendingApproval: result.pendingApproval,
     });
     input.broadcast(this.projectPendingEvent(interrupt));
-    const resolved = await this.waitForOpenCodeApprovalDecision(
+    const resolved = await this.waitForRuntimeApprovalDecision(
       interrupt.id,
       input.hotWaitMs,
       input.timeoutMs,
@@ -1455,23 +1453,23 @@ export class DecisionFlow {
     if (!resolved) {
       await input.parkForInterrupt(interrupt);
     } else {
-      await this.applyOpenCodeApprovalDecision({
+      await this.applyRuntimeApprovalDecision({
         ctx: input.ctx,
         interruptId: interrupt.id,
         decision: resolved.decision,
         questionAnswers: resolved.questionAnswers,
-        sendRuntimeDecision: (request) => sendOpenCodeApprovalRuntimeDecision(input.client, request),
+        sendRuntimeDecision: (request) => sendRuntimeApprovalDecision(input.client, request),
       });
     }
     return { type: "question" };
   }
 
-  async requestOpenCodeApproval(input: {
+  async requestRuntimeApproval(input: {
     ctx: ActiveDecisionContext & {
       runtimeId?: string | null;
       runtimeTurnSeq?: number | null;
     };
-    openCodeRequest:
+    runtimeRequest:
       | { kind: "permission"; request: RuntimePermissionRequest }
       | { kind: "question"; request: RuntimeQuestionRequest; defaultAnswers: string[][] };
     pendingApproval: {
@@ -1492,7 +1490,7 @@ export class DecisionFlow {
       conversationId: input.ctx.conversationId,
       turnSeq: input.ctx.runtimeTurnSeq,
       kind:
-        input.openCodeRequest.kind === "question"
+        input.runtimeRequest.kind === "question"
           ? "runtime_question"
           : "runtime_permission",
       display: {
@@ -1502,9 +1500,9 @@ export class DecisionFlow {
         command: input.pendingApproval.command,
         toolInput: input.pendingApproval.toolInput,
         questionSpec:
-          input.openCodeRequest.kind === "question"
+          input.runtimeRequest.kind === "question"
             ? {
-                questions: input.openCodeRequest.request.questions.map((question) => ({
+                questions: input.runtimeRequest.request.questions.map((question) => ({
                   header: question.header,
                   question: question.question,
                   options: (question.options ?? []).map((option) => ({
@@ -1518,7 +1516,7 @@ export class DecisionFlow {
             : undefined,
       },
       provider: "opencode",
-      providerRequestId: input.openCodeRequest.request.id,
+      providerRequestId: input.runtimeRequest.request.id,
       providerToolUseId: input.pendingApproval.toolUseId,
       expiresAt: computeParkedInterruptExpiryDate(),
     });

@@ -170,7 +170,7 @@ export class TurnRunnerContextLoader {
       assistantMessageIds: new Set(),
       messageRoles: new Map(),
       pendingMessageParts: new Map(),
-      openCodeRuntimeTools: new Map(),
+      runtimeTools: new Map(),
       backendType: "opencode",
       sandboxProviderOverride: loaded.executionPolicy.sandboxProvider,
       coworkerId: loaded.linkedCoworkerRun?.coworkerId,

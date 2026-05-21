@@ -72,6 +72,31 @@ describe("opencode session snapshot service", () => {
     });
   });
 
+  it("skips earlier JSON logs when normalizing mixed export output", () => {
+    const logPayload = {
+      level: "info",
+      event: "tool.input",
+      input: {
+        question: "What should I do next?",
+      },
+    };
+    const snapshot = {
+      info: {
+        id: "ses_snapshot_after_log",
+      },
+      messages: [{ info: { id: "msg_1" }, parts: [] }],
+    };
+
+    expect(
+      normalizeOpencodeSessionSnapshotPayload(
+        `Preparing export\n${JSON.stringify(logPayload)}\n${JSON.stringify(snapshot)}\n`,
+      ),
+    ).toEqual({
+      payload: snapshot,
+      raw: JSON.stringify(snapshot),
+    });
+  });
+
   it.skipIf(!hasOpencode)(
     "round-trips OpenCode export/import and keeps duplicate imports idempotent",
     async () => {

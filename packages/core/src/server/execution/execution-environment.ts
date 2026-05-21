@@ -1,6 +1,15 @@
+import type {
+  ConversationRuntimeOptions,
+  RuntimeHarnessClient,
+  RuntimeMcpServer,
+  RuntimeSelection,
+  SandboxHandle,
+} from "../sandbox/core/types";
+
 export interface ExecutionEnvironmentProvider {
   acquire(input: AcquireEnvironmentInput): Promise<ExecutionEnvironmentSession>;
   restore(input: RestoreEnvironmentInput): Promise<ExecutionEnvironmentSession>;
+  acquireRuntime(input: AcquireRuntimeEnvironmentInput): Promise<ExecutionRuntimeSession>;
   release(input: ReleaseEnvironmentInput): Promise<void>;
 }
 
@@ -10,9 +19,23 @@ export type AcquireEnvironmentInput = {
   conversationId: string;
   generationId: string;
   userId: string;
+  model: string;
+  anthropicApiKey: string;
   workspaceId?: string | null;
   providerPreference?: SandboxProviderName;
+  openAIAuthSource?: "user" | "shared" | null;
+  integrationEnvs?: Record<string, string>;
   env?: Record<string, string | null | undefined>;
+  title?: string;
+  replayHistory?: boolean;
+  allowSnapshotRestore?: boolean;
+  sessionMcpServers?: RuntimeMcpServer[];
+  onLifecycle?: ConversationRuntimeOptions["onLifecycle"];
+  telemetry?: Record<string, unknown>;
+};
+
+export type AcquireRuntimeEnvironmentInput = AcquireEnvironmentInput & {
+  sessionMcpServers?: RuntimeMcpServer[];
 };
 
 export type RestoreEnvironmentInput = {
@@ -31,6 +54,22 @@ export type ReleaseEnvironmentInput = {
 export type ExecutionEnvironmentSession = {
   environment: ExecutionEnvironment;
   metadata: ExecutionEnvironmentMetadata;
+  sandbox: SandboxHandle;
+  completeAgentInit(input?: {
+    sessionMcpServers?: RuntimeMcpServer[];
+  }): Promise<ExecutionRuntimeAgentInitResult>;
+};
+
+export type ExecutionRuntimeAgentInitResult = {
+  runtimeClient: RuntimeHarnessClient;
+  sessionId: string;
+  sessionSource?: "live_session" | "restored_snapshot" | "created_session";
+};
+
+export type ExecutionRuntimeSession = ExecutionEnvironmentSession & {
+  runtimeClient: RuntimeHarnessClient;
+  sessionId: string;
+  sessionSource?: "live_session" | "restored_snapshot" | "created_session";
 };
 
 export interface ExecutionEnvironment {
@@ -40,6 +79,7 @@ export interface ExecutionEnvironment {
   readFile(path: string): Promise<string>;
   ensureDir(path: string): Promise<void>;
   snapshot(input: SnapshotEnvironmentInput): Promise<ExecutionEnvironmentSnapshotRef>;
+  release(input: ReleaseEnvironmentInput): Promise<void>;
 }
 
 export type ExecuteOptions = {
@@ -66,7 +106,8 @@ export type ExecutionEnvironmentSnapshotRef = {
 
 export type ExecutionEnvironmentMetadata = {
   provider: SandboxProviderName;
-  runtimeHarness?: string;
-  runtimeProtocolVersion?: string;
+  runtimeHarness?: RuntimeSelection["runtimeHarness"];
+  runtimeProtocolVersion?: RuntimeSelection["runtimeProtocolVersion"];
   sandboxId?: string;
+  selection?: RuntimeSelection;
 };
