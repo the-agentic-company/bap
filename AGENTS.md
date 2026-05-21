@@ -38,9 +38,6 @@ This repository is organized into several top-level folders. Each folder can hav
 
 Always prefer Big Bang Rewrite when doing a big refactoring do not get backward compatibility or add fallback logic.
 
-# ExecPlans
-When writing complex features or significant refactors, use an ExecPlan (as described in `.agents/PLANS.md`) from design to implementation.
-
 ## Agent skills
 
 ### Issue tracker
