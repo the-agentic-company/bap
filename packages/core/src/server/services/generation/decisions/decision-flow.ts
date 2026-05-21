@@ -13,9 +13,16 @@ import {
   type RuntimePermissionRequest,
   type RuntimeQuestionRequest,
   type RuntimeToolRef,
-  buildDefaultQuestionAnswers,
-  buildQuestionCommand,
 } from "../../../runtime/runtime-driver";
+import {
+  RUNTIME_INTERRUPT_PROVIDER,
+  buildRuntimePermissionPendingApproval,
+  buildRuntimeQuestionPendingApproval,
+  buildRuntimeQuestionToolUseEvent,
+  extractRuntimeCallIdFromProviderRequestId,
+  isRuntimeInterruptProvider,
+  type RuntimePendingApprovalDisplay,
+} from "../../../runtime/runtime-decision-display";
 import { buildRuntimeEnvSourcedCommand } from "../../../execution/runtime-env";
 import type { SandboxBackend } from "../../../sandbox/types";
 import { conversationRuntimeService } from "../../conversation-runtime-service";
@@ -145,17 +152,6 @@ function hashStableProviderRequestPayload(payload: unknown): string {
   return createHash("sha256").update(stableJsonStringify(payload)).digest("hex").slice(0, 24);
 }
 
-function extractOpenCodeCallIdFromProviderRequestId(
-  providerRequestId: string | null | undefined,
-): string | null {
-  const marker = ":opencode:";
-  if (!providerRequestId?.includes(marker)) {
-    return null;
-  }
-  const callId = providerRequestId.slice(providerRequestId.lastIndexOf(marker) + marker.length);
-  return callId.length > 0 ? callId : null;
-}
-
 export function getRuntimeToolRefForInterrupt(
   ctx: ActiveDecisionContext | null | undefined,
   params: {
@@ -167,9 +163,9 @@ export function getRuntimeToolRefForInterrupt(
   if (params.runtimeTool) {
     return params.runtimeTool;
   }
-  const callId = extractOpenCodeCallIdFromProviderRequestId(params.providerRequestId);
+  const callId = extractRuntimeCallIdFromProviderRequestId(params.providerRequestId);
   if (callId) {
-    const fromMap = ctx?.runtimeTools.get(callId);
+    const fromMap = ctx?.runtimeTools?.get(callId);
     if (fromMap) {
       return fromMap;
     }
@@ -183,7 +179,7 @@ export function getRuntimeToolRefForInterrupt(
   if (!matchingToolUse) {
     return undefined;
   }
-  return ctx?.runtimeTools.get(matchingToolUse.id);
+  return ctx?.runtimeTools?.get(matchingToolUse.id);
 }
 
 export class DecisionFlow {
@@ -326,7 +322,7 @@ export class DecisionFlow {
         toolInput: request.toolInput,
         questionSpec: request.kind === "runtime_question" ? { questions: request.questions } : undefined,
       },
-      provider: "opencode",
+      provider: RUNTIME_INTERRUPT_PROVIDER,
       providerRequestId: request.providerRequestId,
       providerToolUseId: request.providerToolUseId,
       expiresAt: computeParkedInterruptExpiryDate(_input.now),
@@ -1182,7 +1178,7 @@ export class DecisionFlow {
     sendRuntimeDecision: (request: RuntimeApprovalRequest) => Promise<void>;
   }): Promise<GenerationInterruptRecord | null> {
     const interrupt = await generationInterruptService.getInterrupt(input.interruptId);
-    const toolUseId = interrupt?.providerToolUseId ?? `opencode-${input.ctx.id}`;
+    const toolUseId = interrupt?.providerToolUseId ?? `runtime-${input.ctx.id}`;
     const requestKind =
       interrupt?.kind === "runtime_permission"
         ? "permission"
@@ -1233,7 +1229,7 @@ export class DecisionFlow {
       tool_use_id: toolUseId,
       tool_name: interrupt?.display.title ?? "question",
       tool_input: interrupt?.display.toolInput ?? {},
-      integration: interrupt?.display.integration ?? "opencode",
+      integration: interrupt?.display.integration ?? "runtime",
       operation: interrupt?.display.operation ?? "question",
       command: interrupt?.display.command,
       status: input.decision === "allow" ? "approved" : "denied",
@@ -1319,7 +1315,7 @@ export class DecisionFlow {
       throw new Error(`Resume interrupt ${input.interruptId} is still pending`);
     }
 
-    if (interrupt.provider === "opencode") {
+    if (isRuntimeInterruptProvider(interrupt.provider)) {
       await this.applyRuntimeApprovalDecision({
         ctx: input.ctx,
         interruptId: interrupt.id,
@@ -1356,26 +1352,14 @@ export class DecisionFlow {
     }
 
     if (input.event.type === "permission") {
-      const permissionType = input.event.request.permission || "file access";
-      const patterns = input.event.request.patterns;
-      const toolUseId = `runtime-perm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const command = patterns?.length
-        ? `${permissionType}: ${patterns.join(", ")}`
-        : permissionType;
+      const pendingApproval = buildRuntimePermissionPendingApproval(input.event.request);
       const interrupt = await this.requestRuntimeApproval({
         ctx: input.ctx,
         runtimeRequest: {
           kind: "permission",
           request: input.event.request,
         },
-        pendingApproval: {
-          toolUseId,
-          toolName: "Permission",
-          toolInput: input.event.request as Record<string, unknown>,
-          integration: "cmdclaw",
-          operation: permissionType,
-          command,
-        },
+        pendingApproval,
       });
       input.broadcast(this.projectPendingEvent(interrupt));
       const resolved = await this.waitForRuntimeApprovalDecision(
@@ -1397,13 +1381,10 @@ export class DecisionFlow {
       return { type: "permission" };
     }
 
-    const defaultAnswers = buildDefaultQuestionAnswers(input.event.request);
-    const linkedToolUseId = input.event.request.tool?.callId;
-    const toolUseId =
-      linkedToolUseId ??
-      `runtime-question-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const command = buildQuestionCommand(input.event.request);
-    const toolInput = input.event.request as unknown as Record<string, unknown>;
+    const { display: pendingApproval, defaultAnswers } =
+      buildRuntimeQuestionPendingApproval(input.event.request);
+    const toolUseId = pendingApproval.toolUseId;
+    const toolInput = pendingApproval.toolInput;
     const existingToolUse = input.ctx.contentParts.find(
       (part): part is ContentPart & { type: "tool_use" } =>
         part.type === "tool_use" && part.id === toolUseId,
@@ -1411,11 +1392,7 @@ export class DecisionFlow {
     if (!existingToolUse) {
       input.broadcast({
         type: "tool_use",
-        toolName: "question",
-        toolInput,
-        toolUseId,
-        integration: "cmdclaw",
-        operation: "question",
+        ...buildRuntimeQuestionToolUseEvent({ toolUseId, toolInput }),
       });
 
       input.ctx.contentParts.push({
@@ -1423,8 +1400,8 @@ export class DecisionFlow {
         id: toolUseId,
         name: "question",
         input: toolInput,
-        integration: "cmdclaw",
-        operation: "question",
+        integration: pendingApproval.integration,
+        operation: pendingApproval.operation,
       });
       await input.saveProgress();
     }
@@ -1436,14 +1413,7 @@ export class DecisionFlow {
         request: input.event.request,
         defaultAnswers,
       },
-      pendingApproval: {
-        toolUseId,
-        toolName: "question",
-        toolInput,
-        integration: "cmdclaw",
-        operation: "question",
-        command,
-      },
+      pendingApproval,
     });
     input.broadcast(this.projectPendingEvent(interrupt));
     const resolved = await this.waitForRuntimeApprovalDecision(
@@ -1473,14 +1443,7 @@ export class DecisionFlow {
     runtimeRequest:
       | { kind: "permission"; request: RuntimePermissionRequest }
       | { kind: "question"; request: RuntimeQuestionRequest; defaultAnswers: string[][] };
-    pendingApproval: {
-      toolUseId: string;
-      toolName: string;
-      toolInput: Record<string, unknown>;
-      integration?: string;
-      operation?: string;
-      command?: string;
-    };
+    pendingApproval: RuntimePendingApprovalDisplay;
   }): Promise<GenerationInterruptRecord> {
     if (!input.ctx.runtimeId || !input.ctx.runtimeTurnSeq) {
       throw new Error(`Missing runtime binding for generation ${input.ctx.id}`);
@@ -1516,7 +1479,7 @@ export class DecisionFlow {
               }
             : undefined,
       },
-      provider: "opencode",
+      provider: RUNTIME_INTERRUPT_PROVIDER,
       providerRequestId: input.runtimeRequest.request.id,
       providerToolUseId: input.pendingApproval.toolUseId,
       expiresAt: computeParkedInterruptExpiryDate(),

@@ -1,5 +1,6 @@
 import type { ContentPart } from "@cmdclaw/db/schema";
 import { limitToolResultContent } from "../../../runtime/runtime-driver";
+import { isRuntimeInterruptProvider } from "../../../runtime/runtime-decision-display";
 import {
   generationInterruptService,
   type GenerationInterruptRecord,
@@ -8,13 +9,13 @@ import type { GenerationLifecycleStore } from "../core/lifecycle-store";
 import type { DecisionFlow } from "../decisions/decision-flow";
 import type { GenerationContext, GenerationEvent } from "../types";
 import type { GenerationContextState } from "./generation-context-state";
-import type { RuntimeRecoveryReattachOptions } from "./generation-runtime-coordinator";
+import type { RuntimeRecoveryReattachOptions } from "../../../runtime/runtime-generation-driver";
 
 type GenerationResumeRunnerDependencies = {
   lifecycleStore: GenerationLifecycleStore;
   decisionFlow: DecisionFlow;
   contextState: GenerationContextState;
-  runOpenCodeGeneration(ctx: GenerationContext): Promise<void>;
+  runRuntimeGeneration(ctx: GenerationContext): Promise<void>;
   runRecoveryReattach(
     ctx: GenerationContext,
     options?: RuntimeRecoveryReattachOptions,
@@ -33,7 +34,7 @@ export class GenerationResumeRunner {
   async runSuspendedInterruptResume(ctx: GenerationContext): Promise<void> {
     const interruptId = ctx.resumeInterruptId;
     if (!interruptId) {
-      await this.deps.runOpenCodeGeneration(ctx);
+      await this.deps.runRuntimeGeneration(ctx);
       return;
     }
     const interrupt =
@@ -42,19 +43,19 @@ export class GenerationResumeRunner {
     this.deps.contextState.resumeDeadlineFromRemainingBudget(ctx);
     ctx.status = "running";
     ctx.suspendedAt = null;
-    const shouldResumeOpenCodeInterrupt = interrupt?.provider === "opencode";
-    if (!shouldResumeOpenCodeInterrupt) {
+    const shouldResumeRuntimeInterrupt = isRuntimeInterruptProvider(interrupt?.provider);
+    if (!shouldResumeRuntimeInterrupt) {
       ctx.resumeInterruptId = null;
     }
     await this.deps.lifecycleStore.markSuspendedInterruptResumeRunning({
       generationId: ctx.id,
       deadlineAt: ctx.deadlineAt,
-      resumeInterruptId: shouldResumeOpenCodeInterrupt
+      resumeInterruptId: shouldResumeRuntimeInterrupt
         ? (ctx.resumeInterruptId ?? null)
         : null,
     });
 
-    if (!shouldResumeOpenCodeInterrupt) {
+    if (!shouldResumeRuntimeInterrupt) {
       if (interrupt?.kind === "plugin_write") {
         await this.runParkedPluginWriteResume(ctx, interrupt);
         return;

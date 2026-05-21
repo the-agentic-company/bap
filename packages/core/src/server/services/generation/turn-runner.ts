@@ -171,7 +171,7 @@ export class TurnRunnerContextLoader {
       messageRoles: new Map(),
       pendingMessageParts: new Map(),
       runtimeTools: new Map(),
-      backendType: "opencode",
+      backendType: "runtime",
       sandboxProviderOverride: loaded.executionPolicy.sandboxProvider,
       coworkerId: loaded.linkedCoworkerRun?.coworkerId,
       coworkerRunId: loaded.linkedCoworkerRun?.id,
@@ -371,7 +371,7 @@ export type TurnRunnerDependencies = {
   processGenerationTimeout(generationId: string, kind: "approval" | "auth"): Promise<void>;
   runSuspendedInterruptResume(ctx: GenerationContext): Promise<void>;
   runRecoveryReattach(ctx: GenerationContext): Promise<void>;
-  runOpenCodeGeneration(ctx: GenerationContext): Promise<void>;
+  runRuntimeGeneration(ctx: GenerationContext): Promise<void>;
 };
 
 export class TurnRunner {
@@ -600,7 +600,7 @@ export class TurnRunner {
       }
       return runMode === "recovery_reattach"
         ? this.deps.runRecoveryReattach(ctx)
-        : this.deps.runOpenCodeGeneration(ctx);
+        : this.deps.runRuntimeGeneration(ctx);
     } finally {
       clearInterval(leaseRenewTimer);
       await this.deps.releaseSandboxSlotLease(ctx).catch((err) => {

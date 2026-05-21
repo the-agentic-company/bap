@@ -5,22 +5,22 @@ import {
 import {
   OpenCodeRuntimeEventLoop,
   type OpenCodeApprovalCapableClient,
-} from "../../../runtime/opencode/opencode-runtime-driver";
+} from "./opencode-runtime-driver";
 import {
   normalizeOpenCodeActionableEvent,
   sendOpenCodeRuntimeDecision,
-} from "../../../runtime/opencode/opencode-runtime-actions";
+} from "./opencode-runtime-actions";
 import {
   parseCoworkerEditApplyEnvelope,
   parseCoworkerInvocationEnvelope,
-} from "../../../../lib/coworker-runtime-cli";
-import { logServerEvent } from "../../../utils/observability";
-import { getToolUseMetadata } from "../streams/replay-events";
-import type { GenerationContext, GenerationEvent } from "../types";
+} from "../../../lib/coworker-runtime-cli";
+import { logServerEvent } from "../../utils/observability";
+import { getToolUseMetadata } from "../../services/generation/streams/replay-events";
+import type { GenerationContext, GenerationEvent } from "../../services/generation/types";
 import type {
   RuntimeActionableEvent,
   RuntimeApprovalRequest,
-} from "../../../runtime/runtime-driver";
+} from "../runtime-driver";
 
 export type OpenCodeTurnEventLoopMode = "normal" | "recovery_reattach";
 

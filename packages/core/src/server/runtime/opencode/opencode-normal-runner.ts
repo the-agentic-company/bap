@@ -1,58 +1,58 @@
 import { db } from "@cmdclaw/db/client";
 import { conversation } from "@cmdclaw/db/schema";
 import { eq } from "drizzle-orm";
-import { env } from "../../../../env";
-import { splitCoworkerAllowedSkillSlugs } from "../../../../lib/coworker-tool-policy";
-import { parseModelReference } from "../../../../lib/model-reference";
-import type { RuntimeContextFile } from "../../../../lib/runtime-context";
+import { env } from "../../../env";
+import { splitCoworkerAllowedSkillSlugs } from "../../../lib/coworker-tool-policy";
+import { parseModelReference } from "../../../lib/model-reference";
+import type { RuntimeContextFile } from "../../../lib/runtime-context";
 import {
   stageExecutorPrePrompt,
   ExecutorPromptReadyError,
-} from "../../../execution/executor-preprompt";
-import { createExecutionEnvironmentFactory } from "../../../execution/execution-environment-factory";
-import type { ExecutionEnvironmentSession } from "../../../execution/execution-environment";
-import type { ConversationExecutionEnvironmentSession } from "../../../execution/providers/conversation-environment";
-import { stagePrePromptAssets } from "../../../execution/pre-prompt-assets";
-import { stageRuntimePromptAttachments } from "../../../execution/prompt-attachments";
+} from "../../execution/executor-preprompt";
+import { createExecutionEnvironmentFactory } from "../../execution/execution-environment-factory";
+import type { ExecutionEnvironmentSession } from "../../execution/execution-environment";
+import type { ConversationExecutionEnvironmentSession } from "../../execution/providers/conversation-environment";
+import { stagePrePromptAssets } from "../../execution/pre-prompt-assets";
+import { stageRuntimePromptAttachments } from "../../execution/prompt-attachments";
 import {
   writeRuntimeContextToSandbox,
   writeRuntimeEnvToSandbox,
-} from "../../../execution/runtime-context";
-import { resolveRuntimeEnvironmentForTurn } from "../../../execution/runtime-env";
-import { composeOpencodePromptSpec } from "../../../prompts/opencode-runtime-prompt";
+} from "../../execution/runtime-context";
+import { resolveRuntimeEnvironmentForTurn } from "../../execution/runtime-env";
+import { composeOpencodePromptSpec } from "../../prompts/opencode-runtime-prompt";
 import {
   isOpaqueDiagnosticMessage,
   resolveOpenCodePromptCompletion,
   waitForOpenCodeTerminalStateAfterEarlyStreamEnd,
-} from "../../../runtime/opencode/opencode-runtime-driver";
+} from "./opencode-runtime-driver";
 import type {
   RuntimeHarnessClient,
   RuntimeMcpServer,
   RuntimePromptPart,
   RuntimeSelection,
   SandboxHandle,
-} from "../../../sandbox/core/types";
+} from "../../sandbox/core/types";
 import {
   buildMemorySystemPrompt,
   syncMemoryFilesToSandbox,
-} from "../../../sandbox/prep/memory-prep";
+} from "../../sandbox/prep/memory-prep";
 import {
   getIntegrationSkillsSystemPrompt,
   getSkillsSystemPrompt,
-} from "../../../sandbox/prep/skills-prep";
-import { logServerEvent } from "../../../utils/observability";
+} from "../../sandbox/prep/skills-prep";
+import { logServerEvent } from "../../utils/observability";
 import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
-} from "../../lifecycle-policy";
-import { GenerationSuspendedError } from "../core/turn-suspension";
-import { buildOpencodePromptSpecInputForContext } from "../prompts/opencode-prompt-context";
+} from "../../services/lifecycle-policy";
+import { GenerationSuspendedError } from "../../services/generation/core/turn-suspension";
+import { buildOpencodePromptSpecInputForContext } from "../../services/generation/prompts/opencode-prompt-context";
 import type {
   GenerationContext,
   GenerationEvent,
   GenerationStatus,
   RemoteRunDebugPhase,
-} from "../types";
+} from "../../services/generation/types";
 import type { OpenCodeTurnEventBridge } from "./opencode-turn-events";
 
 const OPENCODE_EARLY_STREAM_REATTACH_ATTEMPTS = 2;

@@ -3,8 +3,8 @@ import type {
   RuntimeEvent,
   RuntimePart,
   RuntimeQuestionRequest,
-} from "../../../sandbox/core/types";
-import type { GenerationEvent } from "../types";
+} from "../../sandbox/core/types";
+import type { GenerationEvent } from "../../services/generation/types";
 
 const PENDING_MESSAGE_PARTS_MAX_PER_MESSAGE = 100;
 const PENDING_MESSAGE_PARTS_TTL_MS = 5 * 60 * 1000;

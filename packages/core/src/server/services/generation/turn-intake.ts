@@ -476,7 +476,7 @@ export class TurnIntake {
       "info",
       "GENERATION_ENQUEUED",
       {
-        backendType: "opencode",
+        backendType: "runtime",
         delivery: "queue",
         enqueuedAttachmentsCount: fileAttachments?.length ?? 0,
       },

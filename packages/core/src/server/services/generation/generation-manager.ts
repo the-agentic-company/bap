@@ -8,13 +8,8 @@ import {
 import { eq } from "drizzle-orm";
 import type { IntegrationType } from "../../oauth/config";
 import type { RuntimeHarnessClient } from "../../sandbox/core/types";
-import {
-  buildDefaultQuestionAnswers,
-  buildQuestionCommand,
-  type RuntimeToolRef,
-} from "../../runtime/runtime-driver";
+import type { RuntimeToolRef } from "../../runtime/runtime-driver";
 import { SandboxSlotLeaseCoordinator } from "../../execution/sandbox-slot-lease";
-import { extractRuntimeExportState } from "../../runtime/opencode/opencode-reattach";
 import type { SandboxBackend } from "../../sandbox/types";
 import {
   buildQueueJobId,
@@ -30,7 +25,7 @@ import {
   type GenerationInterruptRecord,
 } from "../generation-interrupt-service";
 import { writeSessionTranscriptFromConversation } from "../memory-service";
-import { clearConversationSessionSnapshot } from "../opencode-session-snapshot-service";
+import { clearConversationSessionSnapshot } from "../runtime-session-snapshot-service";
 import { SESSION_BOUNDARY_PREFIX } from "../session-constants";
 import { conversationRuntimeService } from "../conversation-runtime-service";
 import {
@@ -52,15 +47,14 @@ import {
   type UserFileAttachment,
 } from "./queue/conversation-turn-queue";
 import { GenerationRunQueue } from "./queue/generation-run-queue";
-import { buildOpencodePromptSpecInputForContext } from "./prompts/opencode-prompt-context";
 import { importIntegrationSkillDraftsFromSandbox } from "./skills/integration-skill-drafts";
 import { GenerationEventLog } from "./streams/generation-event-log";
 import { GenerationContextState } from "./runtime/generation-context-state";
 import { GenerationResumeRunner } from "./runtime/generation-resume-runner";
 import {
-  GenerationRuntimeCoordinator,
+  RuntimeGenerationDriver,
   type RuntimeRecoveryReattachOptions,
-} from "./runtime/generation-runtime-coordinator";
+} from "../../runtime/runtime-generation-driver";
 import {
   TurnIntake,
   type StartCoworkerGenerationInput,
@@ -86,8 +80,6 @@ export type { GenerationEvent };
 
 const CANCELLATION_POLL_INTERVAL_MS = 1000;
 const AGENT_PREPARING_TIMEOUT_MS = generationLifecyclePolicy.bootstrapTimeoutMs;
-
-export { buildDefaultQuestionAnswers, buildQuestionCommand };
 
 function formatErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -141,8 +133,6 @@ function safeJsonStringify(value: unknown): string | null {
     return null;
   }
 }
-
-export { extractRuntimeExportState };
 
 class GenerationManager {
   private activeGenerations = new Map<string, GenerationContext>();
@@ -248,7 +238,7 @@ class GenerationManager {
     runSuspendedInterruptResume: (ctx) =>
       this.resumeRunner.runSuspendedInterruptResume(ctx),
     runRecoveryReattach: (ctx) => this.runRecoveryReattach(ctx),
-    runOpenCodeGeneration: (ctx) => this.runOpenCodeGeneration(ctx),
+    runRuntimeGeneration: (ctx) => this.runRuntimeGeneration(ctx),
   });
   private readonly sandboxSlotLeaseCoordinator =
     new SandboxSlotLeaseCoordinator({
@@ -382,8 +372,8 @@ class GenerationManager {
     projectInterruptPendingEvent: (interrupt) =>
       this.projectInterruptPendingEvent(interrupt),
   });
-  private readonly runtimeCoordinator: GenerationRuntimeCoordinator =
-    new GenerationRuntimeCoordinator({
+  private readonly runtimeCoordinator: RuntimeGenerationDriver =
+    new RuntimeGenerationDriver({
     bootstrapTimeoutMs: AGENT_PREPARING_TIMEOUT_MS,
     contextState: this.contextState,
     decisionFlow: this.decisionFlow,
@@ -410,7 +400,7 @@ class GenerationManager {
     lifecycleStore: this.lifecycleStore,
     decisionFlow: this.decisionFlow,
     contextState: this.contextState,
-    runOpenCodeGeneration: (ctx) => this.runOpenCodeGeneration(ctx),
+    runRuntimeGeneration: (ctx) => this.runRuntimeGeneration(ctx),
     runRecoveryReattach: (ctx, options) =>
       this.runRecoveryReattach(ctx, options),
     finishGeneration: (ctx, status) => this.finishGeneration(ctx, status),
@@ -960,7 +950,7 @@ class GenerationManager {
     await this.runtimeCoordinator.runRecoveryReattach(ctx, options);
   }
 
-  private async runOpenCodeGeneration(ctx: GenerationContext): Promise<void> {
+  private async runRuntimeGeneration(ctx: GenerationContext): Promise<void> {
     await this.runtimeCoordinator.runNormal(ctx);
   }
 

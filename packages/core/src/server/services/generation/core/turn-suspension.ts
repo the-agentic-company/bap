@@ -2,7 +2,7 @@ import type { RuntimeHarnessClient } from "../../../sandbox/core/types";
 import type { ReleaseEnvironmentInput } from "../../../execution/execution-environment";
 import { conversationRuntimeService } from "../../conversation-runtime-service";
 import type { GenerationInterruptRecord } from "../../generation-interrupt-service";
-import { saveConversationSessionSnapshot } from "../../opencode-session-snapshot-service";
+import { saveConversationSessionSnapshot } from "../../runtime-session-snapshot-service";
 import type { GenerationContext, GenerationEvent, GenerationStatus } from "../types";
 import type { GenerationLifecycleStore } from "./lifecycle-store";
 

@@ -1,37 +1,37 @@
 import type {
   RuntimeHarnessClient,
   RuntimePromptPart,
-} from "../../../sandbox/core/types";
+} from "../sandbox/core/types";
 import {
   captureOpenCodeUsageFromSession,
   updateOpenCodeToolPart,
-} from "../../../runtime/opencode/opencode-runtime-driver";
-import { sendOpenCodeRuntimeDecision } from "../../../runtime/opencode/opencode-runtime-actions";
-import { inspectOpenCodeRuntimeFailureState } from "../../../runtime/opencode/opencode-reattach";
+} from "./opencode/opencode-runtime-driver";
+import { sendOpenCodeRuntimeDecision } from "./opencode/opencode-runtime-actions";
+import { inspectOpenCodeRuntimeFailureState } from "./opencode/opencode-reattach";
 import type {
   RuntimeActionableEvent,
   RuntimeApprovalRequest,
   RuntimeToolRef,
-} from "../../../runtime/runtime-driver";
-import { generationInterruptService } from "../../generation-interrupt-service";
+} from "./runtime-driver";
+import { generationInterruptService } from "../services/generation-interrupt-service";
 import {
   generationLifecyclePolicy,
   type GenerationCompletionReason,
   type RuntimeFailureClassification,
-} from "../../lifecycle-policy";
-import { OpenCodeNormalRunner } from "./opencode-normal-runner";
-import { OpenCodeRecoveryRunner } from "./opencode-recovery-runner";
-import { OpenCodeTurnEventBridge } from "./opencode-turn-events";
-import type { GenerationTurnFinalizer } from "../core/turn-finalizer";
-import type { DecisionFlow } from "../decisions/decision-flow";
-import type { InterruptParking } from "../decisions/interrupt-parking";
-import type { GenerationContextState } from "./generation-context-state";
+} from "../services/lifecycle-policy";
+import { OpenCodeNormalRunner } from "./opencode/opencode-normal-runner";
+import { OpenCodeRecoveryRunner } from "./opencode/opencode-recovery-runner";
+import { OpenCodeTurnEventBridge } from "./opencode/opencode-turn-events";
+import type { GenerationTurnFinalizer } from "../services/generation/core/turn-finalizer";
+import type { DecisionFlow } from "../services/generation/decisions/decision-flow";
+import type { InterruptParking } from "../services/generation/decisions/interrupt-parking";
+import type { GenerationContextState } from "../services/generation/runtime/generation-context-state";
 import type {
   GenerationContext,
   GenerationEvent,
   GenerationStatus,
   RemoteRunDebugPhase,
-} from "../types";
+} from "../services/generation/types";
 
 type TerminalGenerationStatus = Extract<
   GenerationStatus,
@@ -50,7 +50,7 @@ export type RuntimeRecoveryReattachOptions = {
   skipUsageCaptureAfterRuntimeAttached?: boolean;
 };
 
-export type GenerationRuntimeCoordinatorDependencies = {
+export type RuntimeGenerationDriverDependencies = {
   bootstrapTimeoutMs: number;
   contextState: GenerationContextState;
   decisionFlow: DecisionFlow;
@@ -86,12 +86,12 @@ export type GenerationRuntimeCoordinatorDependencies = {
   broadcast: (ctx: GenerationContext, event: GenerationEvent) => void;
 };
 
-export class GenerationRuntimeCoordinator {
+export class RuntimeGenerationDriver {
   private readonly turnEvents: OpenCodeTurnEventBridge;
   private readonly normalRunner: OpenCodeNormalRunner;
   private readonly recoveryRunner: OpenCodeRecoveryRunner;
 
-  constructor(private readonly deps: GenerationRuntimeCoordinatorDependencies) {
+  constructor(private readonly deps: RuntimeGenerationDriverDependencies) {
     this.turnEvents = new OpenCodeTurnEventBridge({
       markPhase: (ctx, phase) => this.deps.contextState.markPhase(ctx, phase),
       broadcast: (ctx, event) => this.deps.broadcast(ctx, event),
@@ -235,7 +235,7 @@ export class GenerationRuntimeCoordinator {
       };
     } catch (error) {
       console.warn(
-        "[GenerationRuntimeCoordinator] Failed to capture usage from runtime session:",
+        "[RuntimeGenerationDriver] Failed to capture usage from runtime session:",
         error,
       );
     }

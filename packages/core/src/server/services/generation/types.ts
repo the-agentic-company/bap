@@ -175,7 +175,7 @@ export type StartCoworkerGenerationInput = {
 
 export type GenerationRunMode = "normal_run" | "recovery_reattach";
 
-export type GenerationBackendType = "opencode";
+export type GenerationBackendType = "runtime";
 
 export type RemoteRunDebugPhase =
   | "remote_credentials_fetched"

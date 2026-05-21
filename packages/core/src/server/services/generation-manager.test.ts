@@ -579,11 +579,13 @@ import {
 } from "../runtime/opencode/opencode-runtime-actions";
 import { listAccessibleEnabledSkillMetadataForUser } from "./workspace-skill-service";
 import {
-  buildDefaultQuestionAnswers,
-  buildQuestionCommand,
-  extractRuntimeExportState,
   generationManager,
 } from "./generation-manager";
+import { extractRuntimeExportState } from "../runtime/opencode/opencode-reattach";
+import {
+  buildDefaultQuestionAnswers,
+  buildQuestionCommand,
+} from "../runtime/runtime-driver";
 import {
   uploadSandboxFile,
   collectNewSandboxFiles,
@@ -633,7 +635,7 @@ type GenerationManagerTestHarness = {
   runGeneration: (ctx: GenerationCtx) => Promise<void>;
   runRecoveryReattach: (ctx: GenerationCtx) => Promise<void>;
   handleSessionReset: (ctx: GenerationCtx) => Promise<void>;
-  runOpenCodeGeneration: (ctx: GenerationCtx) => Promise<void>;
+  runRuntimeGeneration: (ctx: GenerationCtx) => Promise<void>;
   importIntegrationSkillDraftsFromSandbox: (
     ...args: unknown[]
   ) => Promise<void>;
@@ -677,7 +679,7 @@ function createCtx(overrides: Partial<GenerationCtx> = {}): GenerationCtx {
     assistantMessageIds: new Set(),
     messageRoles: new Map(),
     pendingMessageParts: new Map(),
-    backendType: "opencode",
+    backendType: "runtime",
     autoApprove: false,
     ...overrides,
   };
@@ -3716,14 +3718,14 @@ describe("generationManager transitions", () => {
       .spyOn(mgr, "handleSessionReset")
       .mockResolvedValue(undefined);
     const opencodeSpy = vi
-      .spyOn(mgr, "runOpenCodeGeneration")
+      .spyOn(mgr, "runRuntimeGeneration")
       .mockResolvedValue(undefined);
 
     await mgr.runGeneration(
-      createCtx({ userMessageContent: " /new ", backendType: "opencode" }),
+      createCtx({ userMessageContent: " /new ", backendType: "runtime" }),
     );
     await mgr.runGeneration(
-      createCtx({ userMessageContent: "hello", backendType: "opencode" }),
+      createCtx({ userMessageContent: "hello", backendType: "runtime" }),
     );
 
     expect(resetSpy).toHaveBeenCalledTimes(1);
@@ -4522,7 +4524,7 @@ describe("generationManager transitions", () => {
     const ctx = createCtx({
       id: "gen-opencode",
       conversationId: "conv-opencode",
-      backendType: "opencode",
+      backendType: "runtime",
       model: "anthropic/claude-sonnet-4-6",
       allowedIntegrations: ["github"],
       userMessageContent: "Process these files",
@@ -4542,7 +4544,7 @@ describe("generationManager transitions", () => {
       uploadedSandboxFileIds: new Set(),
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(vi.mocked(getOrCreateConversationRuntime)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -4662,7 +4664,7 @@ describe("generationManager transitions", () => {
       type: "none",
     });
 
-    await mgr.runOpenCodeGeneration(
+    await mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-opencode-runtime-env-sync",
         conversationId: "conv-opencode-runtime-env-sync",
@@ -4740,7 +4742,7 @@ describe("generationManager transitions", () => {
       type: "none",
     });
 
-    const runPromise = mgr.runOpenCodeGeneration(
+    const runPromise = mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-opencode-parallel-prep",
         conversationId: "conv-opencode-parallel-prep",
@@ -4827,7 +4829,7 @@ describe("generationManager transitions", () => {
       type: "none",
     });
 
-    const runPromise = mgr.runOpenCodeGeneration(
+    const runPromise = mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-opencode-skill-write-overlap",
         conversationId: "conv-opencode-skill-write-overlap",
@@ -4913,7 +4915,7 @@ describe("generationManager transitions", () => {
       type: "none",
     });
 
-    const runPromise = mgr.runOpenCodeGeneration(
+    const runPromise = mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-opencode-executor-oauth-overlap",
         conversationId: "conv-opencode-executor-oauth-overlap",
@@ -5024,7 +5026,7 @@ describe("generationManager transitions", () => {
       allowedExecutorSourceIds: ["source-1"],
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(promptMock).toHaveBeenCalledTimes(1);
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
@@ -5132,7 +5134,7 @@ describe("generationManager transitions", () => {
       userMessageContent: "what's my latest issue on linear",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(promptMock).toHaveBeenCalledTimes(1);
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
@@ -5205,7 +5207,7 @@ describe("generationManager transitions", () => {
       model: "anthropic/claude-sonnet-4-6",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(promptMock).not.toHaveBeenCalled();
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
@@ -5271,7 +5273,7 @@ describe("generationManager transitions", () => {
       model: "anthropic/claude-sonnet-4-6",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(finishSpy).toHaveBeenCalledWith(ctx, "completed");
 
@@ -5347,11 +5349,11 @@ describe("generationManager transitions", () => {
       id: "gen-opencode-empty-completion",
       conversationId: "conv-opencode-empty-completion",
       model: "openai/gpt-5.4",
-      backendType: "opencode",
+      backendType: "runtime",
       userMessageContent: "hi",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(ctx.errorMessage).toContain("session.messages returned 404");
     expect(ctx.debugInfo?.originalErrorMessage).toContain(
@@ -5437,11 +5439,11 @@ describe("generationManager transitions", () => {
       id: "gen-opencode-async-early-stream-end",
       conversationId: "conv-opencode-async-early-stream-end",
       model: "openai/gpt-5.4",
-      backendType: "opencode",
+      backendType: "runtime",
       userMessageContent: "hi",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(ctx.assistantContent).toBe("async prompt completed");
     expect(ctx.errorMessage).toBeUndefined();
@@ -5517,11 +5519,11 @@ describe("generationManager transitions", () => {
       id: "gen-opencode-empty-completion-opaque",
       conversationId: "conv-opencode-empty-completion-opaque",
       model: "openai/gpt-5.4",
-      backendType: "opencode",
+      backendType: "runtime",
       userMessageContent: "hi",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(ctx.errorMessage).toContain("non-terminal state");
     expect(ctx.completionReason).toBe("broken_runtime_state");
@@ -5615,7 +5617,7 @@ describe("generationManager transitions", () => {
       type: "none",
     });
 
-    const runPromise = mgr.runOpenCodeGeneration(
+    const runPromise = mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-opencode-post-prompt-cache",
         conversationId: "conv-opencode-post-prompt-cache",
@@ -5693,7 +5695,7 @@ describe("generationManager transitions", () => {
       type: "none",
     });
 
-    await mgr.runOpenCodeGeneration(
+    await mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-opencode-post-prompt-cache-failure",
         conversationId: "conv-opencode-post-prompt-cache-failure",
@@ -5752,12 +5754,12 @@ describe("generationManager transitions", () => {
     const ctx = createCtx({
       id: "gen-openai-no-anthropic-key",
       conversationId: "conv-openai-no-anthropic-key",
-      backendType: "opencode",
+      backendType: "runtime",
       model: "openai/gpt-5.4",
       userMessageContent: "Inspect the repo",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(vi.mocked(getOrCreateConversationRuntime)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -5815,12 +5817,12 @@ describe("generationManager transitions", () => {
     const ctx = createCtx({
       id: "gen-openai-empty-output",
       conversationId: "conv-openai-empty-output",
-      backendType: "opencode",
+      backendType: "runtime",
       model: "openai/gpt-5.4",
       userMessageContent: "hi",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(promptMock).toHaveBeenCalledTimes(1);
     expect(messagesMock).toHaveBeenCalledWith({
@@ -5889,7 +5891,7 @@ describe("generationManager transitions", () => {
       type: "none",
     });
 
-    const runPromise = mgr.runOpenCodeGeneration(
+    const runPromise = mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-session-persist-early",
         conversationId: "conv-session-persist-early",
@@ -5944,11 +5946,11 @@ describe("generationManager transitions", () => {
     const ctx = createCtx({
       id: "gen-anthropic-missing-key",
       conversationId: "conv-anthropic-missing-key",
-      backendType: "opencode",
+      backendType: "runtime",
       model: "anthropic/claude-sonnet-4-6",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(ctx.errorMessage).toBe("ANTHROPIC_API_KEY is not configured");
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
@@ -5999,7 +6001,7 @@ describe("generationManager transitions", () => {
       type: "none",
     });
 
-    await mgr.runOpenCodeGeneration(
+    await mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-opencode-active",
         conversationId: "conv-opencode-active",
@@ -6044,7 +6046,7 @@ describe("generationManager transitions", () => {
       conversationId: "conv-bootstrap",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(ctx.completionReason).toBe("bootstrap_timeout");
     expect(ctx.errorMessage).toBe(
@@ -6099,7 +6101,7 @@ describe("generationManager transitions", () => {
       .spyOn(mgr as never, "scheduleRecoveryReattach")
       .mockImplementation(() => undefined);
 
-    await mgr.runOpenCodeGeneration(
+    await mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-recoverable",
         conversationId: "conv-recoverable",
@@ -6209,11 +6211,11 @@ describe("generationManager transitions", () => {
       undefined,
     );
 
-    const runPromise = mgr.runOpenCodeGeneration(
+    const runPromise = mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-session-error",
         conversationId: "conv-session-error",
-        backendType: "opencode",
+        backendType: "runtime",
         model: "anthropic/claude-sonnet-4-6",
       }),
     );
@@ -6391,7 +6393,7 @@ describe("generationManager transitions", () => {
     vi.useRealTimers();
   });
 
-  it("parks runOpenCodeGeneration when the run deadline has already elapsed", async () => {
+  it("parks runRuntimeGeneration when the run deadline has already elapsed", async () => {
     Object.defineProperty(env, "ANTHROPIC_API_KEY", {
       value: "test-key",
       configurable: true,
@@ -6429,7 +6431,7 @@ describe("generationManager transitions", () => {
       .spyOn(mgr, "finishGeneration")
       .mockResolvedValue(undefined);
 
-    await mgr.runOpenCodeGeneration(
+    await mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-deadline-open",
         conversationId: "conv-deadline-open",
@@ -6442,7 +6444,7 @@ describe("generationManager transitions", () => {
     expect(finishSpy).not.toHaveBeenCalled();
   });
 
-  it("parks runOpenCodeGeneration when the prompt promise hangs past the run deadline", async () => {
+  it("parks runRuntimeGeneration when the prompt promise hangs past the run deadline", async () => {
     vi.useFakeTimers();
     Object.defineProperty(env, "ANTHROPIC_API_KEY", {
       value: "test-key",
@@ -6483,7 +6485,7 @@ describe("generationManager transitions", () => {
       .spyOn(mgr, "finishGeneration")
       .mockResolvedValue(undefined);
 
-    const runPromise = mgr.runOpenCodeGeneration(
+    const runPromise = mgr.runRuntimeGeneration(
       createCtx({
         id: "gen-deadline-hung-prompt",
         conversationId: "conv-deadline-hung-prompt",
@@ -6743,7 +6745,7 @@ describe("generationManager transitions", () => {
     const ctx = createCtx({
       id: "gen-builder-opencode",
       conversationId: "conv-builder",
-      backendType: "opencode",
+      backendType: "runtime",
       model: "anthropic/claude-sonnet-4-6",
       userMessageContent: "Make this coworker run every hour",
       builderCoworkerContext: {
@@ -6758,7 +6760,7 @@ describe("generationManager transitions", () => {
       },
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -6830,14 +6832,14 @@ describe("generationManager transitions", () => {
     const ctx = createCtx({
       id: "gen-coworker-opencode",
       conversationId: "conv-coworker",
-      backendType: "opencode",
+      backendType: "runtime",
       model: "anthropic/claude-sonnet-4-6",
       coworkerId: "wf-1",
       coworkerRunId: "wf-run-1",
       userMessageContent: "Execute scheduled coworker task",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -6949,11 +6951,11 @@ describe("generationManager transitions", () => {
     const ctx = createCtx({
       id: "gen-reasoning",
       conversationId: "conv-reasoning",
-      backendType: "opencode",
+      backendType: "runtime",
       model: "openai/gpt-5.4",
     });
 
-    await mgr.runOpenCodeGeneration(ctx);
+    await mgr.runRuntimeGeneration(ctx);
 
     expect(finishSpy).toHaveBeenCalledWith(ctx, "completed");
     const publishedThinkingEvents = (

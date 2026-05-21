@@ -1,31 +1,31 @@
 import { db } from "@cmdclaw/db/client";
 import { conversation } from "@cmdclaw/db/schema";
 import { eq } from "drizzle-orm";
-import { env } from "../../../../env";
-import { parseModelReference } from "../../../../lib/model-reference";
+import { env } from "../../../env";
+import { parseModelReference } from "../../../lib/model-reference";
 import type {
   RuntimeHarnessClient,
   RuntimePromptPart,
   RuntimeSelection,
   SandboxHandle,
-} from "../../../sandbox/core/types";
-import { createExecutionEnvironmentFactory } from "../../../execution/execution-environment-factory";
-import type { ExecutionEnvironmentSession } from "../../../execution/execution-environment";
-import type { ConversationExecutionRuntimeSession } from "../../../execution/providers/conversation-environment";
-import { logServerEvent } from "../../../utils/observability";
+} from "../../sandbox/core/types";
+import { createExecutionEnvironmentFactory } from "../../execution/execution-environment-factory";
+import type { ExecutionEnvironmentSession } from "../../execution/execution-environment";
+import type { ConversationExecutionRuntimeSession } from "../../execution/providers/conversation-environment";
+import { logServerEvent } from "../../utils/observability";
 import {
   writeRuntimeContextToSandbox,
   writeRuntimeEnvToSandbox,
-} from "../../../execution/runtime-context";
+} from "../../execution/runtime-context";
 import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
-} from "../../lifecycle-policy";
+} from "../../services/lifecycle-policy";
 import {
   GenerationSuspendedError,
-} from "../core/turn-suspension";
-import { composeContinuationPromptSpec } from "../prompts/opencode-prompt-context";
-import type { GenerationContext, GenerationEvent, GenerationStatus } from "../types";
+} from "../../services/generation/core/turn-suspension";
+import { composeContinuationPromptSpec } from "../../services/generation/prompts/opencode-prompt-context";
+import type { GenerationContext, GenerationEvent, GenerationStatus } from "../../services/generation/types";
 import { OpenCodeTurnEventBridge } from "./opencode-turn-events";
 
 export type OpenCodeRecoveryReattachOptions = {
