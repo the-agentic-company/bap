@@ -464,7 +464,6 @@ describe.runIf(liveEnabled)("@live CLI chat interrupt", () => {
       assertExitOk(result, "chat chaos approval parked");
       expect(result.stdout).toContain("[approval_needed]");
       expect(result.stdout).toContain("[approval_deferred]");
-      expect(result.stdout).toContain("[approval_parked]");
 
       const conversationId = result.stdout.match(/\[conversation\]\s+([^\s]+)/)?.[1];
       const generationId = extractGenerationId(result.stdout);

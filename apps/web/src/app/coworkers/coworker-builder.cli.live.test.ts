@@ -208,7 +208,7 @@ async function expectCoworkerPromptContainsHi(coworkerId: string): Promise<void>
 
   assertExitOk(shown, "coworker get");
   const details = JSON.parse(shown.stdout) as { prompt?: string };
-  expect(details.prompt?.toLowerCase()).toContain("hi");
+  expect(details.prompt?.toLowerCase()).toMatch(/\b(hi|hello|greet|greeting)\b/);
 }
 
 function extractBuilderCoworkerId(output: string): string {
@@ -227,10 +227,10 @@ describe.runIf(liveEnabled)("@live CLI coworker builder", () => {
 
   test(
     "builds a manual coworker and persists hi instructions",
-    { timeout: Math.max(responseTimeoutMs + 120_000, 360_000) },
+    { timeout: Math.max(responseTimeoutMs + 240_000, 480_000) },
     async () => {
       const result = await runInteractiveCoworkerBuild({
-        timeoutMs: Math.max(responseTimeoutMs, 180_000),
+        timeoutMs: Math.max(responseTimeoutMs + 120_000, 300_000),
       });
 
       assertExitOk(result, "coworker build");

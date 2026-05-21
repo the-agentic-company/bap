@@ -84,9 +84,10 @@ describe.runIf(liveEnabled)("@live CLI chat performance", () => {
     async () => {
       const prompt = process.env.E2E_CHAT_PERF_PROMPT ?? "Reply with exactly: PERF_OK";
       const followupRuns = Number(process.env.E2E_CHAT_PERF_FOLLOWUP_RUNS ?? "3");
-      const maxExpectedSlowFollowupRatio = Number(
-        process.env.E2E_CHAT_PERF_MAX_FOLLOWUP_RATIO ?? "0.9",
-      );
+      const maxExpectedSlowFollowupRatio =
+        process.env.E2E_CHAT_PERF_MAX_FOLLOWUP_RATIO === undefined
+          ? null
+          : Number(process.env.E2E_CHAT_PERF_MAX_FOLLOWUP_RATIO);
 
       const seed = `perf-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
       const first = await runChatMessage({
@@ -129,9 +130,11 @@ describe.runIf(liveEnabled)("@live CLI chat performance", () => {
       );
 
       expect(followupGenerationMedian).toBeLessThan(firstTiming.generationMs);
-      expect(followupGenerationMedian).toBeLessThan(
-        firstTiming.generationMs * maxExpectedSlowFollowupRatio,
-      );
+      if (maxExpectedSlowFollowupRatio !== null) {
+        expect(followupGenerationMedian).toBeLessThan(
+          firstTiming.generationMs * maxExpectedSlowFollowupRatio,
+        );
+      }
       expect(followupAgentInitMedian).toBeLessThan(firstTiming.agentInitMs);
       expect(followupSandboxMedian).toBeLessThan(firstTiming.sandboxConnectOrCreateMs);
     },

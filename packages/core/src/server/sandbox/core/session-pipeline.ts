@@ -8,12 +8,7 @@ import type {
   SandboxHandle,
 } from "./types";
 import { createRuntimeHarnessClientFromOpencodeClient } from "../compat/opencode-client-shim";
-import {
-  completeSessionInitForCloudProvider,
-  getOrCreateSandboxForCloudProvider,
-  type OpenCodeSandbox,
-  type OpenCodeSessionConfig,
-} from "../opencode-session";
+import type { OpenCodeSandbox, OpenCodeSessionConfig } from "../opencode-session";
 
 function toSandboxHandle(sandbox: OpenCodeSandbox): SandboxHandle {
   return {
@@ -69,6 +64,9 @@ export async function runConversationSandboxPipeline(input: {
     openAIAuthSource: input.context.openAIAuthSource,
   };
 
+  const { getOrCreateSandboxForCloudProvider } = await import(
+    /* webpackIgnore: true */ "../opencode-session"
+  );
   const result = await getOrCreateSandboxForCloudProvider(
     input.selection.sandboxProvider,
     config,
@@ -89,6 +87,9 @@ export async function runConversationSandboxPipeline(input: {
       runtimeProtocolVersion: input.selection.runtimeProtocolVersion,
     },
     completeAgentInit: async (agentInitInput): Promise<ConversationRuntimeAgentInitResult> => {
+      const { completeSessionInitForCloudProvider } = await import(
+        /* webpackIgnore: true */ "../opencode-session"
+      );
       const agentResult = await completeSessionInitForCloudProvider(
         input.selection.sandboxProvider,
         result,

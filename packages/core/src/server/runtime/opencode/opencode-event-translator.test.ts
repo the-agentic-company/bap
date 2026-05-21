@@ -1,0 +1,152 @@
+import { describe, expect, it, vi } from "vitest";
+import type { ContentPart } from "@cmdclaw/db/schema";
+import type { RuntimePart } from "../../sandbox/core/types";
+import { OpenCodeEventTranslator, type OpenCodeTrackedEvent } from "./opencode-event-translator";
+
+type TestContext = {
+  id: string;
+  userMessageContent: string;
+  assistantContent: string;
+  contentParts: ContentPart[];
+  phaseMarks?: Record<string, number>;
+  sessionId?: string;
+  assistantMessageIds: Set<string>;
+  messageRoles: Map<string, string>;
+  pendingMessageParts: Map<string, { firstQueuedAtMs: number; parts: RuntimePart[] }>;
+  openCodeRuntimeTools: Map<
+    string,
+    {
+      sessionId?: string;
+      messageId: string;
+      partId: string;
+      callId: string;
+      toolName: string;
+      input: Record<string, unknown>;
+    }
+  >;
+};
+
+function createContext(overrides: Partial<TestContext> = {}): TestContext {
+  return {
+    id: "gen-1",
+    userMessageContent: "hello",
+    assistantContent: "",
+    contentParts: [],
+    phaseMarks: {},
+    assistantMessageIds: new Set(),
+    messageRoles: new Map(),
+    pendingMessageParts: new Map(),
+    openCodeRuntimeTools: new Map(),
+    ...overrides,
+  };
+}
+
+function createTranslator() {
+  return new OpenCodeEventTranslator<TestContext>({
+    markPhase: (ctx, phase) => {
+      ctx.phaseMarks ??= {};
+      ctx.phaseMarks[phase] = Date.now();
+    },
+    broadcast: () => {},
+    scheduleSave: () => {},
+    saveProgress: async () => {},
+    getToolUseMetadata: () => ({}),
+  });
+}
+
+describe("OpenCodeEventTranslator", () => {
+  it("bounds pending unknown message parts and resets queue after TTL", async () => {
+    vi.useFakeTimers();
+    try {
+      const translator = createTranslator();
+      const ctx = createContext();
+
+      const processEvent = async (id: string, text = "hello") => {
+        await translator.processEvent({
+          ctx,
+          event: {
+            type: "message.part.updated",
+            properties: {
+              part: {
+                id,
+                type: "text",
+                text,
+                messageID: "msg-unknown",
+              },
+            },
+          } as unknown as OpenCodeTrackedEvent,
+          currentTextPart: null,
+          currentTextPartId: null,
+          setCurrentTextPart: () => {},
+        });
+      };
+
+      for (let i = 0; i < 120; i += 1) {
+        // eslint-disable-next-line no-await-in-loop -- sequential enqueueing is intentional
+        await processEvent(`part-${i}`);
+      }
+
+      const queuedBeforeTtl = ctx.pendingMessageParts.get("msg-unknown");
+      expect(queuedBeforeTtl).toBeDefined();
+      expect(queuedBeforeTtl?.parts).toHaveLength(100);
+
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1);
+      await processEvent("part-after-ttl");
+
+      const queuedAfterTtl = ctx.pendingMessageParts.get("msg-unknown");
+      expect(queuedAfterTtl).toBeDefined();
+      expect(queuedAfterTtl?.parts).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("truncates oversized OpenCode tool results before storing content parts", async () => {
+    const translator = createTranslator();
+    const ctx = createContext({
+      contentParts: [
+        {
+          type: "tool_use",
+          id: "tool-1",
+          name: "bash",
+          input: { command: "echo big" },
+        } as ContentPart,
+      ],
+      messageRoles: new Map([["assistant-msg", "assistant"]]),
+    });
+
+    const hugeOutput = "x".repeat(120_000);
+
+    await translator.processEvent({
+      ctx,
+      event: {
+        type: "message.part.updated",
+        properties: {
+          part: {
+            id: "tool-part-1",
+            type: "tool",
+            tool: "bash",
+            callID: "tool-1",
+            messageID: "assistant-msg",
+            state: {
+              status: "completed",
+              output: hugeOutput,
+            },
+          },
+        },
+      } as unknown as OpenCodeTrackedEvent,
+      currentTextPart: null,
+      currentTextPartId: null,
+      setCurrentTextPart: () => {},
+    });
+
+    const toolResult = ctx.contentParts.find(
+      (part) => part.type === "tool_result" && part.tool_use_id === "tool-1",
+    );
+
+    expect(toolResult).toBeDefined();
+    expect(typeof toolResult?.content).toBe("string");
+    expect(String(toolResult?.content)).toContain("... (output truncated)");
+    expect(String(toolResult?.content).length).toBeLessThanOrEqual(100_024);
+  });
+});

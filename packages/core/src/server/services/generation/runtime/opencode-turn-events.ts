@@ -1,0 +1,221 @@
+import {
+  OpenCodeEventTranslator,
+  type OpenCodeActionableEvent,
+  type OpenCodeTrackedEvent,
+} from "../../../runtime/opencode/opencode-event-translator";
+import {
+  OpenCodeRuntimeEventLoop,
+  type OpenCodeApprovalCapableClient,
+} from "../../../runtime/opencode/opencode-runtime-driver";
+import {
+  parseCoworkerEditApplyEnvelope,
+  parseCoworkerInvocationEnvelope,
+} from "../../../../lib/coworker-runtime-cli";
+import { logServerEvent } from "../../../utils/observability";
+import { getToolUseMetadata } from "../streams/replay-events";
+import type { GenerationContext, GenerationEvent } from "../types";
+
+export type OpenCodeTurnEventLoopMode = "normal" | "recovery_reattach";
+
+type OpenCodeTurnEventBridgeCallbacks = {
+  markPhase: (ctx: GenerationContext, phase: string) => void;
+  broadcast: (ctx: GenerationContext, event: GenerationEvent) => void;
+  scheduleSave: (ctx: GenerationContext) => void;
+  saveProgress: (ctx: GenerationContext) => Promise<void>;
+  markRuntimeActivity: (ctx: GenerationContext) => void;
+  refreshCancellationSignal: (ctx: GenerationContext) => Promise<boolean>;
+  handleActionableEvent: (
+    ctx: GenerationContext,
+    client: OpenCodeApprovalCapableClient,
+    event: OpenCodeActionableEvent,
+  ) => Promise<{ type: "none" | "permission" | "question" }>;
+};
+
+export type CreateOpenCodeTurnEventLoopInput = {
+  ctx: GenerationContext;
+  client: OpenCodeApprovalCapableClient;
+  mode: OpenCodeTurnEventLoopMode;
+  verboseEventLogs?: boolean;
+  pollExternalInterruptAndSuspendIfNeeded?: () => Promise<void>;
+  onIdle?: () => void;
+  onSessionError?: (errorMessage: string) => void;
+};
+
+export class OpenCodeTurnEventBridge {
+  private readonly translator: OpenCodeEventTranslator<GenerationContext>;
+
+  constructor(private readonly callbacks: OpenCodeTurnEventBridgeCallbacks) {
+    this.translator = new OpenCodeEventTranslator<GenerationContext>({
+      markPhase: (ctx, phase) => this.callbacks.markPhase(ctx, phase),
+      broadcast: (ctx, event) => this.callbacks.broadcast(ctx, event),
+      scheduleSave: (ctx) => this.callbacks.scheduleSave(ctx),
+      saveProgress: (ctx) => this.callbacks.saveProgress(ctx),
+      getToolUseMetadata,
+      appendToolResultDerivedContentParts: ({ ctx, toolName, toolInput, toolResult }) => {
+        const coworkerInvocation = parseCoworkerInvocationEnvelope({
+          toolName,
+          toolInput,
+          toolResult,
+        });
+        if (coworkerInvocation) {
+          ctx.contentParts.push({
+            type: "coworker_invocation",
+            coworker_id: coworkerInvocation.coworkerId,
+            username: coworkerInvocation.username,
+            name: coworkerInvocation.name,
+            run_id: coworkerInvocation.runId,
+            conversation_id: coworkerInvocation.conversationId,
+            generation_id: coworkerInvocation.generationId,
+            status: coworkerInvocation.status,
+            attachment_names: coworkerInvocation.attachmentNames,
+            message: coworkerInvocation.message,
+          });
+        }
+        const coworkerEditApply = parseCoworkerEditApplyEnvelope({
+          toolName,
+          toolInput,
+          toolResult,
+        });
+        if (coworkerEditApply) {
+          this.applyCoworkerEditEnvelope(ctx, coworkerEditApply);
+        }
+      },
+    });
+  }
+
+  createEventLoop(input: CreateOpenCodeTurnEventLoopInput): OpenCodeRuntimeEventLoop {
+    const { ctx, client, mode } = input;
+    return new OpenCodeRuntimeEventLoop({
+      markFirstEvent: () => {
+        if (!ctx.phaseMarks?.first_event_received) {
+          this.callbacks.markPhase(ctx, "first_event_received");
+        }
+      },
+      markRuntimeActivity: () => this.callbacks.markRuntimeActivity(ctx),
+      refreshCancellationSignal: () => this.callbacks.refreshCancellationSignal(ctx),
+      pollExternalInterruptAndSuspendIfNeeded: input.pollExternalInterruptAndSuspendIfNeeded,
+      logEvent: ({ event, inspection }) => {
+        if (input.verboseEventLogs) {
+          const eventJson = JSON.stringify(event.properties || {});
+          console.log("[OpenCode Event]", event.type, eventJson.slice(0, 200));
+          return;
+        }
+        if (inspection.logEvent) {
+          const modeSuffix = mode === "recovery_reattach" ? " mode=recovery_reattach" : "";
+          console.info(
+            `[OpenCode][EVENT] type=${event.type} generationId=${ctx.id} conversationId=${ctx.conversationId}${modeSuffix}`,
+          );
+        }
+      },
+      processTrackedEvent: async ({
+        event,
+        currentTextPart,
+        currentTextPartId,
+        setCurrentTextPart,
+      }) => {
+        await this.processTrackedEvent({
+          ctx,
+          event,
+          currentTextPart,
+          currentTextPartId,
+          setCurrentTextPart,
+        });
+      },
+      handleActionableEvent: (event) =>
+        this.callbacks.handleActionableEvent(ctx, client, event),
+      onIdle: input.onIdle,
+      onSessionError: input.onSessionError,
+    });
+  }
+
+  private async processTrackedEvent(input: {
+    ctx: GenerationContext;
+    event: OpenCodeTrackedEvent;
+    currentTextPart: { type: "text"; text: string } | null;
+    currentTextPartId: string | null;
+    setCurrentTextPart: (
+      part: { type: "text"; text: string } | null,
+      partId: string | null,
+    ) => void;
+  }): Promise<void> {
+    await this.translator.processEvent(input);
+  }
+
+  private appendSystemEvent(
+    ctx: GenerationContext,
+    event: { content: string; coworkerId?: string },
+  ): void {
+    ctx.contentParts.push({
+      type: "system",
+      content: event.content,
+    });
+    this.callbacks.broadcast(ctx, {
+      type: "system",
+      content: event.content,
+      coworkerId: event.coworkerId,
+    });
+  }
+
+  private applyCoworkerEditEnvelope(
+    ctx: GenerationContext,
+    envelope: NonNullable<ReturnType<typeof parseCoworkerEditApplyEnvelope>>,
+  ): void {
+    const coworkerId = envelope.coworkerId;
+
+    if (envelope.status === "applied") {
+      ctx.builderCoworkerContext = envelope.coworker;
+      this.appendSystemEvent(ctx, { content: envelope.message, coworkerId });
+      logServerEvent(
+        "info",
+        "COWORKER_EDIT_APPLIED",
+        {
+          coworkerId,
+          changedFields: envelope.appliedChanges,
+        },
+        {
+          source: "generation-manager",
+          traceId: ctx.traceId,
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+        },
+      );
+      return;
+    }
+
+    if (envelope.status === "conflict") {
+      ctx.builderCoworkerContext = envelope.coworker;
+      this.appendSystemEvent(ctx, { content: envelope.message, coworkerId });
+      logServerEvent(
+        "warn",
+        "COWORKER_EDIT_CONFLICT",
+        { coworkerId },
+        {
+          source: "generation-manager",
+          traceId: ctx.traceId,
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+        },
+      );
+      return;
+    }
+
+    this.appendSystemEvent(ctx, {
+      content: `${envelope.message}: ${envelope.details.join("; ")}`,
+      coworkerId,
+    });
+    logServerEvent(
+      "warn",
+      "COWORKER_EDIT_VALIDATION_FAILED",
+      { coworkerId, details: envelope.details },
+      {
+        source: "generation-manager",
+        traceId: ctx.traceId,
+        generationId: ctx.id,
+        conversationId: ctx.conversationId,
+        userId: ctx.userId,
+      },
+    );
+  }
+}

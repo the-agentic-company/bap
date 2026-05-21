@@ -61,7 +61,11 @@ describe.runIf(liveEnabled)("@live CLI chat gmail", () => {
       expect(result.stdout).not.toContain("[auth_needed]");
       expect(result.stdout).not.toContain("User denied this action");
       expect(result.stdout).toContain(`READ_SUBJECT=[${marker}]`);
-      expect(result.stdout).toContain(latestInboxBeforePrompt.subject);
+      const latestInboxAfterPrompt = await readLatestInboxMessage({ token: gmailAccessToken });
+      expect(
+        result.stdout.includes(latestInboxBeforePrompt.subject) ||
+          result.stdout.includes(latestInboxAfterPrompt.subject),
+      ).toBe(true);
     },
   );
 

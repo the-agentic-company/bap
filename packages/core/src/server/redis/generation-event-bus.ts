@@ -1,5 +1,5 @@
 import IORedis from "ioredis";
-import type { GenerationEvent } from "../services/generation-manager";
+import type { GenerationEvent } from "../services/generation/types";
 import { prefixRedisKey } from "../instance";
 import { buildRedisOptions } from "./connection-options";
 
