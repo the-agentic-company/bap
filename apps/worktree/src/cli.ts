@@ -2589,6 +2589,9 @@ async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promise<void>
           : { rows: [] };
 
       const accountRows = await selectRows(sourceClient, "account", "user_id = $1", [sourceUser.id]);
+      const connectedIdentityRows = await selectRows(sourceClient, "connected_identity", "user_id = $1", [
+        sourceUser.id,
+      ]);
       const integrationRows = await selectRows(sourceClient, "integration", "user_id = $1", [sourceUser.id]);
       const integrationIds = integrationRows
         .map((row) => row.id)
@@ -2722,6 +2725,7 @@ async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promise<void>
         );
         await upsertRows(targetClient, "workspace_member", workspaceMemberRows.rows, ["id"]);
         await upsertRows(targetClient, "account", accountRows, ["id"]);
+        await upsertRows(targetClient, "connected_identity", connectedIdentityRows, ["id"]);
         await upsertRows(targetClient, "integration", integrationRows, ["id"]);
         await upsertRows(targetClient, "integration_token", integrationTokenRows.rows, ["id"]);
         await upsertRows(targetClient, "provider_auth", providerAuthRows, ["id"]);
