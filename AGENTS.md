@@ -40,3 +40,17 @@ Always prefer Big Bang Rewrite when doing a big refactoring do not get backward 
 
 # ExecPlans
 When writing complex features or significant refactors, use an ExecPlan (as described in `.agents/PLANS.md`) from design to implementation.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in Linear under team `cmdlaw`; agents prepare issue text only and do not create or update Linear issues directly. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use Linear-native labels and statuses that best match the five canonical triage roles. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo: read root `CONTEXT.md` and `docs/adr/` when present. See `docs/agents/domain.md`.
