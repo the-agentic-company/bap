@@ -64,6 +64,7 @@ import {
   useGoogleAccessStatus,
   useToggleIntegration,
   useDisconnectIntegration,
+  useRenameAccountLabel,
   useLinkLinkedIn,
   useSkillList,
   useCreateSkill,
@@ -801,6 +802,7 @@ function ToolboxPageContent() {
   const requestGoogleAccess = useRequestGoogleAccess();
   const toggleIntegration = useToggleIntegration();
   const disconnectIntegration = useDisconnectIntegration();
+  const renameAccountLabel = useRenameAccountLabel();
   const linkLinkedIn = useLinkLinkedIn();
 
   // Executor source hooks
@@ -925,7 +927,10 @@ function ToolboxPageContent() {
 
   // ─── Integration handlers ───────────────────────────────────────────────────
   const handleIntegrationConnect = useCallback(
-    async (type: OAuthIntegrationType) => {
+    async (
+      type: OAuthIntegrationType,
+      options?: { mode?: "connect" | "connect_to_label" | "reauth" },
+    ) => {
       setConnectingType(type);
       setIntegrationConnectErrors((prev) => {
         const next = { ...prev };
@@ -936,6 +941,7 @@ function ToolboxPageContent() {
         const result = await getAuthUrl.mutateAsync({
           type,
           redirectUrl: window.location.href,
+          mode: options?.mode,
         });
         window.location.assign(result.authUrl);
       } catch (error) {
@@ -1333,6 +1339,11 @@ function ToolboxPageContent() {
     [connectedIntegrations],
   );
 
+  const getIntegrationsForType = useCallback(
+    (type: string) => integrationsList.filter((integration) => integration.type === type),
+    [integrationsList],
+  );
+
   const getConnectError = useCallback(
     (type: string) => integrationConnectErrors[type as OAuthIntegrationType],
     [integrationConnectErrors],
@@ -1359,6 +1370,18 @@ function ToolboxPageContent() {
       : null;
     if (parsed && parsed !== "whatsapp") {
       void handleIntegrationConnect(parsed as OAuthIntegrationType);
+    }
+  }, [handleIntegrationConnect, previewId]);
+
+  const handlePreviewConnectAnother = useCallback(() => {
+    if (!previewId) {
+      return;
+    }
+    const parsed = previewId.startsWith("integration:")
+      ? previewId.slice("integration:".length)
+      : null;
+    if (parsed && parsed !== "whatsapp") {
+      void handleIntegrationConnect(parsed as OAuthIntegrationType, { mode: "connect" });
     }
   }, [handleIntegrationConnect, previewId]);
 
@@ -1413,25 +1436,35 @@ function ToolboxPageContent() {
     () => ({
       getIntegrationConfig,
       getIntegration,
+      getIntegrations: getIntegrationsForType,
       getConnectError,
       isWhatsApp: isWhatsAppType,
       showGoogleRequest: showGoogleRequestForType,
       isConnecting: !!connectingType,
       onConnect: handlePreviewConnect,
+      onConnectAnother: handlePreviewConnectAnother,
       onToggle: handlePreviewToggle,
+      onToggleAccount: handleIntegrationToggle,
       onDisconnect: handlePreviewDisconnect,
+      onDisconnectAccount: handleIntegrationDisconnect,
       onRequestGoogleAccess: handlePreviewRequestGoogleAccess,
+      onRenameAccountLabel: renameAccountLabel.mutate,
     }),
     [
       connectingType,
       getConnectError,
       getIntegration,
+      getIntegrationsForType,
       getIntegrationConfig,
       handlePreviewConnect,
+      handlePreviewConnectAnother,
       handlePreviewDisconnect,
       handlePreviewRequestGoogleAccess,
       handlePreviewToggle,
+      handleIntegrationToggle,
+      handleIntegrationDisconnect,
       isWhatsAppType,
+      renameAccountLabel.mutate,
       showGoogleRequestForType,
     ],
   );

@@ -1,23 +1,18 @@
 import { parseArgs } from "util";
+import { resolveConnectedAccountAccessToken } from "../../../lib/connected-account";
 import { buildRawEmail } from "./build-gmail-email";
 import { formatEmailDate } from "./format-email-date";
 
 const CLI_ARGS = process.argv.slice(2);
-const IS_HELP_REQUEST = CLI_ARGS.includes("--help") || CLI_ARGS.includes("-h");
-const TOKEN = process.env.GMAIL_ACCESS_TOKEN;
-if (!TOKEN && !IS_HELP_REQUEST) {
-  console.error("Error: GMAIL_ACCESS_TOKEN environment variable required");
-  process.exit(1);
-}
-
-const headers = { Authorization: `Bearer ${TOKEN}` };
 const USER_TIMEZONE = process.env.CMDCLAW_USER_TIMEZONE?.trim();
+let headers: Record<string, string> = {};
 
 const { positionals, values } = parseArgs({
   args: CLI_ARGS,
   allowPositionals: true,
   options: {
     help: { type: "boolean", short: "h" },
+    account: { type: "string" },
     query: { type: "string", short: "q" },
     limit: { type: "string", short: "l", default: "10" },
     scope: { type: "string" },
@@ -314,6 +309,7 @@ function showHelp() {
   draft --to <email> --subject <subject> --body <body> [--cc <email>] [--attachment <path>]...
 
 Options:
+  --account <label>           Select an Account Label when multiple Connected Accounts exist
   -h, --help                  Show this help message`);
 }
 
@@ -324,6 +320,13 @@ async function main() {
   }
 
   try {
+    const token = await resolveConnectedAccountAccessToken({
+      integrationType: "google_gmail",
+      accountLabel: values.account,
+      fallbackEnvVar: "GMAIL_ACCESS_TOKEN",
+    });
+    headers = { Authorization: `Bearer ${token}` };
+
     switch (command) {
       case "list":
         await listEmails();

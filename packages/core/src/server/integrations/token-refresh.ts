@@ -458,6 +458,75 @@ export async function getValidTokensForUser(
   return tokens;
 }
 
+export type ValidConnectedAccountToken = {
+  integrationType: IntegrationType;
+  accessToken: string;
+  connectedAccountId: string;
+  connectedIdentityId: string | null;
+  accountLabel: string | null;
+  displayName: string | null;
+  metadata: Record<string, unknown> | null;
+};
+
+export async function getValidConnectedAccountTokensForUser(
+  userId: string,
+  integrationTypes?: readonly IntegrationType[],
+): Promise<ValidConnectedAccountToken[]> {
+  const results = await db.query.integration.findMany({
+    where: eq(integration.userId, userId),
+    with: {
+      connectedIdentity: true,
+      tokens: true,
+    },
+  });
+
+  const allowedTypes = integrationTypes ? new Set(integrationTypes) : null;
+  const tokens: ValidConnectedAccountToken[] = [];
+
+  await Promise.all(
+    results.map(async (row) => {
+      if (!row.enabled || allowedTypes?.has(row.type) === false) {
+        return;
+      }
+
+      const latestToken = row.tokens
+        .filter((token) => token.accessToken)
+        .sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0))[0];
+      if (!latestToken) {
+        return;
+      }
+
+      try {
+        const validToken = await getValidAccessToken({
+          accessToken: latestToken.accessToken,
+          refreshToken: latestToken.refreshToken,
+          expiresAt: latestToken.expiresAt,
+          tokenUpdatedAt: latestToken.updatedAt,
+          integrationId: row.id,
+          type: row.type,
+        });
+
+        tokens.push({
+          integrationType: row.type,
+          accessToken: validToken,
+          connectedAccountId: row.id,
+          connectedIdentityId: row.connectedIdentityId,
+          accountLabel: row.connectedIdentity?.label ?? null,
+          displayName: row.displayName,
+          metadata: row.metadata,
+        });
+      } catch (error) {
+        console.warn(
+          `[Token Refresh] Skipping ${row.type} integration ${row.id} due to refresh error:`,
+          error,
+        );
+      }
+    }),
+  );
+
+  return tokens;
+}
+
 /**
  * Refresh a custom integration's OAuth token
  */

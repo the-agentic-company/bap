@@ -80,6 +80,7 @@ export function ToolboxPreviewModal({
       type: string,
     ) => { name: string; description: string; icon: string } | undefined;
     getIntegration: (type: string) => IntegrationDetailProps["integration"];
+    getIntegrations?: (type: string) => NonNullable<IntegrationDetailProps["integrations"]>;
     getConnectError: (type: string) => string | undefined;
     isWhatsApp: (type: string) => boolean;
     showGoogleRequest: (type: string) => boolean;
@@ -201,14 +202,19 @@ export function ToolboxPreviewModal({
                   type={target.type}
                   config={config}
                   integration={integrationProps.getIntegration(target.type)}
+                  integrations={integrationProps.getIntegrations?.(target.type)}
                   isWhatsApp={integrationProps.isWhatsApp(target.type)}
                   connectError={integrationProps.getConnectError(target.type)}
                   showGoogleRequest={integrationProps.showGoogleRequest(target.type)}
                   isConnecting={integrationProps.isConnecting}
                   onConnect={integrationProps.onConnect}
+                  onConnectAnother={integrationProps.onConnectAnother}
                   onToggle={integrationProps.onToggle}
+                  onToggleAccount={integrationProps.onToggleAccount}
                   onDisconnect={integrationProps.onDisconnect}
+                  onDisconnectAccount={integrationProps.onDisconnectAccount}
                   onRequestGoogleAccess={integrationProps.onRequestGoogleAccess}
+                  onRenameAccountLabel={integrationProps.onRenameAccountLabel}
                 />
               );
             })()}

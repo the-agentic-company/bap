@@ -4,13 +4,17 @@ import { env } from "../../env";
 import { resolvePublicCallbackBaseUrl } from "../../lib/worktree-routing";
 import { isSelfHostedEdition } from "../edition";
 import { db } from "@cmdclaw/db/client";
-import { integration, customIntegrationCredential } from "@cmdclaw/db/schema";
+import { connectedIdentity, integration, customIntegrationCredential } from "@cmdclaw/db/schema";
 import { decrypt } from "../lib/encryption";
 import {
   getDelegatedRuntimeCredentials,
   listCloudManagedIntegrations,
 } from "../control-plane/client";
-import { getValidTokensForUser, getValidCustomTokens } from "./token-refresh";
+import {
+  getValidTokensForUser,
+  getValidCustomTokens,
+} from "./token-refresh";
+import { backfillConnectedIdentities } from "./backfill-connected-identities";
 
 // Token-based integrations map to their access token env var
 const TOKEN_ENV_VAR_MAP: Record<Exclude<IntegrationType, "linkedin">, string> = {
@@ -66,6 +70,7 @@ export async function getCliEnvForUser(userId: string): Promise<Record<string, s
   }
 
   const cliEnv: Record<string, string> = {};
+  await backfillConnectedIdentities(db, userId);
   // Get valid tokens, refreshing any that are expired or about to expire
   // This already filters by enabled integrations
   const tokens = await getValidTokensForUser(userId);
@@ -212,7 +217,10 @@ export async function getCliInstructionsWithCustom(
   connectedIntegrations: IntegrationType[],
   userId: string,
 ): Promise<string> {
-  const base = getCliInstructions(connectedIntegrations);
+  const base = getCliInstructions(
+    connectedIntegrations,
+    await getAccountLabelsByIntegrationType(userId),
+  );
 
   try {
     const customCreds = await db.query.customIntegrationCredential.findMany({
@@ -240,7 +248,53 @@ export async function getCliInstructionsWithCustom(
   }
 }
 
-function getCliInstructions(connectedIntegrations: IntegrationType[]): string {
+export async function getAccountLabelsByIntegrationType(
+  userId: string,
+): Promise<Map<IntegrationType, string[]>> {
+  if (isSelfHostedEdition()) {
+    return new Map();
+  }
+
+  await backfillConnectedIdentities(db, userId);
+
+  const rows = await db
+    .select({
+      type: integration.type,
+      label: connectedIdentity.label,
+    })
+    .from(integration)
+    .innerJoin(connectedIdentity, eq(integration.connectedIdentityId, connectedIdentity.id))
+    .where(and(eq(integration.userId, userId), eq(integration.enabled, true)));
+
+  const labelsByType = new Map<IntegrationType, string[]>();
+  for (const row of rows) {
+    const labels = labelsByType.get(row.type) ?? [];
+    labels.push(row.label);
+    labelsByType.set(row.type, labels);
+  }
+
+  for (const [type, labels] of labelsByType) {
+    labelsByType.set(type, [...new Set(labels)].sort());
+  }
+
+  return labelsByType;
+}
+
+function accountLabelHint(
+  labelsByType: Map<IntegrationType, string[]> | undefined,
+  type: IntegrationType,
+): string {
+  const labels = labelsByType?.get(type) ?? [];
+  if (labels.length === 0) {
+    return "";
+  }
+  return `\n- Account Labels: ${labels.join(", ")}. Use --account <label> when selecting a Connected Account.`;
+}
+
+function getCliInstructions(
+  connectedIntegrations: IntegrationType[],
+  labelsByType?: Map<IntegrationType, string[]>,
+): string {
   // Helper to show connection status
   const statusTag = (type: IntegrationType) =>
     connectedIntegrations.includes(type) ? "✓ Connected" : "⚡ Auth Required";
@@ -249,26 +303,26 @@ function getCliInstructions(connectedIntegrations: IntegrationType[]): string {
   const instructions = `
 ## Google Gmail CLI [${statusTag("google_gmail")}]
 - Use search whenever you have a query; use list only to browse recent mail
-- google-gmail list [-l limit] - List emails
-- google-gmail search -q <query> [-l limit] [--scope inbox|all|strict-all] - Search mailbox
-- google-gmail get <messageId> - Get full email content
-- google-gmail unread - Count unread emails
-- google-gmail draft --to <email> --subject <subject> --body <body>
-- google-gmail send --to <email> --subject <subject> --body <body>
+- google-gmail [--account <label>] list [-l limit] - List emails
+- google-gmail [--account <label>] search -q <query> [-l limit] [--scope inbox|all|strict-all] - Search mailbox
+- google-gmail [--account <label>] get <messageId> - Get full email content
+- google-gmail [--account <label>] unread - Count unread emails
+- google-gmail [--account <label>] draft --to <email> --subject <subject> --body <body>
+- google-gmail [--account <label>] send --to <email> --subject <subject> --body <body>
 - Email bodies accept plain text, common Markdown, or allowed safe email HTML.
-- Example: google-gmail search -q "from:boss" -l 5
+- Example: google-gmail --account work search -q "from:boss" -l 5${accountLabelHint(labelsByType, "google_gmail")}
 
 ## Outlook Mail CLI [${statusTag("outlook")}]
 - Use search whenever you have a query; use list only to browse recent mail
-- outlook-mail list [-l limit] - List emails
-- outlook-mail search -q <query> [-l limit] - Search mailbox
-- outlook-mail get <messageId> - Get full email content
-- outlook-mail unread - Count unread emails
-- outlook-mail contacts list [-l limit] [--cursor <cursor>] [--all] - List Outlook contacts; follow nextCommand when hasMore is true
-- outlook-mail draft --to <email> --subject <subject> --body <body> [--attachment <path>]
-- outlook-mail send --to <email> --subject <subject> --body <body> [--attachment <path>]
+- outlook-mail [--account <label>] list [-l limit] - List emails
+- outlook-mail [--account <label>] search -q <query> [-l limit] - Search mailbox
+- outlook-mail [--account <label>] get <messageId> - Get full email content
+- outlook-mail [--account <label>] unread - Count unread emails
+- outlook-mail [--account <label>] contacts list [-l limit] [--cursor <cursor>] [--all] - List Outlook contacts; follow nextCommand when hasMore is true
+- outlook-mail [--account <label>] draft --to <email> --subject <subject> --body <body> [--attachment <path>]
+- outlook-mail [--account <label>] send --to <email> --subject <subject> --body <body> [--attachment <path>]
 - Email bodies accept plain text, common Markdown, or allowed safe email HTML.
-- Example: outlook-mail search -q "invoice" -l 5
+- Example: outlook-mail --account work search -q "invoice" -l 5${accountLabelHint(labelsByType, "outlook")}
 
 ## Outlook Calendar CLI [${statusTag("outlook_calendar")}]
 - outlook-calendar list [-t timeMin] [-m timeMax] [-l limit] [-c calendarId] - List events
@@ -342,15 +396,15 @@ function getCliInstructions(connectedIntegrations: IntegrationType[]): string {
 - airtable delete -b <baseId> -t <table> -r <recordId>
 
 ## Slack CLI [${statusTag("slack")}]
-- slack channels - List channels
-- slack history -c <channelId> - Get channel messages
-- slack send -c <channelId> -t <text> --as <user|bot> [--thread <ts>] - Send message (explicit actor required)
+- slack [--account <label>] channels - List channels
+- slack [--account <label>] history -c <channelId> - Get channel messages
+- slack [--account <label>] send -c <channelId> -t <text> --as <user|bot> [--thread <ts>] - Send message (explicit actor required; --account applies to --as user)
 - Slack message text accepts common Markdown; the CLI converts it to Slack mrkdwn.
-- slack search -q <query> - Search messages
-- slack users - List users
-- slack user -u <userId> - Get user info
-- slack thread -c <channelId> --thread <ts> - Get thread replies
-- slack react -c <channelId> --ts <messageTs> -e <emoji>
+- slack [--account <label>] search -q <query> - Search messages
+- slack [--account <label>] users - List users
+- slack [--account <label>] user -u <userId> - Get user info
+- slack [--account <label>] thread -c <channelId> --thread <ts> - Get thread replies
+- slack [--account <label>] react -c <channelId> --ts <messageTs> -e <emoji>${accountLabelHint(labelsByType, "slack")}
 
 ## HubSpot CLI [${statusTag("hubspot")}]
 - hubspot contacts list [-l limit] [-q query] - List contacts

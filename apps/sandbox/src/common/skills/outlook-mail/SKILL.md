@@ -9,34 +9,35 @@ Read inbox emails, get email content, count unread emails, find people contacts,
 
 ## Environment Variables
 
-- `OUTLOOK_ACCESS_TOKEN` - Microsoft OAuth2 access token with Outlook Mail and People scopes, including draft creation and contact lookup support
+- `OUTLOOK_ACCESS_TOKEN` - Fallback Microsoft OAuth2 access token with Outlook Mail and People scopes, including draft creation and contact lookup support
+- `CMDCLAW_RUNTIME_CREDENTIALS_URL` and `CMDCLAW_USER_ID` - Resolve a selected Connected Account when `--account <label>` is used
 
 ## Commands
 
 ```bash
 # List emails
-outlook-mail list [-l limit]
+outlook-mail [--account <label>] list [-l limit]
 
 # Search mailbox
-outlook-mail search -q "subject keyword" [-l limit]
+outlook-mail [--account <label>] search -q "subject keyword" [-l limit]
 
 # Get full email content
-outlook-mail get <messageId>
+outlook-mail [--account <label>] get <messageId>
 
 # Count unread emails
-outlook-mail unread [-q "subject keyword"] [-l limit]
+outlook-mail [--account <label>] unread [-q "subject keyword"] [-l limit]
 
 # Find a person/contact by name or email using Outlook People search
-outlook-mail contact -q "Jane Doe" [-l limit]
+outlook-mail [--account <label>] contact -q "Jane Doe" [-l limit]
 
 # List Outlook contacts with cursor pagination
-outlook-mail contacts list [-l limit] [--cursor <cursor>] [--all]
+outlook-mail [--account <label>] contacts list [-l limit] [--cursor <cursor>] [--all]
 
 # Draft an email
-outlook-mail draft --to "user@example.com" --subject "Hello" --body "Message text" [--cc "cc@example.com"] [--attachment /tmp/report.pdf]
+outlook-mail [--account <label>] draft --to "user@example.com" --subject "Hello" --body "Message text" [--cc "cc@example.com"] [--attachment /tmp/report.pdf]
 
 # Send an email
-outlook-mail send --to "user@example.com" --subject "Hello" --body "Message text" [--cc "cc@example.com"] [--attachment /tmp/report.pdf]
+outlook-mail [--account <label>] send --to "user@example.com" --subject "Hello" --body "Message text" [--cc "cc@example.com"] [--attachment /tmp/report.pdf]
 ```
 
 ## Email Body Formatting

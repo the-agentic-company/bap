@@ -401,6 +401,40 @@ export function useIntegrationList() {
   });
 }
 
+export function useAccountLabels() {
+  return useQuery({
+    queryKey: ["integration", "account-labels"],
+    queryFn: () => client.integration.listAccountLabels(),
+  });
+}
+
+export function useRenameAccountLabel() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, accountLabel }: { id: string; accountLabel: string }) =>
+      client.integration.renameAccountLabel({ id, accountLabel }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integration"] });
+    },
+  });
+}
+
+export function useMoveConnectedAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      connectedAccountId: string;
+      destinationConnectedIdentityId?: string;
+      destinationAccountLabel?: string;
+    }) => client.integration.moveConnectedAccount(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integration"] });
+    },
+  });
+}
+
 export function useGoogleAccessStatus() {
   return useQuery({
     queryKey: ["integration", "google-access-status"],
@@ -602,6 +636,9 @@ export function useGetAuthUrl() {
     mutationFn: ({
       type,
       redirectUrl,
+      mode,
+      accountLabel,
+      connectedAccountId,
     }: {
       type:
         | "google_gmail"
@@ -622,7 +659,17 @@ export function useGetAuthUrl() {
         | "reddit"
         | "twitter";
       redirectUrl: string;
-    }) => client.integration.getAuthUrl({ type, redirectUrl }),
+      mode?: "connect" | "connect_to_label" | "reauth";
+      accountLabel?: string;
+      connectedAccountId?: string;
+    }) =>
+      client.integration.getAuthUrl({
+        type,
+        redirectUrl,
+        mode,
+        accountLabel,
+        connectedAccountId,
+      }),
   });
 }
 

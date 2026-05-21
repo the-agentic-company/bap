@@ -7,11 +7,14 @@ import {
 } from "@cmdclaw/core/server/control-plane/client";
 import { getCloudAccountLinkForUser } from "@cmdclaw/core/server/control-plane/local-links";
 import { isSelfHostedEdition } from "@cmdclaw/core/server/edition";
+import { assignConnectedIdentityForProviderAccount } from "@cmdclaw/core/server/integrations/connected-identities";
+import { normalizeAccountLabel } from "@cmdclaw/core/server/integrations/account-labels";
 import { encrypt, decrypt } from "@cmdclaw/core/server/lib/encryption";
 import { getOAuthConfig, type IntegrationType } from "@cmdclaw/core/server/oauth/config";
 import {
   integration,
   integrationToken,
+  connectedIdentity,
   customIntegration,
   customIntegrationCredential,
   approvedLoginEmailAllowlist,
@@ -225,6 +228,9 @@ const list = protectedProcedure.handler(async ({ context }) => {
 
   const integrations = await context.db.query.integration.findMany({
     where: eq(integration.userId, context.user.id),
+    with: {
+      connectedIdentity: true,
+    },
   });
 
   return integrations.map((i) => {
@@ -253,10 +259,124 @@ const list = protectedProcedure.handler(async ({ context }) => {
       authStatus: i.authStatus,
       authErrorCode: i.authErrorCode,
       scopes: i.scopes,
+      accountLabelId: i.connectedIdentity?.id ?? null,
+      accountLabel: i.connectedIdentity?.label ?? null,
       createdAt: i.createdAt,
     };
   });
 });
+
+const listAccountLabels = protectedProcedure.handler(async ({ context }) => {
+  const identities = await context.db.query.connectedIdentity.findMany({
+    where: eq(connectedIdentity.userId, context.user.id),
+    with: {
+      integrations: true,
+    },
+  });
+
+  return identities.map((identity) => ({
+    id: identity.id,
+    accountLabel: identity.label,
+    emailIdentity: identity.emailIdentity,
+    connectedAccounts: identity.integrations.map((item) => ({
+      id: item.id,
+      integrationType: item.type,
+      displayName: item.displayName,
+      enabled: item.enabled,
+      authStatus: item.authStatus,
+      providerAccountId: item.providerAccountId,
+    })),
+    createdAt: identity.createdAt,
+    updatedAt: identity.updatedAt,
+  }));
+});
+
+const renameAccountLabel = protectedProcedure
+  .input(z.object({ id: z.string(), accountLabel: z.string() }))
+  .handler(async ({ input, context }) => {
+    const accountLabel = normalizeAccountLabel(input.accountLabel);
+    const result = await context.db
+      .update(connectedIdentity)
+      .set({ label: accountLabel })
+      .where(and(eq(connectedIdentity.id, input.id), eq(connectedIdentity.userId, context.user.id)))
+      .returning({ id: connectedIdentity.id, accountLabel: connectedIdentity.label });
+
+    if (result.length === 0) {
+      throw new ORPCError("NOT_FOUND", { message: "Account Label not found" });
+    }
+
+    return result[0];
+  });
+
+const moveConnectedAccount = protectedProcedure
+  .input(
+    z.object({
+      connectedAccountId: z.string(),
+      destinationConnectedIdentityId: z.string().optional(),
+      destinationAccountLabel: z.string().optional(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    const existing = await context.db.query.integration.findFirst({
+      where: and(
+        eq(integration.id, input.connectedAccountId),
+        eq(integration.userId, context.user.id),
+      ),
+    });
+    if (!existing) {
+      throw new ORPCError("NOT_FOUND", { message: "Connected Account not found" });
+    }
+
+    let destinationId = input.destinationConnectedIdentityId ?? null;
+    if (!destinationId) {
+      if (!input.destinationAccountLabel) {
+        throw new ORPCError("BAD_REQUEST", { message: "Destination Account Label is required" });
+      }
+      const label = normalizeAccountLabel(input.destinationAccountLabel);
+      const existingDestination = await context.db.query.connectedIdentity.findFirst({
+        where: and(
+          eq(connectedIdentity.userId, context.user.id),
+          eq(connectedIdentity.label, label),
+        ),
+      });
+      if (existingDestination) {
+        destinationId = existingDestination.id;
+      } else {
+        const [created] = await context.db
+          .insert(connectedIdentity)
+          .values({ userId: context.user.id, label })
+          .returning({ id: connectedIdentity.id });
+        destinationId = created.id;
+      }
+    }
+
+    const destination = await context.db.query.connectedIdentity.findFirst({
+      where: and(
+        eq(connectedIdentity.id, destinationId),
+        eq(connectedIdentity.userId, context.user.id),
+      ),
+      with: { integrations: true },
+    });
+    if (!destination) {
+      throw new ORPCError("NOT_FOUND", { message: "Destination Account Label not found" });
+    }
+    if (
+      destination.integrations.some(
+        (item) => item.type === existing.type && item.id !== existing.id,
+      )
+    ) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: `Account Label "${destination.label}" already has a Connected Account for ${existing.type}.`,
+      });
+    }
+
+    await context.db
+      .update(integration)
+      .set({ connectedIdentityId: destination.id })
+      .where(eq(integration.id, existing.id));
+
+    return { success: true, connectedIdentityId: destination.id, accountLabel: destination.label };
+  });
 
 const getGoogleAccessStatus = protectedProcedure.handler(async ({ context }) => {
   if (isSelfHostedEdition()) {
@@ -527,6 +647,9 @@ const getAuthUrl = protectedProcedure
     z.object({
       type: integrationTypeSchema,
       redirectUrl: z.string().url(),
+      mode: z.enum(["connect", "connect_to_label", "reauth"]).optional(),
+      accountLabel: z.string().optional(),
+      connectedAccountId: z.string().optional(),
     }),
   )
   .handler(async ({ input, context }) => {
@@ -582,6 +705,9 @@ const getAuthUrl = protectedProcedure
         type: input.type,
         redirectUrl: input.redirectUrl,
         codeVerifier, // Store verifier in state for Airtable
+        mode: input.mode ?? "connect",
+        accountLabel: input.accountLabel,
+        connectedAccountId: input.connectedAccountId,
       }),
     ).toString("base64url");
 
@@ -654,6 +780,9 @@ const handleCallback = protectedProcedure
       type: IntegrationType;
       redirectUrl: string;
       codeVerifier?: string;
+      accountLabel?: string;
+      connectedAccountId?: string;
+      mode?: "connect" | "connect_to_label" | "reauth";
     };
 
     try {
@@ -779,10 +908,44 @@ const handleCallback = protectedProcedure
       };
     }
 
-    // Create or update integration
-    const existingIntegration = await context.db.query.integration.findFirst({
-      where: and(eq(integration.userId, context.user.id), eq(integration.type, stateData.type)),
+    const assignment = await assignConnectedIdentityForProviderAccount(context.db, {
+      userId: context.user.id,
+      integrationType: stateData.type,
+      providerAccountId: userInfo.id,
+      displayName: userInfo.displayName,
+      metadata: userInfo.metadata,
+      requestedAccountLabel: stateData.accountLabel,
     });
+    const explicitReauthIntegration =
+      stateData.connectedAccountId && stateData.mode === "reauth"
+        ? await context.db.query.integration.findFirst({
+            where: and(
+              eq(integration.id, stateData.connectedAccountId),
+              eq(integration.userId, context.user.id),
+              eq(integration.type, stateData.type),
+            ),
+          })
+        : null;
+
+    if (
+      explicitReauthIntegration?.providerAccountId &&
+      explicitReauthIntegration.providerAccountId !== userInfo.id
+    ) {
+      throw new ORPCError("BAD_REQUEST", {
+        message:
+          "Reauth returned a different Provider Identity for this Account Label and Integration Type",
+      });
+    }
+
+    const existingIntegration =
+      explicitReauthIntegration ??
+      (await context.db.query.integration.findFirst({
+        where: and(
+          eq(integration.userId, context.user.id),
+          eq(integration.type, stateData.type),
+          eq(integration.providerAccountId, userInfo.id),
+        ),
+      }));
 
     let integId: string;
 
@@ -791,6 +954,7 @@ const handleCallback = protectedProcedure
         .update(integration)
         .set({
           providerAccountId: userInfo.id,
+          connectedIdentityId: assignment.connectedIdentityId,
           displayName: userInfo.displayName,
           scopes: config.scopes,
           metadata: userInfo.metadata,
@@ -808,6 +972,7 @@ const handleCallback = protectedProcedure
         .values({
           userId: context.user.id,
           type: stateData.type,
+          connectedIdentityId: assignment.connectedIdentityId,
           providerAccountId: userInfo.id,
           displayName: userInfo.displayName,
           scopes: config.scopes,
@@ -923,6 +1088,16 @@ const disconnect = protectedProcedure
     }
 
     await context.db.delete(integration).where(eq(integration.id, input.id));
+    if (existingIntegration.connectedIdentityId) {
+      const remaining = await context.db.query.integration.findFirst({
+        where: eq(integration.connectedIdentityId, existingIntegration.connectedIdentityId),
+      });
+      if (!remaining) {
+        await context.db
+          .delete(connectedIdentity)
+          .where(eq(connectedIdentity.id, existingIntegration.connectedIdentityId));
+      }
+    }
 
     return { success: true };
   });
@@ -948,18 +1123,37 @@ const linkLinkedIn = protectedProcedure
         },
       };
 
-      // Use upsert to handle race conditions
-      await context.db
-        .insert(integration)
-        .values({
+      const assignment = await assignConnectedIdentityForProviderAccount(context.db, {
+        userId: context.user.id,
+        integrationType: "linkedin",
+        providerAccountId: input.accountId,
+        displayName: integrationData.displayName,
+        metadata: integrationData.metadata,
+      });
+      const existingIntegration = await context.db.query.integration.findFirst({
+        where: and(
+          eq(integration.userId, context.user.id),
+          eq(integration.type, "linkedin"),
+          eq(integration.providerAccountId, input.accountId),
+        ),
+      });
+
+      if (existingIntegration) {
+        await context.db
+          .update(integration)
+          .set({
+            ...integrationData,
+            connectedIdentityId: assignment.connectedIdentityId,
+          })
+          .where(eq(integration.id, existingIntegration.id));
+      } else {
+        await context.db.insert(integration).values({
           userId: context.user.id,
           type: "linkedin",
+          connectedIdentityId: assignment.connectedIdentityId,
           ...integrationData,
-        })
-        .onConflictDoUpdate({
-          target: [integration.userId, integration.type],
-          set: integrationData,
         });
+      }
 
       return { success: true };
     } catch (error) {
@@ -1412,6 +1606,9 @@ const handleCustomCallback = protectedProcedure
 
 export const integrationRouter = {
   list,
+  listAccountLabels,
+  renameAccountLabel,
+  moveConnectedAccount,
   getGoogleAccessStatus,
   listApprovedLoginEmailAllowlist,
   addApprovedLoginEmailAllowlistEntry,

@@ -17,6 +17,7 @@ import {
   useGoogleAccessStatus,
   useToggleIntegration,
   useDisconnectIntegration,
+  useRenameAccountLabel,
   useRequestGoogleAccess,
 } from "@/orpc/hooks";
 
@@ -139,6 +140,7 @@ export default function IntegrationDetailPage() {
   const getAuthUrl = useGetAuthUrl();
   const toggleIntegration = useToggleIntegration();
   const disconnectIntegration = useDisconnectIntegration();
+  const renameAccountLabel = useRenameAccountLabel();
   const requestGoogleAccess = useRequestGoogleAccess();
 
   const [isConnecting, setIsConnecting] = useState(false);
@@ -150,6 +152,10 @@ export default function IntegrationDetailPage() {
   );
   const integration = useMemo(
     () => integrationsList.find((i) => i.type === type) ?? null,
+    [integrationsList, type],
+  );
+  const integrationsForType = useMemo(
+    () => integrationsList.filter((i) => i.type === type),
     [integrationsList, type],
   );
 
@@ -183,6 +189,32 @@ export default function IntegrationDetailPage() {
     }
   }, [getAuthUrl, isWhatsApp, type]);
 
+  const handleConnectAnother = useCallback(async () => {
+    if (isWhatsApp) {
+      return;
+    }
+    setIsConnecting(true);
+    setConnectError(undefined);
+    try {
+      const result = await getAuthUrl.mutateAsync({
+        type: type as IntegrationIconType,
+        redirectUrl: window.location.href,
+        mode: "connect",
+      });
+      window.location.assign(result.authUrl);
+    } catch (error) {
+      setIsConnecting(false);
+      const message = error instanceof Error ? error.message : "";
+      setConnectError(
+        isUnipileMissingCredentialsError(error)
+          ? UNIPILE_MISSING_CREDENTIALS_MESSAGE
+          : message.includes("admin approval")
+            ? "Google access is restricted. Use Request access first."
+            : "Failed to start connection. Please try again.",
+      );
+    }
+  }, [getAuthUrl, isWhatsApp, type]);
+
   const handleToggle = useCallback(
     async (enabled: boolean) => {
       if (!integration) {
@@ -201,6 +233,22 @@ export default function IntegrationDetailPage() {
     await disconnectIntegration.mutateAsync(integration.id);
     refetchIntegrations();
   }, [disconnectIntegration, integration, refetchIntegrations]);
+
+  const handleDisconnectAccount = useCallback(
+    async (id: string) => {
+      await disconnectIntegration.mutateAsync(id);
+      refetchIntegrations();
+    },
+    [disconnectIntegration, refetchIntegrations],
+  );
+
+  const handleToggleAccount = useCallback(
+    async (id: string, enabled: boolean) => {
+      await toggleIntegration.mutateAsync({ id, enabled });
+      refetchIntegrations();
+    },
+    [refetchIntegrations, toggleIntegration],
+  );
 
   const handleRequestGoogleAccess = useCallback(async () => {
     if (!isGoogleType) {
@@ -241,14 +289,19 @@ export default function IntegrationDetailPage() {
         type={type}
         config={config}
         integration={integration}
+        integrations={integrationsForType}
         isWhatsApp={isWhatsApp}
         connectError={connectError}
         showGoogleRequest={showGoogleRequest}
         isConnecting={isConnecting}
         onConnect={handleConnect}
+        onConnectAnother={handleConnectAnother}
         onToggle={handleToggle}
+        onToggleAccount={handleToggleAccount}
         onDisconnect={handleDisconnect}
+        onDisconnectAccount={handleDisconnectAccount}
         onRequestGoogleAccess={handleRequestGoogleAccess}
+        onRenameAccountLabel={renameAccountLabel.mutate}
       />
     </div>
   );

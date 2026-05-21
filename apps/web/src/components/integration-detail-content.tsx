@@ -1,9 +1,10 @@
 "use client";
 
-import { ExternalLink, Loader2 } from "lucide-react";
+import { Check, ExternalLink, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback } from "react";
+import type React from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { getIntegrationActions } from "@/lib/integration-icons";
@@ -16,6 +17,8 @@ type IntegrationInfo = {
   type: string;
   enabled: boolean;
   displayName: string | null;
+  accountLabelId?: string | null;
+  accountLabel?: string | null;
   setupRequired?: boolean;
 };
 
@@ -23,14 +26,19 @@ export type IntegrationDetailProps = {
   type: string;
   config: { name: string; description: string; icon: string };
   integration: IntegrationInfo | null;
+  integrations?: IntegrationInfo[];
   isWhatsApp: boolean;
   connectError?: string;
   showGoogleRequest: boolean;
   isConnecting: boolean;
   onConnect: () => void;
+  onConnectAnother?: () => void;
   onToggle: (enabled: boolean) => void;
+  onToggleAccount?: (id: string, enabled: boolean) => void;
   onDisconnect: () => void;
+  onDisconnectAccount?: (id: string) => void;
   onRequestGoogleAccess: () => void;
+  onRenameAccountLabel?: (input: { id: string; accountLabel: string }) => void;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -39,18 +47,26 @@ export function IntegrationDetailContent({
   type,
   config,
   integration,
+  integrations = integration ? [integration] : [],
   isWhatsApp,
   connectError,
   showGoogleRequest,
   isConnecting,
   onConnect,
+  onConnectAnother,
   onToggle,
+  onToggleAccount,
   onDisconnect,
+  onDisconnectAccount,
   onRequestGoogleAccess,
+  onRenameAccountLabel,
 }: IntegrationDetailProps) {
   const actions = isWhatsApp ? [] : getIntegrationActions(type);
   const isConnected = !!integration;
   const isEnabled = integration?.enabled ?? false;
+  const connectedAccounts =
+    integrations.length > 0 ? integrations : integration ? [integration] : [];
+  const connectedAccountCount = connectedAccounts.length;
 
   const handleToggle = useCallback(
     (value: boolean) => {
@@ -101,9 +117,13 @@ export function IntegrationDetailContent({
                       : "text-amber-600 dark:text-amber-400",
                   )}
                 >
-                  {isEnabled ? "Connected" : "Disabled"}
+                  {connectedAccountCount > 1
+                    ? `${connectedAccountCount} connected accounts`
+                    : isEnabled
+                      ? "Connected"
+                      : "Disabled"}
                 </span>
-                {integration.displayName && (
+                {connectedAccountCount <= 1 && integration.displayName && (
                   <span className="text-muted-foreground text-xs">· {integration.displayName}</span>
                 )}
               </>
@@ -113,23 +133,43 @@ export function IntegrationDetailContent({
           </div>
 
           {/* Actions */}
-          <div className="mt-8 flex items-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-3">
             {isConnected && !integration.setupRequired ? (
               <>
-                <label className="flex cursor-pointer items-center gap-2">
-                  <Switch checked={isEnabled} onCheckedChange={handleToggle} />
-                  <span className="text-muted-foreground text-sm">
-                    {isEnabled ? "Enabled" : "Disabled"}
-                  </span>
-                </label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={onDisconnect}
-                >
-                  Disconnect
-                </Button>
+                {connectedAccounts.length === 0 ? (
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <Switch checked={isEnabled} onCheckedChange={handleToggle} />
+                    <span className="text-muted-foreground text-sm">
+                      {isEnabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </label>
+                ) : null}
+                {onConnectAnother ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 rounded-md"
+                    onClick={onConnectAnother}
+                    disabled={isConnecting}
+                  >
+                    {isConnecting ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="size-3.5" />
+                    )}
+                    Add account
+                  </Button>
+                ) : null}
+                {connectedAccounts.length === 0 ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={onDisconnect}
+                  >
+                    Disconnect
+                  </Button>
+                ) : null}
               </>
             ) : isWhatsApp ? (
               <Button className="gap-1.5 rounded-lg px-5" asChild>
@@ -168,6 +208,25 @@ export function IntegrationDetailContent({
               {connectError}
             </div>
           )}
+
+          {connectedAccounts.length > 0 ? (
+            <div className="mt-8">
+              <p className="text-muted-foreground mb-2 text-[10px] font-medium tracking-widest uppercase">
+                Connected Accounts
+              </p>
+              <div className="divide-border overflow-hidden rounded-lg border bg-background">
+                {connectedAccounts.map((account) => (
+                  <ConnectedAccountRow
+                    key={account.id}
+                    account={account}
+                    onToggleAccount={onToggleAccount}
+                    onDisconnectAccount={onDisconnectAccount ?? onDisconnect}
+                    onRenameAccountLabel={onRenameAccountLabel}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* Metadata */}
           <div className="mt-12 space-y-6">
@@ -221,6 +280,153 @@ export function IntegrationDetailContent({
             )}
           </section>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ConnectedAccountRow({
+  account,
+  onDisconnectAccount,
+  onToggleAccount,
+  onRenameAccountLabel,
+}: {
+  account: IntegrationInfo;
+  onDisconnectAccount?: (id: string) => void;
+  onToggleAccount?: (id: string, enabled: boolean) => void;
+  onRenameAccountLabel?: (input: { id: string; accountLabel: string }) => void;
+}) {
+  const [draft, setDraft] = useState(account.accountLabel ?? "");
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setDraft(account.accountLabel ?? "");
+  }, [account.accountLabel]);
+
+  const handleDraftChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setDraft(event.target.value);
+  }, []);
+
+  const handleSave = useCallback(() => {
+    if (!account.accountLabelId || !draft.trim()) {
+      return;
+    }
+    onRenameAccountLabel?.({
+      id: account.accountLabelId,
+      accountLabel: draft.trim(),
+    });
+    setIsEditing(false);
+  }, [account.accountLabelId, draft, onRenameAccountLabel]);
+
+  const handleEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    setDraft(account.accountLabel ?? "");
+    setIsEditing(false);
+  }, [account.accountLabel]);
+
+  const handleDisconnect = useCallback(() => {
+    onDisconnectAccount?.(account.id);
+  }, [account.id, onDisconnectAccount]);
+
+  const handleToggleAccount = useCallback(
+    (enabled: boolean) => {
+      onToggleAccount?.(account.id, enabled);
+    },
+    [account.id, onToggleAccount],
+  );
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-3">
+      <div className="min-w-0 flex-1">
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            <input
+              className="border-input bg-background h-8 min-w-0 flex-1 rounded-md border px-2 text-sm font-medium"
+              value={draft}
+              onChange={handleDraftChange}
+              aria-label={`Account Label for ${account.displayName ?? account.type}`}
+              autoFocus
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-8 shrink-0"
+              onClick={handleSave}
+              disabled={!account.accountLabelId || !draft.trim() || draft === account.accountLabel}
+              title="Save Account Label"
+            >
+              <Check className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
+              onClick={handleCancel}
+              title="Cancel"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <div className="min-w-0">
+            <p className="text-muted-foreground mb-1 text-[10px] font-medium tracking-widest uppercase">
+              Account Label
+            </p>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="bg-muted text-foreground inline-flex max-w-full rounded-md px-2 py-1 text-sm font-medium">
+                <span className="truncate">{account.accountLabel ?? "unlabeled"}</span>
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0 text-muted-foreground"
+                onClick={handleEdit}
+                disabled={!account.accountLabelId}
+                title="Rename Account Label"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+        {account.displayName ? (
+          <p className="text-muted-foreground mt-1 truncate text-xs">{account.displayName}</p>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <label className="flex cursor-pointer items-center gap-2">
+          <Switch
+            checked={account.enabled}
+            onCheckedChange={handleToggleAccount}
+            disabled={!onToggleAccount}
+          />
+          <span
+            className={cn(
+              "w-14 text-xs font-medium",
+              account.enabled ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground",
+            )}
+          >
+            {account.enabled ? "Enabled" : "Disabled"}
+          </span>
+        </label>
+        {onDisconnectAccount ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground hover:text-destructive"
+            onClick={handleDisconnect}
+            title="Disconnect Connected Account"
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        ) : null}
       </div>
     </div>
   );

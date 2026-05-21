@@ -2,6 +2,7 @@ import { constants } from "fs";
 import { readFile, access } from "fs/promises";
 import { renderMessageToSlack, renderMessageToSlackPayload } from "@cmdclaw/message-format";
 import { parseArgs } from "util";
+import { resolveConnectedAccountAccessToken } from "../../../lib/connected-account";
 
 type JsonValue = ReturnType<typeof JSON.parse>;
 
@@ -11,9 +12,10 @@ const RELAY_URL =
     ? `${process.env.APP_URL.replace(/\/$/, "")}/api/internal/slack/post-as-bot`
     : undefined);
 const RELAY_SECRET = process.env.SLACK_BOT_RELAY_SECRET;
+let resolvedUserToken: string | null = null;
 
 function getUserToken(): string {
-  const token = process.env.SLACK_ACCESS_TOKEN;
+  const token = resolvedUserToken ?? process.env.SLACK_ACCESS_TOKEN;
   if (!token) {
     throw new Error("SLACK_ACCESS_TOKEN environment variable required for this command");
   }
@@ -138,6 +140,7 @@ const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
     help: { type: "boolean", short: "h" },
+    account: { type: "string" },
     channel: { type: "string", short: "c" },
     limit: { type: "string", short: "l", default: "20" },
     text: { type: "string", short: "t" },
@@ -476,6 +479,7 @@ function showHelp() {
 
 Options:
   --as <user|bot>                                      Required for send command
+  --account <label>                                    Select an Account Label for user-token operations
   -h, --help                                            Show this help message`);
 }
 
@@ -486,6 +490,15 @@ async function main() {
   }
 
   try {
+    const isBotOnlySend = command === "send" && values.as === "bot";
+    if (!isBotOnlySend) {
+      resolvedUserToken = await resolveConnectedAccountAccessToken({
+        integrationType: "slack",
+        accountLabel: values.account,
+        fallbackEnvVar: "SLACK_ACCESS_TOKEN",
+      });
+    }
+
     switch (command) {
       case "channels":
         await listChannels();

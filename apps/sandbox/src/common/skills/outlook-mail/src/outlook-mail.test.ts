@@ -21,6 +21,7 @@ describe("outlook-mail CLI", () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("Outlook Mail CLI - Commands");
+    expect(result.stdout).toContain("--account <label>");
     expect(result.stdout).toContain("list");
     expect(result.stdout).toContain("search -q <query>");
     expect(result.stdout).toContain("unread");
@@ -38,6 +39,17 @@ describe("outlook-mail CLI", () => {
 
     expect(result.status).toBe(1);
     expect(result.combined).toContain("Invalid --limit");
+  });
+
+  test("accepts account label option", () => {
+    const result = runSkillCli(OUTLOOK_MAIL_CLI, ["--account", "work", "list"], {
+      OUTLOOK_ACCESS_TOKEN: "test-token",
+      CMDCLAW_AVAILABLE_ACCOUNT_LABELS: "personal, work",
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.combined).toContain("--account requires CMDCLAW_RUNTIME_CREDENTIALS_URL");
+    expect(result.combined).toContain("Available account labels: personal, work");
   });
 
   test("rejects queries on list", () => {

@@ -2,6 +2,10 @@ import {
   getEnabledIntegrationTypes,
   getTokensForIntegrations,
 } from "@cmdclaw/core/server/integrations/cli-env";
+import {
+  ConnectedAccountResolutionError,
+  resolveConnectedAccountCredential,
+} from "@cmdclaw/core/server/integrations/connected-account-resolution";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
 
@@ -19,10 +23,42 @@ export async function POST(request: Request) {
       userId?: string;
       workspaceId?: string;
       integrationTypes?: string[];
+      resolve?: {
+        integrationType?: string;
+        accountLabel?: string | null;
+        allowedIntegrationTypes?: string[];
+      };
     };
 
     if (!body.userId) {
       return NextResponse.json({ message: "Missing userId" }, { status: 400 });
+    }
+
+    if (body.resolve?.integrationType) {
+      try {
+        const credential = await resolveConnectedAccountCredential({
+          userId: body.userId,
+          integrationType: body.resolve.integrationType as never,
+          accountLabel: body.resolve.accountLabel,
+          allowedIntegrationTypes: body.resolve.allowedIntegrationTypes as never,
+        });
+        return NextResponse.json({
+          credential,
+          issuedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        if (error instanceof ConnectedAccountResolutionError) {
+          return NextResponse.json(
+            {
+              code: error.code,
+              message: error.message,
+              availableAccountLabels: error.availableAccountLabels,
+            },
+            { status: 409 },
+          );
+        }
+        throw error;
+      }
     }
 
     return NextResponse.json({

@@ -5,6 +5,10 @@ import {
   getEnabledIntegrationTypes,
   getTokensForIntegrations,
 } from "@cmdclaw/core/server/integrations/cli-env";
+import {
+  ConnectedAccountResolutionError,
+  resolveConnectedAccountCredential,
+} from "@cmdclaw/core/server/integrations/connected-account-resolution";
 import { db } from "@cmdclaw/db/client";
 import { providerAuth, user, workspace } from "@cmdclaw/db/schema";
 import { eq } from "drizzle-orm";
@@ -19,6 +23,11 @@ export async function POST(request: Request) {
       integrationTypes?: string[];
       workspaceId?: string;
       allowedExecutorSourceIds?: string[];
+      resolve?: {
+        integrationType?: string;
+        accountLabel?: string | null;
+        allowedIntegrationTypes?: string[];
+      };
     };
     if (!body.cloudUserId) {
       return NextResponse.json({ message: "Missing cloudUserId" }, { status: 400 });
@@ -65,6 +74,33 @@ export async function POST(request: Request) {
           allowedSourceIds: body.allowedExecutorSourceIds ?? undefined,
         })
       : null;
+
+    if (body.resolve?.integrationType) {
+      try {
+        const credential = await resolveConnectedAccountCredential({
+          userId: body.cloudUserId,
+          integrationType: body.resolve.integrationType as never,
+          accountLabel: body.resolve.accountLabel,
+          allowedIntegrationTypes: body.resolve.allowedIntegrationTypes as never,
+        });
+        return NextResponse.json({
+          credential,
+          issuedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        if (error instanceof ConnectedAccountResolutionError) {
+          return NextResponse.json(
+            {
+              code: error.code,
+              message: error.message,
+              availableAccountLabels: error.availableAccountLabels,
+            },
+            { status: 409 },
+          );
+        }
+        throw error;
+      }
+    }
 
     return NextResponse.json({
       cliEnv: await getCliEnvForUser(body.cloudUserId),

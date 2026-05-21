@@ -3,6 +3,7 @@ import {
   computeWorkspaceExecutorSourceRevisionHash,
   setWorkspaceExecutorSourceOAuthCredential,
 } from "@cmdclaw/core/server/executor/workspace-sources";
+import { assignConnectedIdentityForProviderAccount } from "@cmdclaw/core/server/integrations/connected-identities";
 import { getOAuthConfig, type IntegrationType } from "@cmdclaw/core/server/oauth/config";
 import { generationManager } from "@cmdclaw/core/server/services/generation-manager";
 import { db } from "@cmdclaw/db/client";
@@ -151,6 +152,9 @@ export async function GET(request: NextRequest) {
     codeVerifier?: string;
     dynamicsInstanceUrl?: string;
     dynamicsInstanceName?: string;
+    accountLabel?: string;
+    connectedAccountId?: string;
+    mode?: "connect" | "connect_to_label" | "reauth";
   };
 
   try {
@@ -321,10 +325,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Create or update integration
-    const existingIntegration = await db.query.integration.findFirst({
-      where: and(eq(integration.userId, sessionData.user.id), eq(integration.type, stateData.type)),
+    const assignment = await assignConnectedIdentityForProviderAccount(db, {
+      userId: sessionData.user.id,
+      integrationType: stateData.type,
+      providerAccountId: userInfo.id,
+      displayName: userInfo.displayName,
+      metadata: userInfo.metadata,
+      requestedAccountLabel: stateData.accountLabel,
     });
+    const explicitReauthIntegration =
+      stateData.connectedAccountId && stateData.mode === "reauth"
+        ? await db.query.integration.findFirst({
+            where: and(
+              eq(integration.id, stateData.connectedAccountId),
+              eq(integration.userId, sessionData.user.id),
+              eq(integration.type, stateData.type),
+            ),
+          })
+        : null;
+
+    if (
+      explicitReauthIntegration?.providerAccountId &&
+      explicitReauthIntegration.providerAccountId !== userInfo.id
+    ) {
+      return NextResponse.redirect(buildRedirectUrl("error=account_provider_identity_mismatch"));
+    }
+
+    const existingIntegration =
+      explicitReauthIntegration ??
+      (await db.query.integration.findFirst({
+        where: and(
+          eq(integration.userId, sessionData.user.id),
+          eq(integration.type, stateData.type),
+          eq(integration.providerAccountId, userInfo.id),
+        ),
+      }));
 
     let integId: string;
 
@@ -333,6 +368,7 @@ export async function GET(request: NextRequest) {
         .update(integration)
         .set({
           providerAccountId: userInfo.id,
+          connectedIdentityId: assignment.connectedIdentityId,
           displayName: userInfo.displayName,
           scopes: integrationScopes,
           metadata: userInfo.metadata,
@@ -346,6 +382,7 @@ export async function GET(request: NextRequest) {
         .values({
           userId: sessionData.user.id,
           type: stateData.type,
+          connectedIdentityId: assignment.connectedIdentityId,
           providerAccountId: userInfo.id,
           displayName: userInfo.displayName,
           scopes: integrationScopes,

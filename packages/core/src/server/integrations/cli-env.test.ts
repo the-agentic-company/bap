@@ -26,6 +26,10 @@ vi.mock("./token-refresh", () => ({
   getValidCustomTokens: getValidCustomTokensMock,
 }));
 
+vi.mock("./backfill-connected-identities", () => ({
+  backfillConnectedIdentities: vi.fn(),
+}));
+
 import { getTokensForIntegrations } from "./cli-env";
 
 describe("getTokensForIntegrations", () => {

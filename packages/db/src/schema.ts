@@ -1584,6 +1584,30 @@ export const inboxReadState = pgTable(
 
 // ========== INTEGRATION SCHEMA ==========
 
+export const connectedIdentity = pgTable(
+  "connected_identity",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    emailIdentity: text("email_identity"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("connected_identity_user_id_idx").on(table.userId),
+    uniqueIndex("connected_identity_user_label_idx").on(table.userId, table.label),
+  ],
+);
+
 export const integration = pgTable(
   "integration",
   {
@@ -1593,6 +1617,9 @@ export const integration = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    connectedIdentityId: text("connected_identity_id").references(() => connectedIdentity.id, {
+      onDelete: "set null",
+    }),
     type: integrationTypeEnum("type").notNull(),
     // OAuth account identifier from the provider
     providerAccountId: text("provider_account_id"),
@@ -1615,8 +1642,17 @@ export const integration = pgTable(
   },
   (table) => [
     index("integration_user_id_idx").on(table.userId),
+    index("integration_connected_identity_id_idx").on(table.connectedIdentityId),
     index("integration_type_idx").on(table.type),
-    uniqueIndex("integration_user_type_idx").on(table.userId, table.type),
+    uniqueIndex("integration_connected_identity_type_idx").on(
+      table.connectedIdentityId,
+      table.type,
+    ),
+    uniqueIndex("integration_user_type_provider_idx").on(
+      table.userId,
+      table.type,
+      table.providerAccountId,
+    ),
   ],
 );
 
@@ -1960,7 +1996,16 @@ export const coworkerViewRelations = relations(coworkerView, ({ one }) => ({
 
 export const integrationRelations = relations(integration, ({ one, many }) => ({
   user: one(user, { fields: [integration.userId], references: [user.id] }),
+  connectedIdentity: one(connectedIdentity, {
+    fields: [integration.connectedIdentityId],
+    references: [connectedIdentity.id],
+  }),
   tokens: many(integrationToken),
+}));
+
+export const connectedIdentityRelations = relations(connectedIdentity, ({ one, many }) => ({
+  user: one(user, { fields: [connectedIdentity.userId], references: [user.id] }),
+  integrations: many(integration),
 }));
 
 export const integrationTokenRelations = relations(integrationToken, ({ one }) => ({
