@@ -1,0 +1,22 @@
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata:
+  name: cmdclaw-unknown-coworker-generation-success
+  namespace: cmdclaw
+  labels:
+    pyrra.dev/team: product
+    pyrra.dev/service: cmdclaw
+    pyrra.dev/journey: unknown_coworker_generation
+spec:
+  target: "95"
+  window: 30d
+  description: Coworker conversation generations that could not be tied to a known builder or run journey.
+  indicator:
+    ratio:
+      errors:
+        metric: cmdclaw_slo_events_total{journey="unknown_coworker_generation",result="bad"}
+      total:
+        metric: cmdclaw_slo_events_total{journey="unknown_coworker_generation"}
+  alerting:
+    disabled: true
+    absent: false

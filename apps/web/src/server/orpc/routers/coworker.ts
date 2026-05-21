@@ -55,7 +55,7 @@ import {
   coworkerTagAssignment,
 } from "@cmdclaw/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, desc, eq, gte, inArray, lt, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getOperationLabel } from "@/lib/integration-icons";
 import { parseCliCommand } from "@/lib/parse-cli-command";
@@ -824,7 +824,9 @@ const list = protectedProcedure.handler(async ({ context }) => {
           })
           .from(coworkerRun)
           .leftJoin(generation, eq(coworkerRun.generationId, generation.id))
-          .where(inArray(coworkerRun.coworkerId, coworkerIds))
+          .where(
+            and(inArray(coworkerRun.coworkerId, coworkerIds), isNull(coworkerRun.syntheticKind)),
+          )
           .as("ranked_coworker_runs")
       : null;
 
@@ -1511,6 +1513,7 @@ const getRun = protectedProcedure
       eq(coworkerRun.id, input.id),
       eq(coworkerRun.ownerId, context.user.id),
       eq(coworkerRun.workspaceId, workspaceId),
+      isNull(coworkerRun.syntheticKind),
     );
 
     const initialRun = await context.db.query.coworkerRun.findFirst({
@@ -1664,6 +1667,7 @@ const listRuns = protectedProcedure
         eq(coworkerRun.coworkerId, wf.id),
         eq(coworkerRun.ownerId, context.user.id),
         eq(coworkerRun.workspaceId, workspaceId),
+        isNull(coworkerRun.syntheticKind),
       ),
       orderBy: (run, { desc }) => [desc(run.startedAt)],
       limit: input.limit,
@@ -1694,6 +1698,7 @@ const listWorkspaceRuns = protectedProcedure
       where: and(
         eq(coworkerRun.ownerId, context.user.id),
         eq(coworkerRun.workspaceId, workspaceId),
+        isNull(coworkerRun.syntheticKind),
         ...(cursor
           ? [
               or(
@@ -1769,6 +1774,7 @@ const getHistory = protectedProcedure
     const dateFilters = [
       eq(coworkerRun.ownerId, context.user.id),
       eq(coworkerRun.workspaceId, workspaceId),
+      isNull(coworkerRun.syntheticKind),
       ...(input?.from ? [gte(coworkerRun.startedAt, input.from)] : []),
       ...(input?.to ? [lte(coworkerRun.startedAt, input.to)] : []),
       ...(cursor

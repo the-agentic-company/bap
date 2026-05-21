@@ -51,6 +51,39 @@ The backfill reads `DATABASE_URL_PROD` with SELECT-only queries and imports
 hourly cumulative samples for `cmdclaw_slo_events_total` into VictoriaMetrics.
 The SLO dashboard is available in Grafana as `CmdClaw SLOs`.
 
+Real backfill samples are written with `traffic="real"`. Synthetic replay
+samples use the same metric family with `traffic="synthetic"`, so existing SLO
+queries include both by default and operators can filter by traffic provenance
+when debugging.
+
+## SLO Synthetic Replay
+
+Synthetic replay answers whether recent failed journeys pass now without
+retrying every duplicate failure. The replay command reads the last 30 days from
+an explicit source environment, deduplicates the latest terminal failures, runs
+local synthetic journeys with remote staging or production credentials, and
+imports synthetic SLO samples into local VictoriaMetrics.
+
+Preview candidates without creating generations or metrics:
+
+```bash
+bun run --cwd apps/web slo:replay --target-env staging --dry-run --limit 25
+```
+
+Run a small replay:
+
+```bash
+bun run --cwd apps/web slo:replay --target-env staging --limit 1
+```
+
+The command requires `--target-env staging|prod`; there is no default. Replay
+targets are restricted to the v1 allowlist in `apps/web/scripts/slo-replay.ts`.
+Chat, coworker builder, and unknown coworker generation retries are deduplicated
+by normalized first user message. Coworker run retries are deduplicated by
+coworker id only. Replays do not auto-approve write actions: a denied write tool
+call may still produce a successful synthetic journey if the overall run reaches
+terminal `completed`.
+
 ## Staging And Production Debugging
 
 For staging and production incidents, use the hosted Victoria endpoints together with Render cli. The Victoria endpoints provide application metrics, logs, traces; Render provides deployment state, service status, and platform/runtime logs.

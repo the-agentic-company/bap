@@ -557,6 +557,7 @@ export const conversationRuntimeStatusEnum = pgEnum("conversation_runtime_status
 ]);
 
 export const conversationTypeEnum = pgEnum("conversation_type", ["chat", "coworker"]);
+export type SyntheticTrafficKind = "slo_replay";
 
 export const conversation = pgTable(
   "conversation",
@@ -591,6 +592,7 @@ export const conversation = pgTable(
     isShared: boolean("is_shared").default(false).notNull(),
     shareToken: text("share_token"),
     sharedAt: timestamp("shared_at"),
+    syntheticKind: text("synthetic_kind").$type<SyntheticTrafficKind>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -602,6 +604,7 @@ export const conversation = pgTable(
     index("conversation_user_id_idx").on(table.userId),
     index("conversation_workspace_id_idx").on(table.workspaceId),
     index("conversation_created_at_idx").on(table.createdAt),
+    index("conversation_synthetic_kind_idx").on(table.syntheticKind),
     uniqueIndex("conversation_share_token_idx").on(table.shareToken),
   ],
 );
@@ -1156,6 +1159,17 @@ export const coworkerRunStatusEnum = pgEnum("coworker_run_status", [
   "error",
   "cancelled",
 ]);
+export type SloReplayJourney =
+  | "chat"
+  | "coworker_builder"
+  | "coworker_run"
+  | "unknown_coworker_generation";
+export type SloReplayStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "error"
+  | "setup_failed";
 export const coworkerEmailAliasStatusEnum = pgEnum("coworker_email_alias_status", [
   "active",
   "disabled",
@@ -1261,6 +1275,7 @@ export const coworkerRun = pgTable(
     finishedAt: timestamp("finished_at"),
     errorMessage: text("error_message"),
     debugInfo: jsonb("debug_info").$type<Record<string, unknown>>(),
+    syntheticKind: text("synthetic_kind").$type<SyntheticTrafficKind>(),
   },
   (table) => [
     index("coworker_run_coworker_id_idx").on(table.coworkerId),
@@ -1269,6 +1284,53 @@ export const coworkerRun = pgTable(
     index("coworker_run_status_idx").on(table.status),
     index("coworker_run_started_at_idx").on(table.startedAt),
     index("coworker_run_conversation_id_idx").on(table.conversationId),
+    index("coworker_run_synthetic_kind_idx").on(table.syntheticKind),
+  ],
+);
+
+export const sloReplayRun = pgTable(
+  "slo_replay_run",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    journey: text("journey").$type<SloReplayJourney>().notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    configHash: text("config_hash").notNull(),
+    targetEnv: text("target_env").notNull(),
+    targetUserEmail: text("target_user_email").notNull(),
+    targetUserId: text("target_user_id"),
+    sourceGenerationIds: text("source_generation_ids")
+      .array()
+      .default(sql`ARRAY[]::text[]`)
+      .notNull(),
+    sourceCoworkerRunIds: text("source_coworker_run_ids")
+      .array()
+      .default(sql`ARRAY[]::text[]`)
+      .notNull(),
+    resultGenerationId: text("result_generation_id").references(() => generation.id, {
+      onDelete: "set null",
+    }),
+    resultCoworkerRunId: text("result_coworker_run_id").references(() => coworkerRun.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").$type<SloReplayStatus>().default("pending").notNull(),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    finishedAt: timestamp("finished_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("slo_replay_run_dedupe_config_idx").on(table.dedupeKey, table.configHash),
+    index("slo_replay_run_status_idx").on(table.status),
+    index("slo_replay_run_target_env_idx").on(table.targetEnv),
+    index("slo_replay_run_journey_idx").on(table.journey),
+    index("slo_replay_run_result_generation_idx").on(table.resultGenerationId),
+    index("slo_replay_run_result_coworker_run_idx").on(table.resultCoworkerRunId),
   ],
 );
 

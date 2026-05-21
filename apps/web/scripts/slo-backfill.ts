@@ -14,9 +14,11 @@ export const SLO_JOURNEYS = [
 ] as const;
 
 export const SLO_RESULTS = ["good", "bad"] as const;
+export const SLO_TRAFFIC_TYPES = ["real", "synthetic"] as const;
 
 export type SloJourney = (typeof SLO_JOURNEYS)[number];
 export type SloResult = (typeof SLO_RESULTS)[number];
+export type SloTrafficType = (typeof SLO_TRAFFIC_TYPES)[number];
 
 export type RawSloBucket = {
   bucket: Date | string;
@@ -31,6 +33,7 @@ export type SloSample = {
   journey: SloJourney;
   result: SloResult;
   value: number;
+  traffic?: SloTrafficType;
 };
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -258,6 +261,7 @@ export function renderPrometheusImportRows(samples: SloSample[]): string {
       const labels = [
         `journey="${escapeLabelValue(sample.journey)}"`,
         `result="${escapeLabelValue(sample.result)}"`,
+        `traffic="${escapeLabelValue(sample.traffic ?? "real")}"`,
       ].join(",");
       return `cmdclaw_slo_events_total{${labels}} ${sample.value} ${sample.timestampMs}`;
     }),

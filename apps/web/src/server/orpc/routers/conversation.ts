@@ -83,6 +83,7 @@ const list = protectedProcedure
         eq(conversation.workspaceId, workspaceId),
         eq(conversation.type, "chat"),
         isNull(conversation.archivedAt),
+        isNull(conversation.syntheticKind),
         paginationWhere,
       ),
       orderBy: [desc(conversation.isPinned), desc(conversation.updatedAt), desc(conversation.id)],
@@ -131,6 +132,7 @@ const get = protectedProcedure
         eq(conversation.id, input.id),
         eq(conversation.userId, context.user.id),
         eq(conversation.workspaceId, workspaceId),
+        isNull(conversation.syntheticKind),
       ),
       with: {
         messages: {

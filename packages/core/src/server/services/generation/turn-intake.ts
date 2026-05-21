@@ -6,6 +6,7 @@ import {
   message,
   user,
   type GenerationExecutionPolicy,
+  type SyntheticTrafficKind,
 } from "@cmdclaw/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import type { IntegrationType } from "../../oauth/config";
@@ -50,6 +51,7 @@ export type StartGenerationInput = {
   fileAttachments?: UserFileAttachment[];
   selectedPlatformSkillSlugs?: string[];
   remoteIntegrationSource?: RemoteIntegrationSource;
+  syntheticKind?: SyntheticTrafficKind;
 };
 
 export type StartCoworkerGenerationInput = {
@@ -68,6 +70,7 @@ export type StartCoworkerGenerationInput = {
   allowedSkillSlugs?: string[];
   fileAttachments?: UserFileAttachment[];
   remoteIntegrationSource?: RemoteIntegrationSource;
+  syntheticKind?: SyntheticTrafficKind;
 };
 
 type TurnIntakeDeps = {
@@ -227,6 +230,7 @@ export class TurnIntake {
           model: resolvedModel,
           authSource: resolvedAuthSource,
           autoApprove: false,
+          syntheticKind: params.syntheticKind,
         })
         .returning();
       conv = newConv;
@@ -544,6 +548,7 @@ export class TurnIntake {
         model: resolvedModel,
         authSource: resolvedAuthSource,
         autoApprove: params.autoApprove,
+        syntheticKind: params.syntheticKind,
       })
       .returning();
 

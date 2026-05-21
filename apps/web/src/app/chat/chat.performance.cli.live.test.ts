@@ -130,11 +130,9 @@ describe.runIf(liveEnabled)("@live CLI chat performance", () => {
       );
 
       expect(followupGenerationMedian).toBeLessThan(firstTiming.generationMs);
-      if (maxExpectedSlowFollowupRatio !== null) {
-        expect(followupGenerationMedian).toBeLessThan(
-          firstTiming.generationMs * maxExpectedSlowFollowupRatio,
-        );
-      }
+      const slowFollowupLimit =
+        firstTiming.generationMs * (maxExpectedSlowFollowupRatio ?? Number.POSITIVE_INFINITY);
+      expect(followupGenerationMedian).toBeLessThan(slowFollowupLimit);
       expect(followupAgentInitMedian).toBeLessThan(firstTiming.agentInitMs);
       expect(followupSandboxMedian).toBeLessThan(firstTiming.sandboxConnectOrCreateMs);
     },

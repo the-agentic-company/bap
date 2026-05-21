@@ -163,7 +163,7 @@ describe("slo backfill", () => {
 
     expect(rows).toContain("# TYPE cmdclaw_slo_events_total counter");
     expect(rows).toContain(
-      'cmdclaw_slo_events_total{journey="chat",result="good"} 7 1778979600000',
+      'cmdclaw_slo_events_total{journey="chat",result="good",traffic="real"} 7 1778979600000',
     );
   });
 

@@ -223,6 +223,8 @@ export async function triggerCoworkerRun(params: {
   userRole?: string | null;
   fileAttachments?: CoworkerFileAttachment[];
   remoteIntegrationSource?: RemoteIntegrationSource;
+  autoApprove?: boolean;
+  syntheticKind?: "slo_replay";
 }): Promise<{
   coworkerId: string;
   runId: string;
@@ -278,6 +280,7 @@ export async function triggerCoworkerRun(params: {
       workspaceId: wf.workspaceId,
       status: "running",
       triggerPayload: params.triggerPayload,
+      syntheticKind: params.syntheticKind,
     })
     .returning();
 
@@ -424,13 +427,14 @@ export async function triggerCoworkerRun(params: {
       authSource: wf.authSource,
       userId: wf.ownerId,
       workspaceId: wf.workspaceId ?? null,
-      autoApprove: wf.autoApprove,
+      autoApprove: params.autoApprove ?? wf.autoApprove,
       allowedIntegrations,
       allowedCustomIntegrations,
       allowedExecutorSourceIds,
       allowedSkillSlugs,
       fileAttachments: params.fileAttachments,
       remoteIntegrationSource: resolvedRemoteIntegrationSource,
+      syntheticKind: params.syntheticKind,
     });
 
     generationId = startResult.generationId;
