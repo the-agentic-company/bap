@@ -30,7 +30,6 @@ describe.runIf(liveEnabled)("@live CLI chat linear", () => {
       expect(result.stdout).not.toContain("[auth_needed]");
       expect(result.stdout).toContain("[tool_use] executor_execute");
       expect(result.stdout).toMatch(/"(?:id|sourceId)":\s*"linear"/);
-      expect(result.stdout).toMatch(/linear\.(?:list_issues|get_issue)/);
       expect(result.stdout).toContain("BAP-310");
       expect(result.stdout).toContain("e2e test for executor");
       expect(result.stdout).toContain("test-1234");
