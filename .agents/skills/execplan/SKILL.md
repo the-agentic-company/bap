@@ -7,9 +7,9 @@ description: Write and maintain self-contained execution plans that a coding age
 
 This document describes the requirements for an execution plan ("ExecPlan"), a design document that a coding agent can follow to deliver a working feature or system change. Treat the reader as a complete beginner to this repository: they have only the current working tree and the single ExecPlan file you provide. There is no memory of prior plans and no external context.
 
-## How to use ExecPlans and PLANS.md
+## How to use ExecPlans
 
-When authoring an executable specification (ExecPlan), follow PLANS.md _to the letter_. If it is not in your context, refresh your memory by reading the entire PLANS.md file. Be thorough in reading (and re-reading) source material to produce an accurate specification. When creating a spec, start from the skeleton and flesh it out as you do your research.
+When authoring an executable specification (ExecPlan), follow this skill file _to the letter_. If it is not in your context, refresh your memory by reading this entire skill file. Be thorough in reading (and re-reading) source material to produce an accurate specification. When creating a spec, start from the skeleton and flesh it out as you do your research.
 
 Write every ExecPlan as a Markdown file inside `plans/` at the repository root.
 
@@ -85,7 +85,7 @@ Prefer additive code changes followed by subtractions that keep tests passing. P
 
     This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-    If PLANS.md file is checked into the repo, reference the path to that file here from the repository root and note that this document must be maintained in accordance with PLANS.md.
+    If this skill file is checked into the repo, reference the path to that file here from the repository root and note that this document must be maintained in accordance with this skill file.
 
     ## Purpose / Big Picture
 
