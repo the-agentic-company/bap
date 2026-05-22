@@ -15,6 +15,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { AttachmentData } from "@/components/prompt-bar";
 import type { PromptSegment } from "@/lib/prompt-segments";
+import {
+  ChatDebugPopover,
+  type ArmedDebugPreset,
+  type ChatDebugSnapshot,
+} from "@/components/chat/chat-debug-popover";
 import { ModelSelector } from "@/components/chat/model-selector";
 import { VoiceIndicator } from "@/components/chat/voice-indicator";
 import { AnimatedHowItWorksSection } from "@/components/landing/animated-how-it-works";
@@ -29,6 +34,7 @@ import {
 import { TeamShowcaseSection } from "@/components/landing/team-showcase";
 import { TemplatePreviewModal } from "@/components/template-preview-modal";
 import { Button } from "@/components/ui/button";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { blobToBase64, useVoiceRecording } from "@/hooks/use-voice-recording";
 import { authClient } from "@/lib/auth-client";
@@ -54,6 +60,20 @@ const TEMPLATE_INTEGRATION_LOGOS: Record<TemplateIntegrationType, string> = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_COWORKER_BUILDER_MODEL = DEFAULT_CONNECTED_CHATGPT_MODEL;
+const COWORKER_BUILDER_DEBUG_PROMPT = "create a coworker that says hi";
+const COWORKER_BUILDER_DEBUG_SCENARIOS = ["question", "runtime"] as const;
+const COWORKER_BUILDER_DEBUG_PROMPTS = {
+  question: COWORKER_BUILDER_DEBUG_PROMPT,
+  runtime: COWORKER_BUILDER_DEBUG_PROMPT,
+} as const;
+const COWORKER_BUILDER_DEBUG_LABELS = {
+  question: "Create Question",
+  runtime: "Create Runtime",
+} as const;
+const COWORKER_BUILDER_DEBUG_DESCRIPTIONS = {
+  question: "Builder question park repro",
+  runtime: "Builder runtime deadline repro",
+} as const;
 // Brandfetch CDN icon URLs (fetched via Brand API)
 const BF = {
   salesforce:
@@ -341,6 +361,9 @@ export function CoworkerLanding({
     text: string;
     mode?: "replace" | "append";
   } | null>(null);
+  const [armedDebugPreset, setArmedDebugPreset] = useState<ArmedDebugPreset | null>(null);
+  const chatDebugSnapshot = useMemo<ChatDebugSnapshot>(() => ({}), []);
+  const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
   const [activePromptIndex, setActivePromptIndex] = useState(0);
   const [isAnonymous, setShowFooter] = useState(!initialHasSession);
   const [userFirstName, setUserFirstName] = useState<string | null>(initialFirstName);
@@ -401,6 +424,8 @@ export function CoworkerLanding({
       triggerType?: string;
       initialMessage?: string;
       initialAttachments?: AttachmentData[];
+      debugRunDeadlineMs?: number;
+      debugApprovalHotWaitMs?: number;
     }) => {
       try {
         const result = await createCoworker.mutateAsync({
@@ -429,6 +454,12 @@ export function CoworkerLanding({
               authSource: modelAuthSource,
               autoApprove: true,
               fileAttachments: opts.initialAttachments,
+              ...(opts.debugRunDeadlineMs !== undefined
+                ? { debugRunDeadlineMs: opts.debugRunDeadlineMs }
+                : {}),
+              ...(opts.debugApprovalHotWaitMs !== undefined
+                ? { debugApprovalHotWaitMs: opts.debugApprovalHotWaitMs }
+                : {}),
             });
           } catch (error) {
             console.error("Failed to start coworker builder generation:", error);
@@ -477,8 +508,11 @@ export function CoworkerLanding({
           prompt: "",
           initialMessage: text,
           initialAttachments: attachments,
+          debugRunDeadlineMs: armedDebugPreset?.debugRunDeadlineMs,
+          debugApprovalHotWaitMs: armedDebugPreset?.debugApprovalHotWaitMs,
         });
         if (created) {
+          setArmedDebugPreset(null);
           clearPendingCoworkerPrompt();
           return;
         }
@@ -489,8 +523,55 @@ export function CoworkerLanding({
         setIsCreating(false);
       }
     },
-    [doCreate, isCreating, redirectToLogin],
+    [armedDebugPreset, doCreate, isCreating, redirectToLogin],
   );
+
+  const handleArmDebugPreset = useCallback((preset: ArmedDebugPreset) => {
+    setArmedDebugPreset(preset);
+    setInputPrefillRequest({
+      id: `create-debug-preset-${preset.key}-${Date.now()}`,
+      text: preset.prompt,
+      mode: "replace",
+    });
+  }, []);
+
+  const handleClearDebugPreset = useCallback(() => {
+    setArmedDebugPreset(null);
+  }, []);
+
+  const handleResumeRunDeadline = useCallback(() => {}, []);
+
+  const debugControlNode = useMemo(() => {
+    if (!isAdmin || isAdminLoading) {
+      return null;
+    }
+
+    return (
+      <ChatDebugPopover
+        armedPreset={armedDebugPreset}
+        snapshot={chatDebugSnapshot}
+        disabled={isCreating}
+        triggerClassName="h-8 w-8 rounded-lg"
+        enabledScenarios={COWORKER_BUILDER_DEBUG_SCENARIOS}
+        introText="Admin-only create debug controls for builder question and runtime recovery."
+        promptOverrides={COWORKER_BUILDER_DEBUG_PROMPTS}
+        labelOverrides={COWORKER_BUILDER_DEBUG_LABELS}
+        descriptionOverrides={COWORKER_BUILDER_DEBUG_DESCRIPTIONS}
+        onArmPreset={handleArmDebugPreset}
+        onClearPreset={handleClearDebugPreset}
+        onResumeRunDeadline={handleResumeRunDeadline}
+      />
+    );
+  }, [
+    armedDebugPreset,
+    chatDebugSnapshot,
+    handleArmDebugPreset,
+    handleClearDebugPreset,
+    handleResumeRunDeadline,
+    isAdmin,
+    isAdminLoading,
+    isCreating,
+  ]);
 
   useEffect(() => {
     let mounted = true;
@@ -669,6 +750,7 @@ export function CoworkerLanding({
                 voiceInteractionMode="toggle"
                 prefillRequest={inputPrefillRequest}
                 renderModelSelector={!isAnonymous ? modelSelectorNode : undefined}
+                renderDebugControls={debugControlNode}
               />
               {(isRecording || isProcessingVoice || voiceError) && (
                 <div className="mt-4">

@@ -46,6 +46,7 @@ type PromptBarProps = {
   renderSkills?: React.ReactNode;
   renderModelSelector?: React.ReactNode;
   renderAutoApproval?: React.ReactNode;
+  renderDebugControls?: React.ReactNode;
 
   className?: string;
 };
@@ -143,6 +144,7 @@ export function PromptBar({
   renderSkills,
   renderModelSelector,
   renderAutoApproval,
+  renderDebugControls,
   className,
 }: PromptBarProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -652,6 +654,7 @@ export function PromptBar({
           {/* Right group: auto-approval, voice, send */}
           <div className="flex items-center gap-1">
             {renderAutoApproval}
+            {renderDebugControls}
 
             {/* Voice */}
             {showVoice && (

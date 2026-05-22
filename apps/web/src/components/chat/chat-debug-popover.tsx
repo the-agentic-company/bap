@@ -34,6 +34,12 @@ type Props = {
   armedPreset: ArmedDebugPreset | null;
   snapshot: ChatDebugSnapshot;
   disabled?: boolean;
+  triggerClassName?: string;
+  enabledScenarios?: readonly DebugScenarioKey[];
+  introText?: string;
+  promptOverrides?: Partial<Record<DebugScenarioKey, string>>;
+  labelOverrides?: Partial<Record<DebugScenarioKey, string>>;
+  descriptionOverrides?: Partial<Record<DebugScenarioKey, string>>;
   onArmPreset: (preset: ArmedDebugPreset) => void;
   onClearPreset: () => void;
   onResumeRunDeadline: () => void;
@@ -52,6 +58,27 @@ const PROMPTS: Record<DebugScenarioKey, string> = {
     "Use the question tool exactly once with header 'Pick', question 'Choose one', and options 'Alpha' and 'Beta'. After I answer, respond exactly as SELECTED=<answer>.",
   runtime:
     "analyze my last 30 emails and classify them as urgent with a summary of next action point to do",
+};
+
+const DESCRIPTIONS: Record<DebugScenarioKey, string> = {
+  approval: "Slack write approval repro",
+  auth: "Disconnected Notion auth repro",
+  question: "Runtime question repro",
+  runtime: "Long Gmail analysis repro",
+};
+
+const TITLES: Record<DebugScenarioKey, string> = {
+  approval: "Approval Recovery",
+  auth: "Auth Recovery",
+  question: "Question Recovery",
+  runtime: "Runtime Deadline",
+};
+
+const LABELS: Record<DebugScenarioKey, string> = {
+  approval: "Approval",
+  auth: "Auth",
+  question: "Question",
+  runtime: "Runtime",
 };
 
 function coerceSeconds(value: string, fallback: number): number {
@@ -85,6 +112,12 @@ export function ChatDebugPopover({
   armedPreset,
   snapshot,
   disabled = false,
+  triggerClassName,
+  enabledScenarios = ["approval", "auth", "question", "runtime"],
+  introText = "Admin-only debug controls for approval, auth, question, and runtime recovery.",
+  promptOverrides,
+  labelOverrides,
+  descriptionOverrides,
   onArmPreset,
   onClearPreset,
   onResumeRunDeadline,
@@ -113,45 +146,45 @@ export function ChatDebugPopover({
     const seconds = coerceSeconds(approvalSeconds, 5);
     onArmPreset({
       key: "approval",
-      label: "Approval",
-      prompt: PROMPTS.approval,
+      label: labelOverrides?.approval ?? LABELS.approval,
+      prompt: promptOverrides?.approval ?? PROMPTS.approval,
       debugApprovalHotWaitMs: seconds * 1000,
     });
     setOpen(false);
-  }, [approvalSeconds, onArmPreset]);
+  }, [approvalSeconds, labelOverrides?.approval, onArmPreset, promptOverrides?.approval]);
 
   const handleArmAuth = useCallback(() => {
     const seconds = coerceSeconds(authSeconds, 5);
     onArmPreset({
       key: "auth",
-      label: "Auth",
-      prompt: PROMPTS.auth,
+      label: labelOverrides?.auth ?? LABELS.auth,
+      prompt: promptOverrides?.auth ?? PROMPTS.auth,
       debugApprovalHotWaitMs: seconds * 1000,
     });
     setOpen(false);
-  }, [authSeconds, onArmPreset]);
+  }, [authSeconds, labelOverrides?.auth, onArmPreset, promptOverrides?.auth]);
 
   const handleArmQuestion = useCallback(() => {
     const seconds = coerceSeconds(questionSeconds, 5);
     onArmPreset({
       key: "question",
-      label: "Question",
-      prompt: PROMPTS.question,
+      label: labelOverrides?.question ?? LABELS.question,
+      prompt: promptOverrides?.question ?? PROMPTS.question,
       debugApprovalHotWaitMs: seconds * 1000,
     });
     setOpen(false);
-  }, [onArmPreset, questionSeconds]);
+  }, [labelOverrides?.question, onArmPreset, promptOverrides?.question, questionSeconds]);
 
   const handleArmRuntime = useCallback(() => {
     const seconds = coerceSeconds(runtimeSeconds, 30);
     onArmPreset({
       key: "runtime",
-      label: "Runtime",
-      prompt: PROMPTS.runtime,
+      label: labelOverrides?.runtime ?? LABELS.runtime,
+      prompt: promptOverrides?.runtime ?? PROMPTS.runtime,
       debugRunDeadlineMs: seconds * 1000,
     });
     setOpen(false);
-  }, [onArmPreset, runtimeSeconds]);
+  }, [labelOverrides?.runtime, onArmPreset, promptOverrides?.runtime, runtimeSeconds]);
 
   const handleResumeClick = useCallback(() => {
     onResumeRunDeadline();
@@ -183,6 +216,8 @@ export function ChatDebugPopover({
     [snapshot],
   );
 
+  const enabledScenarioSet = useMemo(() => new Set(enabledScenarios), [enabledScenarios]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -191,7 +226,7 @@ export function ChatDebugPopover({
           variant={armedPreset ? "secondary" : "ghost"}
           size="sm"
           disabled={disabled}
-          className="h-9 w-9 rounded-xl p-0"
+          className={cn("h-9 w-9 rounded-xl p-0", triggerClassName)}
           aria-label={
             armedPreset
               ? `Admin debug controls (${armedPreset.label} armed)`
@@ -206,105 +241,117 @@ export function ChatDebugPopover({
         <div className="space-y-3">
           <div className="space-y-1">
             <div className="text-sm font-medium">Recovery Presets</div>
-            <p className="text-muted-foreground text-xs">
-              Admin-only debug controls for approval, auth, and runtime recovery.
-            </p>
+            <p className="text-muted-foreground text-xs">{introText}</p>
           </div>
 
           <div className="space-y-2">
-            <div className="rounded-lg border p-2.5">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-medium">Approval Recovery</div>
-                  <div className="text-muted-foreground text-xs">Slack write approval repro</div>
-                </div>
-                <Button type="button" size="sm" className="h-8" onClick={handleArmApproval}>
-                  Arm
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={approvalSeconds}
-                  onChange={handleApprovalSecondsChange}
-                  className="h-8"
-                />
-                <span className="text-muted-foreground text-xs">seconds before park</span>
-              </div>
-            </div>
-
-            <div className="rounded-lg border p-2.5">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-medium">Auth Recovery</div>
-                  <div className="text-muted-foreground text-xs">
-                    Disconnected Notion auth repro
+            {enabledScenarioSet.has("approval") ? (
+              <div className="rounded-lg border p-2.5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-medium">{TITLES.approval}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {descriptionOverrides?.approval ?? DESCRIPTIONS.approval}
+                    </div>
                   </div>
+                  <Button type="button" size="sm" className="h-8" onClick={handleArmApproval}>
+                    Arm
+                  </Button>
                 </div>
-                <Button type="button" size="sm" className="h-8" onClick={handleArmAuth}>
-                  Arm
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={approvalSeconds}
+                    onChange={handleApprovalSecondsChange}
+                    className="h-8"
+                  />
+                  <span className="text-muted-foreground text-xs">seconds before park</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={authSeconds}
-                  onChange={handleAuthSecondsChange}
-                  className="h-8"
-                />
-                <span className="text-muted-foreground text-xs">seconds before park</span>
-              </div>
-            </div>
+            ) : null}
 
-            <div className="rounded-lg border p-2.5">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-medium">Question Recovery</div>
-                  <div className="text-muted-foreground text-xs">Runtime question repro</div>
+            {enabledScenarioSet.has("auth") ? (
+              <div className="rounded-lg border p-2.5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-medium">{TITLES.auth}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {descriptionOverrides?.auth ?? DESCRIPTIONS.auth}
+                    </div>
+                  </div>
+                  <Button type="button" size="sm" className="h-8" onClick={handleArmAuth}>
+                    Arm
+                  </Button>
                 </div>
-                <Button type="button" size="sm" className="h-8" onClick={handleArmQuestion}>
-                  Arm
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={authSeconds}
+                    onChange={handleAuthSecondsChange}
+                    className="h-8"
+                  />
+                  <span className="text-muted-foreground text-xs">seconds before park</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={questionSeconds}
-                  onChange={handleQuestionSecondsChange}
-                  className="h-8"
-                />
-                <span className="text-muted-foreground text-xs">seconds before park</span>
-              </div>
-            </div>
+            ) : null}
 
-            <div className="rounded-lg border p-2.5">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-medium">Runtime Deadline</div>
-                  <div className="text-muted-foreground text-xs">Long Gmail analysis repro</div>
+            {enabledScenarioSet.has("question") ? (
+              <div className="rounded-lg border p-2.5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-medium">{TITLES.question}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {descriptionOverrides?.question ?? DESCRIPTIONS.question}
+                    </div>
+                  </div>
+                  <Button type="button" size="sm" className="h-8" onClick={handleArmQuestion}>
+                    Arm
+                  </Button>
                 </div>
-                <Button type="button" size="sm" className="h-8" onClick={handleArmRuntime}>
-                  Arm
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={questionSeconds}
+                    onChange={handleQuestionSecondsChange}
+                    className="h-8"
+                  />
+                  <span className="text-muted-foreground text-xs">seconds before park</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={runtimeSeconds}
-                  onChange={handleRuntimeSecondsChange}
-                  className="h-8"
-                />
-                <span className="text-muted-foreground text-xs">seconds before deadline</span>
+            ) : null}
+
+            {enabledScenarioSet.has("runtime") ? (
+              <div className="rounded-lg border p-2.5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-medium">{TITLES.runtime}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {descriptionOverrides?.runtime ?? DESCRIPTIONS.runtime}
+                    </div>
+                  </div>
+                  <Button type="button" size="sm" className="h-8" onClick={handleArmRuntime}>
+                    Arm
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={runtimeSeconds}
+                    onChange={handleRuntimeSecondsChange}
+                    className="h-8"
+                  />
+                  <span className="text-muted-foreground text-xs">seconds before deadline</span>
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
 
           <div className="rounded-lg border p-2.5">

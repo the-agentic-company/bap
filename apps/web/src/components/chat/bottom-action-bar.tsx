@@ -68,6 +68,7 @@ type BottomActionBarProps = {
   renderSkills?: React.ReactNode;
   renderModelSelector?: React.ReactNode;
   renderAutoApproval?: React.ReactNode;
+  renderDebugControls?: React.ReactNode;
 };
 
 export function BottomActionBar({

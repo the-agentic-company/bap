@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type React from "react";
+import React from "react";
 import * as jestDomVitest from "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -105,6 +105,28 @@ describe("PromptBar", () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith("hi", undefined);
     });
+  });
+
+  it("renders injected debug controls beside the voice button", () => {
+    const debugControls = React.createElement("button", { type: "button" }, "Debug tools");
+
+    render(
+      <PromptBar
+        onSubmit={vi.fn()}
+        onStartRecording={vi.fn()}
+        onStopRecording={vi.fn()}
+        renderDebugControls={debugControls}
+      />,
+    );
+
+    const controls = screen
+      .getByRole("button", { name: "Debug tools" })
+      .parentElement?.querySelectorAll("button");
+    expect(
+      Array.from(controls ?? []).map(
+        (button) => button.textContent || button.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Debug tools", "Start voice recording", "Send message"]);
   });
 
   it("reserves two lines of height for the hero rich placeholder", () => {
