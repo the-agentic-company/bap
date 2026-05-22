@@ -37,7 +37,7 @@
     "@opentelemetry/sdk-metrics": "^2.2.0",
     "@opentelemetry/sdk-trace-base": "^2.2.0",
     "@opentelemetry/sdk-trace-node": "^2.2.0",
-    "@opentelemetry/semantic-conventions": "^1.37.0",
+    "@opentelemetry/semantic-conventions": "^1.41.1",
     "@orpc/server": "^1.13.2",
     "@t3-oss/env-nextjs": "^0.13.8",
     "autumn-js": "^0.1.74",
