@@ -16,6 +16,8 @@ const {
   computeWorkspaceExecutorSourceRevisionHashMock,
   setWorkspaceExecutorSourceOAuthCredentialMock,
   integrationFindFirstMock,
+  connectedIdentityFindManyMock,
+  connectedIdentityFindFirstMock,
   workspaceExecutorSourceFindFirstMock,
   workspaceExecutorSourceCredentialFindFirstMock,
   updateWhereMock,
@@ -35,6 +37,8 @@ const {
   const setWorkspaceExecutorSourceOAuthCredentialMock = vi.fn<MockFn>();
 
   const integrationFindFirstMock = vi.fn<MockFn>();
+  const connectedIdentityFindManyMock = vi.fn<MockFn>();
+  const connectedIdentityFindFirstMock = vi.fn<MockFn>();
   const workspaceExecutorSourceFindFirstMock = vi.fn<MockFn>();
   const workspaceExecutorSourceCredentialFindFirstMock = vi.fn<MockFn>();
 
@@ -53,6 +57,10 @@ const {
     query: {
       integration: {
         findFirst: integrationFindFirstMock,
+      },
+      connectedIdentity: {
+        findMany: connectedIdentityFindManyMock,
+        findFirst: connectedIdentityFindFirstMock,
       },
       workspaceExecutorSource: {
         findFirst: workspaceExecutorSourceFindFirstMock,
@@ -77,6 +85,8 @@ const {
     computeWorkspaceExecutorSourceRevisionHashMock,
     setWorkspaceExecutorSourceOAuthCredentialMock,
     integrationFindFirstMock,
+    connectedIdentityFindManyMock,
+    connectedIdentityFindFirstMock,
     workspaceExecutorSourceFindFirstMock,
     workspaceExecutorSourceCredentialFindFirstMock,
     updateWhereMock,
@@ -175,9 +185,13 @@ describe("GET /api/oauth/callback", () => {
     });
     setWorkspaceExecutorSourceOAuthCredentialMock.mockResolvedValue(undefined);
     integrationFindFirstMock.mockResolvedValue(null);
+    connectedIdentityFindManyMock.mockResolvedValue([]);
+    connectedIdentityFindFirstMock.mockResolvedValue(null);
     workspaceExecutorSourceFindFirstMock.mockResolvedValue(null);
     workspaceExecutorSourceCredentialFindFirstMock.mockResolvedValue(null);
-    insertReturningMock.mockResolvedValue([{ id: "integration-1" }]);
+    insertReturningMock
+      .mockResolvedValueOnce([{ id: "connected-identity-1", label: "provider-user" }])
+      .mockResolvedValue([{ id: "integration-1" }]);
     deleteWhereMock.mockResolvedValue(undefined);
     updateWhereMock.mockResolvedValue(undefined);
 

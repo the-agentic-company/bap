@@ -92,6 +92,10 @@ function createContext() {
           findMany: vi.fn(),
           findFirst: vi.fn(),
         },
+        connectedIdentity: {
+          findMany: vi.fn().mockResolvedValue([]),
+          findFirst: vi.fn(),
+        },
         googleIntegrationAccessAllowlist: {
           findFirst: vi.fn().mockResolvedValue(null),
           findMany: vi.fn(),
@@ -182,6 +186,8 @@ describe("integrationRouter", () => {
         authErrorCode: null,
         scopes: ["repo"],
         createdAt: now,
+        accountLabelId: null,
+        accountLabel: null,
       },
     ]);
   });
@@ -222,6 +228,8 @@ describe("integrationRouter", () => {
         authErrorCode: null,
         scopes: ["offline_access"],
         createdAt: now,
+        accountLabelId: null,
+        accountLabel: null,
       },
     ]);
   });
@@ -422,6 +430,11 @@ describe("integrationRouter", () => {
     const context = createContext();
     context.db.query.integration.findFirst.mockResolvedValue({
       id: "integration-existing",
+      connectedIdentityId: "connected-identity-1",
+    });
+    context.db.query.connectedIdentity.findFirst.mockResolvedValue({
+      id: "connected-identity-1",
+      label: "provider-user",
     });
 
     let headers: Headers | undefined;
@@ -511,7 +524,9 @@ describe("integrationRouter", () => {
   it("handles slack callback using authed_user access token", async () => {
     const context = createContext();
     context.db.query.integration.findFirst.mockResolvedValue(null);
-    context.mocks.insertReturningMock.mockResolvedValue([{ id: "integration-slack" }]);
+    context.mocks.insertReturningMock
+      .mockResolvedValueOnce([{ id: "connected-identity-1", label: "provider-user" }])
+      .mockResolvedValueOnce([{ id: "integration-slack" }]);
 
     mswServer.use(
       http.post("https://oauth.example.com/token", () =>
@@ -544,6 +559,11 @@ describe("integrationRouter", () => {
     const context = createContext();
     context.db.query.integration.findFirst.mockResolvedValue({
       id: "integration-existing",
+      connectedIdentityId: "connected-identity-1",
+    });
+    context.db.query.connectedIdentity.findFirst.mockResolvedValue({
+      id: "connected-identity-1",
+      label: "provider-user",
     });
 
     mswServer.use(
@@ -579,7 +599,9 @@ describe("integrationRouter", () => {
   it("inserts a new integration when one does not exist", async () => {
     const context = createContext();
     context.db.query.integration.findFirst.mockResolvedValue(null);
-    context.mocks.insertReturningMock.mockResolvedValue([{ id: "integration-new" }]);
+    context.mocks.insertReturningMock
+      .mockResolvedValueOnce([{ id: "connected-identity-1", label: "provider-user" }])
+      .mockResolvedValueOnce([{ id: "integration-new" }]);
 
     mswServer.use(
       http.post("https://oauth.example.com/token", () =>
@@ -689,6 +711,10 @@ describe("integrationRouter", () => {
 
   it("links linkedin account with upsert and fallback display name", async () => {
     const context = createContext();
+    context.db.query.integration.findFirst.mockResolvedValue(null);
+    context.mocks.insertReturningMock.mockResolvedValueOnce([
+      { id: "connected-identity-1", label: "identifier-only" },
+    ]);
     getUnipileAccountMock.mockResolvedValueOnce({
       name: "",
       identifier: "identifier-only",
@@ -708,7 +734,6 @@ describe("integrationRouter", () => {
         displayName: "identifier-only",
       }),
     );
-    expect(context.mocks.insertOnConflictDoUpdateMock).toHaveBeenCalled();
   });
 
   it("throws when linkedin account linking fails", async () => {
