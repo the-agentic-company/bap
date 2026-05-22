@@ -24,6 +24,7 @@ const {
   uploadCoworkerDocumentMock,
   deleteCoworkerDocumentMock,
   downloadFromS3Mock,
+  getPresignedDownloadUrlMock,
   listConfiguredRemoteIntegrationTargetsMock,
   searchRemoteIntegrationUsersMock,
 } = vi.hoisted(() => ({
@@ -38,6 +39,7 @@ const {
   uploadCoworkerDocumentMock: vi.fn(),
   deleteCoworkerDocumentMock: vi.fn(),
   downloadFromS3Mock: vi.fn(),
+  getPresignedDownloadUrlMock: vi.fn(),
   listConfiguredRemoteIntegrationTargetsMock: vi.fn(),
   searchRemoteIntegrationUsersMock: vi.fn(),
 }));
@@ -79,6 +81,7 @@ vi.mock("@/server/services/coworker-document", () => ({
 
 vi.mock("@cmdclaw/core/server/storage/s3-client", () => ({
   downloadFromS3: downloadFromS3Mock,
+  getPresignedDownloadUrl: getPresignedDownloadUrlMock,
 }));
 
 vi.mock("@cmdclaw/core/server/integrations/remote-integrations", () => {
@@ -277,6 +280,7 @@ describe("coworkerRouter", () => {
       filename: "brief.pdf",
     });
     downloadFromS3Mock.mockResolvedValue(Buffer.from("hello world"));
+    getPresignedDownloadUrlMock.mockResolvedValue("https://storage.example.com/brief.pdf");
     listConfiguredRemoteIntegrationTargetsMock.mockReturnValue(["staging", "prod"]);
     searchRemoteIntegrationUsersMock.mockResolvedValue([
       {
@@ -1185,6 +1189,30 @@ describe("coworkerRouter", () => {
     expect(result).toEqual({
       success: true,
       filename: "brief.pdf",
+    });
+  });
+
+  it("returns a signed download URL for a coworker document", async () => {
+    const context = createContext();
+    context.db.query.coworkerDocument.findFirst.mockResolvedValue({
+      coworkerId: "wf-1",
+      filename: "brief.pdf",
+      mimeType: "application/pdf",
+      storageKey: "coworkers/user-1/wf-1/documents/brief.pdf",
+    });
+
+    const result = await coworkerRouterAny.getDocumentUrl({
+      input: { id: "doc-1" },
+      context,
+    });
+
+    expect(getPresignedDownloadUrlMock).toHaveBeenCalledWith(
+      "coworkers/user-1/wf-1/documents/brief.pdf",
+    );
+    expect(result).toEqual({
+      url: "https://storage.example.com/brief.pdf",
+      filename: "brief.pdf",
+      mimeType: "application/pdf",
     });
   });
 

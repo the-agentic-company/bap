@@ -41,7 +41,7 @@ import {
   reconcileStaleCoworkerRunsForCoworkers,
   triggerCoworkerRun,
 } from "@cmdclaw/core/server/services/coworker-service";
-import { downloadFromS3 } from "@cmdclaw/core/server/storage/s3-client";
+import { downloadFromS3, getPresignedDownloadUrl } from "@cmdclaw/core/server/storage/s3-client";
 import {
   conversation,
   generation,
@@ -1427,6 +1427,37 @@ const deleteDocument = protectedProcedure
     });
   });
 
+const getDocumentUrl = protectedProcedure
+  .input(
+    z.object({
+      id: z.string(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    const existingDocument = await context.db.query.coworkerDocument.findFirst({
+      where: eq(coworkerDocument.id, input.id),
+      columns: {
+        coworkerId: true,
+        filename: true,
+        mimeType: true,
+        storageKey: true,
+      },
+    });
+
+    if (!existingDocument) {
+      throw new ORPCError("NOT_FOUND", { message: "Document not found" });
+    }
+
+    await requireOwnedCoworkerInActiveWorkspace(context, existingDocument.coworkerId);
+    const url = await getPresignedDownloadUrl(existingDocument.storageKey);
+
+    return {
+      url,
+      filename: existingDocument.filename,
+      mimeType: existingDocument.mimeType,
+    };
+  });
+
 const trigger = protectedProcedure
   .input(
     z.object({
@@ -2735,6 +2766,7 @@ export const coworkerRouter = {
   update,
   edit,
   uploadDocument,
+  getDocumentUrl,
   deleteDocument,
   delete: del,
   trigger,

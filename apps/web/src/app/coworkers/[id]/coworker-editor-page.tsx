@@ -19,6 +19,7 @@ import {
   X,
   ArrowLeft,
   ArrowRight,
+  Download,
   Pencil,
   Trash2,
   MessageSquare,
@@ -103,6 +104,7 @@ import {
   useCreateCoworkerForwardingAlias,
   useDeleteCoworkerDocument,
   useDisableCoworkerForwardingAlias,
+  useGetCoworkerDocumentUrl,
   useRotateCoworkerForwardingAlias,
   useCoworker,
   useCoworkerImpersonationTarget,
@@ -457,6 +459,7 @@ export default function CoworkerEditorPage() {
   const rotateForwardingAlias = useRotateCoworkerForwardingAlias();
   const uploadCoworkerDocument = useUploadCoworkerDocument();
   const deleteCoworkerDocument = useDeleteCoworkerDocument();
+  const getCoworkerDocumentUrl = useGetCoworkerDocumentUrl();
   const triggerCoworker = useTriggerCoworker();
   const deleteCoworker = useDeleteCoworker();
   const getOrCreateBuilderConversation = useGetOrCreateBuilderConversation();
@@ -487,6 +490,7 @@ export default function CoworkerEditorPage() {
   const [builderConversationError, setBuilderConversationError] = useState<string | null>(null);
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
   const [deletingDocumentIds, setDeletingDocumentIds] = useState<string[]>([]);
+  const [downloadingDocumentIds, setDownloadingDocumentIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<CoworkerTab>("instruction");
   const [remoteTargetEnv, setRemoteTargetEnv] = useState<RemoteIntegrationTargetEnv | null>(null);
   const [remoteUserQuery, setRemoteUserQuery] = useState("");
@@ -1274,6 +1278,35 @@ export default function CoworkerEditorPage() {
     ],
   );
 
+  const handleDownloadDocument = useCallback(
+    async (document: CoworkerDocumentRecord) => {
+      setDownloadingDocumentIds((current) =>
+        current.includes(document.id) ? current : [...current, document.id],
+      );
+
+      try {
+        const { url, filename } = await getCoworkerDocumentUrl.mutateAsync({ id: document.id });
+        const link = window.document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        link.target = "_blank";
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
+      } catch (error) {
+        console.error("Failed to download coworker document:", error);
+        toast.error(
+          error instanceof Error && error.message.trim().length > 0
+            ? error.message
+            : "Failed to download document.",
+        );
+      } finally {
+        setDownloadingDocumentIds((current) => current.filter((id) => id !== document.id));
+      }
+    },
+    [getCoworkerDocumentUrl],
+  );
+
   const handleStatusChange = useCallback((checked: boolean) => {
     setStatus(checked ? "on" : "off");
   }, []);
@@ -1821,10 +1854,12 @@ export default function CoworkerEditorPage() {
         isRunning={isRunning}
         isUploadingDocuments={isUploadingDocuments}
         deletingDocumentIds={deletingDocumentIds}
+        downloadingDocumentIds={downloadingDocumentIds}
         createForwardingAlias={createForwardingAlias}
         disableForwardingAlias={disableForwardingAlias}
         rotateForwardingAlias={rotateForwardingAlias}
         onUploadDocuments={handleUploadDocuments}
+        onDownloadDocument={handleDownloadDocument}
         onDeleteDocument={handleDeleteDocument}
         onTabChange={handleTabChange}
         onRun={handleRunClick}
@@ -2077,10 +2112,12 @@ export default function CoworkerEditorPage() {
               isRunning={isRunning}
               isUploadingDocuments={isUploadingDocuments}
               deletingDocumentIds={deletingDocumentIds}
+              downloadingDocumentIds={downloadingDocumentIds}
               createForwardingAlias={createForwardingAlias}
               disableForwardingAlias={disableForwardingAlias}
               rotateForwardingAlias={rotateForwardingAlias}
               onUploadDocuments={handleUploadDocuments}
+              onDownloadDocument={handleDownloadDocument}
               onDeleteDocument={handleDeleteDocument}
               onTabChange={handleTabChange}
               onRun={handleRunClick}
@@ -2625,10 +2662,12 @@ type CoworkerSettingsPanelProps = {
   isRunning: boolean;
   isUploadingDocuments: boolean;
   deletingDocumentIds: string[];
+  downloadingDocumentIds: string[];
   createForwardingAlias: { isPending: boolean };
   disableForwardingAlias: { isPending: boolean };
   rotateForwardingAlias: { isPending: boolean };
   onUploadDocuments: (files: FileList | File[]) => void | Promise<void>;
+  onDownloadDocument: (document: CoworkerDocumentRecord) => void | Promise<void>;
   onDeleteDocument: (document: CoworkerDocumentRecord) => void | Promise<void>;
   onTabChange: (tab: CoworkerTab) => void;
   onRun: (e: React.MouseEvent) => void;
@@ -2713,10 +2752,12 @@ function CoworkerSettingsPanel({
   isRunning,
   isUploadingDocuments,
   deletingDocumentIds,
+  downloadingDocumentIds,
   createForwardingAlias,
   disableForwardingAlias,
   rotateForwardingAlias,
   onUploadDocuments,
+  onDownloadDocument,
   onDeleteDocument,
   onTabChange,
   onRun,
@@ -2899,6 +2940,23 @@ function CoworkerSettingsPanel({
       void onDeleteDocument(document);
     },
     [documents, onDeleteDocument],
+  );
+
+  const handleDownloadDocumentClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const documentId = event.currentTarget.dataset.documentId;
+      if (!documentId) {
+        return;
+      }
+
+      const document = documents.find((entry) => entry.id === documentId);
+      if (!document) {
+        return;
+      }
+
+      void onDownloadDocument(document);
+    },
+    [documents, onDownloadDocument],
   );
 
   return (
@@ -3525,15 +3583,9 @@ function CoworkerSettingsPanel({
                       coworker runs and sent to the builder chat.
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-1 h-8 rounded-full px-4 text-xs"
-                    disabled={isUploadingDocuments}
-                  >
+                  <span className="border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground mt-1 inline-flex h-8 items-center justify-center rounded-full border px-4 text-xs font-medium">
                     Browse files
-                  </Button>
+                  </span>
                 </div>
               </button>
               {documents.length > 0 ? (
@@ -3563,22 +3615,40 @@ function CoworkerSettingsPanel({
                           <p className="text-muted-foreground text-xs">{document.description}</p>
                         ) : null}
                       </div>
-                      <Button
-                        type="button"
-                        size="icon-sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive mt-0.5 shrink-0 rounded-full"
-                        data-document-id={document.id}
-                        onClick={handleDeleteDocumentClick}
-                        disabled={deletingDocumentIds.includes(document.id)}
-                        aria-label={`Delete ${document.filename}`}
-                      >
-                        {deletingDocumentIds.includes(document.id) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <div className="mt-0.5 flex shrink-0 items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-foreground rounded-full"
+                          data-document-id={document.id}
+                          onClick={handleDownloadDocumentClick}
+                          disabled={downloadingDocumentIds.includes(document.id)}
+                          aria-label={`Download ${document.filename}`}
+                        >
+                          {downloadingDocumentIds.includes(document.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive rounded-full"
+                          data-document-id={document.id}
+                          onClick={handleDeleteDocumentClick}
+                          disabled={deletingDocumentIds.includes(document.id)}
+                          aria-label={`Delete ${document.filename}`}
+                        >
+                          {deletingDocumentIds.includes(document.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

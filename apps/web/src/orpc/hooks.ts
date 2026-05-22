@@ -1209,6 +1209,12 @@ export function useDeleteCoworkerDocument() {
   });
 }
 
+export function useGetCoworkerDocumentUrl() {
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => client.coworker.getDocumentUrl({ id }),
+  });
+}
+
 export function useTriggerCoworker() {
   const queryClient = useQueryClient();
 

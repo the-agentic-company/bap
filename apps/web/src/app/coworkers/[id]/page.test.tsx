@@ -11,6 +11,7 @@ void jestDomVitest;
 const {
   mockCoworkerRefetch,
   mockUpdateCoworkerMutateAsync,
+  mockGetCoworkerDocumentUrlMutateAsync,
   mockGetOrCreateBuilderConversationMutate,
   mockGetOrCreateBuilderConversationMutateAsync,
   mockSetSelectedSkillSlugs,
@@ -26,6 +27,7 @@ const {
 } = vi.hoisted(() => ({
   mockCoworkerRefetch: vi.fn(),
   mockUpdateCoworkerMutateAsync: vi.fn(),
+  mockGetCoworkerDocumentUrlMutateAsync: vi.fn(),
   mockGetOrCreateBuilderConversationMutate: vi.fn(),
   mockGetOrCreateBuilderConversationMutateAsync: vi.fn(),
   mockSetSelectedSkillSlugs: vi.fn(),
@@ -51,6 +53,14 @@ const {
       allowedIntegrations: ["slack"],
       allowedCustomIntegrations: [],
       schedule: null as CoworkerSchedule | null,
+      documents: [] as Array<{
+        id: string;
+        filename: string;
+        mimeType: string;
+        sizeBytes: number;
+        description: string | null;
+        createdAt: Date | string;
+      }>,
       createdAt: new Date("2026-03-12T10:00:00.000Z"),
       updatedAt: new Date("2026-03-12T10:00:00.000Z"),
       runs: [],
@@ -240,16 +250,12 @@ vi.mock("@/components/ui/alert-dialog", () => {
 vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
-    onClick,
-    disabled,
     type = "button",
-  }: {
-    children: React.ReactNode;
-    onClick?: React.MouseEventHandler<HTMLButtonElement>;
-    disabled?: boolean;
-    type?: "button" | "submit" | "reset";
-  }) => (
-    <button type={type} onClick={onClick} disabled={disabled}>
+    variant: _variant,
+    size: _size,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string }) => (
+    <button type={type} {...props}>
       {children}
     </button>
   ),
@@ -338,6 +344,7 @@ vi.mock("@/orpc/hooks", () => ({
   useCreateCoworkerForwardingAlias: () => ({ isPending: false, mutateAsync: vi.fn() }),
   useDeleteCoworkerDocument: () => ({ mutateAsync: vi.fn() }),
   useDisableCoworkerForwardingAlias: () => ({ isPending: false, mutateAsync: vi.fn() }),
+  useGetCoworkerDocumentUrl: () => ({ mutateAsync: mockGetCoworkerDocumentUrlMutateAsync }),
   useRotateCoworkerForwardingAlias: () => ({ isPending: false, mutateAsync: vi.fn() }),
   useCoworker: () => ({
     data: mockCoworkerData.current,
@@ -390,6 +397,12 @@ describe("CoworkerEditorPage", () => {
     replaceStateSpy = vi.spyOn(window.history, "replaceState");
     mockCoworkerRefetch.mockReset();
     mockUpdateCoworkerMutateAsync.mockReset();
+    mockGetCoworkerDocumentUrlMutateAsync.mockReset();
+    mockGetCoworkerDocumentUrlMutateAsync.mockResolvedValue({
+      url: "https://storage.example.com/brief.pdf",
+      filename: "brief.pdf",
+      mimeType: "application/pdf",
+    });
     mockGetOrCreateBuilderConversationMutate.mockReset();
     mockGetOrCreateBuilderConversationMutateAsync.mockReset();
     mockGetOrCreateBuilderConversationMutateAsync.mockResolvedValue({ conversationId: "conv-1" });
@@ -415,6 +428,7 @@ describe("CoworkerEditorPage", () => {
       allowedIntegrations: ["slack"],
       allowedCustomIntegrations: [],
       schedule: null,
+      documents: [],
       createdAt: new Date("2026-03-12T10:00:00.000Z"),
       updatedAt: new Date("2026-03-12T10:00:00.000Z"),
       runs: [],
@@ -868,6 +882,36 @@ describe("CoworkerEditorPage", () => {
       "/coworkers/cw-1?tab=docs",
     );
     expect(screen.getByText("Chat")).toBeInTheDocument();
+  });
+
+  it("downloads a coworker document from the docs tab", async () => {
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    mockCoworkerData.current = {
+      ...mockCoworkerData.current,
+      documents: [
+        {
+          id: "doc-1",
+          filename: "brief.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 1024,
+          description: null,
+          createdAt: new Date("2026-03-12T10:00:00.000Z"),
+        },
+      ],
+    };
+
+    render(<CoworkerEditorPage />);
+    await flushMicrotasks();
+
+    fireEvent.click(screen.getByText("Docs"));
+    fireEvent.click(screen.getByRole("button", { name: "Download brief.pdf" }));
+
+    await flushMicrotasks();
+
+    expect(mockGetCoworkerDocumentUrlMutateAsync).toHaveBeenCalledWith({ id: "doc-1" });
+    expect(clickSpy).toHaveBeenCalled();
+
+    clickSpy.mockRestore();
   });
 
   it("shows a retry when builder conversation loading fails", async () => {
