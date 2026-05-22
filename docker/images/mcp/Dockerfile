@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM oven/bun:1.3.9 AS pruner
+FROM oven/bun:1.3.14 AS pruner
 WORKDIR /app
 RUN bun --version
 COPY . .
@@ -9,13 +9,13 @@ RUN bun -e 'const fs = require("fs"); for (const path of ["/tmp/pruned/json/pack
 RUN mkdir -p /tmp/pruned/full/packages/config
 RUN cp -R /app/packages/config/. /tmp/pruned/full/packages/config/
 
-FROM oven/bun:1.3.9 AS deps
+FROM oven/bun:1.3.14 AS deps
 WORKDIR /app
 RUN bun --version
 COPY --from=pruner /tmp/pruned/json/ ./
 RUN bun install --frozen-lockfile --ignore-scripts
 
-FROM oven/bun:1.3.9 AS runner
+FROM oven/bun:1.3.14 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
