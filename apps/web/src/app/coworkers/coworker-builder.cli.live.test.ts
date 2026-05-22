@@ -13,6 +13,7 @@ import {
   resolveLiveModel,
   runBunCommand,
   trackCliOutput,
+  waitForGenerationState,
 } from "../../../tests/e2e-cli/live-fixtures";
 
 let liveModel = "";
@@ -64,6 +65,9 @@ if os.environ.get("COWORKER_CHAOS_APPROVAL"):
 
 if os.environ.get("COWORKER_CHAOS_APPROVAL_PARK_AFTER"):
     command.extend(["--chaosApprovalParkAfter", os.environ["COWORKER_CHAOS_APPROVAL_PARK_AFTER"]])
+
+if os.environ.get("COWORKER_CHAOS_RUN_DEADLINE"):
+    command.extend(["--chaosRunDeadline", os.environ["COWORKER_CHAOS_RUN_DEADLINE"]])
 
 env = dict(os.environ)
 env["CMDCLAW_SERVER_URL"] = os.environ["COWORKER_SERVER_URL"]
@@ -138,6 +142,8 @@ function runInteractiveCoworkerBuild(args: {
   attach?: string;
   chaosApproval?: "ask" | "defer";
   chaosApprovalParkAfter?: string;
+  chaosRunDeadline?: string;
+  message?: string;
   timeoutMs: number;
 }): Promise<InteractiveCommandResult> {
   return new Promise((resolveDone) => {
@@ -146,9 +152,10 @@ function runInteractiveCoworkerBuild(args: {
       env: {
         ...process.env,
         COWORKER_ATTACH: args.attach ?? "",
-        COWORKER_BUILD_MESSAGE: buildMessage,
+        COWORKER_BUILD_MESSAGE: args.message ?? buildMessage,
         COWORKER_CHAOS_APPROVAL: args.chaosApproval ?? "",
         COWORKER_CHAOS_APPROVAL_PARK_AFTER: args.chaosApprovalParkAfter ?? "",
+        COWORKER_CHAOS_RUN_DEADLINE: args.chaosRunDeadline ?? "",
         COWORKER_CWD: process.cwd(),
         COWORKER_MODEL: liveModel,
         COWORKER_SANDBOX_PROVIDER: liveSandboxProvider,
@@ -219,6 +226,10 @@ function extractBuilderConversationId(output: string): string {
   return requireMatch(output, /builder conversation id:\s+([^\s]+)/, output);
 }
 
+function extractGenerationId(output: string): string {
+  return requireMatch(output, /\[generation\]\s+([^\s]+)/, output);
+}
+
 describe.runIf(liveEnabled)("@live CLI coworker builder", () => {
   beforeAll(async () => {
     await ensureCliAuth();
@@ -268,6 +279,45 @@ describe.runIf(liveEnabled)("@live CLI coworker builder", () => {
 
       assertExitOk(resumed, "coworker build attach");
       expect(resumed.stdout).toContain("[approval_accepted]");
+      expect(resumed.stdout).toContain("coworker edit");
+      expect(resumed.stdout).toContain("Saved coworker edits");
+      expect(resumed.stdout).not.toContain("[error]");
+
+      await expectCoworkerPromptContainsHi(coworkerId);
+    },
+  );
+
+  test(
+    "parks on runtime deadline, attach resumes it, and persists hi instructions",
+    { timeout: Math.max(responseTimeoutMs * 2 + 120_000, 480_000) },
+    async () => {
+      const parked = await runInteractiveCoworkerBuild({
+        chaosRunDeadline: "5s",
+        message:
+          "create a manual coworker named Hi Bot. It should simply reply exactly hi when run. Use no integrations.",
+        timeoutMs: Math.max(responseTimeoutMs, 180_000),
+      });
+
+      assertExitOk(parked, "coworker build runtime deadline parked");
+      expect(parked.stdout).toContain("[run_deadline_parked]");
+      expect(parked.stdout).not.toContain("[error]");
+
+      const coworkerId = extractBuilderCoworkerId(parked.stdout);
+      const conversationId = extractBuilderConversationId(parked.stdout);
+      await waitForGenerationState({
+        generationId: extractGenerationId(parked.stdout),
+        expectedStatus: "paused",
+        completionReason: "run_deadline",
+        timeoutMs: 30_000,
+      });
+
+      const resumed = await runInteractiveCoworkerBuild({
+        attach: conversationId,
+        timeoutMs: Math.max(responseTimeoutMs, 240_000),
+      });
+
+      assertExitOk(resumed, "coworker build runtime deadline attach");
+      expect(resumed.stdout).toContain("reason=run_deadline; sending continue");
       expect(resumed.stdout).toContain("coworker edit");
       expect(resumed.stdout).toContain("Saved coworker edits");
       expect(resumed.stdout).not.toContain("[error]");
