@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Wrench,
   CirclePlay,
+  Save,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
@@ -1530,6 +1531,17 @@ export default function CoworkerEditorPage() {
     [isStartingRun, persistCoworker, refetchRuns, triggerCoworker, coworkerId],
   );
 
+  const handleSaveInstructions = useCallback(async () => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    const saveSucceeded = await persistCoworker({ force: true });
+    if (saveSucceeded) {
+      toast.success("Instructions saved.");
+    }
+  }, [persistCoworker]);
+
   const hasAgentInstructions = prompt.trim().length > 0;
   const coworkerDisplayName = coworker?.name?.trim().length ? coworker.name : "New Coworker";
 
@@ -1825,6 +1837,7 @@ export default function CoworkerEditorPage() {
         onStatusChange={handleStatusChange}
         onAutoApproveChange={handleAutoApproveChange}
         onPromptChange={handlePromptChange}
+        onSaveInstructions={handleSaveInstructions}
         onModelChange={handleModelSelectionChange}
         onClearSkills={handleClearSkills}
         onToggleSkillChecked={handleToggleSkillChecked}
@@ -1910,6 +1923,7 @@ export default function CoworkerEditorPage() {
       handleStatusChange,
       handleAutoApproveChange,
       handlePromptChange,
+      handleSaveInstructions,
       setModel,
       handleClearSkills,
       handleToggleSkillChecked,
@@ -2079,6 +2093,7 @@ export default function CoworkerEditorPage() {
               onStatusChange={handleStatusChange}
               onAutoApproveChange={handleAutoApproveChange}
               onPromptChange={handlePromptChange}
+              onSaveInstructions={handleSaveInstructions}
               onModelChange={handleModelSelectionChange}
               onClearSkills={handleClearSkills}
               onToggleSkillChecked={handleToggleSkillChecked}
@@ -2626,6 +2641,7 @@ type CoworkerSettingsPanelProps = {
   onStatusChange: (checked: boolean) => void;
   onAutoApproveChange: (checked: boolean) => void;
   onPromptChange: (value: string) => void;
+  onSaveInstructions: () => void | Promise<void>;
   onModelChange: (input: { model: string; authSource?: ProviderAuthSource | null }) => void;
   onClearSkills: () => void;
   onToggleSkillChecked: (skillKey: string) => void;
@@ -2713,6 +2729,7 @@ function CoworkerSettingsPanel({
   onStatusChange,
   onAutoApproveChange,
   onPromptChange,
+  onSaveInstructions,
   onModelChange,
   onClearSkills,
   onToggleSkillChecked,
@@ -3060,7 +3077,21 @@ function CoworkerSettingsPanel({
               >
                 <DialogHeader className="border-border/40 flex-row items-center justify-between border-b px-5 py-3.5">
                   <DialogTitle className="text-sm font-semibold">Edit instructions</DialogTitle>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={onSaveInstructions}
+                      disabled={isSaving || !coworkerId}
+                      className="h-7 gap-1.5 px-2.5 text-xs font-medium"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Save className="h-3 w-3" />
+                      )}
+                      {isSaving ? "Saving" : "Save"}
+                    </Button>
                     <MarkdownEditorModeToggle
                       mode={instructionEditorMode}
                       onModeChange={setInstructionEditorMode}
