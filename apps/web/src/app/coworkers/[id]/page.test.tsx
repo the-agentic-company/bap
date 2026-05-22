@@ -41,7 +41,7 @@ const {
       name: "Existing Coworker",
       description: "Existing description",
       username: "existing-user",
-      status: "on" as const,
+      status: "on" as "on" | "off",
       autoApprove: true,
       triggerType: "manual",
       prompt: "Existing prompt",
@@ -560,6 +560,26 @@ describe("CoworkerEditorPage", () => {
     });
 
     expect(screen.getByText("Run not found.")).toBeInTheDocument();
+  });
+
+  it("allows starting a manual run when the coworker is off", async () => {
+    mockCoworkerData.current = {
+      ...mockCoworkerData.current,
+      status: "off",
+    };
+
+    render(<CoworkerEditorPage />);
+
+    const runNowButton = screen.getAllByText("Run now")[0]!.closest("button");
+    expect(runNowButton).toBeEnabled();
+
+    fireEvent.click(runNowButton!);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockTriggerCoworkerMutateAsync).toHaveBeenCalledWith({ id: "cw-1", payload: {} });
   });
 
   it("shows the remote integration source banner for persisted remote runs", async () => {

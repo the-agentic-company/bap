@@ -231,6 +231,15 @@ export async function triggerCoworkerRun(params: {
   generationId: string;
   conversationId: string;
 }> {
+  const triggerPayload =
+    params.triggerPayload && typeof params.triggerPayload === "object"
+      ? (params.triggerPayload as Record<string, unknown>)
+      : null;
+  const isManualRun =
+    !triggerPayload ||
+    Object.keys(triggerPayload).length === 0 ||
+    triggerPayload.source === "manual";
+
   const wf = await db.query.coworker.findFirst({
     where: params.userId
       ? and(
@@ -244,7 +253,7 @@ export async function triggerCoworkerRun(params: {
     throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
   }
 
-  if (wf.status !== "on") {
+  if (wf.status !== "on" && !isManualRun) {
     throw new ORPCError("BAD_REQUEST", { message: "Coworker is turned off" });
   }
 

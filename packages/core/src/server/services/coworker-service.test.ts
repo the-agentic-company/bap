@@ -146,15 +146,19 @@ describe("triggerCoworkerRun", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
-  it("throws BAD_REQUEST when coworker is turned off", async () => {
+  it("allows manual runs when coworker is turned off", async () => {
     coworkerFindFirstMock.mockResolvedValue({
       id: "wf-1",
       ownerId: "user-1",
+      workspaceId: "ws-1",
       triggerType: "manual",
       status: "off",
       autoApprove: true,
+      toolAccessMode: "all",
       allowedIntegrations: [],
       allowedCustomIntegrations: [],
+      allowedExecutorSourceIds: [],
+      allowedSkillSlugs: [],
       model: "anthropic/claude-sonnet-4-6",
       prompt: "",
       promptDo: null,
@@ -163,6 +167,38 @@ describe("triggerCoworkerRun", () => {
 
     await expect(
       triggerCoworkerRun({ coworkerId: "wf-1", triggerPayload: {} }),
+    ).resolves.toEqual({
+      coworkerId: "wf-1",
+      runId: "run-1",
+      generationId: "gen-1",
+      conversationId: "conv-1",
+    });
+  });
+
+  it("throws BAD_REQUEST when an automated trigger runs while coworker is turned off", async () => {
+    coworkerFindFirstMock.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "user-1",
+      workspaceId: "ws-1",
+      triggerType: "schedule",
+      status: "off",
+      autoApprove: true,
+      toolAccessMode: "all",
+      allowedIntegrations: [],
+      allowedCustomIntegrations: [],
+      allowedExecutorSourceIds: [],
+      allowedSkillSlugs: [],
+      model: "anthropic/claude-sonnet-4-6",
+      prompt: "",
+      promptDo: null,
+      promptDont: null,
+    });
+
+    await expect(
+      triggerCoworkerRun({
+        coworkerId: "wf-1",
+        triggerPayload: { source: "schedule" },
+      }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 

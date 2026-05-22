@@ -1646,8 +1646,7 @@ export default function CoworkerEditorPage() {
     );
   }, [buildCoworkerPanelHref, handleRun, isMobile, remoteTargetEnv, router, selectedRemoteUser]);
 
-  const isRunDisabled =
-    !hasAgentInstructions || status !== "on" || triggerCoworker.isPending || isStartingRun;
+  const isRunDisabled = !hasAgentInstructions || triggerCoworker.isPending || isStartingRun;
   const isRunning = triggerCoworker.isPending || isStartingRun;
 
   const handleTabChange = useCallback(

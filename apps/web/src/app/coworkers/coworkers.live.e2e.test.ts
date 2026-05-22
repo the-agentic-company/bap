@@ -37,19 +37,6 @@ test.describe("@live coworkers", () => {
     await expect(runNowButton).toBeDisabled();
 
     await promptInput.fill(coworkerInstruction);
-    const coworkerStatusLabel = page.getByText(/Coworker is (on|off)/).first();
-    await expect(coworkerStatusLabel).toBeVisible();
-    const coworkerSwitch = page
-      .locator("div")
-      .filter({ hasText: /Coworker is (on|off)/ })
-      .getByRole("switch")
-      .first();
-
-    if ((await coworkerStatusLabel.textContent())?.includes("off")) {
-      await coworkerSwitch.click();
-      await expect(coworkerStatusLabel).toHaveText("Coworker is on");
-    }
-
     await expect(runNowButton).toBeEnabled({ timeout: responseTimeoutMs });
 
     await runNowButton.click();
