@@ -1,7 +1,13 @@
 "use client";
 
 import { Download } from "lucide-react";
-import { Children, useCallback, useMemo, type ReactNode } from "react";
+import {
+  Children,
+  useCallback,
+  useMemo,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -115,6 +121,11 @@ export function MessageBubble({ role, content, className, sandboxFiles, onFileCl
               ? renderTextWithPaths(children)
               : children}
         </p>
+      ),
+      a: ({ children, ...props }: ComponentPropsWithoutRef<"a">) => (
+        <a {...props} target="_blank" rel="noopener noreferrer">
+          {children}
+        </a>
       ),
       code: ({
         children,

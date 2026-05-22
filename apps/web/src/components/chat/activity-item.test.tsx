@@ -26,6 +26,13 @@ const textTableFixture: ActivityItemData = {
   content: `| City | Country |\n| --- | --- |\n| Dublin | Ireland |`,
 };
 
+const textLinkFixture: ActivityItemData = {
+  id: "text-link-1",
+  timestamp: 1,
+  type: "text",
+  content: "[Google](https://google.com)",
+};
+
 const coworkerToolCallFixture: ActivityItemData = {
   id: "tool-2",
   timestamp: 2,
@@ -96,6 +103,15 @@ describe("ActivityItem", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "City" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Dublin" })).toBeInTheDocument();
+  });
+
+  it("opens text activity markdown links in a new tab", () => {
+    render(<ActivityItem item={textLinkFixture} />);
+
+    const link = screen.getByRole("link", { name: "Google" });
+    expect(link).toHaveAttribute("href", "https://google.com");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("uses tool input description as the visible label", () => {

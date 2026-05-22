@@ -21,7 +21,13 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, type Transition } from "motion/react";
 import Image from "next/image";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { DisplayIntegrationType } from "@/lib/integration-icons";
@@ -185,6 +191,11 @@ export function ActivityItem({ item, executorSources = [] }: Props) {
       ),
       td: ({ children }: { children?: ReactNode }) => (
         <td className="px-2 py-1 align-top whitespace-nowrap">{children}</td>
+      ),
+      a: ({ children, ...props }: ComponentPropsWithoutRef<"a">) => (
+        <a {...props} target="_blank" rel="noopener noreferrer">
+          {children}
+        </a>
       ),
     }),
     [],
