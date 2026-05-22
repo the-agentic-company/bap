@@ -13,6 +13,137 @@ CmdClaw’s local observability stack is built for direct machine querying.
 - `vmalert` evaluates checked-in alert rules.
 - `Alertmanager` sends notifications, for example to Slack.
 
+## Canonical Service Events
+
+CmdClaw treats one context-rich `canonical_service_event` as the authoritative
+observability record for each service-owned operation, such as an RPC request,
+webhook, worker job, or Generation lifecycle step. The event is built once,
+enriches the active trace span, and is emitted as one structured JSON log so
+VictoriaLogs remains the high-dimensional query surface while VictoriaTraces
+keeps causal timing.
+
+Browser-originated telemetry is a `client_observation`, not a Canonical Service
+Event. Client observations are accepted only through an allowlisted event
+contract, forwarded through the observability pipeline, and are not stored in
+Postgres by default.
+PostHog remains the product analytics surface for funnels, adoption, pageviews,
+broad UX trends, and session replay. Session replay can support debugging when
+visual context matters, but first-party client observations remain the
+authoritative operational signal for browser-visible errors, generation stream
+behavior, and correlation with server traces and Canonical Service Events.
+
+Server Canonical Service Events are retained at full fidelity by default.
+Client observations are rate-limited and selectively retained: failures,
+visible errors, and generation stream errors are kept at full fidelity, while
+low-value successful client events such as page views or normal stream
+open/close observations may be sampled.
+
+Canonical logs may include high-cardinality identifiers such as user,
+workspace, conversation, Generation, trace, and sandbox identifiers because
+logs are the high-dimensional debugging surface. Metrics must not use
+high-cardinality labels such as user identifiers, Generation identifiers, raw
+URLs, file names, or raw error messages. Trace spans may include important
+lookup identifiers, but large payloads, unbounded arrays, and user content stay
+out of span attributes.
+
+Canonical Service Events and client observations must not contain credentials,
+session cookies, authorization headers, OAuth codes, magic-link tokens, raw
+email/document/message bodies, user prompts, model output, full request or
+response bodies, file contents, or unreviewed tool inputs/results. They should
+record safe summaries instead, such as byte counts, attachment counts,
+Integration Type, tool name, operation, write/read classification, normalized
+error code, phase timing, and route or procedure identifiers. If raw content is
+needed during debugging, observability should identify the authorized product
+record to inspect rather than duplicating that content into telemetry.
+
+Telemetry attribute names use OpenTelemetry-style dotted snake_case. Prefer
+official semantic convention names such as `service.name`,
+`deployment.environment`, `http.route`, and `rpc.method` when they fit. Use the
+`cmdclaw.*` namespace for product-specific attributes such as
+`cmdclaw.event.kind`, `cmdclaw.operation.type`, `cmdclaw.generation.id`,
+`cmdclaw.conversation.id`, `cmdclaw.duration_ms`, and
+`cmdclaw.outcome`. TypeScript code may use camelCase internally, but emitted
+telemetry is normalized to the canonical attribute names. JSON logs may retain
+backend-friendly correlation aliases such as `trace_id` and `span_id`.
+
+Generation outcome is defined by the terminal product lifecycle, not by the
+request that created or observed it. A Generation is successful when it reaches
+terminal `completed`; terminal errors, cancellations, and timeouts are separate
+outcomes. Request-level Canonical Service Events keep their own outcome, so a
+successful `generation.startGeneration` RPC can still create a Generation that
+fails later.
+
+A Generation emits one terminal Canonical Service Event. Phase timings,
+approval/auth waits, tool-use summaries, retry/recovery details, token usage,
+and terminal error classification belong on that event. Phase structure belongs
+in trace spans and in timing fields on the terminal event, not in separate
+phase-level canonical events, unless a phase is itself an independent
+service-owned operation such as a worker job.
+
+The terminal Generation Canonical Service Event is emitted by the server-side
+lifecycle owner that persists terminal completion, failure, cancellation, or
+timeout. Request handlers emit request-level Canonical Service Events, and
+browser streams emit client observations; neither owns the terminal Generation
+record. This prevents duplicate terminal events when multiple clients subscribe,
+streams reconnect, or recovery paths resume a Generation.
+
+Every Canonical Service Event has a stable `cmdclaw.event.id` for deduplication.
+Request and worker operation events may use a per-operation identifier. The
+terminal Generation event uses a deterministic identity derived from the
+Generation, such as `generation:{generationId}:terminal`, so recovery paths and
+retries cannot accidentally create distinct authoritative terminal records.
+Client observations carry a browser-generated client event identifier that the
+server forwards for short-window duplicate detection and query correlation.
+The first-party client observation endpoint requires the normal authenticated
+web session for user-linked telemetry. The server derives user and workspace
+identifiers from the session, verifies access to any supplied Generation or
+conversation identifiers, rate-limits by user, session, and IP, and returns a
+non-blocking success response so observability failures do not break the UI.
+
+The terminal Generation event must include the core event envelope, runtime
+configuration, lifecycle timing, tool and interruption summaries, usage and
+error classification, and deployment identity. Required attributes include
+`cmdclaw.generation.id`, `cmdclaw.conversation.id`, `cmdclaw.user.id`,
+`cmdclaw.workspace.id`, `cmdclaw.model.provider`, `cmdclaw.model.name`,
+`cmdclaw.sandbox.provider`, `cmdclaw.auth.source`,
+`cmdclaw.auto_approve.enabled`, `cmdclaw.skills.selected_count`,
+`cmdclaw.attachments.count`, phase timing fields under `cmdclaw.phase.*`,
+tool and interruption counters under `cmdclaw.tool.*`, `cmdclaw.approval.*`,
+and `cmdclaw.auth_interrupt.*`, usage fields under `cmdclaw.usage.*`, and
+safe error fields under `cmdclaw.error.*` and `cmdclaw.failure.phase`.
+
+Terminal Generation events are reconstructed from durable lifecycle state at
+terminal emission time. In-memory builders may enrich request and worker
+operation events, but the authoritative Generation event must not depend on
+process-local state that can be lost during stream reconnects, worker recovery,
+or stateless runtime replacement.
+
+Alerts and SLOs are driven primarily by low-cardinality metrics, not directly by
+wide logs. Canonical Service Events provide the rich debugging record and can be
+used to derive or validate metrics. Terminal Generation emission should update
+metrics such as terminal counts, duration distributions, and tool-call counts
+using bounded labels like outcome, model provider, sandbox provider,
+Integration Type, operation, and read/write classification. High-cardinality
+identifiers and raw error messages stay out of metric labels.
+
+Canonical Service Events are a supported agent-query interface. Attribute names,
+outcome values, and core field meanings should remain stable enough for agents
+to query VictoriaLogs and VictoriaTraces directly by Generation id, trace id,
+operation type, model, sandbox provider, outcome, failure phase, and normalized
+error code. Fields should be normalized rather than embedded in human prose.
+
+The first rollout slice is complete only when telemetry queries prove the
+system works. A local or staging Generation should be queryable by
+`cmdclaw.generation.id` and show the start RPC Canonical Service Event,
+subscribe RPC Canonical Service Event, terminal Generation Canonical Service
+Event, and related client observations. The same run should be queryable by
+`trace_id` to inspect server span/log correlation. Failure queries should group
+Generations by model provider, sandbox provider, failure phase, and normalized
+error code. Validation must also confirm that forbidden content is absent,
+terminal Generation metrics are updated, the client observation endpoint
+enforces authentication and resource access, and raw client observations are
+not stored in Postgres.
+
 ## Why This Matters For Agents
 
 Agents such as Codex or Claude Code do not need a special SDK here. They can query the local backends directly over HTTP, correlate signals, and reason from the results.

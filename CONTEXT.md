@@ -36,6 +36,30 @@ _Avoid_: auth required
 One command execution against an **Integration Type** during a conversation. A **Tool Invocation** targets exactly one **Connected Account**, while a conversation can contain many **Tool Invocations** that target different **Connected Accounts**.
 _Avoid_: run, call
 
+**Canonical Service Event**:
+One authoritative, context-rich observability record emitted by a CmdClaw service-owned operation. HTTP requests, worker jobs, and generation lifecycle work each produce their own **Canonical Service Event**; browser-originated telemetry is a **Client Observation**, not an authoritative service event. **Canonical Service Events** use a required common envelope, operation-specific fields, and are correlated by trace id with **Generation** and conversation identifiers as domain pivots when available.
+_Avoid_: wide event, canonical log line, request log
+
+**Telemetry Version**:
+The deployable application version recorded on observability data. **Telemetry Version** is distinct from the exact commit SHA and deployment identifier, which are recorded separately.
+_Avoid_: version
+
+**Client Observation**:
+A browser-originated observability record that describes what the **User** experienced in the client and can be correlated with **Canonical Service Events** by trace id, **Generation**, or conversation identifiers. A **Client Observation** is accepted only through an allowlisted event contract; it can add evidence about page state, stream timing, or visible errors, but it is not the authoritative record of server behavior and is not application state stored in Postgres by default.
+_Avoid_: client log, frontend log, browser log
+
+**Audit Record**:
+A durable product or security fact that records which actor performed which action on which resource at what time. **Audit Records** are separate from **Canonical Service Events** and are not part of the first observability rollout.
+_Avoid_: audit log, observability log
+
+**Audit Trail**:
+The ordered history formed by **Audit Records**. An **Audit Trail** is product or security history, not operational telemetry.
+_Avoid_: logs, telemetry
+
+**Generation**:
+One agent execution lifecycle for a conversation turn, including preparation, model streaming, tool use, interruption handling, and terminal completion or failure.
+_Avoid_: run, request
+
 **User**:
 A person authenticated into CmdClaw. A **User** owns the set of **Connected Accounts** available to their CLI and agent runs.
 _Avoid_: account
