@@ -15,6 +15,7 @@ type AttachmentData = {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_FILES = 5;
+const CHAT_INPUT_MAX_HEIGHT = 260;
 
 type Props = {
   onSend: (content: string, attachments?: AttachmentData[]) => void;
@@ -85,7 +86,9 @@ export function ChatInput({
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+      const nextHeight = Math.min(textarea.scrollHeight, CHAT_INPUT_MAX_HEIGHT);
+      textarea.style.height = `${nextHeight}px`;
+      textarea.style.overflowY = textarea.scrollHeight > CHAT_INPUT_MAX_HEIGHT ? "auto" : "hidden";
     }
   }, [value]);
 
@@ -146,6 +149,9 @@ export function ChatInput({
     onSend(trimmedValue, attachments.length > 0 ? attachments : undefined);
     setAttachments([]);
     setValue("");
+    if (textareaRef.current) {
+      textareaRef.current.style.overflowY = "hidden";
+    }
   }, [attachments, disabled, onSend, value]);
 
   const handleKeyDown = useCallback(
@@ -330,7 +336,7 @@ export function ChatInput({
           placeholder="Send a message..."
           disabled={disabled}
           rows={1}
-          className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm focus:outline-none disabled:opacity-50"
+          className="flex-1 resize-none overflow-y-hidden bg-transparent px-2 py-1.5 text-sm overscroll-contain focus:outline-none disabled:opacity-50"
         />
         {onStartRecording && onStopRecording && (
           <Button

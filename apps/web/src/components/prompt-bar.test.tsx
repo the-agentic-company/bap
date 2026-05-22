@@ -118,9 +118,13 @@ describe("PromptBar", () => {
 
     const input = screen.getByRole("textbox");
     expect(input).toHaveClass("min-h-[4.6rem]");
+    expect(input).toHaveClass("max-h-[min(40dvh,18rem)]");
+    expect(input).toHaveClass("overflow-y-auto");
 
     const measurer = container.querySelector("div[aria-hidden='true'].invisible");
     expect(measurer).toHaveClass("min-h-[4.6rem]");
+    expect(measurer).toHaveClass("max-h-[min(40dvh,18rem)]");
+    expect(measurer).toHaveClass("overflow-hidden");
     expect(measurer).toHaveTextContent("Every hour, triage new");
     expect(measurer).toHaveTextContent("Zendesk");
   });

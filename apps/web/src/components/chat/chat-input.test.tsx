@@ -83,4 +83,19 @@ describe("ChatInput", () => {
       expect(updatedInput.value).toBe("Draft hello from voice");
     });
   });
+
+  it("caps long drafts and makes the textarea scroll internally", () => {
+    const view = render(<ChatInput onSend={vi.fn()} />);
+    const input = view.container.querySelector('[data-testid="chat-input"]') as HTMLTextAreaElement;
+
+    Object.defineProperty(input, "scrollHeight", {
+      configurable: true,
+      value: 480,
+    });
+
+    fireEvent.change(input, { target: { value: "Long prompt\n".repeat(80) } });
+
+    expect(input.style.height).toBe("260px");
+    expect(input.style.overflowY).toBe("auto");
+  });
 });

@@ -54,6 +54,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_FILES = 5;
 const HERO_PROMPT_MIN_HEIGHT_CLASS = "min-h-[4.6rem]";
 const DEFAULT_PROMPT_MIN_HEIGHT_CLASS = "min-h-[2.8rem]";
+const PROMPT_MAX_HEIGHT_CLASS = "max-h-[min(40dvh,18rem)]";
 // ─── Rich Placeholder Overlay ───────────────────────────────────────────────
 
 function totalSegmentLength(segments: PromptSegment[]): number {
@@ -536,7 +537,8 @@ export function PromptBar({
           {/* Hidden measurer: keeps layout stable across placeholder and typed states */}
           <div
             className={cn(
-              "pointer-events-none invisible whitespace-pre-wrap break-words text-[15px] leading-relaxed",
+              "pointer-events-none invisible overflow-hidden whitespace-pre-wrap break-words text-[15px] leading-relaxed",
+              PROMPT_MAX_HEIGHT_CLASS,
               isHero ? HERO_PROMPT_MIN_HEIGHT_CLASS : DEFAULT_PROMPT_MIN_HEIGHT_CLASS,
             )}
             aria-hidden
@@ -573,7 +575,8 @@ export function PromptBar({
             disabled={disabled}
             rows={2}
             className={cn(
-              "absolute inset-0 z-10 w-full resize-none bg-transparent px-5 pt-4 pb-2 text-[15px] leading-relaxed outline-none",
+              "absolute inset-0 z-10 h-full w-full resize-none overflow-y-auto bg-transparent px-5 pt-4 pb-2 text-[15px] leading-relaxed outline-none overscroll-contain",
+              PROMPT_MAX_HEIGHT_CLASS,
               isHero
                 ? cn(HERO_PROMPT_MIN_HEIGHT_CLASS, "placeholder:text-slate-500/80 text-slate-950")
                 : cn(
