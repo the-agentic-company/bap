@@ -18,7 +18,7 @@
     "@cmdclaw/client": "workspace:*",
     "@cmdclaw/core": "workspace:*",
     "@cmdclaw/db": "workspace:*",
-    "@stricli/core": "^1.2.6",
+    "@stricli/core": "^1.2.7",
     "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {
