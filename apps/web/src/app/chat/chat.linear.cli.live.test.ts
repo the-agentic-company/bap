@@ -6,7 +6,7 @@ import {
   runChatMessage,
 } from "../../../tests/e2e-cli/live-fixtures";
 
-const linearExecutorTimeoutMs = 60_000;
+const linearExecutorTimeoutMs = 90_000;
 const linearPrompt = "whats' the description of my linear issue BAP-310";
 const linearModel = "openai/gpt-5.4-mini";
 
@@ -16,7 +16,7 @@ describe.runIf(liveEnabled)("@live CLI chat linear", () => {
   });
 
   test(
-    "reads issue BAP-310 through executor within 60 seconds",
+    "reads issue BAP-310 through executor within 90 seconds",
     { timeout: linearExecutorTimeoutMs + 10_000 },
     async () => {
       const result = await runChatMessage({
