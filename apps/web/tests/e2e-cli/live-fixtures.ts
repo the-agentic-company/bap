@@ -32,6 +32,7 @@ export const transientRetryCount = Number(process.env.E2E_TRANSIENT_RETRY_COUNT 
 export const transientRetryDelayMs = Number(process.env.E2E_TRANSIENT_RETRY_DELAY_MS ?? "2000");
 
 export const expectedUserEmail = "baptiste@heybap.com";
+export const expectedGmailAccountLabel = "baptiste";
 export const sourceChannelName = "experiment-cmdclaw-testing";
 export const targetChannelName = process.env.E2E_SLACK_TARGET_CHANNEL ?? "ops-e2e-slack-testing";
 export const echoPrefix = "test message: the previous message is:";
@@ -791,16 +792,20 @@ function readHeader(headers: GmailHeader[] | undefined, name: string): string {
   return match?.value?.trim() ?? "";
 }
 
-export async function getGmailAccessTokenForExpectedUser(): Promise<string> {
+export async function getGmailAccessTokenForExpectedUser(args?: {
+  accountLabel?: string;
+}): Promise<string> {
   const { token: gmailToken } = await callCliLiveTestingApi<{ token: string | null }>({
     action: "integration-token:get",
     email: expectedUserEmail,
     integrationType: "google_gmail",
+    ...(args?.accountLabel ? { accountLabel: args.accountLabel } : {}),
   });
 
   if (!gmailToken) {
+    const accountLabelHint = args?.accountLabel ? ` with account label ${args.accountLabel}` : "";
     throw new Error(
-      `Gmail is not connected for ${expectedUserEmail}. Connect Gmail in app integrations before running this test.`,
+      `Gmail is not connected for ${expectedUserEmail}${accountLabelHint}. Connect Gmail in app integrations before running this test.`,
     );
   }
 

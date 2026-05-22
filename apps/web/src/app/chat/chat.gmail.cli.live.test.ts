@@ -4,6 +4,7 @@ import {
   assertExitOk,
   closeDbPool,
   ensureCliAuth,
+  expectedGmailAccountLabel,
   expectedUserEmail,
   getGmailAccessTokenForExpectedUser,
   liveEnabled,
@@ -18,7 +19,7 @@ let liveModel = "";
 function buildGmailReadWritePrompt(args: { marker: string }): string {
   return [
     `You are authenticated as ${expectedUserEmail}.`,
-    "Use Gmail tools to read the most recent inbox email subject.",
+    `Use Gmail tools with account label ${expectedGmailAccountLabel} to read the most recent inbox email subject.`,
     `Return only: READ_SUBJECT=[${args.marker}] <subject>`,
   ].join("\n");
 }
@@ -26,7 +27,7 @@ function buildGmailReadWritePrompt(args: { marker: string }): string {
 function buildGmailAutoApprovePrompt(args: { marker: string }): string {
   return [
     `You are authenticated as ${expectedUserEmail}.`,
-    "Use Gmail tools to read the most recent inbox email subject.",
+    `Use Gmail tools with account label ${expectedGmailAccountLabel} to read the most recent inbox email subject.`,
     `Return only: READ_SUBJECT=[${args.marker}] <subject>`,
   ].join("\n");
 }
@@ -45,7 +46,9 @@ describe.runIf(liveEnabled)("@live CLI chat gmail", () => {
     "reads inbox and verifies subject against Gmail API",
     { timeout: Math.max(responseTimeoutMs + 90_000, 300_000) },
     async () => {
-      const gmailAccessToken = await getGmailAccessTokenForExpectedUser();
+      const gmailAccessToken = await getGmailAccessTokenForExpectedUser({
+        accountLabel: expectedGmailAccountLabel,
+      });
       const latestInboxBeforePrompt = await readLatestInboxMessage({ token: gmailAccessToken });
       const marker = `gmail-e2e-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 

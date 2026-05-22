@@ -1,4 +1,7 @@
-import { getValidTokensForUser } from "@cmdclaw/core/server/integrations/token-refresh";
+import {
+  getValidConnectedAccountTokensForUser,
+  getValidTokensForUser,
+} from "@cmdclaw/core/server/integrations/token-refresh";
 import type { IntegrationType } from "@cmdclaw/core/server/oauth/config";
 import { db } from "@cmdclaw/db/client";
 import {
@@ -56,6 +59,7 @@ const requestSchema = z.discriminatedUnion("action", [
     action: z.literal("integration-token:get"),
     email: z.email(),
     integrationType: z.string().min(1),
+    accountLabel: z.string().min(1).optional(),
   }),
   z.object({
     action: z.literal("integration-tokens:remove"),
@@ -372,6 +376,14 @@ async function handleAction(payload: z.infer<typeof requestSchema>): Promise<unk
       const dbUser = await findUserByEmail(payload.email);
       if (!dbUser) {
         return { token: null };
+      }
+      if (payload.accountLabel) {
+        const tokens = await getValidConnectedAccountTokensForUser(dbUser.id, [
+          payload.integrationType as IntegrationType,
+        ]);
+        const requestedLabel = payload.accountLabel.trim().toLowerCase();
+        const match = tokens.find((token) => token.accountLabel?.toLowerCase() === requestedLabel);
+        return { token: match?.accessToken ?? null };
       }
       const tokens = await getValidTokensForUser(dbUser.id);
       return { token: tokens.get(payload.integrationType as IntegrationType) ?? null };
