@@ -230,27 +230,12 @@ describe("AdminPage", () => {
     });
   });
 
-  it("adds admin access from the add form", async () => {
-    grantAdminAccessByEmailMutateAsyncMock.mockResolvedValueOnce({
-      id: "user-3",
-      email: "admin@example.com",
-      name: "Admin",
-      role: "admin",
-    });
-
+  it("does not show admin access in the add form", () => {
     render(<AdminPage />);
 
     const addForm = screen.getByRole("button", { name: "Add" }).closest("form") as HTMLElement;
-    fireEvent.change(within(addForm).getByPlaceholderText("user@company.com"), {
-      target: { value: "Admin@Example.com " },
-    });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Admin" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
-
-    await waitFor(() => {
-      expect(grantAdminAccessByEmailMutateAsyncMock).toHaveBeenCalledWith({
-        email: "admin@example.com",
-      });
-    });
+    expect(within(addForm).getByRole("checkbox", { name: "Login" })).toBeInTheDocument();
+    expect(within(addForm).getByRole("checkbox", { name: "Google" })).toBeInTheDocument();
+    expect(within(addForm).queryByRole("checkbox", { name: "Admin" })).not.toBeInTheDocument();
   });
 });

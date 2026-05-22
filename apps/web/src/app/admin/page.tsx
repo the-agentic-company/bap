@@ -12,7 +12,6 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import {
   useAddApprovedLoginEmailAllowlistEntry,
-  useGrantAdminAccessByEmail,
   useAddGoogleAccessAllowlistEntry,
   useSetUserAdminRole,
   useApprovedLoginEmailAllowlist,
@@ -251,7 +250,6 @@ export default function AdminPage() {
   const addGoogleAccessEntry = useAddGoogleAccessAllowlistEntry();
   const removeGoogleAccessEntry = useRemoveGoogleAccessAllowlistEntry();
   const { data: adminWorkspaces } = useAdminWorkspaces();
-  const grantAdminAccessByEmail = useGrantAdminAccessByEmail();
   const setUserAdminRole = useSetUserAdminRole();
 
   const [users, setUsers] = useState<AdminListUser[]>([]);
@@ -270,7 +268,6 @@ export default function AdminPage() {
   const [newEmail, setNewEmail] = useState("");
   const [addLoginApproved, setAddLoginApproved] = useState(true);
   const [addGoogleAccess, setAddGoogleAccess] = useState(false);
-  const [addAdminAccess, setAddAdminAccess] = useState(false);
   const [addPending, setAddPending] = useState(false);
   const [galienWorkspaceId, setGalienWorkspaceId] = useState<string | null>(null);
   const [galienEmail, setGalienEmail] = useState("");
@@ -516,7 +513,7 @@ export default function AdminPage() {
       if (!normalized) {
         return;
       }
-      if (!addLoginApproved && !addGoogleAccess && !addAdminAccess) {
+      if (!addLoginApproved && !addGoogleAccess) {
         setActionError("Select at least one access type.");
         return;
       }
@@ -524,44 +521,14 @@ export default function AdminPage() {
       setActionMessage(null);
       setAddPending(true);
       try {
-        if (addLoginApproved && !addAdminAccess) {
+        if (addLoginApproved) {
           await addApprovedLoginEntry.mutateAsync({ email: normalized });
         }
         if (addGoogleAccess) {
           await addGoogleAccessEntry.mutateAsync({ email: normalized });
         }
-        if (addAdminAccess) {
-          const adminUser = await grantAdminAccessByEmail.mutateAsync({ email: normalized });
-          setUsers((currentUsers) => {
-            const existingUserIndex = currentUsers.findIndex(
-              (currentUser) => currentUser.id === adminUser.id,
-            );
-            if (existingUserIndex >= 0) {
-              return currentUsers.map((currentUser) =>
-                currentUser.id === adminUser.id
-                  ? {
-                      ...currentUser,
-                      email: adminUser.email,
-                      name: adminUser.name,
-                      role: adminUser.role,
-                    }
-                  : currentUser,
-              );
-            }
-            return [
-              ...currentUsers,
-              {
-                id: adminUser.id,
-                email: adminUser.email,
-                name: adminUser.name,
-                role: adminUser.role,
-              },
-            ];
-          });
-        }
         setActionMessage(`Added ${normalized}.`);
         setNewEmail("");
-        setAddAdminAccess(false);
         setAddGoogleAccess(false);
         setAddLoginApproved(true);
       } catch (err) {
@@ -570,15 +537,7 @@ export default function AdminPage() {
         setAddPending(false);
       }
     },
-    [
-      newEmail,
-      addLoginApproved,
-      addGoogleAccess,
-      addAdminAccess,
-      addApprovedLoginEntry,
-      addGoogleAccessEntry,
-      grantAdminAccessByEmail,
-    ],
+    [newEmail, addLoginApproved, addGoogleAccess, addApprovedLoginEntry, addGoogleAccessEntry],
   );
 
   // -- Stop impersonation --
@@ -605,25 +564,13 @@ export default function AdminPage() {
     [],
   );
   const handleLoginApprovedChange = useCallback(
-    (v: boolean | "indeterminate") => {
-      if (addAdminAccess && v !== true) {
-        return;
-      }
-      setAddLoginApproved(v === true);
-    },
-    [addAdminAccess],
+    (v: boolean | "indeterminate") => setAddLoginApproved(v === true),
+    [],
   );
   const handleGoogleAccessChange = useCallback(
     (v: boolean | "indeterminate") => setAddGoogleAccess(v === true),
     [],
   );
-  const handleAdminAccessChange = useCallback((v: boolean | "indeterminate") => {
-    const checked = v === true;
-    setAddAdminAccess(checked);
-    if (checked) {
-      setAddLoginApproved(true);
-    }
-  }, []);
   const handleFilterChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value),
     [],
@@ -785,20 +732,12 @@ export default function AdminPage() {
             className="sm:max-w-xs"
           />
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={addLoginApproved}
-              onCheckedChange={handleLoginApprovedChange}
-              disabled={addAdminAccess}
-            />
+            <Checkbox checked={addLoginApproved} onCheckedChange={handleLoginApprovedChange} />
             Login
           </label>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={addGoogleAccess} onCheckedChange={handleGoogleAccessChange} />
             Google
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={addAdminAccess} onCheckedChange={handleAdminAccessChange} />
-            Admin
           </label>
           <Button type="submit" size="sm" disabled={addPending}>
             {addPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
