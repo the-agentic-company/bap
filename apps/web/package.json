@@ -110,7 +110,7 @@
     "e2b": "^2.12.1",
     "fflate": "^0.8.2",
     "frimousse": "^0.3.0",
-    "ioredis": "^5.8.2",
+    "ioredis": "^5.10.1",
     "lucide-react": "^0.562.0",
     "mime-types": "^3.0.2",
     "motion": "^12.26.2",
