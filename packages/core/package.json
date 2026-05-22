@@ -42,7 +42,7 @@
     "@t3-oss/env-nextjs": "^0.13.8",
     "autumn-js": "^0.1.74",
     "bullmq": "^5.65.0",
-    "date-fns": "^4.1.0",
+    "date-fns": "^4.2.1",
     "dockerode": "^4.0.9",
     "drizzle-orm": "^0.45.1",
     "e2b": "^2.12.1",
