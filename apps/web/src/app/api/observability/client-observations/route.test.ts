@@ -10,6 +10,7 @@ const {
   redisIncrbyMock,
   redisPttlMock,
   redisPexpireMock,
+  redisSetMock,
 } = vi.hoisted(() => ({
   getSessionMock: vi.fn(),
   conversationFindFirstMock: vi.fn(),
@@ -20,6 +21,7 @@ const {
   redisIncrbyMock: vi.fn(),
   redisPttlMock: vi.fn(),
   redisPexpireMock: vi.fn(),
+  redisSetMock: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -55,6 +57,7 @@ vi.mock("ioredis", () => ({
   default: function IORedisMock() {
     return {
       pexpire: redisPexpireMock,
+      set: redisSetMock,
       multi: () => {
         const chain = {
           incrby: (...args: unknown[]) => {
@@ -104,6 +107,7 @@ describe("client observation intake", () => {
       [null, 1],
       [null, 1],
     ]);
+    redisSetMock.mockResolvedValue("OK");
   });
 
   it("requires authentication", async () => {
@@ -209,5 +213,36 @@ describe("client observation intake", () => {
       1,
     );
     expect(emitClientObservationMock).not.toHaveBeenCalled();
+  });
+
+  it("suppresses duplicate browser event ids within the dedupe window", async () => {
+    redisSetMock.mockResolvedValueOnce("OK").mockResolvedValueOnce(null);
+
+    const response = await POST(
+      request({
+        observations: [
+          {
+            eventId: "event-123456",
+            eventType: "generation.stream.error",
+            generationId: "gen-1",
+          },
+          {
+            eventId: "event-123456",
+            eventType: "generation.stream.error",
+            generationId: "gen-1",
+          },
+        ],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(redisSetMock).toHaveBeenCalledWith(
+      "client_observation_event:event-123456",
+      "1",
+      "PX",
+      10 * 60 * 1000,
+      "NX",
+    );
+    expect(emitClientObservationMock).toHaveBeenCalledTimes(1);
   });
 });

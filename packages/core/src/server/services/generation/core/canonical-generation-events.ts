@@ -19,7 +19,7 @@ type ToolSummary = {
     integration_type: string;
     tool_name: string;
     operation: string;
-    access: "read" | "write" | "unknown";
+    access: "read" | "write";
   }>;
 };
 
@@ -104,7 +104,7 @@ function summarizeTools(contentParts: ContentPart[] | null | undefined): ToolSum
   for (const part of contentParts ?? []) {
     if (part.type === "tool_use") {
       summary.toolCallCount += 1;
-      const access = isWriteOperation(part.operation) ? "write" : "unknown";
+      const access = classifyOperationAccess(part.operation);
       if (access === "write") {
         summary.toolWriteCount += 1;
       }
@@ -116,7 +116,7 @@ function summarizeTools(contentParts: ContentPart[] | null | undefined): ToolSum
       });
     } else if (part.type === "approval") {
       summary.approvalCount += 1;
-      const access = isWriteOperation(part.operation) ? "write" : "read";
+      const access = classifyOperationAccess(part.operation);
       if (access === "write") {
         summary.toolWriteCount += 1;
       }
@@ -136,6 +136,10 @@ function summarizeTools(contentParts: ContentPart[] | null | undefined): ToolSum
 
 function isWriteOperation(operation: string | null | undefined): boolean {
   return /write|create|update|delete|send|post|patch|put|remove/i.test(operation ?? "");
+}
+
+function classifyOperationAccess(operation: string | null | undefined): "read" | "write" {
+  return isWriteOperation(operation) ? "write" : "read";
 }
 
 function getGenerationDurationMs(args: {
@@ -171,6 +175,8 @@ function recordGenerationTerminalMetrics(args: {
   normalizedErrorCode: string;
   durationMs?: number;
   toolCallCount: number;
+  inputTokens: number;
+  outputTokens: number;
 }): void {
   const labels = {
     outcome: args.outcome,
@@ -199,6 +205,24 @@ function recordGenerationTerminalMetrics(args: {
     args.toolCallCount,
     labels,
     "Tool call count per terminal Generation.",
+  );
+  recordHistogram(
+    "cmdclaw_generation_terminal_input_tokens",
+    args.inputTokens,
+    labels,
+    "Input token usage per terminal Generation.",
+  );
+  recordHistogram(
+    "cmdclaw_generation_terminal_output_tokens",
+    args.outputTokens,
+    labels,
+    "Output token usage per terminal Generation.",
+  );
+  recordHistogram(
+    "cmdclaw_generation_terminal_total_tokens",
+    args.inputTokens + args.outputTokens,
+    labels,
+    "Total token usage per terminal Generation.",
   );
 }
 
@@ -365,5 +389,7 @@ export async function emitGenerationTerminalCanonicalEvent(generationId: string)
     normalizedErrorCode,
     durationMs,
     toolCallCount: toolSummary.toolCallCount,
+    inputTokens: genRecord.inputTokens,
+    outputTokens: genRecord.outputTokens,
   });
 }

@@ -17,6 +17,7 @@ const clientObservationsRequestSchema = z.object({
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_EVENTS = 120;
+const DEDUPE_WINDOW_MS = 10 * 60 * 1000;
 const LOW_VALUE_SUCCESS_SAMPLE_RATE = 0.25;
 
 const redisState = globalThis as typeof globalThis & {
@@ -51,6 +52,18 @@ async function isRateLimited(key: string, eventCount: number): Promise<boolean> 
     await redis.pexpire(redisKey, RATE_LIMIT_WINDOW_MS);
   }
   return Number.isFinite(count) && count > RATE_LIMIT_MAX_EVENTS;
+}
+
+async function reserveObservationEventId(eventId: string): Promise<boolean> {
+  const redis = getClientObservationRedis();
+  const result = await redis.set(
+    `client_observation_event:${eventId}`,
+    "1",
+    "PX",
+    DEDUPE_WINDOW_MS,
+    "NX",
+  );
+  return result === "OK";
 }
 
 function stableHash(value: string): number {
@@ -197,14 +210,28 @@ export async function POST(request: Request) {
     return Response.json({ error: "resource_not_found" }, { status: 404 });
   }
 
-  for (const verified of verifiedObservations) {
+  const retainedObservations = verifiedObservations.flatMap((verified) => {
     if (!verified.ok) {
+      return [];
+    }
+    return shouldRetainObservation(verified.observation) ? [verified] : [];
+  });
+
+  const reservedEventIds = await Promise.all(
+    retainedObservations.map(async ({ observation }) => {
+      try {
+        return await reserveObservationEventId(observation.eventId);
+      } catch {
+        return true;
+      }
+    }),
+  );
+
+  for (const [index, verified] of retainedObservations.entries()) {
+    if (!reservedEventIds[index]) {
       continue;
     }
     const { observation, resolvedConversationId, resolvedTraceId } = verified;
-    if (!shouldRetainObservation(observation)) {
-      continue;
-    }
 
     emitClientObservation({
       eventId: observation.eventId,

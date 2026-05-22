@@ -992,8 +992,16 @@ function attachSigintHandler(rl: readline.Interface): void {
   });
 }
 
-export default async function (this: LocalContext, flags: ChatFlags): Promise<void> {
-  if ((flags.attach || flags.attachGeneration) && flags.message) {
+export default async function (
+  this: LocalContext,
+  flags: ChatFlags,
+  positionalMessage?: string,
+): Promise<void> {
+  if (flags.message && positionalMessage) {
+    throw new Error("Use either --message or a positional message, not both");
+  }
+  const initialMessage = flags.message ?? positionalMessage;
+  if ((flags.attach || flags.attachGeneration) && initialMessage) {
     throw new Error("--attach/--attach-generation cannot be used with --message");
   }
   if (flags.attach && flags.attachGeneration) {
@@ -1022,7 +1030,7 @@ export default async function (this: LocalContext, flags: ChatFlags): Promise<vo
   const state: ChatState = {
     server: serverUrl,
     conversationId: flags.conversation,
-    message: flags.message,
+    message: initialMessage,
     model: flags.model,
     authSource: flags.authSource,
     sandbox: flags.sandbox,

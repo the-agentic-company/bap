@@ -143,5 +143,50 @@ describe("Generation terminal canonical event", () => {
     expect(attributes).not.toHaveProperty("cmdclaw.generation.tool_call_count");
     expect(attributes).not.toHaveProperty("cmdclaw.generation.phase_durations_ms");
     expect(attributes["cmdclaw.tool.summary_json"]).toContain("gmail.read_latest");
+    expect(JSON.parse(attributes["cmdclaw.tool.summary_json"])).toEqual([
+      {
+        integration_type: "gmail",
+        tool_name: "gmail.read_latest",
+        operation: "read_latest",
+        access: "read",
+      },
+      {
+        integration_type: "gmail",
+        tool_name: "gmail.send",
+        operation: "send",
+        access: "write",
+      },
+    ]);
+    const terminalMetricLabels = {
+      outcome: "completed",
+      model_provider: "openai",
+      sandbox_provider: "daytona",
+      failure_phase: "none",
+      normalized_error_code: "none",
+    };
+    expect(recordHistogramMock).toHaveBeenCalledWith(
+      "cmdclaw_generation_terminal_duration_ms",
+      5000,
+      terminalMetricLabels,
+      "Terminal Generation duration in milliseconds.",
+    );
+    expect(recordHistogramMock).toHaveBeenCalledWith(
+      "cmdclaw_generation_terminal_input_tokens",
+      11,
+      terminalMetricLabels,
+      "Input token usage per terminal Generation.",
+    );
+    expect(recordHistogramMock).toHaveBeenCalledWith(
+      "cmdclaw_generation_terminal_output_tokens",
+      13,
+      terminalMetricLabels,
+      "Output token usage per terminal Generation.",
+    );
+    expect(recordHistogramMock).toHaveBeenCalledWith(
+      "cmdclaw_generation_terminal_total_tokens",
+      24,
+      terminalMetricLabels,
+      "Total token usage per terminal Generation.",
+    );
   });
 });

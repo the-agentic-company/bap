@@ -15,4 +15,13 @@ describe("chat command flags", () => {
     expect(flags?.attachGeneration).toBeDefined();
     expect(flags?.chromeTrace).toBeUndefined();
   });
+
+  it("accepts one optional positional message", () => {
+    const positional = (chatCommand as {
+      parameters?: { positional?: { kind?: string; parameters?: Array<{ placeholder?: string }> } };
+    }).parameters?.positional;
+
+    expect(positional?.kind).toBe("tuple");
+    expect(positional?.parameters?.[0]?.placeholder).toBe("message");
+  });
 });
