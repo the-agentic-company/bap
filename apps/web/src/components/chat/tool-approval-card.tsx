@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X, Loader2, Wrench, ChevronRight } from "lucide-react";
+import { Check, X, Loader2, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -553,6 +553,11 @@ export function ToolApprovalCard({
     ],
   );
 
+  const handleWizardBack = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setCurrentStep((prev) => Math.max(0, prev - 1));
+  }, []);
+
   const handleStopPropagation = useCallback((event: React.MouseEvent<HTMLInputElement>) => {
     event.stopPropagation();
   }, []);
@@ -807,25 +812,39 @@ export function ToolApprovalCard({
         )}
 
         {status === "pending" && questionPayload && (
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={handleDenyClick} disabled={isLoading}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-              Dismiss
-            </Button>
-            {requiresExplicitSubmit && !isMultiQuestion && (
-              <Button
-                size="sm"
-                onClick={handleApproveClick}
-                disabled={isLoading || !canSubmitQuestionAnswers}
-              >
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              {isMultiQuestion && currentStep > 0 && (
+                <Button variant="outline" size="sm" onClick={handleWizardBack} disabled={isLoading}>
+                  <ChevronLeft className="h-4 w-4" />
+                  Back
+                </Button>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={handleDenyClick} disabled={isLoading}>
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Check className="h-4 w-4" />
+                  <X className="h-4 w-4" />
                 )}
-                Submit
+                Dismiss
               </Button>
-            )}
+              {requiresExplicitSubmit && !isMultiQuestion && (
+                <Button
+                  size="sm"
+                  onClick={handleApproveClick}
+                  disabled={isLoading || !canSubmitQuestionAnswers}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                  Submit
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>

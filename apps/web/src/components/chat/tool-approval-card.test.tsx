@@ -159,6 +159,36 @@ describe("ToolApprovalCard", () => {
       expect(onApprove).not.toHaveBeenCalled();
     });
 
+    it("can go back to a previous question and change the saved answer", () => {
+      const onApprove = vi.fn();
+
+      render(
+        <ToolApprovalCard
+          toolUseId="wiz-back"
+          toolName="question"
+          toolInput={MULTI_QUESTION_TOOL_INPUT}
+          integration="cmdclaw"
+          operation="question"
+          onApprove={onApprove}
+          onDeny={vi.fn()}
+          status="pending"
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("question-option-0-A"));
+      expect(screen.getByText("Choose second")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: /back/i }));
+      expect(screen.getByText("Choose first")).toBeInTheDocument();
+      expect(screen.getByTestId("question-option-0-A")).toHaveClass("border-primary");
+
+      fireEvent.click(screen.getByTestId("question-option-0-B"));
+      fireEvent.click(screen.getByTestId("question-option-1-D"));
+      fireEvent.click(screen.getByTestId("question-option-2-E"));
+
+      expect(onApprove).toHaveBeenCalledWith([["B"], ["D"], ["E"]]);
+    });
+
     it("submits all answers after answering the last question", () => {
       const onApprove = vi.fn();
 
