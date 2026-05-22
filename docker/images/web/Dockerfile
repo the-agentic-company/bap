@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM oven/bun:1.3.9 AS bun
+FROM oven/bun:1.3.14 AS bun
 
 FROM node:24-bookworm-slim AS pruner
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
