@@ -133,6 +133,22 @@ describe("CoworkerRunPage", () => {
     );
   });
 
+  it("describes cancelled runs as cancelled instead of failed", () => {
+    mockRun.current = {
+      id: "run-1",
+      conversationId: "conv-1",
+      status: "cancelled",
+      errorMessage: null,
+      debugInfo: null,
+      events: [],
+    };
+
+    render(<CoworkerRunPage />);
+
+    expect(screen.getByText("Run cancelled.")).toBeInTheDocument();
+    expect(screen.queryByText("Run failed.")).not.toBeInTheDocument();
+  });
+
   it("offers impersonation when an admin can identify the run owner", () => {
     mockRun.current = null;
     mockImpersonationTarget.current = {

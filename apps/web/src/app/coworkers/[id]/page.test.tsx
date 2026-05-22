@@ -603,6 +603,35 @@ describe("CoworkerEditorPage", () => {
     expect(screen.getByText("User: remote@example.com")).toBeInTheDocument();
   });
 
+  it("describes cancelled inline runs as cancelled instead of failed", async () => {
+    mockPathnameData.current = "/coworkers/cw-1/runs/run-cancelled";
+    mockParamsData.current = { id: "cw-1", runId: "run-cancelled" };
+    mockCoworkerRunData.current = {
+      id: "run-cancelled",
+      coworkerId: "cw-1",
+      coworkerName: "Existing Coworker",
+      coworkerUsername: "existing-user",
+      status: "cancelled",
+      triggerPayload: { source: "manual" },
+      generationId: "gen-1",
+      conversationId: "conv-1",
+      startedAt: new Date("2026-03-12T10:00:00.000Z"),
+      finishedAt: new Date("2026-03-12T10:00:08.000Z"),
+      errorMessage: null,
+      debugInfo: null,
+      events: [],
+    };
+
+    render(<CoworkerEditorPage />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Run cancelled.")).toBeInTheDocument();
+    expect(screen.queryByText("Run failed.")).not.toBeInTheDocument();
+  });
+
   it("saves model changes before starting a run", async () => {
     render(<CoworkerEditorPage />);
     for (const button of screen.getAllByRole("button", {

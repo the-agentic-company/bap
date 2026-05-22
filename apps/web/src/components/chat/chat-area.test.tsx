@@ -15,12 +15,14 @@ const {
   mockPosthogCapture,
   mockInvalidateQueries,
   mockRefetchQueries,
+  mockSetQueryData,
   mockUseHotkeys,
   mockEnqueueConversationMessageMutateAsync,
   mockUpdateConversationQueuedMessageMutateAsync,
   mockConversationQueuedMessagesState,
   mockAdminState,
   mockActiveGenerationState,
+  mockCancelGenerationMutateAsync,
   mockSubmitApprovalMutateAsync,
   mockSubmitAuthResultMutateAsync,
 } = vi.hoisted(() => ({
@@ -30,6 +32,7 @@ const {
   mockPosthogCapture: vi.fn(),
   mockInvalidateQueries: vi.fn(),
   mockRefetchQueries: vi.fn(),
+  mockSetQueryData: vi.fn(),
   mockUseHotkeys: vi.fn(),
   mockEnqueueConversationMessageMutateAsync: vi.fn(),
   mockUpdateConversationQueuedMessageMutateAsync: vi.fn(),
@@ -47,6 +50,7 @@ const {
   },
   mockSubmitApprovalMutateAsync: vi.fn(),
   mockSubmitAuthResultMutateAsync: vi.fn(),
+  mockCancelGenerationMutateAsync: vi.fn(),
   mockAdminState: {
     isAdmin: false,
     isLoading: false,
@@ -71,6 +75,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     useQueryClient: () => ({
       invalidateQueries: mockInvalidateQueries,
       refetchQueries: mockRefetchQueries,
+      setQueryData: mockSetQueryData,
     }),
   };
 });
@@ -225,6 +230,7 @@ vi.mock("@/lib/generation-runtime", () => ({
       handleAuthResult: vi.fn(),
       handleSandboxFile: vi.fn(),
       handleDone: vi.fn(),
+      handleCancelled: vi.fn(),
       handleError: vi.fn(),
       setStatus: vi.fn(),
       setApprovalStatus: vi.fn((toolUseId: string, status: "approved" | "denied") => {
@@ -297,7 +303,7 @@ vi.mock("@/orpc/hooks", () => ({
   useSubmitAuthResult: () => ({ mutateAsync: mockSubmitAuthResultMutateAsync, isPending: false }),
   useGetAuthUrl: () => ({ mutateAsync: vi.fn() }),
   useActiveGeneration: () => mockActiveGenerationState,
-  useCancelGeneration: () => ({ mutateAsync: vi.fn() }),
+  useCancelGeneration: () => ({ mutateAsync: mockCancelGenerationMutateAsync }),
   useDetectUserMessageLanguage: () => ({ mutateAsync: vi.fn() }),
   useConversationQueuedMessages: () => ({ data: mockConversationQueuedMessagesState.data }),
   useEnqueueConversationMessage: () => ({ mutateAsync: mockEnqueueConversationMessageMutateAsync }),
@@ -324,11 +330,15 @@ vi.mock("./auth-request-card", () => ({
 vi.mock("./bottom-action-bar", () => ({
   BottomActionBar: ({
     onSubmit,
+    onStop,
+    isStreaming,
     prefillRequest,
     segments,
     segmentApproveHandlers,
   }: {
     onSubmit: (content: string) => void | Promise<unknown>;
+    onStop?: () => void | Promise<unknown>;
+    isStreaming?: boolean;
     prefillRequest?: { text: string } | null;
     segments?: Array<{
       id: string;
@@ -376,6 +386,11 @@ vi.mock("./bottom-action-bar", () => ({
         <button type="button" onClick={handleClick}>
           Send
         </button>
+        {isStreaming ? (
+          <button type="button" onClick={onStop}>
+            Stop
+          </button>
+        ) : null}
         <div data-testid="submit-status">{status}</div>
       </div>
     );
@@ -518,8 +533,10 @@ describe("ChatArea generation errors", () => {
     mockStartGeneration.mockReset();
     mockAbort.mockReset();
     mockInvalidateQueries.mockReset();
+    mockSetQueryData.mockReset();
     mockPosthogCapture.mockReset();
     mockUseHotkeys.mockReset();
+    mockCancelGenerationMutateAsync.mockReset();
     mockEnqueueConversationMessageMutateAsync.mockReset();
     mockUpdateConversationQueuedMessageMutateAsync.mockReset();
     mockConversationQueuedMessagesState.data = undefined;
@@ -558,6 +575,52 @@ describe("ChatArea generation errors", () => {
     });
 
     expect(screen.queryByText("Preparing agent...")).not.toBeInTheDocument();
+  });
+
+  it("cancels the durable active generation when stopping before a local stream id is attached", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    mockActiveGenerationState.data = {
+      generationId: "gen-active",
+      startedAt: new Date("2026-05-22T10:00:00.000Z").toISOString(),
+      errorMessage: null,
+      status: "generating",
+      pauseReason: null,
+      debugRunDeadlineMs: null,
+      contentParts: null,
+    };
+
+    render(<ChatArea conversationId="conv-1" />);
+
+    await waitFor(() => {
+      expect(mockSubscribeToGeneration).toHaveBeenCalledWith("gen-active", expect.any(Object));
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+
+    await waitFor(() => {
+      expect(mockCancelGenerationMutateAsync).toHaveBeenCalledWith("gen-active");
+    });
+    expect(mockAbort).toHaveBeenCalled();
+    expect(mockSetQueryData).toHaveBeenCalledWith(
+      ["generation", "active", "conv-1"],
+      expect.objectContaining({
+        generationId: null,
+        status: null,
+      }),
+    );
+    expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("endReason=user_stopped"),
+    );
+    expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining("endReason=user_stopped"));
+    expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining("generationId=gen-active"));
+    expect(mockPosthogCapture).toHaveBeenCalledWith(
+      "agent_init_missing",
+      expect.objectContaining({
+        endReason: "user_stopped",
+        generationId: "gen-active",
+      }),
+    );
   });
 
   it("resolves submit immediately without waiting for the full stream to finish", async () => {

@@ -343,6 +343,7 @@ export const CHAT_EXTERNAL_SEND_EVENT = "chat:external-send";
 const CHAT_CONVERSATION_ID_SYNC_EVENT = "chat:conversation-id-sync";
 const EMPTY_SELECTED_SKILLS: string[] = [];
 const EMPTY_ACTIVITY_ITEMS: ActivityItemData[] = [];
+const NON_ERROR_INIT_END_REASONS = new Set(["cancelled", "user_stopped"]);
 const CUSTOM_SKILL_PREFIX = "custom:";
 const DEFAULT_VISIBLE_CHAT_MODEL = DEFAULT_CONNECTED_CHATGPT_MODEL;
 const RUN_DEADLINE_DEFAULT_MS = 15 * 60 * 1000;
@@ -968,6 +969,7 @@ export function ChatArea({
 
   // Track current generation ID
   const currentGenerationIdRef = useRef<string | undefined>(undefined);
+  const locallyStoppedGenerationIdRef = useRef<string | null>(null);
   const runtimeRef = useRef<GenerationRuntime | null>(null);
   const coworkerEditToolUseIdsRef = useRef(new Set<string>());
   const authCompletionRef = useRef<{ integration: string; interruptId: string } | null>(null);
@@ -1438,15 +1440,23 @@ export function ChatArea({
         initWatchdogTimerRef.current = null;
       }
 
-      console.error(
-        `[AgentInit][Client] missing_init endReason=${endReason} elapsedMs=${elapsedMs} conversationId=${currentConversationIdRef.current ?? "new"} generationId=${currentGenerationIdRef.current ?? "unknown"}`,
-      );
+      const conversationId = currentConversationIdRef.current ?? "new";
+      const generationId =
+        typeof metadata?.generationId === "string"
+          ? metadata.generationId
+          : (currentGenerationIdRef.current ?? "unknown");
+      const logMessage = `[AgentInit][Client] missing_init endReason=${endReason} elapsedMs=${elapsedMs} conversationId=${conversationId} generationId=${generationId}`;
+      if (NON_ERROR_INIT_END_REASONS.has(endReason)) {
+        console.info(logMessage);
+      } else {
+        console.error(logMessage);
+      }
       posthog?.capture("agent_init_missing", {
         endReason,
         elapsedMs,
         didTimeout: initTimeoutEventSentRef.current,
         conversationId: currentConversationIdRef.current ?? null,
-        generationId: currentGenerationIdRef.current ?? null,
+        generationId: generationId === "unknown" ? null : generationId,
         model: normalizedSelectedModel,
         ...metadata,
       });
@@ -2043,6 +2053,7 @@ export function ChatArea({
       setStreamError(null);
       setStreamingSandboxFiles([]);
       currentGenerationIdRef.current = undefined;
+      locallyStoppedGenerationIdRef.current = null;
       currentConversationIdRef.current = undefined;
       viewedConversationIdRef.current = undefined;
       setDraftConversationId(undefined);
@@ -2064,6 +2075,7 @@ export function ChatArea({
   useEffect(() => {
     if (
       activeGeneration?.generationId &&
+      activeGeneration.generationId !== locallyStoppedGenerationIdRef.current &&
       (activeGeneration.status === "generating" ||
         activeGeneration.status === "awaiting_approval" ||
         activeGeneration.status === "awaiting_auth")
@@ -2483,7 +2495,19 @@ export function ChatArea({
 
   const handleStop = useCallback(async () => {
     const runtime = runtimeRef.current;
-    const generationId = currentGenerationIdRef.current;
+    const generationId = currentGenerationIdRef.current ?? activeGeneration?.generationId;
+    if (generationId) {
+      locallyStoppedGenerationIdRef.current = generationId;
+      queryClient.setQueryData(["generation", "active", conversationId], {
+        generationId: null,
+        startedAt: null,
+        errorMessage: null,
+        status: null,
+        pauseReason: null,
+        debugRunDeadlineMs: null,
+        contentParts: null,
+      });
+    }
     if (runtime) {
       persistInterruptedRuntimeMessage(runtime);
     }
@@ -2505,15 +2529,20 @@ export function ChatArea({
     setStreamingSandboxFiles([]);
     setSegments([]);
     setTraceStatus("complete");
-    markInitMissingAtEnd("user_stopped");
+    markInitMissingAtEnd("user_stopped", {
+      generationId,
+    });
     clearTrackedCoworkerEditToolUses();
     resetInitTracking();
   }, [
     abort,
+    activeGeneration?.generationId,
     cancelGeneration,
     clearTrackedCoworkerEditToolUses,
+    conversationId,
     markInitMissingAtEnd,
     persistInterruptedRuntimeMessage,
+    queryClient,
     resetInitTracking,
   ]);
 
@@ -2597,6 +2626,7 @@ export function ChatArea({
           }
           streamGenerationId = generationId;
           currentGenerationIdRef.current = generationId;
+          locallyStoppedGenerationIdRef.current = null;
           updateChatDebugSnapshot({
             conversationId: newConversationId,
             generationId,

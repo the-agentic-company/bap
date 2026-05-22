@@ -68,7 +68,11 @@ export default function CoworkerRunPage() {
       <RemoteRunSourceBanner source={remoteRunSource} />
       {(run.status === "error" || run.status === "cancelled") && (
         <div className="border-b p-4">
-          <p className="text-muted-foreground text-sm">{run.errorMessage ?? "Run failed."}</p>
+          <p className="text-muted-foreground text-sm">
+            {run.status === "cancelled"
+              ? (run.errorMessage ?? "Run cancelled.")
+              : (run.errorMessage ?? "Run failed.")}
+          </p>
           <RunDebugDetails
             debugInfo={run.debugInfo}
             fallbackTimestamp={run.finishedAt ?? run.startedAt}
