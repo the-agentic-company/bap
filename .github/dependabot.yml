@@ -27,65 +27,54 @@ updates:
   - package-ecosystem: "docker"
     directory: "/infra/uptime-kuma/monitor-runner"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/alertmanager"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/caddy"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/grafana"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/mcp"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/minio"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/tailscale"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/vector"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/vmalert"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/web"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
 
   - package-ecosystem: "docker"
     directory: "/docker/images/worker"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 1
+      interval: "weekly"
