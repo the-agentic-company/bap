@@ -17,6 +17,10 @@ on:
         required: false
         type: boolean
         default: false
+    secrets:
+      TAILSCALE_AUTHKEY:
+        description: "Tailscale auth key used to reach private observability endpoints"
+        required: true
 
 jobs:
   verify:
@@ -41,6 +45,11 @@ jobs:
               exit 1
               ;;
           esac
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
       - name: Verify Grafana health
         if: ${{ inputs.verify_grafana }}

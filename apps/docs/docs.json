@@ -51,7 +51,7 @@
     "primary": {
       "type": "button",
       "label": "Open App",
-      "href": "https://app.cmdclaw.ai"
+      "href": "https://cmdclaw.ai"
     }
   },
   "footer": {

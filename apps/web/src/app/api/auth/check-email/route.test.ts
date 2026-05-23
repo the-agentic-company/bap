@@ -30,7 +30,7 @@ describe("POST /api/auth/check-email", () => {
 
   it("returns approved emails with their password status", async () => {
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/auth/check-email", {
+      new Request("https://cmdclaw.ai/api/auth/check-email", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -53,7 +53,7 @@ describe("POST /api/auth/check-email", () => {
     isApprovedLoginEmailMock.mockResolvedValueOnce(false);
 
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/auth/check-email", {
+      new Request("https://cmdclaw.ai/api/auth/check-email", {
         method: "POST",
         headers: {
           "content-type": "application/json",

@@ -54,7 +54,7 @@ describe("POST /api/auth/password/start", () => {
 
   it("sends a password reset for an approved existing user", async () => {
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/auth/password/start", {
+      new Request("https://cmdclaw.ai/api/auth/password/start", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -73,7 +73,7 @@ describe("POST /api/auth/password/start", () => {
       body: {
         email: "pilot@cmdclaw.ai",
         redirectTo:
-          "https://app.cmdclaw.ai/reset-password?callbackUrl=%2Fchat&email=pilot%40cmdclaw.ai",
+          "https://cmdclaw.ai/reset-password?callbackUrl=%2Fchat&email=pilot%40cmdclaw.ai",
       },
       headers: expect.any(Headers),
     });
@@ -88,7 +88,7 @@ describe("POST /api/auth/password/start", () => {
     });
 
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/auth/password/start", {
+      new Request("https://cmdclaw.ai/api/auth/password/start", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -111,7 +111,7 @@ describe("POST /api/auth/password/start", () => {
       body: {
         email: "new-user@cmdclaw.ai",
         redirectTo:
-          "https://app.cmdclaw.ai/reset-password?callbackUrl=%2Fchat&email=new-user%40cmdclaw.ai",
+          "https://cmdclaw.ai/reset-password?callbackUrl=%2Fchat&email=new-user%40cmdclaw.ai",
       },
       headers: expect.any(Headers),
     });
@@ -121,7 +121,7 @@ describe("POST /api/auth/password/start", () => {
     isApprovedLoginEmailMock.mockResolvedValueOnce(false);
 
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/auth/password/start", {
+      new Request("https://cmdclaw.ai/api/auth/password/start", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -142,7 +142,7 @@ describe("POST /api/auth/password/start", () => {
 
   it("preserves a sanitized callbackUrl in the reset flow", async () => {
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/auth/password/start", {
+      new Request("https://cmdclaw.ai/api/auth/password/start", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -159,7 +159,7 @@ describe("POST /api/auth/password/start", () => {
       body: {
         email: "pilot@cmdclaw.ai",
         redirectTo:
-          "https://app.cmdclaw.ai/reset-password?callbackUrl=%2Fchat%2F123%3Ftab%3Dfiles&email=pilot%40cmdclaw.ai",
+          "https://cmdclaw.ai/reset-password?callbackUrl=%2Fchat%2F123%3Ftab%3Dfiles&email=pilot%40cmdclaw.ai",
       },
       headers: expect.any(Headers),
     });

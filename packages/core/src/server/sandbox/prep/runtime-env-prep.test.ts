@@ -9,20 +9,20 @@ describe("runtime-env-prep", () => {
   it("builds curated runtime env files from non-empty values", () => {
     const result = buildSandboxRuntimeEnvFiles({
       GMAIL_ACCESS_TOKEN: "gmail-token",
-      APP_URL: "https://app.cmdclaw.ai",
+      APP_URL: "https://cmdclaw.ai",
       EMPTY_VALUE: "",
       NULL_VALUE: null,
       UNDEFINED_VALUE: undefined,
     });
 
     expect(result.values).toEqual({
-      APP_URL: "https://app.cmdclaw.ai",
+      APP_URL: "https://cmdclaw.ai",
       GMAIL_ACCESS_TOKEN: "gmail-token",
     });
     expect(result.json).toBe(
       JSON.stringify(
         {
-          APP_URL: "https://app.cmdclaw.ai",
+          APP_URL: "https://cmdclaw.ai",
           GMAIL_ACCESS_TOKEN: "gmail-token",
         },
         null,
@@ -30,7 +30,7 @@ describe("runtime-env-prep", () => {
       ),
     );
     expect(result.shell).toBe(
-      "export APP_URL='https://app.cmdclaw.ai'\nexport GMAIL_ACCESS_TOKEN='gmail-token'",
+      "export APP_URL='https://cmdclaw.ai'\nexport GMAIL_ACCESS_TOKEN='gmail-token'",
     );
   });
 
@@ -40,7 +40,7 @@ describe("runtime-env-prep", () => {
     await syncRuntimeEnvToSandbox({
       sandbox: { exec },
       runtimeEnv: {
-        APP_URL: "https://app.cmdclaw.ai",
+        APP_URL: "https://cmdclaw.ai",
         GMAIL_ACCESS_TOKEN: "gmail-token",
       },
     });

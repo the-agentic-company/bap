@@ -110,7 +110,7 @@ Then run:
     cd /Users/baptiste/Git/cmdclaw
     git diff --check
     docker compose --env-file .env -f docker/compose/dev.yml config >/tmp/cmdclaw-compose-default.yml
-    DAYTONA_DEX_PASSWORD_HASH='$2a$10$abcdefghijklmnopqrstuuabcdefghijklmnopqrstuuabcdefghijklmnopqrstuu' docker compose --env-file .env -f docker/compose/dev.yml --profile daytona config >/tmp/cmdclaw-daytona-compose.yml
+    DAYTONA_DEX_PASSWORD_HASH='compose-config-placeholder-not-a-bcrypt-hash' docker compose --env-file .env -f docker/compose/dev.yml --profile daytona config >/tmp/cmdclaw-daytona-compose.yml
     go run github.com/rhysd/actionlint/cmd/actionlint@latest .github/workflows/verify-observability.yml .github/workflows/db-push.yml .github/workflows/render-rollback.yml .github/workflows/render-deploy.yml .github/workflows/verify-deployment.yml .github/workflows/render-observability-deploy.yml .github/workflows/daytona-sandbox.yml .github/workflows/e2b-sandbox.yml .github/workflows/staging-deploy.yml .github/workflows/create-release-tag.yml .github/workflows/prod-release.yml .github/workflows/release-main.yml
 
 If the compose command fails because local `.env` is missing unrelated variables, rerun with the minimum required environment values documented by the error and record the failure in `Surprises & Discoveries`.
@@ -134,7 +134,7 @@ Validation completed on 2026-05-22:
     $ docker compose --env-file .env -f docker/compose/dev.yml config >/tmp/cmdclaw-compose-default.yml
     # passed with no output
 
-    $ DAYTONA_DEX_PASSWORD_HASH='$2a$10$abcdefghijklmnopqrstuuabcdefghijklmnopqrstuuabcdefghijklmnopqrstuu' docker compose --env-file .env -f docker/compose/dev.yml --profile daytona config >/tmp/cmdclaw-daytona-compose.yml
+    $ DAYTONA_DEX_PASSWORD_HASH='compose-config-placeholder-not-a-bcrypt-hash' docker compose --env-file .env -f docker/compose/dev.yml --profile daytona config >/tmp/cmdclaw-daytona-compose.yml
     # passed with no output
 
     $ rg -n '\$2[aby]\$' docker/compose/daytona/dex/config.yaml

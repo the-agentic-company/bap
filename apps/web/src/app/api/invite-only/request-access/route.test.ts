@@ -26,11 +26,11 @@ describe("POST /api/invite-only/request-access", () => {
 
   it("posts a Slack notification for a valid request", async () => {
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/invite-only/request-access", {
+      new Request("https://cmdclaw.ai/api/invite-only/request-access", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          referer: "https://app.cmdclaw.ai/invite-only?source=magic-link",
+          referer: "https://cmdclaw.ai/invite-only?source=magic-link",
         },
         body: JSON.stringify({
           email: "waitlist@example.com",
@@ -44,7 +44,7 @@ describe("POST /api/invite-only/request-access", () => {
       email: "waitlist@example.com",
       source: "magic-link",
       occurredAt: expect.any(Date),
-      referrer: "https://app.cmdclaw.ai/invite-only?source=magic-link",
+      referrer: "https://cmdclaw.ai/invite-only?source=magic-link",
     });
   });
 
@@ -52,7 +52,7 @@ describe("POST /api/invite-only/request-access", () => {
     isApprovedLoginEmailMock.mockResolvedValueOnce(true);
 
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/invite-only/request-access", {
+      new Request("https://cmdclaw.ai/api/invite-only/request-access", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -70,7 +70,7 @@ describe("POST /api/invite-only/request-access", () => {
 
   it("rejects invalid email payloads", async () => {
     const response = await POST(
-      new Request("https://app.cmdclaw.ai/api/invite-only/request-access", {
+      new Request("https://cmdclaw.ai/api/invite-only/request-access", {
         method: "POST",
         headers: {
           "content-type": "application/json",

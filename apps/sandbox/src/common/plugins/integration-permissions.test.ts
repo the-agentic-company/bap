@@ -20,7 +20,7 @@ describe("IntegrationPermissionsPlugin", () => {
     const readFileSync = vi.fn().mockReturnValue(
       JSON.stringify({
         GMAIL_ACCESS_TOKEN: "gmail-token",
-        APP_URL: "https://app.cmdclaw.ai",
+        APP_URL: "https://cmdclaw.ai",
       }),
     );
     vi.doMock("node:fs", () => ({ readFileSync }));
@@ -41,7 +41,7 @@ describe("IntegrationPermissionsPlugin", () => {
 
   it("sends a stable providerRequestId when requesting write approval", async () => {
     process.env.SLACK_ACCESS_TOKEN = "slack-token";
-    process.env.APP_URL = "https://app.cmdclaw.ai";
+    process.env.APP_URL = "https://cmdclaw.ai";
     vi.doMock("../lib/runtime-context", () => ({
       readRuntimeContext: vi.fn().mockResolvedValue({
         runtimeId: "runtime-1",

@@ -23,7 +23,7 @@ describe("MemoryPlugin", () => {
   it("loads APP_URL and CONVERSATION_ID from synced runtime env at execution time", async () => {
     const readFileSync = vi.fn().mockReturnValue(
       JSON.stringify({
-        APP_URL: "https://app.cmdclaw.ai",
+        APP_URL: "https://cmdclaw.ai",
         CONVERSATION_ID: "conv-123",
         CMDCLAW_SERVER_SECRET: "secret-123",
       }),
@@ -40,7 +40,7 @@ describe("MemoryPlugin", () => {
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "https://app.cmdclaw.ai/api/internal/memory",
+      "https://cmdclaw.ai/api/internal/memory",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({

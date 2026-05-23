@@ -159,6 +159,11 @@ metrics, and trace payload all correlate across the local Victoria backends:
 bun run observability:validate-generation -- --generation-id "${GENERATION_ID}"
 ```
 
+For browser journeys that should emit client observations, add
+`--require-client-observation`. CLI runs do not emit browser
+`client_observation` rows, so the validator reports their count but does not
+require one by default.
+
 Query the wide logs by Generation id. The result should include
 `cmdclaw.generation.start_rpc`, `cmdclaw.generation.subscribe_rpc`,
 `cmdclaw.generation.terminal`, and `event.kind="client_observation"` rows.

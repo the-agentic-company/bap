@@ -196,11 +196,11 @@ projects:
             numInstances: 1
             image:
               url: victoriametrics/victoria-metrics:v1.140.0
-            dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data
+            dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://cmdclaw-vmalert-staging:8880
             disk:
               name: cmdclaw-victoria-metrics-data
               mountPath: /victoria-metrics-data
-              sizeGB: 2
+              sizeGB: 10
 
           - type: pserv
             name: cmdclaw-victoria-logs-staging
@@ -618,7 +618,7 @@ projects:
             numInstances: 1
             image:
               url: victoriametrics/victoria-metrics:v1.140.0
-            dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data
+            dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://cmdclaw-vmalert-prod:8880
             disk:
               name: cmdclaw-victoria-metrics-data-prod
               mountPath: /victoria-metrics-data

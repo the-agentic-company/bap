@@ -6,6 +6,7 @@ type Args = {
   logsUrl: string;
   tracesUrl: string;
   metricsUrl: string;
+  requireClientObservation: boolean;
 };
 
 const REQUIRED_GENERATION_EVENTS = new Set([
@@ -24,17 +25,24 @@ Options:
   --trace-id <id>        Trace id to validate. Defaults to TRACE_ID or log discovery.
   --logs-url <url>       VictoriaLogs base URL.
   --traces-url <url>     VictoriaTraces base URL.
-  --metrics-url <url>    VictoriaMetrics base URL.`);
+  --metrics-url <url>    VictoriaMetrics base URL.
+  --require-client-observation
+                         Require a browser client_observation row.`);
     process.exit(0);
   }
 
   const values = new Map<string, string>();
+  const booleans = new Set<string>();
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (!arg.startsWith("--")) {
       continue;
     }
     const key = arg.slice(2);
+    if (key === "require-client-observation") {
+      booleans.add(key);
+      continue;
+    }
     const next = argv[index + 1];
     if (!next || next.startsWith("--")) {
       throw new Error(`Missing value for --${key}`);
@@ -61,6 +69,7 @@ Options:
       values.get("metrics-url") ??
       process.env.CMDCLAW_VICTORIA_METRICS_URL ??
       "http://127.0.0.1:8428",
+    requireClientObservation: booleans.has("require-client-observation"),
   };
 }
 
@@ -107,11 +116,35 @@ async function queryJson(url: URL): Promise<unknown> {
   return await response.json();
 }
 
+async function queryNdjson(url: URL): Promise<JsonRecord[]> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`${url.toString()} returned ${response.status}`);
+  }
+
+  const text = await response.text();
+  if (!text.trim()) {
+    return [];
+  }
+
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const parsed = JSON.parse(line) as unknown;
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new Error(`VictoriaLogs row ${index + 1} was not a JSON object`);
+      }
+      return parsed as JsonRecord;
+    });
+}
+
 async function queryLogs(baseUrl: string, query: string): Promise<JsonRecord[]> {
   const url = new URL("/select/logsql/query", baseUrl);
   url.searchParams.set("query", query);
   url.searchParams.set("limit", "200");
-  return asRecords(await queryJson(url));
+  return queryNdjson(url);
 }
 
 async function queryMetric(baseUrl: string, query: string): Promise<JsonRecord[]> {
@@ -140,7 +173,10 @@ async function validate(args: Args): Promise<void> {
     }
   }
 
-  if (!generationRows.some((row) => getStringField(row, "event.kind") === "client_observation")) {
+  const clientObservationRows = generationRows.filter(
+    (row) => getStringField(row, "event.kind") === "client_observation",
+  ).length;
+  if (args.requireClientObservation && clientObservationRows === 0) {
     throw new Error(`Missing client_observation row for Generation ${args.generationId}`);
   }
 
@@ -176,6 +212,7 @@ async function validate(args: Args): Promise<void> {
         traceId,
         generationLogRows: generationRows.length,
         traceLogRows: traceRows.length,
+        clientObservationRows,
         terminalMetricRows: metricRows.length,
       },
       null,
