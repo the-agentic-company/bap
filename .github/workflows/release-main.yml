@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
 
           git fetch origin main --force
-          commit_sha="$(git rev-parse HEAD^{commit})"
+          commit_sha="$(git rev-parse "HEAD^{commit}")"
           git merge-base --is-ancestor "${commit_sha}" origin/main
           echo "commit_sha=${commit_sha}" >> "$GITHUB_OUTPUT"
 
@@ -140,8 +140,39 @@ jobs:
             echo "verify_vmalert=${verify_vmalert}"
           } >> "$GITHUB_OUTPUT"
 
-  staging-db:
+  checks:
     needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.commit_sha }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check Render observability config
+        run: bun scripts/check-render-observability-config.ts
+
+      - name: Run workspace checks
+        run: bun run check
+
+      - name: Run web formatting checks
+        run: bun run --cwd apps/web format:check
+
+      - name: Run CI tests
+        run: bun run test:ci
+
+  staging-db:
+    needs:
+      - resolve
+      - checks
     uses: ./.github/workflows/db-push.yml
     with:
       ref: ${{ needs.resolve.outputs.commit_sha }}
@@ -149,7 +180,9 @@ jobs:
     secrets: inherit
 
   staging-daytona:
-    needs: resolve
+    needs:
+      - resolve
+      - checks
     uses: ./.github/workflows/daytona-sandbox.yml
     with:
       ref: ${{ needs.resolve.outputs.commit_sha }}
@@ -169,6 +202,7 @@ jobs:
   staging-observability:
     needs:
       - resolve
+      - checks
       # Temporarily bypass observability change detection while the stack is
       # being iterated on heavily. Keep deploying every main release until this
       # gate is restored.
@@ -320,6 +354,7 @@ jobs:
     needs:
       - resolve
       - observability-changes
+      - checks
       - staging-db
       - staging-daytona
       - staging-render

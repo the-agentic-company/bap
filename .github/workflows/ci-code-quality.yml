@@ -2,35 +2,13 @@ name: CI Code Quality
 
 on:
   pull_request:
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "docs/**"
-      - "render.yaml"
-      - "scripts/check-render-observability-config.ts"
-      - "package.json"
-      - "bun.lock"
-      - "turbo.json"
-      - "tsconfig.json"
-      - ".github/workflows/ci-code-quality.yml"
   push:
     branches:
       - main
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "docs/**"
-      - "render.yaml"
-      - "scripts/check-render-observability-config.ts"
-      - "package.json"
-      - "bun.lock"
-      - "turbo.json"
-      - "tsconfig.json"
-      - ".github/workflows/ci-code-quality.yml"
   workflow_dispatch:
 
 jobs:
-  quality-checks:
+  checks:
     runs-on: ubuntu-latest
 
     steps:
@@ -53,3 +31,6 @@ jobs:
 
       - name: Run web formatting checks
         run: bun run --cwd apps/web format:check
+
+      - name: Run CI tests
+        run: bun run test:ci
