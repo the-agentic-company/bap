@@ -20,13 +20,13 @@ describe("buildMcpOAuthClientMetadata", () => {
   });
 
   it("uses the CmdClaw brand name and a public logo URL derived from APP_URL", () => {
-    process.env.APP_URL = "https://app.cmdclaw.ai";
+    process.env.APP_URL = "https://cmdclaw.ai";
     delete process.env.NEXT_PUBLIC_APP_URL;
 
     const metadata = buildMcpOAuthClientMetadata("http://localhost:3000/api/oauth/callback");
 
     expect(metadata.client_name).toBe("CmdClaw");
-    expect(metadata.logo_uri).toBe("https://app.cmdclaw.ai/logo.png");
+    expect(metadata.logo_uri).toBe("https://cmdclaw.ai/logo.png");
   });
 
   it("falls back to the public CmdClaw logo when only a loopback callback is available", () => {

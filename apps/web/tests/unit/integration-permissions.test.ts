@@ -13,11 +13,11 @@ describe("getCallbackBaseUrls", () => {
       "E2B_CALLBACK_BASE_URL",
       "https://localcan.baptistecolle.com/__worktrees/cmdclaw-5fd291f4",
     );
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.cmdclaw.ai");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://cmdclaw.ai");
 
     expect(getCallbackBaseUrls()).toEqual([
       "https://localcan.baptistecolle.com/__worktrees/cmdclaw-5fd291f4",
-      "https://app.cmdclaw.ai",
+      "https://cmdclaw.ai",
     ]);
   });
 

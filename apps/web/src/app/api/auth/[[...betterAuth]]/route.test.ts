@@ -27,7 +27,7 @@ vi.mock("@/env", () => ({
 }));
 
 vi.mock("@/lib/trusted-origins", () => ({
-  getTrustedOrigins: vi.fn(() => ["https://app.cmdclaw.ai"]),
+  getTrustedOrigins: vi.fn(() => ["https://cmdclaw.ai"]),
 }));
 
 import { GET } from "./route";
@@ -56,11 +56,11 @@ describe("GET /api/auth/[[...betterAuth]]", () => {
     );
 
     const response = await GET(
-      new NextRequest("https://app.cmdclaw.ai/api/auth/callback/google?code=abc&state=def"),
+      new NextRequest("https://cmdclaw.ai/api/auth/callback/google?code=abc&state=def"),
     );
 
     expect(response.status).toBe(307);
-    expect(getLocation(response)).toBe("https://app.cmdclaw.ai/invite-only?source=social-google");
+    expect(getLocation(response)).toBe("https://cmdclaw.ai/invite-only?source=social-google");
   });
 
   it("forwards the email from the invite-only error body when present", async () => {
@@ -81,12 +81,12 @@ describe("GET /api/auth/[[...betterAuth]]", () => {
     );
 
     const response = await GET(
-      new NextRequest("https://app.cmdclaw.ai/api/auth/callback/google?code=abc&state=def"),
+      new NextRequest("https://cmdclaw.ai/api/auth/callback/google?code=abc&state=def"),
     );
 
     expect(response.status).toBe(307);
     expect(getLocation(response)).toBe(
-      "https://app.cmdclaw.ai/invite-only?source=social-google&email=alice%40example.com",
+      "https://cmdclaw.ai/invite-only?source=social-google&email=alice%40example.com",
     );
   });
 });

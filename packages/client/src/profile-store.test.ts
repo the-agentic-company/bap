@@ -23,7 +23,7 @@ describe("profile store", () => {
       token: "token-1",
     });
 
-    expect(store.load("https://app.cmdclaw.ai")).toBeNull();
+    expect(store.load("https://cmdclaw.ai")).toBeNull();
 
     store.clear("http://localhost:3000");
     expect(store.load("http://localhost:3000")).toBeNull();

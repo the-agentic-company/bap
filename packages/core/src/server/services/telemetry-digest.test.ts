@@ -55,7 +55,7 @@ describe("telemetry digest", () => {
   });
 
   it("builds the previous-day summary from the DB queries", async () => {
-    process.env.APP_URL = "https://app.cmdclaw.ai";
+    process.env.APP_URL = "https://cmdclaw.ai";
     mockCountSelect(4);
     mockCountSelect(11);
     mockCountSelect(7);
@@ -91,8 +91,8 @@ describe("telemetry digest", () => {
         { id: "user-3", email: "carol@example.com", name: "Carol" },
         { id: "user-5", email: "eve@example.com", name: "Eve" },
       ],
-      appUrl: "https://app.cmdclaw.ai",
-      appUrlDomain: "app.cmdclaw.ai",
+      appUrl: "https://cmdclaw.ai",
+      appUrlDomain: "cmdclaw.ai",
       appUrlSource: "APP_URL",
     });
   });
@@ -114,13 +114,13 @@ describe("telemetry digest", () => {
       returningActiveUsersPreview: [
         { id: "user-3", email: "carol@example.com", name: "Carol" },
       ],
-      appUrl: "https://app.cmdclaw.ai",
-      appUrlDomain: "app.cmdclaw.ai",
+      appUrl: "https://cmdclaw.ai",
+      appUrlDomain: "cmdclaw.ai",
       appUrlSource: "APP_URL",
     });
 
     expect(message).toContain("CmdClaw daily ops digest for 2026-03-12");
-    expect(message).toContain("App URL domain: app.cmdclaw.ai (APP_URL)");
+    expect(message).toContain("App URL domain: cmdclaw.ai (APP_URL)");
     expect(message).toContain("New signups: 2");
     expect(message).toContain("Active users: 9");
     expect(message).toContain("Returning active users: 6");

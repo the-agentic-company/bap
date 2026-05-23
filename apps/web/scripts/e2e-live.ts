@@ -263,7 +263,7 @@ async function main(): Promise<void> {
         {
           ...baseEnv,
           PLAYWRIGHT_SKIP_WEBSERVER: "1",
-          PLAYWRIGHT_BASE_URL: "https://app.cmdclaw.ai",
+          PLAYWRIGHT_BASE_URL: "https://cmdclaw.ai",
         },
         [
           "tests/e2e/auth-smoke.e2e.ts",
@@ -276,27 +276,27 @@ async function main(): Promise<void> {
       await runAuth({
         ...baseEnv,
         PLAYWRIGHT_SKIP_WEBSERVER: "1",
-        PLAYWRIGHT_BASE_URL: "https://app.cmdclaw.ai",
+        PLAYWRIGHT_BASE_URL: "https://cmdclaw.ai",
       });
       await runPlaywright({
         ...baseEnv,
         E2E_LIVE: "1",
         PLAYWRIGHT_SKIP_WEBSERVER: "1",
-        PLAYWRIGHT_BASE_URL: "https://app.cmdclaw.ai",
+        PLAYWRIGHT_BASE_URL: "https://cmdclaw.ai",
       });
       return;
     case "prod-monitor":
       await runAuth({
         ...baseEnv,
         PLAYWRIGHT_SKIP_WEBSERVER: "1",
-        PLAYWRIGHT_BASE_URL: "https://app.cmdclaw.ai",
+        PLAYWRIGHT_BASE_URL: "https://cmdclaw.ai",
       });
       await runPlaywright(
         {
           ...baseEnv,
           E2E_LIVE: "1",
           PLAYWRIGHT_SKIP_WEBSERVER: "1",
-          PLAYWRIGHT_BASE_URL: "https://app.cmdclaw.ai",
+          PLAYWRIGHT_BASE_URL: "https://cmdclaw.ai",
           PLAYWRIGHT_HTML_OPEN: "never",
           PLAYWRIGHT_HTML_OUTPUT_DIR: "playwright-report/monitor",
           PLAYWRIGHT_JSON_OUTPUT_NAME: "test-results/monitor/results.json",
@@ -309,7 +309,7 @@ async function main(): Promise<void> {
         {
           ...baseEnv,
           PLAYWRIGHT_SKIP_WEBSERVER: "1",
-          PLAYWRIGHT_BASE_URL: "https://app.cmdclaw.ai",
+          PLAYWRIGHT_BASE_URL: "https://cmdclaw.ai",
           PLAYWRIGHT_HTML_OPEN: "never",
           PLAYWRIGHT_HTML_OUTPUT_DIR: "playwright-report/monitor",
           PLAYWRIGHT_JSON_OUTPUT_NAME: "test-results/monitor/results.json",

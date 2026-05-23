@@ -33,14 +33,14 @@ describe("telemetry Slack helpers", () => {
     const message = buildInviteOnlyAccessRequestSlackMessage({
       email: "waitlist@example.com",
       source: "magic-link",
-      referrer: "https://app.cmdclaw.ai/invite-only?source=magic-link",
+      referrer: "https://cmdclaw.ai/invite-only?source=magic-link",
       occurredAt: new Date("2026-03-27T12:00:00.000Z"),
     });
 
     expect(message).toContain("Invite-only access request");
     expect(message).toContain("Email: waitlist@example.com");
     expect(message).toContain("Source: magic-link");
-    expect(message).toContain("Referrer: https://app.cmdclaw.ai/invite-only?source=magic-link");
+    expect(message).toContain("Referrer: https://cmdclaw.ai/invite-only?source=magic-link");
     expect(message).toContain("Requested at: 2026-03-27T12:00:00.000Z");
   });
 });

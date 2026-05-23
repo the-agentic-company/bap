@@ -31,7 +31,6 @@
 
 <p align="center">
   <a href="https://cmdclaw.ai">Website</a> &middot;
-  <a href="https://app.cmdclaw.ai">App</a> &middot;
   <a href="https://docs.cmdclaw.ai">Docs</a> &middot;
   <a href="https://docs.cmdclaw.ai/self-hosting">Self-Hosting</a> &middot;
   <a href="https://discord.com/invite/NHQy8gXerd">Discord</a>
