@@ -201,6 +201,7 @@ jobs:
       verify_vmalert: true
       # verify_grafana: ${{ needs.observability-changes.outputs.verify_grafana == 'true' }}
       # verify_vmalert: ${{ needs.observability-changes.outputs.verify_vmalert == 'true' }}
+    secrets: inherit
 
   staging-verify:
     needs:
