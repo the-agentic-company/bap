@@ -10,6 +10,7 @@ type GmailPart = {
 };
 type GmailMessage = {
   id?: string;
+  threadId?: string;
   snippet?: string;
   payload?: GmailPart;
 };
@@ -48,6 +49,20 @@ type GmailSendParams = {
 };
 
 type GmailClient = ReturnType<typeof createGmailClient>;
+
+function buildGmailThreadUrl(threadId?: string | null): string | null {
+  if (!threadId) {
+    return null;
+  }
+  return `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(threadId)}`;
+}
+
+function buildGmailDraftUrl(draftId?: string | null): string | null {
+  if (!draftId) {
+    return null;
+  }
+  return `https://mail.google.com/mail/u/0/#drafts?compose=${encodeURIComponent(draftId)}`;
+}
 
 function extractBody(part: GmailPart): string {
   if (part.body?.data) {
@@ -285,9 +300,11 @@ export function createGmailClient(accessToken: string, timezone?: string) {
     if (!response.ok) {
       throw new Error(await response.text());
     }
-    const payload = (await response.json()) as { id?: string };
+    const payload = (await response.json()) as { id?: string; threadId?: string };
     return {
       id: payload.id ?? null,
+      threadId: payload.threadId ?? null,
+      url: buildGmailThreadUrl(payload.threadId),
       status: "sent" as const,
     };
   }
@@ -302,9 +319,11 @@ export function createGmailClient(accessToken: string, timezone?: string) {
     if (!response.ok) {
       throw new Error(await response.text());
     }
-    const payload = (await response.json()) as { id?: string };
+    const payload = (await response.json()) as { id?: string; message?: { id?: string } };
     return {
       id: payload.id ?? null,
+      messageId: payload.message?.id ?? null,
+      url: buildGmailDraftUrl(payload.message?.id),
       status: "drafted" as const,
     };
   }

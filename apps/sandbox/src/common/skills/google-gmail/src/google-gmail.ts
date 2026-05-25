@@ -37,10 +37,25 @@ type GmailPart = {
 };
 type GmailMessage = {
   id?: string;
+  threadId?: string;
   snippet?: string;
   payload?: GmailPart;
 };
 type MailScope = "inbox" | "all" | "strict-all";
+
+function buildGmailThreadUrl(threadId?: string | null): string | null {
+  if (!threadId) {
+    return null;
+  }
+  return `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(threadId)}`;
+}
+
+function buildGmailDraftUrl(draftId?: string | null): string | null {
+  if (!draftId) {
+    return null;
+  }
+  return `https://mail.google.com/mail/u/0/#drafts?compose=${encodeURIComponent(draftId)}`;
+}
 
 function extractBody(part: GmailPart): string {
   if (part.body?.data) {
@@ -275,8 +290,12 @@ async function sendEmail() {
   if (!res.ok) {
     throw new Error(await res.text());
   }
-  const { id } = (await res.json()) as { id?: string };
+  const { id, threadId } = (await res.json()) as { id?: string; threadId?: string };
+  const url = buildGmailThreadUrl(threadId);
   console.log(`Email sent. Message ID: ${id}`);
+  if (url) {
+    console.log(`URL: ${url}`);
+  }
 }
 
 async function draftEmail() {
@@ -290,8 +309,15 @@ async function draftEmail() {
   if (!res.ok) {
     throw new Error(await res.text());
   }
-  const { id } = (await res.json()) as { id?: string };
+  const { id, message } = (await res.json()) as { id?: string; message?: { id?: string } };
+  const url = buildGmailDraftUrl(message?.id);
   console.log(`Email draft created. Draft ID: ${id}`);
+  if (message?.id) {
+    console.log(`Message ID: ${message.id}`);
+  }
+  if (url) {
+    console.log(`URL: ${url}`);
+  }
 }
 
 function showHelp() {

@@ -78,4 +78,48 @@ describe("createGmailClient", () => {
       body: "Body text",
     });
   });
+
+  it("returns a Gmail URL when sending a message", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "msg-1", threadId: "thread-1" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createGmailClient("token", "Europe/Dublin");
+    const result = await client.sendMessage({
+      to: "user@example.com",
+      subject: "Hello",
+      body: "Body text",
+    });
+
+    expect(result).toEqual({
+      id: "msg-1",
+      threadId: "thread-1",
+      url: "https://mail.google.com/mail/u/0/#all/thread-1",
+      status: "sent",
+    });
+  });
+
+  it("returns a Gmail draft URL when creating a draft", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "draft-1", message: { id: "draft-message-1" } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createGmailClient("token", "Europe/Dublin");
+    const result = await client.createDraft({
+      to: "user@example.com",
+      subject: "Hello",
+      body: "Body text",
+    });
+
+    expect(result).toEqual({
+      id: "draft-1",
+      messageId: "draft-message-1",
+      url: "https://mail.google.com/mail/u/0/#drafts?compose=draft-message-1",
+      status: "drafted",
+    });
+  });
 });
