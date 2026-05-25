@@ -45,7 +45,8 @@ function resolveTerminalOutcome(
     completionReason === "run_deadline" ||
     completionReason === "approval_timeout" ||
     completionReason === "auth_timeout" ||
-    completionReason === "bootstrap_timeout"
+    completionReason === "bootstrap_timeout" ||
+    completionReason === "runtime_no_progress_after_prompt"
   ) {
     return "timed_out";
   }
@@ -62,6 +63,8 @@ function resolveFailurePhase(completionReason: string | null | undefined): strin
       return "bootstrap";
     case "run_deadline":
       return "run_deadline";
+    case "runtime_no_progress_after_prompt":
+      return "prompt_sent";
     case "user_cancel":
       return "user_cancel";
     case "runtime_error":
@@ -327,6 +330,20 @@ export async function emitGenerationTerminalCanonicalEvent(generationId: string)
   const attachmentCount = genRecord.executionPolicy?.queuedFileAttachments?.length ?? 0;
   const authSource = conv?.authSource ?? UNKNOWN;
   const autoApproveEnabled = genRecord.executionPolicy?.autoApprove ?? conv?.autoApprove ?? false;
+  const runtimeDiagnosticSnapshot =
+    genRecord.debugInfo &&
+    typeof genRecord.debugInfo === "object" &&
+    "runtimeDiagnosticSnapshot" in genRecord.debugInfo
+      ? (genRecord.debugInfo.runtimeDiagnosticSnapshot as
+          | {
+              id?: unknown;
+              storageKey?: unknown;
+              uploadSucceeded?: unknown;
+              timeoutMs?: unknown;
+            }
+          | null
+          | undefined)
+      : null;
 
   try {
     emitCanonicalServiceEvent({
@@ -365,6 +382,22 @@ export async function emitGenerationTerminalCanonicalEvent(generationId: string)
         "cmdclaw.runtime.id": genRecord.runtimeId ?? undefined,
         "cmdclaw.runtime.harness": genRecord.runtimeHarness ?? undefined,
         "cmdclaw.runtime.protocol_version": genRecord.runtimeProtocolVersion ?? undefined,
+        "cmdclaw.runtime.diagnostic_snapshot.id":
+          typeof runtimeDiagnosticSnapshot?.id === "string"
+            ? runtimeDiagnosticSnapshot.id
+            : undefined,
+        "cmdclaw.runtime.diagnostic_snapshot.storage_key":
+          typeof runtimeDiagnosticSnapshot?.storageKey === "string"
+            ? runtimeDiagnosticSnapshot.storageKey
+            : undefined,
+        "cmdclaw.runtime.diagnostic_snapshot.upload_succeeded":
+          typeof runtimeDiagnosticSnapshot?.uploadSucceeded === "boolean"
+            ? runtimeDiagnosticSnapshot.uploadSucceeded
+            : undefined,
+        "cmdclaw.runtime.no_progress.timeout_ms":
+          typeof runtimeDiagnosticSnapshot?.timeoutMs === "number"
+            ? runtimeDiagnosticSnapshot.timeoutMs
+            : undefined,
         "cmdclaw.generation.duration_ms": durationMs,
         "cmdclaw.phase.sandbox_startup_ms": timing?.sandboxStartupDurationMs,
         "cmdclaw.phase.sandbox_startup_mode": timing?.sandboxStartupMode,

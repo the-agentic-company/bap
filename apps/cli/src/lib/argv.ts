@@ -12,6 +12,9 @@ const KEBAB_FLAG_ALIASES = new Map<string, string>([
   ["--chaos-run-deadline", "--chaosRunDeadline"],
   ["--chaos-approval", "--chaosApproval"],
   ["--chaos-approval-park-after", "--chaosApprovalParkAfter"],
+  ["--chaos-runtime-no-progress", "--chaosRuntimeNoProgress"],
+  ["--chaos-force-runtime-no-progress", "--chaosForceRuntimeNoProgress"],
+  ["--no-chaos-force-runtime-no-progress", "--noChaosForceRuntimeNoProgress"],
   ["--attach-generation", "--attachGeneration"],
   ["--no-validate", "--noValidate"],
 ]);

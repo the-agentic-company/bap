@@ -245,6 +245,9 @@ export class GenerationContextState {
   ): Promise<void> {
     ctx.sandboxId = params.runtimeSandbox.sandboxId;
     ctx.executionEnvironment = params.executionEnvironment;
+    ctx.runtimeHarness = params.runtimeMetadata?.runtimeHarness ?? null;
+    ctx.runtimeProtocolVersion =
+      params.runtimeMetadata?.runtimeProtocolVersion ?? null;
 
     await this.deps.lifecycleStore.bindRuntimeSandbox({
       generationId: ctx.id,

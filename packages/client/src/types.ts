@@ -161,6 +161,8 @@ export type GenerationStartInput = {
   resumePausedGenerationId?: string;
   debugRunDeadlineMs?: number;
   debugApprovalHotWaitMs?: number;
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
   selectedPlatformSkillSlugs?: string[];
   fileAttachments?: { name: string; mimeType: string; dataUrl: string }[];
 };
@@ -444,7 +446,11 @@ export interface CmdclawApiClient {
     get(input: { id: string }): Promise<CoworkerDetails>;
     create(input: CoworkerCreateInput): Promise<CoworkerCreateResult>;
     getOrCreateBuilderConversation(input: { id: string }): Promise<{ conversationId: string }>;
-    trigger(input: { id: string; payload?: unknown }): Promise<CoworkerTriggerResult>;
+    trigger(input: {
+      id: string;
+      payload?: unknown;
+      debugRunDeadlineMs?: number;
+    }): Promise<CoworkerTriggerResult>;
     getRun(input: { id: string }): Promise<CoworkerRun>;
     listRuns(input: { coworkerId: string; limit: number }): Promise<CoworkerRunSummary[]>;
   };
@@ -558,6 +564,10 @@ export interface CoworkerRunner {
   list(): Promise<CoworkerSummary[]>;
   get(reference: string): Promise<CoworkerDetails>;
   create(input: CoworkerCreateInput): Promise<CoworkerCreateResult>;
-  run(reference: string, payload?: unknown): Promise<CoworkerTriggerResult>;
+  run(
+    reference: string,
+    payload?: unknown,
+    options?: { debugRunDeadlineMs?: number },
+  ): Promise<CoworkerTriggerResult>;
   logs(runId: string): Promise<CoworkerRun>;
 }

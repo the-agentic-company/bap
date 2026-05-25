@@ -60,6 +60,26 @@ _Avoid_: logs, telemetry
 One agent execution lifecycle for a conversation turn, including preparation, model streaming, tool use, interruption handling, and terminal completion or failure.
 _Avoid_: run, request
 
+**Waiting Generation**:
+A non-terminal **Generation** that is intentionally waiting for durable human action, such as approval or authentication, before it can continue.
+_Avoid_: stuck, limbo
+
+**Dormant Generation**:
+A non-terminal **Generation** that is neither making runtime progress nor waiting on a durable human action. A **Dormant Generation** is a product bug, not a normal lifecycle state.
+_Avoid_: limbo, hung run
+
+**Runtime Progress**:
+Evidence that a **Generation** has entered or advanced the runtime turn lifecycle, such as model output, tool use, runtime question or permission requests, prompt completion, or an explicit runtime terminal state. Transport connection, sandbox preparation, session creation, and cache work are not **Runtime Progress**.
+_Avoid_: activity, heartbeat, connection
+
+**Runtime Diagnostic Snapshot**:
+A redacted operational artifact captured when a **Generation** fails in the runtime boundary and ordinary telemetry is insufficient to explain the failure. A **Runtime Diagnostic Snapshot** contains safe runtime state, counters, event types, and pointers needed for debugging, but not prompts, model output, credentials, tool payloads, or file contents.
+_Avoid_: dump, logs, trace
+
+**Archived Diagnostic Sandbox**:
+A stopped provider sandbox retained temporarily after a platform-suspect **Generation** failure so operators can recover and inspect runtime filesystem state. An **Archived Diagnostic Sandbox** is an operational debugging artifact, not user-facing application state, and must have bounded retention.
+_Avoid_: preserved sandbox, sandbox dump, kept sandbox
+
 **User**:
 A person authenticated into CmdClaw. A **User** owns the set of **Connected Accounts** available to their CLI and agent runs.
 _Avoid_: account

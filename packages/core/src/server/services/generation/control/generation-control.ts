@@ -42,6 +42,8 @@ export function getExecutionPolicyFromRecord(
   allowSnapshotRestoreOnRun?: boolean;
   debugRunDeadlineMs?: number;
   debugApprovalHotWaitMs?: number;
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
   queuedFileAttachments?: UserFileAttachment[];
 } {
   const policy =
@@ -84,6 +86,9 @@ export function getExecutionPolicyFromRecord(
     allowSnapshotRestoreOnRun: policy?.allowSnapshotRestoreOnRun ?? true,
     debugRunDeadlineMs: policy?.debugRunDeadlineMs,
     debugApprovalHotWaitMs: policy?.debugApprovalHotWaitMs,
+    debugRuntimeNoProgressTimeoutMs: policy?.debugRuntimeNoProgressTimeoutMs,
+    debugForceRuntimeNoProgressAfterPrompt:
+      policy?.debugForceRuntimeNoProgressAfterPrompt,
     queuedFileAttachments: Array.isArray(policy?.queuedFileAttachments)
       ? policy.queuedFileAttachments.filter(
           (entry): entry is UserFileAttachment =>

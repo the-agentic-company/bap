@@ -313,22 +313,22 @@ export class GenerationEventLog {
                 }
               }
               observedParts = latestParts;
+            }
 
-              if (latest.status !== lastStatus) {
-                lastStatus = latest.status;
-                eventsYielded += 1;
-                yield { type: "status_change", status: latest.status };
-              }
+            if (latest.status !== lastStatus) {
+              lastStatus = latest.status;
+              eventsYielded += 1;
+              yield { type: "status_change", status: latest.status };
+            }
 
-              const pendingInterrupt =
-                latest.status === "awaiting_approval" || latest.status === "awaiting_auth"
-                  ? await generationInterruptService.getPendingInterruptForGeneration(latest.id)
-                  : null;
-              if (pendingInterrupt && emittedPendingInterruptId !== pendingInterrupt.id) {
-                emittedPendingInterruptId = pendingInterrupt.id;
-                eventsYielded += 1;
-                yield this.deps.projectInterruptPendingEvent(pendingInterrupt);
-              }
+            const pendingInterrupt =
+              latest.status === "awaiting_approval" || latest.status === "awaiting_auth"
+                ? await generationInterruptService.getPendingInterruptForGeneration(latest.id)
+                : null;
+            if (pendingInterrupt && emittedPendingInterruptId !== pendingInterrupt.id) {
+              emittedPendingInterruptId = pendingInterrupt.id;
+              eventsYielded += 1;
+              yield this.deps.projectInterruptPendingEvent(pendingInterrupt);
             }
 
             if (

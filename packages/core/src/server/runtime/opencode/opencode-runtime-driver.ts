@@ -96,6 +96,7 @@ export type OpenCodeRuntimeEventInspection = {
 
 export type OpenCodeRuntimeStreamStats = {
   eventCount: number;
+  progressEventCount: number;
   toolCallCount: number;
   permissionCount: number;
   questionCount: number;
@@ -457,6 +458,7 @@ export class OpenCodeRuntimeEventLoop {
   private currentTextPartId: string | null = null;
   private readonly stats: OpenCodeRuntimeStreamStats = {
     eventCount: 0,
+    progressEventCount: 0,
     toolCallCount: 0,
     permissionCount: 0,
     questionCount: 0,
@@ -507,6 +509,14 @@ export class OpenCodeRuntimeEventLoop {
         this.callbacks.onSessionError?.(errorMessage);
       },
     });
+    if (
+      isOpenCodeTrackedEvent(rawEvent as RuntimeEvent) ||
+      isOpenCodeActionableEvent(rawEvent as RuntimeEvent) ||
+      result.outcome === "idle" ||
+      result.errorMessage
+    ) {
+      this.stats.progressEventCount += 1;
+    }
     if (result.outcome === "error" && result.errorMessage) {
       throw new Error(result.errorMessage);
     }

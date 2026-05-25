@@ -882,6 +882,8 @@ export type GenerationExecutionPolicy = {
   allowSnapshotRestoreOnRun?: boolean;
   debugRunDeadlineMs?: number;
   debugApprovalHotWaitMs?: number;
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
   queuedFileAttachments?: Array<{
     name: string;
     mimeType: string;

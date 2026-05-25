@@ -151,6 +151,8 @@ export type StartChatGenerationInput = {
   resumePausedGenerationId?: string;
   debugRunDeadlineMs?: number;
   debugApprovalHotWaitMs?: number;
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
   allowedIntegrations?: IntegrationType[];
   fileAttachments?: UserFileAttachment[];
   selectedPlatformSkillSlugs?: string[];
@@ -171,6 +173,8 @@ export type StartCoworkerGenerationInput = {
   allowedExecutorSourceIds?: string[];
   allowedSkillSlugs?: string[];
   fileAttachments?: UserFileAttachment[];
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
 };
 
 export type GenerationRunMode = "normal_run" | "recovery_reattach";
@@ -189,6 +193,27 @@ export type GenerationDebugInfo = {
   originalErrorPhase?: string | null;
   originalErrorAt?: string | null;
   runtimeFailure?: RuntimeFailureClassification | null;
+  runtimeDiagnosticSnapshot?: {
+    id: string;
+    storageKey?: string | null;
+    capturedAt: string;
+    reason: "runtime_no_progress_after_prompt";
+    phase: "prompt_sent";
+    timeoutMs: number;
+    uploadSucceeded: boolean;
+    uploadError?: string | null;
+    sessionId?: string | null;
+    sandboxId?: string | null;
+    runtimeHarness?: string | null;
+    runtimeProtocolVersion?: string | null;
+    eventStats?: {
+      eventCount: number;
+      progressEventCount: number;
+      toolCallCount: number;
+      permissionCount: number;
+      questionCount: number;
+    };
+  } | null;
   remoteRun?: {
     targetEnv?: RemoteIntegrationSource["targetEnv"];
     remoteUserId?: string;
@@ -233,6 +258,8 @@ export interface GenerationContext {
   currentInterruptId?: string;
   runtimeCallbackToken?: string;
   runtimeId?: string;
+  runtimeHarness?: string | null;
+  runtimeProtocolVersion?: string | null;
   runtimeTurnSeq?: number;
   usage: { inputTokens: number; outputTokens: number; totalCostUsd: number };
   sessionId?: string;

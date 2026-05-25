@@ -414,6 +414,13 @@ const startGeneration = protectedProcedure
         .min(1_000)
         .max(generationLifecyclePolicy.runDeadlineMs)
         .optional(),
+      debugRuntimeNoProgressTimeoutMs: z
+        .number()
+        .int()
+        .min(1_000)
+        .max(generationLifecyclePolicy.runtimeNoProgressAfterPromptMs)
+        .optional(),
+      debugForceRuntimeNoProgressAfterPrompt: z.boolean().optional(),
       selectedPlatformSkillSlugs: z.array(z.string().max(128)).max(50).optional(),
       fileAttachments: z
         .array(
@@ -463,6 +470,8 @@ const startGeneration = protectedProcedure
         resumePausedGenerationId: input.resumePausedGenerationId,
         debugRunDeadlineMs: input.debugRunDeadlineMs,
         debugApprovalHotWaitMs: input.debugApprovalHotWaitMs,
+        debugRuntimeNoProgressTimeoutMs: input.debugRuntimeNoProgressTimeoutMs,
+        debugForceRuntimeNoProgressAfterPrompt: input.debugForceRuntimeNoProgressAfterPrompt,
         selectedPlatformSkillSlugs: input.selectedPlatformSkillSlugs,
         fileAttachments: input.fileAttachments,
       });

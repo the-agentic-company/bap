@@ -44,6 +44,7 @@ import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
 } from "../../services/lifecycle-policy";
+import { generationLifecyclePolicy } from "../../services/lifecycle-policy";
 import { GenerationSuspendedError } from "../../services/generation/core/turn-suspension";
 import { buildOpencodePromptSpecInputForContext } from "../../services/generation/prompts/opencode-prompt-context";
 import type {
@@ -53,10 +54,13 @@ import type {
   RemoteRunDebugPhase,
 } from "../../services/generation/types";
 import type { OpenCodeTurnEventBridge } from "./opencode-turn-events";
+import { captureRuntimeNoProgressDiagnosticSnapshot } from "../../services/runtime-diagnostic-snapshot-service";
 
 const OPENCODE_EARLY_STREAM_REATTACH_ATTEMPTS = 2;
 const OPENCODE_EARLY_STREAM_REATTACH_WAIT_MS = 8_000;
 const OPENCODE_STATUS_POLL_INTERVAL_MS = 500;
+const RUNTIME_NO_PROGRESS_USER_MESSAGE =
+  "The runtime stopped responding before producing any output. Please retry.";
 
 type TerminalGenerationStatus = Extract<
   GenerationStatus,
@@ -242,12 +246,31 @@ function isBootstrapTimeoutError(error: unknown): boolean {
   );
 }
 
+function resolveRuntimeNoProgressTimeoutMs(ctx: GenerationContext): number {
+  const override = ctx.executionPolicy.debugRuntimeNoProgressTimeoutMs;
+  if (override === undefined) {
+    return generationLifecyclePolicy.runtimeNoProgressAfterPromptMs;
+  }
+  if (
+    !Number.isInteger(override) ||
+    override < 1_000 ||
+    override > generationLifecyclePolicy.runtimeNoProgressAfterPromptMs
+  ) {
+    throw new Error(
+      `debugRuntimeNoProgressTimeoutMs must be an integer between 1000 and ${generationLifecyclePolicy.runtimeNoProgressAfterPromptMs}`,
+    );
+  }
+  return override;
+}
+
 export class OpenCodeNormalRunner {
   constructor(private readonly callbacks: NormalRunnerCallbacks) {}
 
   async run(ctx: GenerationContext): Promise<void> {
     let promptTimeoutTriggered = false;
+    let runtimeNoProgressTriggered = false;
     let clearPromptTimeout: (() => void) | undefined;
+    let clearRuntimeNoProgressTimeout: (() => void) | undefined;
     let client: RuntimeHarnessClient | undefined;
     try {
       if (
@@ -924,6 +947,9 @@ export class OpenCodeNormalRunner {
         await this.callbacks.parkGenerationForRunDeadline(ctx, runtimeClient);
         return;
       }
+      const runtimeNoProgressTimeoutMs = resolveRuntimeNoProgressTimeoutMs(ctx);
+      const forceRuntimeNoProgress =
+        ctx.executionPolicy.debugForceRuntimeNoProgressAfterPrompt === true;
       const promptTimeoutId = setTimeout(() => {
         promptTimeoutTriggered = true;
         promptTimeoutController.abort();
@@ -954,6 +980,7 @@ export class OpenCodeNormalRunner {
         clearPromptTimeout = undefined;
       };
       // Guard the in-flight prompt so runtime rejections stay scoped to this generation.
+      let promptResultSettled = false;
       const promptResultPromise = runtimeClient
         .prompt({
           sessionID: activeSessionId,
@@ -963,8 +990,14 @@ export class OpenCodeNormalRunner {
           model: modelConfig,
         })
         .then(
-          (data) => ({ ok: true as const, data }),
-          (error) => ({ ok: false as const, error }),
+          (data) => {
+            promptResultSettled = true;
+            return { ok: true as const, data };
+          },
+          (error) => {
+            promptResultSettled = true;
+            return { ok: false as const, error };
+          },
         );
       this.callbacks.startExternalInterruptPolling(ctx);
 
@@ -1007,8 +1040,98 @@ export class OpenCodeNormalRunner {
         },
       });
 
+      let resolveRuntimeNoProgress:
+        | ((value: { type: "runtime_no_progress" }) => void)
+        | undefined;
+      const runtimeNoProgressPromise = new Promise<{
+        type: "runtime_no_progress";
+      }>((resolve) => {
+        resolveRuntimeNoProgress = resolve;
+      });
+      if (remainingRunTimeMs > runtimeNoProgressTimeoutMs) {
+        const runtimeNoProgressTimeoutId = setTimeout(() => {
+          const snapshot = eventLoop.snapshot();
+          if (
+            (!forceRuntimeNoProgress && promptResultSettled) ||
+            (!forceRuntimeNoProgress && snapshot.stats.progressEventCount > 0) ||
+            snapshot.sawSessionIdle ||
+            snapshot.sessionErrorMessage ||
+            ctx.abortController.signal.aborted
+          ) {
+            return;
+          }
+
+          runtimeNoProgressTriggered = true;
+          promptTimeoutController.abort();
+          logServerEvent(
+            "error",
+            "OPENCODE_RUNTIME_NO_PROGRESS_AFTER_PROMPT",
+            {
+              timeoutMs: runtimeNoProgressTimeoutMs,
+              eventStats: snapshot.stats,
+            },
+            {
+              source: "generation-manager",
+              traceId: ctx.traceId,
+              generationId: ctx.id,
+              conversationId: ctx.conversationId,
+              userId: ctx.userId,
+              sessionId: activeSessionId,
+            },
+          );
+          resolveRuntimeNoProgress?.({ type: "runtime_no_progress" });
+          void runtimeClient
+            .abort({ sessionID: activeSessionId })
+            .catch((err) => {
+              console.error(
+                "[GenerationManager] Failed to abort no-progress OpenCode session:",
+                err,
+              );
+            });
+        }, runtimeNoProgressTimeoutMs);
+        clearRuntimeNoProgressTimeout = () => {
+          clearTimeout(runtimeNoProgressTimeoutId);
+          clearRuntimeNoProgressTimeout = undefined;
+        };
+      }
+
       // Process SSE events
-      await eventLoop.consume(eventStream);
+      try {
+        await eventLoop.consume(eventStream);
+      } catch (error) {
+        if (!runtimeNoProgressTriggered) {
+          throw error;
+        }
+      }
+
+      if (runtimeNoProgressTriggered) {
+        clearPromptTimeout?.();
+        clearRuntimeNoProgressTimeout?.();
+        const diagnosticSnapshot =
+          await captureRuntimeNoProgressDiagnosticSnapshot({
+            ctx,
+            runtimeClient,
+            sandbox: runtimeSandbox,
+            sandboxProvider: runtimeSandbox.provider,
+            sessionId: activeSessionId,
+            timeoutMs: runtimeNoProgressTimeoutMs,
+            promptSentAtMs,
+            eventLoopSnapshot: eventLoop.snapshot(),
+          });
+        ctx.debugInfo = {
+          ...(ctx.debugInfo ?? {}),
+          runtimeDiagnosticSnapshot: diagnosticSnapshot,
+        };
+        this.callbacks.setCompletionReason(
+          ctx,
+          "runtime_no_progress_after_prompt",
+        );
+        this.callbacks.markPhase(ctx, "runtime_no_progress_after_prompt");
+        ctx.errorMessage = RUNTIME_NO_PROGRESS_USER_MESSAGE;
+        this.callbacks.scheduleSave(ctx);
+        await this.callbacks.finishGeneration(ctx, "error");
+        return;
+      }
 
       if (
         !eventLoop.snapshot().sawSessionIdle &&
@@ -1016,8 +1139,8 @@ export class OpenCodeNormalRunner {
         !ctx.abortController.signal.aborted &&
         !promptTimeoutTriggered
       ) {
-        const terminalOutcome =
-          await waitForOpenCodeTerminalStateAfterEarlyStreamEnd({
+        const terminalOutcomeResult = await Promise.race([
+          waitForOpenCodeTerminalStateAfterEarlyStreamEnd({
             runtimeClient,
             sessionId: activeSessionId,
             maxReattachAttempts: OPENCODE_EARLY_STREAM_REATTACH_ATTEMPTS,
@@ -1025,7 +1148,10 @@ export class OpenCodeNormalRunner {
             statusPollIntervalMs: OPENCODE_STATUS_POLL_INTERVAL_MS,
             getRemainingRunTimeMs: () =>
               this.callbacks.getRemainingRunTimeMs(ctx),
-            isAbortRequested: () => ctx.abortController.signal.aborted,
+            isAbortRequested: () =>
+              ctx.abortController.signal.aborted ||
+              runtimeNoProgressTriggered ||
+              promptTimeoutTriggered,
             refreshCancellationSignal: () =>
               this.callbacks.refreshCancellationSignal(ctx),
             pollExternalInterruptAndSuspendIfNeeded: () =>
@@ -1049,7 +1175,38 @@ export class OpenCodeNormalRunner {
                 error,
               );
             },
-          });
+          }).then((value) => ({ type: "terminal" as const, value })),
+          runtimeNoProgressPromise,
+        ]);
+        if (terminalOutcomeResult.type === "runtime_no_progress") {
+          clearPromptTimeout?.();
+          clearRuntimeNoProgressTimeout?.();
+          const diagnosticSnapshot =
+            await captureRuntimeNoProgressDiagnosticSnapshot({
+              ctx,
+              runtimeClient,
+              sandbox: runtimeSandbox,
+              sandboxProvider: runtimeSandbox.provider,
+              sessionId: activeSessionId,
+              timeoutMs: runtimeNoProgressTimeoutMs,
+              promptSentAtMs,
+              eventLoopSnapshot: eventLoop.snapshot(),
+            });
+          ctx.debugInfo = {
+            ...(ctx.debugInfo ?? {}),
+            runtimeDiagnosticSnapshot: diagnosticSnapshot,
+          };
+          this.callbacks.setCompletionReason(
+            ctx,
+            "runtime_no_progress_after_prompt",
+          );
+          this.callbacks.markPhase(ctx, "runtime_no_progress_after_prompt");
+          ctx.errorMessage = RUNTIME_NO_PROGRESS_USER_MESSAGE;
+          this.callbacks.scheduleSave(ctx);
+          await this.callbacks.finishGeneration(ctx, "error");
+          return;
+        }
+        const terminalOutcome = terminalOutcomeResult.value;
         if (terminalOutcome === "idle") {
           reconciledTerminalIdle = true;
           if (!ctx.phaseMarks?.session_idle) {
@@ -1072,13 +1229,39 @@ export class OpenCodeNormalRunner {
         }
       }
 
-      const promptResultOutcome =
-        await this.callbacks.awaitPromiseUntilRunDeadline(
-          ctx,
-          promptResultPromise,
-        );
+      const promptResultOutcome = await Promise.race([
+        this.callbacks.awaitPromiseUntilRunDeadline(ctx, promptResultPromise),
+        runtimeNoProgressPromise,
+      ]);
       this.callbacks.stopExternalInterruptPolling(ctx);
       clearPromptTimeout?.();
+      clearRuntimeNoProgressTimeout?.();
+      if (promptResultOutcome.type === "runtime_no_progress") {
+        const diagnosticSnapshot =
+          await captureRuntimeNoProgressDiagnosticSnapshot({
+            ctx,
+            runtimeClient,
+            sandbox: runtimeSandbox,
+            sandboxProvider: runtimeSandbox.provider,
+            sessionId: activeSessionId,
+            timeoutMs: runtimeNoProgressTimeoutMs,
+            promptSentAtMs,
+            eventLoopSnapshot: eventLoop.snapshot(),
+          });
+        ctx.debugInfo = {
+          ...(ctx.debugInfo ?? {}),
+          runtimeDiagnosticSnapshot: diagnosticSnapshot,
+        };
+        this.callbacks.setCompletionReason(
+          ctx,
+          "runtime_no_progress_after_prompt",
+        );
+        this.callbacks.markPhase(ctx, "runtime_no_progress_after_prompt");
+        ctx.errorMessage = RUNTIME_NO_PROGRESS_USER_MESSAGE;
+        this.callbacks.scheduleSave(ctx);
+        await this.callbacks.finishGeneration(ctx, "error");
+        return;
+      }
       if (promptResultOutcome.type === "timed_out" || promptTimeoutTriggered) {
         await this.callbacks.parkGenerationForRunDeadline(ctx, runtimeClient);
         return;
@@ -1292,6 +1475,7 @@ export class OpenCodeNormalRunner {
     } catch (error) {
       this.callbacks.stopExternalInterruptPolling(ctx);
       clearPromptTimeout?.();
+      clearRuntimeNoProgressTimeout?.();
       if (error instanceof GenerationSuspendedError) {
         logServerEvent(
           "info",

@@ -1,5 +1,6 @@
 export const generationLifecyclePolicy = {
   bootstrapTimeoutMs: 90_000,
+  runtimeNoProgressAfterPromptMs: 90_000,
   runDeadlineMs: 15 * 60 * 1000,
   activeSandboxTimeoutMs: 20 * 60 * 1000,
   approvalHotWaitMs: 60_000,
@@ -18,6 +19,7 @@ export type GenerationCompletionReason =
   | "bootstrap_timeout"
   | "approval_timeout"
   | "auth_timeout"
+  | "runtime_no_progress_after_prompt"
   | "infra_disconnect"
   | "sandbox_missing"
   | "broken_runtime_state"

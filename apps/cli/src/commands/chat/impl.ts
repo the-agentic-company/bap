@@ -46,6 +46,8 @@ type ChatFlags = {
   chaosRunDeadline?: string;
   chaosApproval: "ask" | "defer";
   chaosApprovalParkAfter?: string;
+  chaosRuntimeNoProgress?: string;
+  chaosForceRuntimeNoProgress?: boolean;
   attach?: string;
   attachGeneration?: string;
   validate: boolean;
@@ -74,6 +76,8 @@ type ChatState = {
   chaosApproval: "ask" | "defer";
   debugRunDeadlineMs?: number;
   debugApprovalHotWaitMs?: number;
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
   validate: boolean;
 };
 
@@ -591,6 +595,10 @@ async function runOneGeneration(
             resumePausedGenerationId: target.resumePausedGenerationId,
             debugRunDeadlineMs: target.debugRunDeadlineMsOverride ?? state.debugRunDeadlineMs,
             debugApprovalHotWaitMs: state.debugApprovalHotWaitMs,
+            debugRuntimeNoProgressTimeoutMs:
+              state.debugRuntimeNoProgressTimeoutMs,
+            debugForceRuntimeNoProgressAfterPrompt:
+              state.debugForceRuntimeNoProgressAfterPrompt,
             fileAttachments: target.attachments?.length ? target.attachments : undefined,
           },
         }
@@ -1002,6 +1010,9 @@ export default async function (this: LocalContext, flags: ChatFlags): Promise<vo
   const debugApprovalHotWaitMs = flags.chaosApprovalParkAfter
     ? parseChaosDurationMs(flags.chaosApprovalParkAfter)
     : undefined;
+  const debugRuntimeNoProgressTimeoutMs = flags.chaosRuntimeNoProgress
+    ? parseChaosDurationMs(flags.chaosRuntimeNoProgress)
+    : undefined;
 
   const serverUrl = resolveServerUrl(flags.server);
   if (flags.token) {
@@ -1028,6 +1039,9 @@ export default async function (this: LocalContext, flags: ChatFlags): Promise<vo
     chaosApproval: flags.chaosApproval,
     debugRunDeadlineMs,
     debugApprovalHotWaitMs,
+    debugRuntimeNoProgressTimeoutMs,
+    debugForceRuntimeNoProgressAfterPrompt:
+      flags.chaosForceRuntimeNoProgress ?? false,
     validate: flags.validate,
     file: flags.file ?? [],
     perfettoTrace: flags.perfettoTrace ?? false,

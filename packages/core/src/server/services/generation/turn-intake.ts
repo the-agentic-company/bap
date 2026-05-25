@@ -47,6 +47,8 @@ export type StartGenerationInput = {
   resumePausedGenerationId?: string;
   debugRunDeadlineMs?: number;
   debugApprovalHotWaitMs?: number;
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
   allowedIntegrations?: IntegrationType[];
   fileAttachments?: UserFileAttachment[];
   selectedPlatformSkillSlugs?: string[];
@@ -70,6 +72,9 @@ export type StartCoworkerGenerationInput = {
   allowedSkillSlugs?: string[];
   fileAttachments?: UserFileAttachment[];
   remoteIntegrationSource?: RemoteIntegrationSource;
+  debugRunDeadlineMs?: number;
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
   syntheticKind?: SyntheticTrafficKind;
 };
 
@@ -104,6 +109,12 @@ export class TurnIntake {
       params.debugApprovalHotWaitMs === undefined
         ? undefined
         : resolveApprovalHotWaitMs(params.debugApprovalHotWaitMs);
+    const debugRuntimeNoProgressTimeoutMs =
+      params.debugRuntimeNoProgressTimeoutMs === undefined
+        ? undefined
+        : resolveRuntimeNoProgressTimeoutMs(
+            params.debugRuntimeNoProgressTimeoutMs,
+          );
     const fileAttachments = params.fileAttachments;
     const requestedModel = model?.trim();
     if (requestedModel) {
@@ -420,6 +431,9 @@ export class TurnIntake {
       queuedFileAttachments: fileAttachments,
       debugRunDeadlineMs: params.debugRunDeadlineMs,
       debugApprovalHotWaitMs,
+      debugRuntimeNoProgressTimeoutMs,
+      debugForceRuntimeNoProgressAfterPrompt:
+        params.debugForceRuntimeNoProgressAfterPrompt,
     });
     const lifecycle = createGenerationLifecycle();
     lifecycle.deadlineAt = new Date(lifecycle.lastRuntimeEventAt.getTime() + runDeadlineMs);
@@ -539,6 +553,12 @@ export class TurnIntake {
     );
     const { platformSkillSlugs } = splitCoworkerAllowedSkillSlugs(normalizedAllowedSkillSlugs);
     const selectedPlatformSkillSlugs = await resolveSelectedPlatformSkillSlugs(platformSkillSlugs);
+    const debugRuntimeNoProgressTimeoutMs =
+      params.debugRuntimeNoProgressTimeoutMs === undefined
+        ? undefined
+        : resolveRuntimeNoProgressTimeoutMs(
+            params.debugRuntimeNoProgressTimeoutMs,
+          );
 
     const title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
     const [newConv] = await db
@@ -586,9 +606,15 @@ export class TurnIntake {
       sandboxProvider: params.sandboxProvider,
       selectedPlatformSkillSlugs,
       queuedFileAttachments: params.fileAttachments,
+      debugRunDeadlineMs: params.debugRunDeadlineMs,
+      debugRuntimeNoProgressTimeoutMs,
+      debugForceRuntimeNoProgressAfterPrompt:
+        params.debugForceRuntimeNoProgressAfterPrompt,
     });
     const traceId = createTraceId();
     const lifecycle = createGenerationLifecycle();
+    const runDeadlineMs = resolveGenerationRunDeadlineMs(params.debugRunDeadlineMs);
+    lifecycle.deadlineAt = new Date(lifecycle.lastRuntimeEventAt.getTime() + runDeadlineMs);
     const [genRecord] = await db
       .insert(generation)
       .values({
@@ -604,7 +630,7 @@ export class TurnIntake {
         outputTokens: 0,
         traceId,
         deadlineAt: lifecycle.deadlineAt,
-        remainingRunMs: generationLifecyclePolicy.runDeadlineMs,
+        remainingRunMs: runDeadlineMs,
         lastRuntimeEventAt: lifecycle.lastRuntimeEventAt,
         recoveryAttempts: lifecycle.recoveryAttempts,
         completionReason: lifecycle.completionReason,
@@ -678,6 +704,8 @@ function buildExecutionPolicy(params: {
   queuedFileAttachments?: UserFileAttachment[];
   debugRunDeadlineMs?: number;
   debugApprovalHotWaitMs?: number;
+  debugRuntimeNoProgressTimeoutMs?: number;
+  debugForceRuntimeNoProgressAfterPrompt?: boolean;
 }): GenerationExecutionPolicy {
   return {
     allowedIntegrations: params.allowedIntegrations,
@@ -692,6 +720,10 @@ function buildExecutionPolicy(params: {
     queuedFileAttachments: params.queuedFileAttachments,
     debugRunDeadlineMs: params.debugRunDeadlineMs,
     debugApprovalHotWaitMs: params.debugApprovalHotWaitMs,
+    debugRuntimeNoProgressTimeoutMs:
+      params.debugRuntimeNoProgressTimeoutMs,
+    debugForceRuntimeNoProgressAfterPrompt:
+      params.debugForceRuntimeNoProgressAfterPrompt,
   };
 }
 
@@ -725,6 +757,25 @@ function resolveApprovalHotWaitMs(debugApprovalHotWaitMs: number | undefined): n
     );
   }
   return debugApprovalHotWaitMs;
+}
+
+function resolveRuntimeNoProgressTimeoutMs(
+  debugRuntimeNoProgressTimeoutMs: number | undefined,
+): number {
+  if (debugRuntimeNoProgressTimeoutMs === undefined) {
+    return generationLifecyclePolicy.runtimeNoProgressAfterPromptMs;
+  }
+  if (
+    !Number.isInteger(debugRuntimeNoProgressTimeoutMs) ||
+    debugRuntimeNoProgressTimeoutMs < 1_000 ||
+    debugRuntimeNoProgressTimeoutMs >
+      generationLifecyclePolicy.runtimeNoProgressAfterPromptMs
+  ) {
+    throw new Error(
+      `debugRuntimeNoProgressTimeoutMs must be an integer between 1000 and ${generationLifecyclePolicy.runtimeNoProgressAfterPromptMs}`,
+    );
+  }
+  return debugRuntimeNoProgressTimeoutMs;
 }
 
 function buildInitialDebugInfo(

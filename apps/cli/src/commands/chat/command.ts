@@ -73,6 +73,17 @@ export const chatCommand = buildCommand({
         optional: true,
         brief: "Debug: park a pending approval after this hot-wait duration (for example 5s)",
       },
+      chaosRuntimeNoProgress: {
+        kind: "parsed",
+        parse: (input: string) => input,
+        optional: true,
+        brief: "Debug: override the post-prompt no-progress watchdog (for example 2s)",
+      },
+      chaosForceRuntimeNoProgress: {
+        kind: "boolean",
+        optional: true,
+        brief: "Debug: force the no-progress watchdog to ignore runtime progress events",
+      },
       attach: {
         kind: "parsed",
         parse: (input: string) => input,

@@ -3719,6 +3719,77 @@ describe("generationManager transitions", () => {
     );
   });
 
+  it("replays pending approval state even when the Redis generation stream still exists", async () => {
+    vi.useFakeTimers();
+    const ctx = createCtx({
+      status: "awaiting_approval",
+      pendingApproval: {
+        toolUseId: "tool-pending",
+        toolName: "Bash",
+        toolInput: { command: "rm -rf /tmp/x" },
+        requestedAt: new Date().toISOString(),
+        integration: "slack",
+        operation: "send",
+        command: "rm -rf /tmp/x",
+      },
+      pendingAuth: null,
+    });
+
+    const mgr = asTestManager();
+    mgr.activeGenerations.set(ctx.id, ctx);
+    generationStreamExistsMock.mockResolvedValue(true);
+    generationFindFirstMock
+      .mockResolvedValueOnce({
+        id: ctx.id,
+        conversationId: ctx.conversationId,
+        status: "awaiting_approval",
+        messageId: null,
+        inputTokens: 0,
+        outputTokens: 0,
+        errorMessage: null,
+        conversation: {
+          userId: ctx.userId,
+          type: "chat",
+        },
+        contentParts: [],
+        pendingApproval: ctx.pendingApproval,
+        pendingAuth: null,
+      })
+      .mockResolvedValueOnce({
+        id: ctx.id,
+        conversationId: ctx.conversationId,
+        status: "awaiting_approval",
+        messageId: null,
+        inputTokens: 0,
+        outputTokens: 0,
+        errorMessage: null,
+        conversation: {
+          userId: ctx.userId,
+          type: "chat",
+        },
+        contentParts: [],
+        pendingApproval: ctx.pendingApproval,
+        pendingAuth: null,
+      });
+
+    const stream = generationManager.subscribeToGeneration(ctx.id, ctx.userId);
+    await vi.advanceTimersByTimeAsync(500);
+    const first = await stream.next();
+    const second = await stream.next();
+
+    expect([first.value, second.value]).toEqual([
+      { type: "status_change", status: "awaiting_approval" },
+      expect.objectContaining({
+        type: "interrupt_pending",
+        generationId: ctx.id,
+        providerToolUseId: "tool-pending",
+        status: "pending",
+      }),
+    ]);
+    await stream.return(undefined);
+    vi.useRealTimers();
+  });
+
   it("dispatches runGeneration to session reset and opencode backend", async () => {
     const mgr = asTestManager();
     const resetSpy = vi
@@ -6512,6 +6583,122 @@ describe("generationManager transitions", () => {
     vi.useRealTimers();
   });
 
+  it("fails runRuntimeGeneration after prompt send when OpenCode emits no runtime progress", async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(env, "ANTHROPIC_API_KEY", {
+      value: "test-key",
+      configurable: true,
+    });
+
+    vi.mocked(getCliEnvForUser).mockResolvedValue({});
+    vi.mocked(getEnabledIntegrationTypes).mockResolvedValue([]);
+    vi.mocked(getCliInstructionsWithCustom).mockResolvedValue("");
+    vi.mocked(syncMemoryFilesToSandbox).mockResolvedValue([]);
+    vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
+    vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
+    dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
+      createExecutorPreparationMock(),
+    );
+    vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
+    vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
+    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
+    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("");
+    vi.mocked(collectNewSandboxFiles).mockResolvedValue([]);
+
+    const promptDeferred = createDeferred<void>();
+    vi.mocked(getOrCreateConversationRuntime).mockResolvedValue(
+      createConversationRuntimeMock({
+        promptMock: vi.fn(() => promptDeferred.promise),
+        subscribeMock: vi.fn().mockResolvedValue({
+          stream: asAsyncIterable([{ type: "server.connected", properties: {} }]),
+        }),
+        getSessionMock: vi.fn().mockResolvedValue({
+          data: {
+            id: "session-1",
+            status: "busy",
+            prompt: "do not persist this prompt",
+            token: "secret-token",
+          },
+          error: null,
+        }),
+        messagesMock: vi.fn().mockResolvedValue({
+          data: [
+            {
+              info: { role: "assistant" },
+              parts: [{ type: "text", text: "do not persist this output" }],
+            },
+          ],
+          error: null,
+        }),
+        statusMock: vi.fn().mockResolvedValue({
+          data: { "session-1": { type: "busy" } },
+          error: null,
+        }),
+        readFile: vi.fn().mockResolvedValue(
+          "user prompt: do not persist\n[OpenCode][EVENT] type=server.connected\n",
+        ),
+      }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
+    );
+
+    const mgr = asTestManager();
+    const parkSpy = vi
+      .spyOn(mgr as never, "parkGenerationForRunDeadline")
+      .mockResolvedValue(undefined);
+    const finishSpy = vi
+      .spyOn(mgr, "finishGeneration")
+      .mockResolvedValue(undefined);
+
+    const ctx = createCtx({
+      id: "gen-no-progress",
+      conversationId: "conv-no-progress",
+      model: "anthropic/claude-sonnet-4-6",
+      deadlineAt: new Date(Date.now() + 60_000),
+      executionPolicy: {
+        allowSnapshotRestoreOnRun: false,
+        debugRuntimeNoProgressTimeoutMs: 1_000,
+      },
+    });
+    const runPromise = mgr.runRuntimeGeneration(ctx);
+
+    await vi.advanceTimersByTimeAsync(1_100);
+    await runPromise;
+
+    expect(parkSpy).not.toHaveBeenCalled();
+    expect(ctx.completionReason).toBe("runtime_no_progress_after_prompt");
+    expect(ctx.errorMessage).toBe(
+      "The runtime stopped responding before producing any output. Please retry.",
+    );
+    expect(ctx.debugInfo?.runtimeDiagnosticSnapshot).toEqual(
+      expect.objectContaining({
+        reason: "runtime_no_progress_after_prompt",
+        phase: "prompt_sent",
+        timeoutMs: 1_000,
+        uploadSucceeded: true,
+        eventStats: expect.objectContaining({
+          eventCount: 1,
+          progressEventCount: 0,
+        }),
+      }),
+    );
+    expect(uploadToS3Mock).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^runtime-diagnostic-snapshots\/gen-no-progress\/.+\.json$/,
+      ),
+      expect.any(Buffer),
+      "application/json",
+    );
+    expect(uploadToS3Mock.mock.calls[0]?.[1].toString()).toContain(
+      '"reason": "runtime_no_progress_after_prompt"',
+    );
+    const snapshotBody = uploadToS3Mock.mock.calls[0]?.[1].toString() ?? "";
+    expect(snapshotBody).not.toContain("do not persist this prompt");
+    expect(snapshotBody).not.toContain("do not persist this output");
+    expect(snapshotBody).not.toContain("secret-token");
+    expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
+    vi.useRealTimers();
+  });
+
   it("reattaches to a live session without resending the prompt", async () => {
     Object.defineProperty(env, "ANTHROPIC_API_KEY", {
       value: "test-key",
@@ -7553,9 +7740,9 @@ describe("generationManager transitions", () => {
 
     expect(summary).toEqual({
       scanned: 4,
-      stale: 1,
+      stale: 3,
       finalizedRunningAsError: 1,
-      finalizedWaitingAsError: 0,
+      finalizedWaitingAsError: 2,
     });
 
     expect(updateSetMock.mock.calls).toEqual(
@@ -7574,8 +7761,16 @@ describe("generationManager transitions", () => {
       ]),
     );
     expect(mgr.activeGenerations.has("gen-stale-running")).toBe(false);
-    expect(mgr.activeGenerations.has("gen-stale-approval")).toBe(true);
-    expect(mgr.activeGenerations.has("gen-stale-auth")).toBe(true);
+    expect(mgr.activeGenerations.has("gen-stale-approval")).toBe(false);
+    expect(mgr.activeGenerations.has("gen-stale-auth")).toBe(false);
     expect(mgr.activeGenerations.has("gen-fresh-running")).toBe(true);
+    expect(resolveInterruptMock).toHaveBeenCalledWith({
+      interruptId: "interrupt-stale-approval",
+      status: "expired",
+    });
+    expect(resolveInterruptMock).toHaveBeenCalledWith({
+      interruptId: "interrupt-stale-auth",
+      status: "expired",
+    });
   });
 });
