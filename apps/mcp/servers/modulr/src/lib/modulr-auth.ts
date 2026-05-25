@@ -9,14 +9,19 @@ type ManagedModulrClaims = {
   internalKey?: string;
 };
 
-export async function getManagedModulrCredentialsForTool(
-  extra?: ToolExtraArguments,
-): Promise<ModulrCredentials> {
+export function getManagedModulrClaims(extra?: ToolExtraArguments): ManagedModulrClaims {
   const claims = extra?.authInfo?.extra as ManagedModulrClaims | undefined;
   const isModulrAudience = claims?.audience === "modulr" || claims?.internalKey === "modulr";
   if (!claims?.userId || !claims.workspaceId || !isModulrAudience) {
     throw new Error("Managed Modulr MCP authentication is required.");
   }
+  return claims;
+}
+
+export async function getManagedModulrCredentialsForTool(
+  extra?: ToolExtraArguments,
+): Promise<ModulrCredentials> {
+  const claims = getManagedModulrClaims(extra);
 
   return getManagedModulrCredentials({
     userId: claims.userId,

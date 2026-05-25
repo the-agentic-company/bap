@@ -33,6 +33,7 @@
     "@cmdclaw/client": "workspace:*",
     "@cmdclaw/core": "workspace:*",
     "@cmdclaw/message-format": "workspace:*",
+    "pdf-parse": "^2.4.5",
     "xmcp": "0.6.5",
     "zod": "^4.1.13"
   },
