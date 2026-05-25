@@ -149,4 +149,66 @@ describe("OpenCodeEventTranslator", () => {
     expect(String(toolResult?.content)).toContain("... (output truncated)");
     expect(String(toolResult?.content).length).toBeLessThanOrEqual(100_024);
   });
+
+  it("sanitizes NUL bytes from OpenCode content before storing content parts", async () => {
+    const translator = createTranslator();
+    const ctx = createContext({
+      messageRoles: new Map([["assistant-msg", "assistant"]]),
+    });
+
+    const baseEvent = {
+      type: "message.part.updated",
+      properties: {
+        part: {
+          id: "tool-part-1",
+          type: "tool",
+          tool: "webfetch",
+          callID: "tool-1",
+          messageID: "assistant-msg",
+        },
+      },
+    };
+
+    await translator.processEvent({
+      ctx,
+      event: {
+        ...baseEvent,
+        properties: {
+          part: {
+            ...baseEvent.properties.part,
+            state: {
+              status: "running",
+              input: { url: "https://example.com/\u0000" },
+            },
+          },
+        },
+      } as unknown as OpenCodeTrackedEvent,
+      currentTextPart: null,
+      currentTextPartId: null,
+      setCurrentTextPart: () => {},
+    });
+
+    await translator.processEvent({
+      ctx,
+      event: {
+        ...baseEvent,
+        properties: {
+          part: {
+            ...baseEvent.properties.part,
+            state: {
+              status: "completed",
+              output: "before\u0000after",
+            },
+          },
+        },
+      } as unknown as OpenCodeTrackedEvent,
+      currentTextPart: null,
+      currentTextPartId: null,
+      setCurrentTextPart: () => {},
+    });
+
+    const serializedParts = JSON.stringify(ctx.contentParts);
+    expect(serializedParts).not.toContain("\\u0000");
+    expect(serializedParts).toContain("before�after");
+  });
 });

@@ -5,6 +5,7 @@ import type {
   RuntimeQuestionRequest,
 } from "../../sandbox/core/types";
 import type { GenerationEvent } from "../../services/generation/types";
+import { sanitizeJsonForPostgres, sanitizePostgresText } from "../../utils/postgres-json";
 
 const PENDING_MESSAGE_PARTS_MAX_PER_MESSAGE = 100;
 const PENDING_MESSAGE_PARTS_TTL_MS = 5 * 60 * 1000;
@@ -269,7 +270,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
         const isNewPart = partId !== currentTextPartId;
         const userText = ctx.userMessageContent.trim();
         const normalizedUserText = userText.trim().replace(/\s+/g, " ");
-        let effectiveFullText = fullText;
+        let effectiveFullText = sanitizePostgresText(fullText);
 
         const dropEchoPrefix = (value: string): string => {
           let next = value;
@@ -286,7 +287,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
           if (normalizedFullText === normalizedUserText) {
             return;
           }
-          effectiveFullText = dropEchoPrefix(fullText);
+          effectiveFullText = sanitizePostgresText(dropEchoPrefix(fullText));
         }
 
         const previousLength = isNewPart ? 0 : (currentTextPart?.text.length ?? 0);
@@ -316,7 +317,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
 
     if (part.type === "reasoning") {
       setCurrentTextPart(null, null);
-      const fullReasoning = part.text ?? "";
+      const fullReasoning = sanitizePostgresText(part.text ?? "");
       const existingThinking = ctx.contentParts.find(
         (p): p is ContentPart & { type: "thinking" } => p.type === "thinking" && p.id === partId,
       );
@@ -355,7 +356,9 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
       setCurrentTextPart(null, null);
       const toolUseId = part.callID;
       const toolName = part.tool;
-      const toolInput = "input" in part.state ? (part.state.input as Record<string, unknown>) : {};
+      const toolInput = sanitizeJsonForPostgres(
+        "input" in part.state ? (part.state.input as Record<string, unknown>) : {},
+      );
       if (part.messageID) {
         ctx.runtimeTools ??= new Map();
         ctx.runtimeTools.set(toolUseId, {
@@ -414,7 +417,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
           ) {
             return;
           }
-          const result = limitToolResultContent(part.state.output);
+          const result = sanitizeJsonForPostgres(limitToolResultContent(part.state.output));
           this.callbacks.broadcast(ctx, {
             type: "tool_result",
             toolName: existingToolUse.name,
@@ -447,7 +450,9 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
           ) {
             return;
           }
-          const result = limitToolResultContent({ error: part.state.error });
+          const result = sanitizeJsonForPostgres(
+            limitToolResultContent({ error: part.state.error }),
+          );
           this.callbacks.broadcast(ctx, {
             type: "tool_result",
             toolName: existingToolUse.name,

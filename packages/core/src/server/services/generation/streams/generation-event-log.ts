@@ -16,6 +16,7 @@ import {
   type GenerationStreamEnvelope,
 } from "../../../redis/generation-event-bus";
 import { createTraceId, logServerEvent } from "../../../utils/observability";
+import { sanitizeJsonForPostgres } from "../../../utils/postgres-json";
 import { generationInterruptService, type GenerationInterruptRecord } from "../../generation-interrupt-service";
 import type { GenerationEvent, GenerationStreamEvent } from "../types";
 import { buildGenerationReplayPartEvent } from "./replay-events";
@@ -610,7 +611,7 @@ export class GenerationEventLog {
     await db.insert(coworkerRunEvent).values({
       coworkerRunId,
       type: event.type,
-      payload: event,
+      payload: sanitizeJsonForPostgres(event),
     });
   }
 }

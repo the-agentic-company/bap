@@ -21,6 +21,7 @@ import {
   type RemoteIntegrationSource,
 } from "../integrations/remote-integrations";
 import { logServerEvent } from "../utils/observability";
+import { sanitizeJsonForPostgres, sanitizePostgresText } from "../utils/postgres-json";
 import { generationManager } from "./generation-manager";
 import { generationInterruptService } from "./generation-interrupt-service";
 
@@ -288,7 +289,7 @@ export async function triggerCoworkerRun(params: {
       ownerId: wf.ownerId,
       workspaceId: wf.workspaceId,
       status: "running",
-      triggerPayload: params.triggerPayload,
+      triggerPayload: sanitizeJsonForPostgres(params.triggerPayload),
       syntheticKind: params.syntheticKind,
     })
     .returning();
@@ -296,10 +297,14 @@ export async function triggerCoworkerRun(params: {
   await db.insert(coworkerRunEvent).values({
     coworkerRunId: run.id,
     type: "trigger",
-    payload: params.triggerPayload ?? {},
+    payload: sanitizeJsonForPostgres(params.triggerPayload ?? {}),
   });
 
-  const payloadText = JSON.stringify(params.triggerPayload ?? {}, null, 2);
+  const payloadText = JSON.stringify(
+    sanitizeJsonForPostgres(params.triggerPayload ?? {}),
+    null,
+    2,
+  );
   const coworkerSections = [
     wf.prompt?.trim() ? `## Coworker Instructions\n${wf.prompt}` : null,
     wf.promptDo?.trim() ? `## Do\n${wf.promptDo}` : null,
@@ -456,7 +461,7 @@ export async function triggerCoworkerRun(params: {
   } catch (error) {
     const errorMessage =
       error instanceof Error
-        ? error.message
+        ? sanitizePostgresText(error.message)
         : "Failed to start coworker generation";
 
     await db

@@ -353,6 +353,31 @@ describe("triggerCoworkerRun", () => {
     );
   });
 
+  it("sanitizes NUL bytes from coworker trigger payloads before DB writes and generation prompts", async () => {
+    await triggerCoworkerRun({
+      coworkerId: "wf-1",
+      triggerPayload: { source: "manual", message: "before\u0000after" },
+      userId: "user-1",
+      userRole: "admin",
+    });
+
+    const triggerEventCall = insertValuesMock.mock.calls.find(
+      (call) =>
+        call[0] &&
+        typeof call[0] === "object" &&
+        "type" in (call[0] as Record<string, unknown>) &&
+        (call[0] as Record<string, unknown>).type === "trigger",
+    );
+
+    expect(JSON.stringify(triggerEventCall?.[0])).not.toContain("\\u0000");
+    expect(JSON.stringify(triggerEventCall?.[0])).toContain("before�after");
+    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("before�after"),
+      }),
+    );
+  });
+
   it("uses the saved coworker model for the run", async () => {
     coworkerFindFirstMock.mockResolvedValue({
       id: "wf-1",

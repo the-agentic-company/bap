@@ -14,6 +14,7 @@ import { captureGenerationFailureAlert } from "../../failure-alert-service";
 import { generationInterruptService } from "../../generation-interrupt-service";
 import { conversationRuntimeService } from "../../conversation-runtime-service";
 import { generateConversationTitle } from "../../../utils/generate-title";
+import { sanitizeJsonForPostgres, sanitizePostgresText } from "../../../utils/postgres-json";
 import type { ProviderAuthSource } from "../../../../lib/provider-auth-source";
 import type {
   AppendProgressInput,
@@ -216,10 +217,13 @@ export class GenerationLifecycleStore {
   }
 
   async appendProgress(input: AppendProgressInput): Promise<void> {
+    const contentParts = sanitizeJsonForPostgres(input.contentParts);
+    const debugInfo = sanitizeJsonForPostgres(input.debugInfo ?? null);
+
     await db
       .update(generation)
       .set({
-        contentParts: input.contentParts.length > 0 ? input.contentParts : null,
+        contentParts: contentParts.length > 0 ? contentParts : null,
         ...(input.usage
           ? {
               inputTokens: input.usage.inputTokens,
@@ -235,7 +239,7 @@ export class GenerationLifecycleStore {
         resumeInterruptId: input.resumeInterruptId ?? null,
         ...(input.recoveryAttempts !== undefined ? { recoveryAttempts: input.recoveryAttempts } : {}),
         completionReason: input.completionReason ?? null,
-        debugInfo: (input.debugInfo ?? null) as Record<string, unknown> | null,
+        debugInfo: debugInfo as Record<string, unknown> | null,
       })
       .where(eq(generation.id, input.generationId));
   }
@@ -244,22 +248,26 @@ export class GenerationLifecycleStore {
     generationId: string;
     contentParts: ContentPart[];
   }): Promise<void> {
+    const contentParts = sanitizeJsonForPostgres(input.contentParts);
+
     await db
       .update(generation)
       .set({
-        contentParts: input.contentParts.length > 0 ? input.contentParts : null,
+        contentParts: contentParts.length > 0 ? contentParts : null,
       })
       .where(eq(generation.id, input.generationId));
   }
 
   async resumeAfterDecision(input: ResumeAfterDecisionInput): Promise<void> {
+    const contentParts = input.contentParts
+      ? sanitizeJsonForPostgres(input.contentParts)
+      : undefined;
+
     await db
       .update(generation)
       .set({
         status: "running",
-        ...(input.contentParts
-          ? { contentParts: input.contentParts.length > 0 ? input.contentParts : null }
-          : {}),
+        ...(contentParts ? { contentParts: contentParts.length > 0 ? contentParts : null } : {}),
         ...(input.clearPendingApproval ? { pendingApproval: null } : {}),
         ...(input.clearPendingAuth ? { pendingAuth: null } : {}),
         isPaused: false,
@@ -374,6 +382,8 @@ export class GenerationLifecycleStore {
   }
 
   async pauseForRunDeadline(input: PauseForRunDeadlineInput): Promise<void> {
+    const contentParts = sanitizeJsonForPostgres(input.contentParts);
+
     await db
       .update(generation)
       .set({
@@ -386,7 +396,7 @@ export class GenerationLifecycleStore {
         sandboxId: null,
         pendingApproval: null,
         pendingAuth: null,
-        contentParts: input.contentParts.length > 0 ? input.contentParts : null,
+        contentParts: contentParts.length > 0 ? contentParts : null,
         lastRuntimeEventAt: input.lastRuntimeEventAt,
       })
       .where(eq(generation.id, input.generationId));
@@ -408,6 +418,8 @@ export class GenerationLifecycleStore {
   }
 
   async suspendForInterrupt(input: SuspendForInterruptInput): Promise<void> {
+    const contentParts = sanitizeJsonForPostgres(input.contentParts);
+
     await db
       .update(generation)
       .set({
@@ -418,7 +430,7 @@ export class GenerationLifecycleStore {
         sandboxId: null,
         pendingApproval: null,
         pendingAuth: null,
-        contentParts: input.contentParts.length > 0 ? input.contentParts : null,
+        contentParts: contentParts.length > 0 ? contentParts : null,
         lastRuntimeEventAt: input.lastRuntimeEventAt,
       })
       .where(eq(generation.id, input.generationId));
@@ -651,7 +663,19 @@ export class GenerationLifecycleStore {
 
   async finishTurn(input: FinishTurnPersistenceInput): Promise<FinishTurnPersistenceResult> {
     await generationInterruptService.cancelInterruptsForGeneration(input.generationId);
-    const terminalMessage = await this.persistTerminalAssistantMessage(input);
+    const sanitizedInput: FinishTurnPersistenceInput = {
+      ...input,
+      assistantContent: sanitizePostgresText(input.assistantContent),
+      userMessageContent: input.userMessageContent
+        ? sanitizePostgresText(input.userMessageContent)
+        : input.userMessageContent,
+      errorMessage: input.errorMessage
+        ? sanitizePostgresText(input.errorMessage)
+        : input.errorMessage,
+      contentParts: sanitizeJsonForPostgres(input.contentParts),
+      debugInfo: sanitizeJsonForPostgres(input.debugInfo ?? null),
+    };
+    const terminalMessage = await this.persistTerminalAssistantMessage(sanitizedInput);
     const contentParts = terminalMessage.contentParts;
     await db
       .update(generation)
@@ -665,24 +689,24 @@ export class GenerationLifecycleStore {
         suspendedAt: null,
         remainingRunMs: input.remainingRunMs,
         contentParts: contentParts.length > 0 ? contentParts : null,
-        errorMessage: input.errorMessage,
-        debugInfo: input.debugInfo ?? null,
-        lastRuntimeEventAt: input.lastRuntimeEventAt,
-        recoveryAttempts: input.recoveryAttempts,
+        errorMessage: sanitizedInput.errorMessage,
+        debugInfo: sanitizedInput.debugInfo ?? null,
+        lastRuntimeEventAt: sanitizedInput.lastRuntimeEventAt,
+        recoveryAttempts: sanitizedInput.recoveryAttempts,
         completionReason:
-          input.completionReason ??
-          (input.status === "completed"
+          sanitizedInput.completionReason ??
+          (sanitizedInput.status === "completed"
             ? "completed"
-            : input.status === "cancelled"
+            : sanitizedInput.status === "cancelled"
               ? "user_cancel"
               : "runtime_error"),
-        inputTokens: input.usage.inputTokens,
-        outputTokens: input.usage.outputTokens,
+        inputTokens: sanitizedInput.usage.inputTokens,
+        outputTokens: sanitizedInput.usage.outputTokens,
         completedAt: new Date(),
       })
       .where(eq(generation.id, input.generationId));
 
-    if (input.status === "error") {
+    if (sanitizedInput.status === "error") {
       try {
         await captureGenerationFailureAlert({ generationId: input.generationId });
       } catch (error) {
@@ -699,12 +723,18 @@ export class GenerationLifecycleStore {
       .update(conversation)
       .set({
         generationStatus:
-          input.status === "completed" ? "complete" : input.status === "error" ? "error" : "idle",
+          sanitizedInput.status === "completed"
+            ? "complete"
+            : sanitizedInput.status === "error"
+              ? "error"
+              : "idle",
         ...(assistantMessagePersisted
           ? {
-              usageInputTokens: sql`${conversation.usageInputTokens} + ${input.usage.inputTokens}`,
-              usageOutputTokens: sql`${conversation.usageOutputTokens} + ${input.usage.outputTokens}`,
-              usageTotalTokens: sql`${conversation.usageTotalTokens} + ${input.usage.inputTokens + input.usage.outputTokens}`,
+              usageInputTokens: sql`${conversation.usageInputTokens} + ${sanitizedInput.usage.inputTokens}`,
+              usageOutputTokens: sql`${conversation.usageOutputTokens} + ${sanitizedInput.usage.outputTokens}`,
+              usageTotalTokens: sql`${conversation.usageTotalTokens} + ${
+                sanitizedInput.usage.inputTokens + sanitizedInput.usage.outputTokens
+              }`,
               usageAssistantMessageCount: sql`${conversation.usageAssistantMessageCount} + 1`,
             }
           : {}),
@@ -718,17 +748,17 @@ export class GenerationLifecycleStore {
       });
     }
 
-    if (input.status === "completed") {
+    if (sanitizedInput.status === "completed") {
       try {
-        const sandboxRuntimeMs = input.sandboxId
-          ? Math.max(0, Date.now() - input.startedAt.getTime())
+        const sandboxRuntimeMs = sanitizedInput.sandboxId
+          ? Math.max(0, Date.now() - sanitizedInput.startedAt.getTime())
           : 0;
         await trackGenerationBilling({
-          generationId: input.generationId,
-          conversationId: input.conversationId,
-          model: input.model,
-          inputTokens: input.usage.inputTokens,
-          outputTokens: input.usage.outputTokens,
+          generationId: sanitizedInput.generationId,
+          conversationId: sanitizedInput.conversationId,
+          model: sanitizedInput.model,
+          inputTokens: sanitizedInput.usage.inputTokens,
+          outputTokens: sanitizedInput.usage.outputTokens,
           sandboxRuntimeMs,
         });
       } catch (error) {
@@ -741,14 +771,14 @@ export class GenerationLifecycleStore {
         .update(coworkerRun)
         .set({
           status:
-            input.status === "completed"
+            sanitizedInput.status === "completed"
               ? "completed"
-              : input.status === "cancelled"
+              : sanitizedInput.status === "cancelled"
                 ? "cancelled"
                 : "error",
           finishedAt: new Date(),
-          errorMessage: input.errorMessage,
-          debugInfo: input.debugInfo ?? null,
+          errorMessage: sanitizedInput.errorMessage,
+          debugInfo: sanitizedInput.debugInfo ?? null,
         })
         .where(eq(coworkerRun.id, input.coworkerRunId));
     }
