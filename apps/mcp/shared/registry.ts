@@ -1,4 +1,4 @@
-export type McpServerSlug = "internal" | "gmail" | "galien";
+export type McpServerSlug = "internal" | "gmail" | "galien" | "modulr";
 
 export type McpServerDefinition = {
   slug: McpServerSlug;
@@ -48,6 +48,18 @@ export const MCP_SERVER_REGISTRY: Record<McpServerSlug, McpServerDefinition> = {
     installMetadata: {
       title: "Galien MCP Server",
       description: "Query the Galien CRM API and create visit reports",
+    },
+  },
+  modulr: {
+    slug: "modulr",
+    name: "Modulr MCP",
+    publicBasePath: "/modulr",
+    internalTargetEnvVar: "CMDCLAW_MODULR_MCP_TARGET",
+    authStrategy: "oauth",
+    childRoot: "servers/modulr",
+    installMetadata: {
+      title: "Modulr MCP Server",
+      description: "Find Modulr customer records and attached GED documents",
     },
   },
 };

@@ -64,10 +64,37 @@ _Avoid_: run, request
 A person authenticated into CmdClaw. A **User** owns the set of **Connected Accounts** available to their CLI and agent runs.
 _Avoid_: account
 
+**Modulr Customer**:
+A customer record in Modulr that belongs to one of CmdClaw's customers and can be looked up to gather business context for an agent conversation.
+_Avoid_: client, account, CmdClaw customer
+
+**Modulr Customer Email Match**:
+The lookup that resolves an inbound sender email to a **Modulr Customer**, first through the customer's own email addresses and then through contact email addresses associated with the customer.
+_Avoid_: client lookup, sender lookup
+
+**Modulr Customer Record**:
+A customer-owned Modulr fiche such as a policy, estimate, claim, or complaint that may have its own document classification separate from the **Modulr Customer** entity.
+_Avoid_: related file, subdocument, child record
+
+**Modulr Customer Document**:
+A document classified in Modulr GED on a **Modulr Customer** or **Modulr Customer Record**. It may be internal-only or visible through the customer's Modulr extranet.
+_Avoid_: attached file, related file
+
+**Modulr Document Resource**:
+The MCP resource that exposes the bytes of a selected **Modulr Customer Document** after a tool has returned a resource link.
+_Avoid_: download response, inline file
+
+**Modulr Workspace Connection**:
+A workspace-owned Modulr integration connection for one broker/company database. CmdClaw derives short-lived Modulr bearer tokens from this connection when invoking Modulr MCP tools.
+_Avoid_: Modulr user account, bearer credential
+
 ## Flagged Ambiguities
 
 **account**:
 Use **Connected Account** for an external provider identity. Use **User** for the authenticated CmdClaw person; the database also has a Better Auth `account` table, so plain "account" is ambiguous.
+
+**client**:
+Use **Client Observation** for browser-originated telemetry. Use **Modulr Customer** for a customer record from Modulr; Modulr's API may still expose that entity as `clients`.
 
 ## Example Dialogue
 

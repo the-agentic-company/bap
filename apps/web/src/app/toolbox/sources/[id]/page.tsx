@@ -51,6 +51,33 @@ function SourceDetailContent() {
   const [galienPassword, setGalienPassword] = useState("");
   const isManagedSource = Boolean(source?.internalKey);
   const isGalienSource = source?.internalKey === "galien";
+  const managedSourceAction = useMemo(() => {
+    if (!source?.internalKey) {
+      return null;
+    }
+
+    if (source.internalKey === "modulr") {
+      return {
+        href: "/admin/mcp",
+        connectedLabel: "Manage Modulr connection",
+        disconnectedLabel: "Configure Modulr",
+      };
+    }
+
+    if (source.internalKey === "gmail") {
+      return {
+        href: "/toolbox",
+        connectedLabel: "Manage Gmail connection",
+        disconnectedLabel: "Connect Gmail",
+      };
+    }
+
+    return {
+      href: "/admin/mcp",
+      connectedLabel: `Manage ${source.name}`,
+      disconnectedLabel: `Configure ${source.name}`,
+    };
+  }, [source]);
   const authLabel =
     source?.authType === "none"
       ? "None"
@@ -366,8 +393,10 @@ function SourceDetailContent() {
           ) : source.internalKey ? (
             <div className="mt-5 flex items-center gap-3">
               <Button asChild variant="outline">
-                <Link href="/toolbox">
-                  {source.connected ? "Manage Gmail connection" : "Connect Gmail"}
+                <Link href={managedSourceAction?.href ?? "/toolbox"}>
+                  {source.connected
+                    ? (managedSourceAction?.connectedLabel ?? "Manage connection")
+                    : (managedSourceAction?.disconnectedLabel ?? "Configure connection")}
                 </Link>
               </Button>
             </div>

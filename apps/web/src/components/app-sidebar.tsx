@@ -205,6 +205,20 @@ type NavItem = {
   href: string;
 };
 
+function McpLogoIcon({ className }: { className?: string }) {
+  return (
+    <span className={cn("relative block", className)}>
+      <Image
+        src="/integrations/mcp.svg"
+        alt=""
+        fill
+        sizes="16px"
+        className="object-contain dark:invert"
+      />
+    </span>
+  );
+}
+
 function NavLink({
   item,
   active,
@@ -453,6 +467,7 @@ export function AppSidebar() {
   const adminConfigItems: NavItem[] = [
     { icon: LayoutTemplate, label: "Templates", href: "/admin/templates" },
     { icon: CreditCard, label: "AI Subscriptions", href: "/admin/subscriptions" },
+    { icon: McpLogoIcon, label: "MCP", href: "/admin/mcp" },
     // { icon: MessageCircle, label: "WhatsApp", href: "/admin/whatsapp" },
   ];
 

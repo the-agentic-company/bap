@@ -18,10 +18,6 @@ import {
   useGoogleAccessAllowlist,
   useRemoveApprovedLoginEmailAllowlistEntry,
   useRemoveGoogleAccessAllowlistEntry,
-  useAdminWorkspaces,
-  useAdminGalienAccess,
-  useAdminAddGalienAccess,
-  useAdminRemoveGalienAccess,
 } from "@/orpc/hooks";
 import { getImpersonationErrorMessage } from "./impersonation-errors";
 
@@ -214,28 +210,6 @@ function ImpersonateButton({
   );
 }
 
-function GalienAccessEntryButton({
-  id,
-  email,
-  onRemove,
-}: {
-  id: string;
-  email: string;
-  onRemove: (id: string, email: string) => void;
-}) {
-  const handleClick = useCallback(() => onRemove(id, email), [email, id, onRemove]);
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="bg-muted hover:bg-muted/80 rounded-md px-2 py-1 text-xs"
-    >
-      {email} ×
-    </button>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
@@ -249,7 +223,6 @@ export default function AdminPage() {
   const removeApprovedLoginEntry = useRemoveApprovedLoginEmailAllowlistEntry();
   const addGoogleAccessEntry = useAddGoogleAccessAllowlistEntry();
   const removeGoogleAccessEntry = useRemoveGoogleAccessAllowlistEntry();
-  const { data: adminWorkspaces } = useAdminWorkspaces();
   const setUserAdminRole = useSetUserAdminRole();
 
   const [users, setUsers] = useState<AdminListUser[]>([]);
@@ -269,14 +242,6 @@ export default function AdminPage() {
   const [addLoginApproved, setAddLoginApproved] = useState(true);
   const [addGoogleAccess, setAddGoogleAccess] = useState(false);
   const [addPending, setAddPending] = useState(false);
-  const [galienWorkspaceId, setGalienWorkspaceId] = useState<string | null>(null);
-  const [galienEmail, setGalienEmail] = useState("");
-  const [galienActionPending, setGalienActionPending] = useState(false);
-
-  const { data: galienAccessEntries, isLoading: isGalienAccessLoading } =
-    useAdminGalienAccess(galienWorkspaceId);
-  const addGalienAccess = useAdminAddGalienAccess();
-  const removeGalienAccess = useAdminRemoveGalienAccess();
 
   // -- Filter --
   const [globalFilter, setGlobalFilter] = useState("");
@@ -302,12 +267,6 @@ export default function AdminPage() {
       }
     })();
   }, []);
-
-  useEffect(() => {
-    if (!galienWorkspaceId && adminWorkspaces?.[0]?.id) {
-      setGalienWorkspaceId(adminWorkspaces[0].id);
-    }
-  }, [adminWorkspaces, galienWorkspaceId]);
 
   // -- Merge data sources --
   const approvedLoginEntries = useMemo(
@@ -575,53 +534,6 @@ export default function AdminPage() {
     (e: React.ChangeEvent<HTMLInputElement>) => setGlobalFilter(e.target.value),
     [],
   );
-  const handleGalienWorkspaceChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setGalienWorkspaceId(e.target.value || null);
-  }, []);
-  const handleGalienEmailChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => setGalienEmail(e.target.value),
-    [],
-  );
-  const handleAddGalienAccess = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      const email = galienEmail.trim().toLowerCase();
-      if (!galienWorkspaceId || !email) {
-        return;
-      }
-
-      setActionError(null);
-      setActionMessage(null);
-      setGalienActionPending(true);
-      try {
-        await addGalienAccess.mutateAsync({ workspaceId: galienWorkspaceId, email });
-        setGalienEmail("");
-        setActionMessage(`Enabled Galien for ${email}.`);
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Failed to enable Galien access.");
-      } finally {
-        setGalienActionPending(false);
-      }
-    },
-    [addGalienAccess, galienEmail, galienWorkspaceId],
-  );
-  const handleRemoveGalienAccess = useCallback(
-    async (id: string, email: string) => {
-      if (!galienWorkspaceId) {
-        return;
-      }
-      setActionError(null);
-      setActionMessage(null);
-      try {
-        await removeGalienAccess.mutateAsync({ id, workspaceId: galienWorkspaceId });
-        setActionMessage(`Removed Galien access for ${email}.`);
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Failed to remove Galien access.");
-      }
-    },
-    [galienWorkspaceId, removeGalienAccess],
-  );
-
   return (
     <div>
       <div className="mb-6">
@@ -644,56 +556,6 @@ export default function AdminPage() {
           {actionError ?? actionMessage}
         </div>
       )}
-
-      <div className="bg-card mb-4 rounded-lg border p-4">
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold">Galien access</h3>
-          <p className="text-muted-foreground mt-1 text-xs">
-            Grant Galien MCP access to individual emails inside a workspace.
-          </p>
-        </div>
-        <div className="grid gap-3 lg:grid-cols-[260px_1fr]">
-          <select
-            value={galienWorkspaceId ?? ""}
-            onChange={handleGalienWorkspaceChange}
-            className="bg-background rounded-md border px-3 py-2 text-sm"
-          >
-            {(adminWorkspaces ?? []).map((workspace) => (
-              <option key={workspace.id} value={workspace.id}>
-                {workspace.name}
-              </option>
-            ))}
-          </select>
-          <form onSubmit={handleAddGalienAccess} className="flex flex-col gap-3 sm:flex-row">
-            <Input
-              type="email"
-              placeholder="user@company.com"
-              value={galienEmail}
-              onChange={handleGalienEmailChange}
-              className="sm:max-w-xs"
-            />
-            <Button type="submit" size="sm" disabled={!galienWorkspaceId || galienActionPending}>
-              {galienActionPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Galien"}
-            </Button>
-          </form>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {isGalienAccessLoading ? (
-            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-          ) : (galienAccessEntries ?? []).length > 0 ? (
-            (galienAccessEntries ?? []).map((entry) => (
-              <GalienAccessEntryButton
-                key={entry.id}
-                id={entry.id}
-                email={entry.email}
-                onRemove={handleRemoveGalienAccess}
-              />
-            ))
-          ) : (
-            <p className="text-muted-foreground text-xs">No Galien users enabled here.</p>
-          )}
-        </div>
-      </div>
 
       {/* Impersonation banner */}
       {isCurrentlyImpersonating && (

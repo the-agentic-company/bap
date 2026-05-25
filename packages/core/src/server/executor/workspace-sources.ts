@@ -13,6 +13,11 @@ import {
   getGalienCredentialStatus,
 } from "../galien/service";
 import { signManagedMcpToken } from "../managed-mcp-auth";
+import {
+  MODULR_INTERNAL_KEY,
+  canUserUseModulrInWorkspace,
+  getModulrWorkspaceConnectionStatus,
+} from "../modulr/service";
 import { decrypt, encrypt } from "../utils/encryption";
 import {
   type McpOAuthMetadata,
@@ -60,7 +65,7 @@ type LocalWorkspaceState = {
 };
 
 type ManagedExecutorSourceDefinition = {
-  internalKey: "gmail" | "galien";
+  internalKey: "gmail" | "galien" | "modulr";
   kind: "mcp";
   name: string;
   namespace: string;
@@ -216,7 +221,7 @@ function resolveManagedMcpBaseUrl(): string | null {
 }
 
 function getManagedSourceDefinition(
-  internalKey: "gmail" | "galien",
+  internalKey: "gmail" | "galien" | "modulr",
 ): ManagedExecutorSourceDefinition | null {
   const baseUrl = resolveManagedMcpBaseUrl();
   if (!baseUrl) {
@@ -230,6 +235,18 @@ function getManagedSourceDefinition(
       name: "Galien MCP",
       namespace: "galien",
       endpoint: new URL("/galien/mcp", baseUrl).toString(),
+      transport: "http",
+      authType: "none" as const,
+    };
+  }
+
+  if (internalKey === MODULR_INTERNAL_KEY) {
+    return {
+      internalKey: MODULR_INTERNAL_KEY,
+      kind: "mcp" as const,
+      name: "Modulr MCP",
+      namespace: "modulr",
+      endpoint: new URL("/modulr/mcp", baseUrl).toString(),
       transport: "http",
       authType: "none" as const,
     };
@@ -254,6 +271,17 @@ async function ensureManagedExecutorSources(input: {
   const database = input.database ?? db;
   const definitions: Array<ManagedExecutorSourceDefinition | null> =
     GMAIL_MANAGED_EXECUTOR_SOURCE_ENABLED ? [getManagedSourceDefinition("gmail")] : [];
+  const modulrDefinition = getManagedSourceDefinition(MODULR_INTERNAL_KEY);
+  if (
+    modulrDefinition &&
+    await canUserUseModulrInWorkspace({
+      database,
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+    })
+  ) {
+    definitions.push(modulrDefinition);
+  }
   const galienDefinition = getManagedSourceDefinition("galien");
   if (
     galienDefinition &&
@@ -364,14 +392,34 @@ async function ensureManagedExecutorSources(input: {
   }
 }
 
-async function isManagedSourceConnected(source: WorkspaceExecutorSourceRecord, userId?: string) {
-  if (!userId) {
-    return false;
+async function isManagedSourceConnected(input: {
+  database?: DatabaseLike;
+  source: WorkspaceExecutorSourceRecord;
+  userId?: string;
+}) {
+  const { source, userId } = input;
+  if (source.internalKey === "galien") {
+    if (!userId) {
+      return false;
+    }
+    const status = await getGalienCredentialStatus({ database: input.database, userId });
+    return status.connected;
   }
 
-  if (source.internalKey === "galien") {
-    const status = await getGalienCredentialStatus({ userId });
-    return status.connected;
+  if (source.internalKey === MODULR_INTERNAL_KEY) {
+    if (!userId) {
+      return false;
+    }
+    const status = await getModulrWorkspaceConnectionStatus({
+      database: input.database,
+      userId,
+      workspaceId: source.workspaceId,
+    });
+    return status.allowed && status.connected;
+  }
+
+  if (!userId) {
+    return false;
   }
 
   if (source.internalKey !== "gmail") {
@@ -404,6 +452,17 @@ async function isManagedSourceVisibleForUser(input: {
 
   if (input.source.internalKey === "gmail") {
     return GMAIL_MANAGED_EXECUTOR_SOURCE_ENABLED;
+  }
+
+  if (input.source.internalKey === MODULR_INTERNAL_KEY) {
+    return Boolean(
+      input.userId &&
+        (await canUserUseModulrInWorkspace({
+          database: input.database,
+          userId: input.userId,
+          workspaceId: input.source.workspaceId,
+        })),
+    );
   }
 
   return true;
@@ -633,7 +692,11 @@ function mergeAuthIntoSourceConfig(input: {
   config: LocalExecutorConfigSource;
 }): Promise<LocalExecutorConfigSource> {
   const next = JSON.parse(JSON.stringify(input.config)) as LocalExecutorConfigSource;
-  if (input.source.internalKey === "gmail" || input.source.internalKey === "galien") {
+  if (
+    input.source.internalKey === "gmail" ||
+    input.source.internalKey === "galien" ||
+    input.source.internalKey === MODULR_INTERNAL_KEY
+  ) {
     if (!env.CMDCLAW_SERVER_SECRET) {
       throw new Error("CMDCLAW_SERVER_SECRET is required for managed MCP sources.");
     }
@@ -757,7 +820,7 @@ export async function listWorkspaceExecutorSources(input: {
   return Promise.all(visibleSources.map(async (source) => {
     const credential = credentialBySourceId.get(source.id);
     const connected = source.internalKey
-      ? await isManagedSourceConnected(source, input.userId)
+      ? await isManagedSourceConnected({ database, source, userId: input.userId })
       : hasStoredCredentialSecret(source, credential);
     return {
       ...source,
@@ -1056,7 +1119,7 @@ export async function getWorkspaceExecutorBootstrap(input: {
           })
         : credential;
       const connected = source.internalKey
-        ? await isManagedSourceConnected(source, input.userId)
+        ? await isManagedSourceConnected({ database, source, userId: input.userId })
         : Boolean(
             source.authType === "oauth2"
               ? refreshedCredential?.accessToken && refreshedCredential.enabled

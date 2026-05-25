@@ -472,6 +472,25 @@ export const galienWorkspaceAccess = pgTable(
   ],
 );
 
+export const modulrWorkspaceAccess = pgTable(
+  "modulr_workspace_access",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("modulr_workspace_access_workspace_idx").on(table.workspaceId),
+    uniqueIndex("modulr_workspace_access_workspace_email_idx").on(table.workspaceId, table.email),
+  ],
+);
+
 export const galienCredential = pgTable(
   "galien_credential",
   {

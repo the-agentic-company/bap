@@ -12,6 +12,7 @@ import { generationRouter } from "./routers/generation";
 import { inboxRouter } from "./routers/inbox";
 import { integrationRouter } from "./routers/integration";
 import { integrationSkillRouter } from "./routers/integration-skill";
+import { modulrRouter } from "./routers/modulr";
 import { notificationRouter } from "./routers/notification";
 import { orgChartRouter } from "./routers/org-chart";
 import { providerAuthRouter } from "./routers/provider-auth";
@@ -35,6 +36,7 @@ export const appRouter = {
   inbox: inboxRouter,
   integration: integrationRouter,
   integrationSkill: integrationSkillRouter,
+  modulr: modulrRouter,
   notification: notificationRouter,
   providerAuth: providerAuthRouter,
   executorSource: executorSourceRouter,

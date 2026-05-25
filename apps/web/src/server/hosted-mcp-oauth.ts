@@ -3,6 +3,7 @@ import {
   listWorkspacesForUser,
 } from "@cmdclaw/core/server/billing/service";
 import { canUserUseGalienInWorkspace } from "@cmdclaw/core/server/galien/service";
+import { canUserUseModulrInWorkspace } from "@cmdclaw/core/server/modulr/service";
 import {
   type HostedMcpAudience,
   HOSTED_MCP_AUDIENCES,
@@ -165,6 +166,13 @@ function resolveHostedMcpResource(resource: string | URL): {
       resourceName: "Galien MCP",
     };
   }
+  if (pathname === "/modulr/mcp") {
+    return {
+      audience: "modulr",
+      resource: parsed.toString(),
+      resourceName: "Modulr MCP",
+    };
+  }
 
   throw new Error("Unsupported hosted MCP resource.");
 }
@@ -292,6 +300,15 @@ export async function createHostedMcpAuthorizationCode(params: {
     }))
   ) {
     throw new Error("Galien is not enabled for this user in the selected workspace.");
+  }
+  if (
+    resolved.audience === "modulr" &&
+    !(await canUserUseModulrInWorkspace({
+      userId: params.userId,
+      workspaceId: params.workspaceId,
+    }))
+  ) {
+    throw new Error("Modulr is not enabled for this user in the selected workspace.");
   }
 
   const scopes = normalizeRequestedScopes(resolved.audience, params.scopes.join(" "));

@@ -59,3 +59,39 @@ export async function getManagedGalienCredentials(params: {
     galienUserId: number | null;
   };
 }
+
+export async function getManagedModulrCredentials(params: {
+  userId: string;
+  workspaceId: string;
+}): Promise<{
+  database: string;
+  clientId: string;
+  clientSecret: string;
+  locale: "fr" | "en";
+  baseUrl: string;
+}> {
+  const response = await fetch(
+    new URL("/api/internal/mcp/modulr-credentials", resolveCmdclawAppUrl()),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${requireServerSecret()}`,
+      },
+      body: JSON.stringify(params),
+    },
+  );
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `Failed to fetch Modulr credentials (${response.status})`);
+  }
+
+  return (await response.json()) as {
+    database: string;
+    clientId: string;
+    clientSecret: string;
+    locale: "fr" | "en";
+    baseUrl: string;
+  };
+}

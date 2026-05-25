@@ -473,6 +473,87 @@ export function useDisconnectGalien() {
   });
 }
 
+type ModulrConnectionInput = {
+  database: string;
+  clientId: string;
+  clientSecret: string;
+  locale: "fr" | "en";
+  baseUrl: string;
+};
+
+export function useModulrStatus() {
+  return useQuery({
+    queryKey: ["modulr", "status"],
+    queryFn: () => client.modulr.status(),
+  });
+}
+
+export function useTestModulrConnection() {
+  return useMutation({
+    mutationFn: (input: ModulrConnectionInput) => client.modulr.test(input),
+  });
+}
+
+export function useConnectModulr() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: ModulrConnectionInput) => client.modulr.connect(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+    },
+  });
+}
+
+export function useDisconnectModulr() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => client.modulr.disconnect(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+    },
+  });
+}
+
+export function useAdminModulrAccess(workspaceId: string | null) {
+  return useQuery({
+    queryKey: ["modulr", "admin-access", workspaceId],
+    queryFn: () => client.modulr.adminListAccess({ workspaceId: workspaceId! }),
+    enabled: Boolean(workspaceId),
+  });
+}
+
+export function useAdminAddModulrAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { workspaceId: string; email: string }) =>
+      client.modulr.adminAddAccess(input),
+    onSuccess: (_data, input) => {
+      queryClient.invalidateQueries({ queryKey: ["modulr", "admin-access", input.workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+    },
+  });
+}
+
+export function useAdminRemoveModulrAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { id: string; workspaceId: string }) =>
+      client.modulr.adminRemoveAccess({ id: input.id }),
+    onSuccess: (_data, input) => {
+      queryClient.invalidateQueries({ queryKey: ["modulr", "admin-access", input.workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+    },
+  });
+}
+
 export function useAdminGalienAccess(workspaceId: string | null) {
   return useQuery({
     queryKey: ["galien", "admin-access", workspaceId],
