@@ -228,7 +228,7 @@ export class GenerationMaintenance {
     const candidates = await db.query.generation.findMany({
       where: and(
         isNull(generation.completedAt),
-        eq(generation.status, "running"),
+        inArray(generation.status, ["running", "awaiting_approval", "awaiting_auth"]),
         lt(
           generation.startedAt,
           new Date(
@@ -250,10 +250,16 @@ export class GenerationMaintenance {
 
     const nowMs = Date.now();
     const staleRows = candidates.filter((row) => {
+      const ageMs = nowMs - row.startedAt.getTime();
       if (row.status !== "running") {
+        if (row.status === "awaiting_approval") {
+          return ageMs > STALE_REAPER_AWAITING_APPROVAL_MAX_AGE_MS;
+        }
+        if (row.status === "awaiting_auth") {
+          return ageMs > STALE_REAPER_AWAITING_AUTH_MAX_AGE_MS;
+        }
         return false;
       }
-      const ageMs = nowMs - row.startedAt.getTime();
       return ageMs > STALE_REAPER_RUNNING_MAX_AGE_MS;
     });
 
