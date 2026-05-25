@@ -1,4 +1,4 @@
-const TOP_LEVEL_ROUTES = new Set(["chat", "coworker", "auth"]);
+const TOP_LEVEL_ROUTES = new Set(["chat", "coworker", "auth", "hi"]);
 const ROOT_PASSTHROUGH_FLAGS = new Set(["--help", "-h", "--version", "-v"]);
 const KEBAB_FLAG_ALIASES = new Map<string, string>([
   ["--auth-source", "--authSource"],
