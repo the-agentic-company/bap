@@ -1,6 +1,7 @@
 import {
   addGalienWorkspaceAccess,
   deleteGalienCredential,
+  GalienCredentialValidationError,
   getGalienAccessStatus,
   listGalienWorkspaceAccess,
   removeGalienWorkspaceAccess,
@@ -68,12 +69,19 @@ const connect = protectedProcedure
       });
     }
 
-    await setGalienCredential({
-      database: context.db,
-      userId: context.user.id,
-      username: input.username,
-      password: input.password,
-    });
+    try {
+      await setGalienCredential({
+        database: context.db,
+        userId: context.user.id,
+        username: input.username,
+        password: input.password,
+      });
+    } catch (error) {
+      if (error instanceof GalienCredentialValidationError) {
+        throw new ORPCError("BAD_REQUEST", { message: error.message });
+      }
+      throw error;
+    }
 
     return getGalienAccessStatus({
       database: context.db,

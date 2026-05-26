@@ -14,6 +14,7 @@ process.env.AWS_SECRET_ACCESS_KEY ??= "test-secret-key";
 
 const {
   decodeGalienCurrentUserFromBearerToken,
+  GalienCredentialValidationError,
   normalizeGalienAccessEmail,
   validateGalienCredentials,
 } = await import("./service");
@@ -90,5 +91,72 @@ describe("Galien service helpers", () => {
       id: 7,
       username: "rep@example.com",
     });
+  });
+
+  it("exposes Galien login rejection details as a credential validation error", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return Response.json(
+        { message: "Bad credentials.", code: 1003 },
+        {
+          status: 401,
+          statusText: "Unauthorized",
+        },
+      );
+    }) as unknown as typeof fetch;
+
+    await expect(
+      validateGalienCredentials({
+        username: "rep@example.com",
+        password: "wrong",
+      }),
+    ).rejects.toThrow(GalienCredentialValidationError);
+
+    await expect(
+      validateGalienCredentials({
+        username: "rep@example.com",
+        password: "wrong",
+      }),
+    ).rejects.toThrow(
+      'Galien login failed (401 Unauthorized): {"message":"Bad credentials.","code":1003}',
+    );
+  });
+
+  it("exposes changed Galien error bodies without depending on content type", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      return new Response("Account temporarily locked", {
+        status: 423,
+        statusText: "Locked",
+        headers: {
+          "content-type": "application/octet-stream",
+        },
+      });
+    }) as unknown as typeof fetch;
+
+    await expect(
+      validateGalienCredentials({
+        username: "rep@example.com",
+        password: "secret",
+      }),
+    ).rejects.toThrow("Galien login failed (423 Locked): Account temporarily locked");
+  });
+
+  it("exposes Galien transport failures as credential validation errors", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+
+    await expect(
+      validateGalienCredentials({
+        username: "rep@example.com",
+        password: "secret",
+      }),
+    ).rejects.toThrow(GalienCredentialValidationError);
+
+    await expect(
+      validateGalienCredentials({
+        username: "rep@example.com",
+        password: "secret",
+      }),
+    ).rejects.toThrow("Galien login request failed: fetch failed");
   });
 });

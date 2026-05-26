@@ -30,6 +30,13 @@ export type DecryptedGalienCredential = {
   galienUserId: number | null;
 };
 
+export class GalienCredentialValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GalienCredentialValidationError";
+  }
+}
+
 export function normalizeGalienAccessEmail(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -38,13 +45,17 @@ function decodeJwtPayload(bearerToken: string) {
   const token = bearerToken.replace(/^Bearer\s+/i, "");
   const [, payload] = token.split(".");
   if (!payload) {
-    throw new Error("Galien login returned a bearer token that is not a JWT.");
+    throw new GalienCredentialValidationError(
+      "Galien login returned a bearer token that is not a JWT.",
+    );
   }
 
   try {
     return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>;
   } catch {
-    throw new Error("Galien login returned a JWT with an unreadable payload.");
+    throw new GalienCredentialValidationError(
+      "Galien login returned a JWT with an unreadable payload.",
+    );
   }
 }
 
@@ -54,7 +65,9 @@ export function decodeGalienCurrentUserFromBearerToken(bearerToken: string): Gal
   const id = typeof rawId === "number" ? rawId : typeof rawId === "string" ? Number(rawId) : NaN;
 
   if (!Number.isInteger(id)) {
-    throw new Error("Galien login JWT did not include a valid numeric user id claim.");
+    throw new GalienCredentialValidationError(
+      "Galien login JWT did not include a valid numeric user id claim.",
+    );
   }
 
   return {
@@ -69,14 +82,12 @@ export function decodeGalienCurrentUserFromBearerToken(bearerToken: string): Gal
 }
 
 async function parseGalienErrorBody(response: Response) {
-  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-  if (contentType.includes("application/json")) {
-    return JSON.stringify(await response.json());
+  try {
+    const body = await response.text();
+    return body.trim();
+  } catch {
+    return "";
   }
-  if (contentType.startsWith("text/")) {
-    return response.text();
-  }
-  return "";
 }
 
 async function loginToGalienWithCredentials(input: {
@@ -86,24 +97,31 @@ async function loginToGalienWithCredentials(input: {
   const username = input.username.trim();
   const password = input.password.trim();
   if (!username || !password) {
-    throw new Error("Galien username and password are required.");
+    throw new GalienCredentialValidationError("Galien username and password are required.");
   }
 
-  const response = await fetch(new URL(GALIEN_LOGIN_PATH, GALIEN_BASE_URL), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({
-      username,
-      password,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(new URL(GALIEN_LOGIN_PATH, GALIEN_BASE_URL), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({
+        username,
+        password,
+      }),
+    });
+  } catch (error) {
+    throw new GalienCredentialValidationError(
+      `Galien login request failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 
   if (!response.ok) {
     const body = await parseGalienErrorBody(response);
-    throw new Error(
+    throw new GalienCredentialValidationError(
       `Galien login failed (${response.status} ${response.statusText})${body ? `: ${body}` : ""}`,
     );
   }
@@ -113,7 +131,9 @@ async function loginToGalienWithCredentials(input: {
     return authorization;
   }
 
-  throw new Error("Galien login succeeded but did not return a bearer token.");
+  throw new GalienCredentialValidationError(
+    "Galien login succeeded but did not return a bearer token.",
+  );
 }
 
 export async function validateGalienCredentials(input: {
