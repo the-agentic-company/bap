@@ -25,6 +25,7 @@ vi.mock("./mcp-oauth", () => ({
 const {
   getWorkspaceExecutorBootstrap,
   getWorkspaceExecutorNativeMcpOAuthBootstrapSources,
+  listWorkspaceExecutorSources,
 } = await import("./workspace-sources");
 
 function createSource() {
@@ -346,5 +347,75 @@ describe("workspace executor OAuth bootstrap", () => {
       }),
     ]);
     expect(database.insert).toHaveBeenCalled();
+  });
+});
+
+describe("workspace executor source listing", () => {
+  it("treats connected managed Galien sources as credential-enabled", async () => {
+    const updatedAt = new Date("2025-01-01T00:00:00.000Z");
+    const source = {
+      ...createSource(),
+      id: "galien-source",
+      internalKey: "galien",
+      name: "Galien MCP",
+      namespace: "galien",
+      endpoint: "https://cmdclaw-mcp-prod.onrender.com/galien",
+      authType: "none" as const,
+      createdAt: updatedAt,
+      updatedAt,
+    };
+    const database = {
+      query: {
+        workspaceExecutorSource: {
+          findMany: vi.fn(async () => [source]),
+        },
+        workspaceExecutorSourceCredential: {
+          findMany: vi.fn(async () => []),
+        },
+        workspaceMember: {
+          findFirst: vi.fn(async () => ({
+            user: {
+              email: "galien.user@example.com",
+            },
+          })),
+        },
+        galienWorkspaceAccess: {
+          findFirst: vi.fn(async () => ({ id: "access-1" })),
+        },
+        galienCredential: {
+          findFirst: vi.fn(async () => ({
+            id: "galien-credential-1",
+            displayName: "Galien User",
+            galienUserId: 123,
+            validatedAt: updatedAt,
+            updatedAt,
+          })),
+        },
+      },
+      insert: vi.fn(() => ({
+        values: vi.fn(() => ({
+          onConflictDoUpdate: vi.fn(),
+        })),
+      })),
+      update: vi.fn(() => ({
+        set: vi.fn(() => ({
+          where: vi.fn(),
+        })),
+      })),
+    };
+
+    const sources = await listWorkspaceExecutorSources({
+      database: database as never,
+      workspaceId: "ws-1",
+      userId: "user-1",
+    });
+
+    expect(sources).toEqual([
+      expect.objectContaining({
+        id: "galien-source",
+        connected: true,
+        credentialEnabled: true,
+      }),
+    ]);
   });
 });

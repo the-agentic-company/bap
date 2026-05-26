@@ -825,7 +825,7 @@ export async function listWorkspaceExecutorSources(input: {
     return {
       ...source,
       connected,
-      credentialEnabled: credential?.enabled ?? false,
+      credentialEnabled: source.internalKey ? connected : (credential?.enabled ?? false),
       credentialDisplayName: credential?.displayName ?? null,
       credentialUpdatedAt: credential?.updatedAt ?? null,
     };
