@@ -3,7 +3,7 @@ import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xm
 import { toMcpToolResult } from "../../../../shared/tool-result";
 import { requestGalien } from "../lib/galien-client";
 import { getManagedGalienToolCredentials } from "../lib/galien-auth";
-import { galienIsoDateTimeSchema } from "../lib/tool-helpers";
+import { galienIsoDateTimeSchema, validateGalienToolParams } from "../lib/tool-helpers";
 
 export const CMDCLAW_VISIT_REPORT_COMMENT_MARKER = "(made by CmdClaw)";
 
@@ -63,13 +63,14 @@ export function addCmdClawCommentMarker(comment?: string) {
 }
 
 export default async function createVisitReport(params: InferSchema<typeof schema>, extra?: ToolExtraArguments) {
+  const validatedParams = validateGalienToolParams(schema, params);
   const credentials = await getManagedGalienToolCredentials(extra);
   const result = await requestGalien({
     method: "POST",
     path: "/api/v1/visit-reports",
     body: {
-      ...params,
-      comment: addCmdClawCommentMarker(params.comment),
+      ...validatedParams,
+      comment: addCmdClawCommentMarker(validatedParams.comment),
     },
   }, credentials);
   return toMcpToolResult(result);

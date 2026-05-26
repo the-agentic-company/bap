@@ -4,6 +4,7 @@ import {
   galienIsoDateTimeSchema,
   galienQueryValueSchema,
   requestCurrentGalienUserGet,
+  validateGalienToolParams,
 } from "../lib/tool-helpers";
 
 export const schema = {
@@ -25,9 +26,10 @@ export const metadata: ToolMetadata = {
 };
 
 export default async function getMyAppointments(params: InferSchema<typeof schema>, extra?: ToolExtraArguments) {
+  const validatedParams = validateGalienToolParams(schema, params);
   const result = await requestCurrentGalienUserGet(
     "/api/v1/users/{userId}/appointments",
-    params as Record<
+    validatedParams as Record<
       string,
       string | number | boolean | Array<string | number | boolean> | undefined
     >,

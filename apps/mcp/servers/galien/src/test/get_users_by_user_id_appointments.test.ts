@@ -92,4 +92,34 @@ describe("get_my_appointments", () => {
       "https://api.frontline.galien.preprod.webhelpmedica.com/api/v1/users/2/appointments?startDate=2026-05-25T00%3A00%3A00.000Z&endDate=2026-05-31T23%3A59%3A59.999Z&size=50&offset=0",
     );
   });
+
+  it("rejects date-only appointment ranges before calling Galien", async () => {
+    globalThis.fetch = vi.fn() as unknown as typeof fetch;
+
+    await expect(
+      getMyAppointments({
+        startDate: "2026-05-25",
+        endDate: "2026-05-31",
+        size: 50,
+        offset: 0,
+      }),
+    ).rejects.toThrow("Must be an ISO 8601 UTC datetime with milliseconds");
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects timezone-offset appointment ranges before calling Galien", async () => {
+    globalThis.fetch = vi.fn() as unknown as typeof fetch;
+
+    await expect(
+      getMyAppointments({
+        startDate: "2026-05-25T00:00:00+01:00",
+        endDate: "2026-05-31T23:59:59+01:00",
+        size: 50,
+        offset: 0,
+      }),
+    ).rejects.toThrow("Do not use date-only strings or timezone offsets");
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
 });

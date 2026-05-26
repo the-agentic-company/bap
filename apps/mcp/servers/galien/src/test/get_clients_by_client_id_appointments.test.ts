@@ -85,4 +85,20 @@ describe("get_clients_by_client_id_appointments", () => {
       "https://api.frontline.galien.preprod.webhelpmedica.com/api/v1/clients/14/appointments?startDate=2026-05-25&endDate=2026-05-31&size=50&offset=0",
     );
   });
+
+  it("rejects datetime client appointment ranges before calling Galien", async () => {
+    globalThis.fetch = vi.fn() as unknown as typeof fetch;
+
+    await expect(
+      getClientAppointments({
+        clientId: 14,
+        startDate: "2026-05-25T00:00:00.000Z",
+        endDate: "2026-05-31T23:59:59.999Z",
+        size: 50,
+        offset: 0,
+      }),
+    ).rejects.toThrow("Must be a date-only string in YYYY-MM-DD format");
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
 });
