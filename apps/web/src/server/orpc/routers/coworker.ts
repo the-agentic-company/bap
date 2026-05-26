@@ -41,6 +41,7 @@ import {
   reconcileStaleCoworkerRunsForCoworkers,
   triggerCoworkerRun,
 } from "@cmdclaw/core/server/services/coworker-service";
+import { generationLifecyclePolicy } from "@cmdclaw/core/server/services/lifecycle-policy";
 import { downloadFromS3, getPresignedDownloadUrl } from "@cmdclaw/core/server/storage/s3-client";
 import {
   conversation,
@@ -1478,6 +1479,12 @@ const trigger = protectedProcedure
           remoteUserId: true,
         })
         .optional(),
+      debugRunDeadlineMs: z
+        .number()
+        .int()
+        .min(1_000)
+        .max(generationLifecyclePolicy.runDeadlineMs)
+        .optional(),
     }),
   )
   .handler(async ({ input, context }) => {
@@ -1497,6 +1504,7 @@ const trigger = protectedProcedure
       fileAttachments: input.fileAttachments,
       userId: context.user.id,
       userRole: dbUser?.role ?? null,
+      debugRunDeadlineMs: input.debugRunDeadlineMs,
       remoteIntegrationSource: input.remoteIntegrationSource
         ? {
             ...input.remoteIntegrationSource,

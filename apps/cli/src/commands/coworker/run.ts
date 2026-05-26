@@ -1,4 +1,5 @@
 import type { LocalContext } from "../../context";
+import { parseChaosDurationMs } from "../chat/chaos";
 import { formatConversationTranscript, getCoworkerRunner, parsePayload } from "./shared";
 
 type RunFlags = {
@@ -6,6 +7,7 @@ type RunFlags = {
   payload?: string;
   watch?: boolean;
   "watch-interval"?: number;
+  chaosRunDeadline?: string;
   json?: boolean;
 };
 
@@ -77,7 +79,12 @@ export default async function (
   reference: string,
 ): Promise<void> {
   const { runner, client } = await getCoworkerRunner({ server: flags.server });
-  const result = await runner.run(reference, parsePayload(flags.payload));
+  const debugRunDeadlineMs = flags.chaosRunDeadline
+    ? parseChaosDurationMs(flags.chaosRunDeadline)
+    : undefined;
+  const result = await runner.run(reference, parsePayload(flags.payload), {
+    debugRunDeadlineMs,
+  });
 
   if (flags.json) {
     this.process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

@@ -55,9 +55,17 @@ export function createCoworkerRunner(client: CmdclawApiClient) {
     async create(input: CoworkerCreateInput): Promise<CoworkerCreateResult> {
       return client.coworker.create(input);
     },
-    async run(reference: string, payload?: unknown): Promise<CoworkerTriggerResult> {
+    async run(
+      reference: string,
+      payload?: unknown,
+      options?: { debugRunDeadlineMs?: number },
+    ): Promise<CoworkerTriggerResult> {
       const id = await resolveCoworkerReference(client, reference);
-      return client.coworker.trigger({ id, payload });
+      return client.coworker.trigger({
+        id,
+        payload,
+        debugRunDeadlineMs: options?.debugRunDeadlineMs,
+      });
     },
     async logs(runId: string): Promise<CoworkerRun> {
       return client.coworker.getRun({ id: runId });

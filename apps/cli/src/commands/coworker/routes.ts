@@ -264,6 +264,12 @@ const coworkerRunCommand = buildCommand({
         optional: true,
         brief: "Watch interval in seconds",
       },
+      chaosRunDeadline: {
+        kind: "parsed",
+        parse: (input: string) => input,
+        optional: true,
+        brief: "Debug: override this run's deadline (for example 60s)",
+      },
       json: commonServerFlags.json,
     },
     aliases: {

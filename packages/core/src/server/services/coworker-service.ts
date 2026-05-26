@@ -225,6 +225,7 @@ export async function triggerCoworkerRun(params: {
   fileAttachments?: CoworkerFileAttachment[];
   remoteIntegrationSource?: RemoteIntegrationSource;
   autoApprove?: boolean;
+  debugRunDeadlineMs?: number;
   syntheticKind?: "slo_replay";
 }): Promise<{
   coworkerId: string;
@@ -448,6 +449,7 @@ export async function triggerCoworkerRun(params: {
       allowedSkillSlugs,
       fileAttachments: params.fileAttachments,
       remoteIntegrationSource: resolvedRemoteIntegrationSource,
+      debugRunDeadlineMs: params.debugRunDeadlineMs,
       syntheticKind: params.syntheticKind,
     });
 
