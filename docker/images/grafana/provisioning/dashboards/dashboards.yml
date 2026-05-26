@@ -1,12 +1,12 @@
 apiVersion: 1
 
 providers:
-  - name: CmdClaw Staging
+  - name: CmdClaw
     orgId: 1
-    folder: CmdClaw Staging
+    folder: CmdClaw
     type: file
     disableDeletion: false
     editable: false
     updateIntervalSeconds: 30
     options:
-      path: /var/lib/grafana/dashboards
+      path: /etc/grafana/dashboards

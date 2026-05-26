@@ -296,8 +296,8 @@ and that the relevant Grafana hostname resolves:
 
 ```bash
 tailscale status
-dig +short grafana.staging.cmdclaw.ai
-dig +short grafana.prod.cmdclaw.ai
+dig +short grafana.ops.staging.cmdclaw.ai
+dig +short grafana.ops.prod.cmdclaw.ai
 ```
 
 If Tailscale is down, or if the target Grafana hostname does not resolve, stop
@@ -306,14 +306,14 @@ be off and must be started before hosted observability can be queried.
 
 Staging endpoints:
 
-- Grafana: `https://ops.staging.cmdclaw.ai`
+- Grafana: `https://grafana.ops.staging.cmdclaw.ai`
 - Metrics: `https://victoria-metrics.ops.staging.cmdclaw.ai`
 - Logs: `https://victoria-logs.ops.staging.cmdclaw.ai`
 - Traces: `https://victoria-traces.ops.staging.cmdclaw.ai`
 
 Production endpoints:
 
-- Grafana: `https://ops.prod.cmdclaw.ai`
+- Grafana: `https://grafana.ops.prod.cmdclaw.ai`
 - Metrics: `https://victoria-metrics.ops.prod.cmdclaw.ai`
 - Logs: `https://victoria-logs.ops.prod.cmdclaw.ai`
 - Traces: `https://victoria-traces.ops.prod.cmdclaw.ai`
