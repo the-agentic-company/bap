@@ -3,7 +3,7 @@ import { toMcpToolResult } from "../../../../shared/tool-result";
 import {
   galienIsoDateTimeSchema,
   galienQueryValueSchema,
-  requestCurrentGalienUserPathParamGet,
+  requestCurrentGalienUserGet,
 } from "../lib/tool-helpers";
 
 export const schema = {
@@ -25,9 +25,8 @@ export const metadata: ToolMetadata = {
 };
 
 export default async function getMyAppointments(params: InferSchema<typeof schema>, extra?: ToolExtraArguments) {
-  const result = await requestCurrentGalienUserPathParamGet(
-    "/api/v1/clients/{clientId}/appointments",
-    "clientId",
+  const result = await requestCurrentGalienUserGet(
+    "/api/v1/users/{userId}/appointments",
     params as Record<
       string,
       string | number | boolean | Array<string | number | boolean> | undefined
