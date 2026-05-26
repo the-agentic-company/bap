@@ -1,14 +1,18 @@
 import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
 import { toMcpToolResult } from "../../../../shared/tool-result";
-import { galienIsoDateTimeSchema, galienQueryValueSchema, requestGalienGet } from "../lib/tool-helpers";
+import { galienQueryValueSchema, requestGalienGet } from "../lib/tool-helpers";
+
+const galienDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use Galien date-only format YYYY-MM-DD.");
 
 export const schema = {
   "clientId": z.number().int().describe("Clients id"),
   "size": galienQueryValueSchema.optional().describe("Max Results"),
   "offset": galienQueryValueSchema.optional().describe("Offset"),
-  "startDate": galienIsoDateTimeSchema.describe("Client appointment range start. Use ISO 8601 UTC with milliseconds, for example 2026-04-28T00:00:00.000Z."),
-  "endDate": galienIsoDateTimeSchema.describe("Client appointment range end. Use ISO 8601 UTC with milliseconds, for example 2026-05-04T23:59:59.999Z."),
+  "startDate": galienDateSchema.describe("Client appointment range start. Use Galien date-only format YYYY-MM-DD, for example 2026-04-28."),
+  "endDate": galienDateSchema.describe("Client appointment range end. Use Galien date-only format YYYY-MM-DD, for example 2026-05-04."),
 };
 
 export const metadata: ToolMetadata = {
