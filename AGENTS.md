@@ -15,7 +15,6 @@ This repository is organized into several top-level folders. Each folder can hav
 
 ## Remarks
 - For any work inside a folder, check that folder for its own `AGENTS.md` and follow those instructions.
-- Before doing anything else, first check whether you are in a worktree by running `bun run worktree:status`.
 
 ## Testing
 
