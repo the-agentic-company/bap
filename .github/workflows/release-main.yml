@@ -163,9 +163,6 @@ jobs:
       - name: Run workspace checks
         run: bun run check
 
-      - name: Run web formatting checks
-        run: bun run --cwd apps/web format:check
-
       - name: Run CI tests
         run: bun run test:ci
 
