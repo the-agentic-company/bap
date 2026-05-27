@@ -979,8 +979,6 @@ export class OpenCodeNormalRunner {
         clearTimeout(promptTimeoutId);
         clearPromptTimeout = undefined;
       };
-      // Guard the in-flight prompt so runtime rejections stay scoped to this generation.
-      let promptResultSettled = false;
       const promptResultPromise = runtimeClient
         .prompt({
           sessionID: activeSessionId,
@@ -991,11 +989,9 @@ export class OpenCodeNormalRunner {
         })
         .then(
           (data) => {
-            promptResultSettled = true;
             return { ok: true as const, data };
           },
           (error) => {
-            promptResultSettled = true;
             return { ok: false as const, error };
           },
         );
@@ -1051,13 +1047,37 @@ export class OpenCodeNormalRunner {
       if (remainingRunTimeMs > runtimeNoProgressTimeoutMs) {
         const runtimeNoProgressTimeoutId = setTimeout(() => {
           const snapshot = eventLoop.snapshot();
-          if (
-            (!forceRuntimeNoProgress && promptResultSettled) ||
-            (!forceRuntimeNoProgress && snapshot.stats.progressEventCount > 0) ||
-            snapshot.sawSessionIdle ||
-            snapshot.sessionErrorMessage ||
-            ctx.abortController.signal.aborted
-          ) {
+          const suppressionReasons: string[] = [];
+          if (!forceRuntimeNoProgress && snapshot.stats.progressEventCount > 0) {
+            suppressionReasons.push("runtime_progress_observed");
+          }
+          if (snapshot.sawSessionIdle) {
+            suppressionReasons.push("session_idle_observed");
+          }
+          if (snapshot.sessionErrorMessage) {
+            suppressionReasons.push("session_error_observed");
+          }
+          if (ctx.abortController.signal.aborted) {
+            suppressionReasons.push("generation_aborted");
+          }
+          if (suppressionReasons.length > 0) {
+            logServerEvent(
+              "info",
+              "OPENCODE_RUNTIME_NO_PROGRESS_CHECK_SUPPRESSED",
+              {
+                timeoutMs: runtimeNoProgressTimeoutMs,
+                eventStats: snapshot.stats,
+                suppressionReasons,
+              },
+              {
+                source: "generation-manager",
+                traceId: ctx.traceId,
+                generationId: ctx.id,
+                conversationId: ctx.conversationId,
+                userId: ctx.userId,
+                sessionId: activeSessionId,
+              },
+            );
             return;
           }
 
@@ -1095,13 +1115,21 @@ export class OpenCodeNormalRunner {
         };
       }
 
-      // Process SSE events
-      try {
-        await eventLoop.consume(eventStream);
-      } catch (error) {
-        if (!runtimeNoProgressTriggered) {
-          throw error;
-        }
+      // Process SSE events, but do not let an open transport-only stream mask
+      // the post-prompt no-progress watchdog.
+      const eventLoopConsumePromise = eventLoop.consume(eventStream).then(
+        (value) => ({ type: "event_loop" as const, value }),
+        (error) => ({ type: "event_loop_error" as const, error }),
+      );
+      const eventLoopConsumeOutcome = await Promise.race([
+        eventLoopConsumePromise,
+        runtimeNoProgressPromise,
+      ]);
+      if (
+        eventLoopConsumeOutcome.type === "event_loop_error" &&
+        !runtimeNoProgressTriggered
+      ) {
+        throw eventLoopConsumeOutcome.error;
       }
 
       if (runtimeNoProgressTriggered) {

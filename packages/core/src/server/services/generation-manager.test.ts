@@ -873,6 +873,13 @@ async function* asAsyncIterable<T>(items: T[]) {
   }
 }
 
+async function* asAsyncIterableThenHang<T>(items: T[]) {
+  for (const item of items) {
+    yield item;
+  }
+  await new Promise<never>(() => {});
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
@@ -6695,6 +6702,99 @@ describe("generationManager transitions", () => {
     expect(snapshotBody).not.toContain("do not persist this prompt");
     expect(snapshotBody).not.toContain("do not persist this output");
     expect(snapshotBody).not.toContain("secret-token");
+    expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
+    vi.useRealTimers();
+  });
+
+  it("fails runRuntimeGeneration after prompt send when prompt resolves but OpenCode emits no runtime progress", async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(env, "ANTHROPIC_API_KEY", {
+      value: "test-key",
+      configurable: true,
+    });
+
+    vi.mocked(getCliEnvForUser).mockResolvedValue({});
+    vi.mocked(getEnabledIntegrationTypes).mockResolvedValue([]);
+    vi.mocked(getCliInstructionsWithCustom).mockResolvedValue("");
+    vi.mocked(syncMemoryFilesToSandbox).mockResolvedValue([]);
+    vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
+    vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
+    dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
+      createExecutorPreparationMock(),
+    );
+    vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
+    vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
+    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
+    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("");
+    vi.mocked(collectNewSandboxFiles).mockResolvedValue([]);
+
+    const promptMock = vi.fn().mockResolvedValue({});
+    vi.mocked(getOrCreateConversationRuntime).mockResolvedValue(
+      createConversationRuntimeMock({
+        promptMock,
+        subscribeMock: vi.fn().mockResolvedValue({
+          stream: asAsyncIterableThenHang([
+            { type: "server.connected", properties: {} },
+          ]),
+        }),
+        getSessionMock: vi.fn().mockResolvedValue({
+          data: {
+            id: "session-1",
+            status: "busy",
+          },
+          error: null,
+        }),
+        messagesMock: vi.fn().mockResolvedValue({
+          data: [],
+          error: null,
+        }),
+        statusMock: vi.fn().mockResolvedValue({
+          data: { "session-1": { type: "busy" } },
+          error: null,
+        }),
+        readFile: vi.fn().mockResolvedValue(
+          "[OpenCode][EVENT] type=server.connected\n",
+        ),
+      }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
+    );
+
+    const mgr = asTestManager();
+    const parkSpy = vi
+      .spyOn(mgr as never, "parkGenerationForRunDeadline")
+      .mockResolvedValue(undefined);
+    const finishSpy = vi
+      .spyOn(mgr, "finishGeneration")
+      .mockResolvedValue(undefined);
+
+    const ctx = createCtx({
+      id: "gen-settled-prompt-no-progress",
+      conversationId: "conv-settled-prompt-no-progress",
+      model: "anthropic/claude-sonnet-4-6",
+      deadlineAt: new Date(Date.now() + 60_000),
+      executionPolicy: {
+        allowSnapshotRestoreOnRun: false,
+        debugRuntimeNoProgressTimeoutMs: 1_000,
+      },
+    });
+    const runPromise = mgr.runRuntimeGeneration(ctx);
+
+    await vi.advanceTimersByTimeAsync(1_100);
+    await runPromise;
+
+    expect(promptMock).toHaveBeenCalledTimes(1);
+    expect(parkSpy).not.toHaveBeenCalled();
+    expect(ctx.completionReason).toBe("runtime_no_progress_after_prompt");
+    expect(ctx.debugInfo?.runtimeDiagnosticSnapshot).toEqual(
+      expect.objectContaining({
+        reason: "runtime_no_progress_after_prompt",
+        timeoutMs: 1_000,
+        eventStats: expect.objectContaining({
+          eventCount: 1,
+          progressEventCount: 0,
+        }),
+      }),
+    );
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
     vi.useRealTimers();
   });
