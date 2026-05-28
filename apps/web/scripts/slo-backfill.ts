@@ -1,24 +1,24 @@
 import process from "node:process";
+import {
+  SLO_METRIC_JOURNEYS,
+  SLO_RESULTS,
+  SLO_TRAFFIC_TYPES,
+  type SloMetricJourney,
+  type SloResult,
+  type SloTraffic,
+} from "@cmdclaw/core/server/services/slo-journey-classification";
 import { Pool } from "pg";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_VICTORIA_METRICS_URL = "http://127.0.0.1:8428";
 
-export const SLO_JOURNEYS = [
-  "global",
-  "chat",
-  "coworker_builder",
-  "coworker_run",
-  "unknown_coworker_generation",
-] as const;
+export const SLO_JOURNEYS = SLO_METRIC_JOURNEYS;
+export { SLO_RESULTS, SLO_TRAFFIC_TYPES };
 
-export const SLO_RESULTS = ["good", "bad"] as const;
-export const SLO_TRAFFIC_TYPES = ["real", "synthetic"] as const;
-
-export type SloJourney = (typeof SLO_JOURNEYS)[number];
-export type SloResult = (typeof SLO_RESULTS)[number];
-export type SloTrafficType = (typeof SLO_TRAFFIC_TYPES)[number];
+export type SloJourney = SloMetricJourney;
+export type { SloResult };
+export type SloTrafficType = SloTraffic;
 
 export type RawSloBucket = {
   bucket: Date | string;
@@ -120,14 +120,18 @@ export async function aggregateSloBuckets(
               where cr_by_conversation.conversation_id = g.conversation_id
                  or run_generation.conversation_id = g.conversation_id
             ) then 'coworker_run'
-            when c.type = 'coworker' then 'unknown_coworker_generation'
+            when c.type = 'coworker' then null
             else 'chat'
           end as journey,
-          case when g.status = 'error' then 'bad' else 'good' end as result
+          case
+            when g.status = 'completed' then 'good'
+            when g.status = 'cancelled' and coalesce(g.completion_reason, 'user_cancel') in ('user_cancel', 'cancelled') then 'good'
+            else 'bad'
+          end as result
         from generation g
         join conversation c on c.id = g.conversation_id
         left join coworker_run cr on cr.generation_id = g.id
-        where g.status in ('completed', 'error')
+        where g.status in ('completed', 'error', 'cancelled')
           and cr.id is null
           and coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) < $2
       ),
@@ -135,13 +139,18 @@ export async function aggregateSloBuckets(
         select
           coalesce(cr.finished_at, cr.started_at) as event_at,
           'coworker_run' as journey,
-          case when cr.status = 'error' then 'bad' else 'good' end as result
+          case
+            when cr.status = 'completed' then 'good'
+            when cr.status = 'cancelled' and coalesce(g.completion_reason, 'user_cancel') in ('user_cancel', 'cancelled') then 'good'
+            else 'bad'
+          end as result
         from coworker_run cr
-        where cr.status in ('completed', 'error')
+        left join generation g on g.id = cr.generation_id
+        where cr.status in ('completed', 'error', 'cancelled')
           and coalesce(cr.finished_at, cr.started_at) < $2
       ),
       all_events as (
-        select * from generation_events
+        select * from generation_events where journey is not null
         union all
         select * from coworker_run_events
       ),

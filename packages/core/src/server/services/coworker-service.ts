@@ -25,6 +25,7 @@ import { logServerEvent } from "../utils/observability";
 import { sanitizeJsonForPostgres, sanitizePostgresText } from "../utils/postgres-json";
 import { generationManager } from "./generation-manager";
 import { generationInterruptService } from "./generation-interrupt-service";
+import { emitPreGenerationCoworkerRunFailureSloEvent } from "./slo-journey";
 
 type CoworkerFileAttachment = {
   name: string;
@@ -675,6 +676,22 @@ export async function triggerCoworkerRun(params: {
       type: "error",
       payload: { message: errorMessage, stage: "start_generation" },
     });
+
+    try {
+      await emitPreGenerationCoworkerRunFailureSloEvent({
+        coworkerRunId: run.id,
+        coworkerId: wf.id,
+        ownerId: wf.ownerId,
+        workspaceId: wf.workspaceId,
+        syntheticKind: params.syntheticKind,
+        normalizedErrorCode: "start_generation_failed",
+      });
+    } catch (sloError) {
+      console.error("[CoworkerService] Failed to emit pre-Generation Coworker Run SLO event", {
+        coworkerRunId: run.id,
+        error: sloError instanceof Error ? sloError.message : String(sloError),
+      });
+    }
 
     throw error;
   }

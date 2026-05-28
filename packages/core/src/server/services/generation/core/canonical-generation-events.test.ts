@@ -8,6 +8,8 @@ const {
   dbUpdateMock,
   messageFindFirstMock,
   conversationFindFirstMock,
+  coworkerFindFirstMock,
+  coworkerRunFindFirstMock,
   emitCanonicalServiceEventMock,
   recordCounterMock,
   recordHistogramMock,
@@ -19,6 +21,8 @@ const {
   dbUpdateMock: vi.fn(),
   messageFindFirstMock: vi.fn(),
   conversationFindFirstMock: vi.fn(),
+  coworkerFindFirstMock: vi.fn(),
+  coworkerRunFindFirstMock: vi.fn(),
   emitCanonicalServiceEventMock: vi.fn(),
   recordCounterMock: vi.fn(),
   recordHistogramMock: vi.fn(),
@@ -31,6 +35,8 @@ vi.mock("@cmdclaw/db/client", () => ({
       generation: { findFirst: generationFindFirstMock },
       message: { findFirst: messageFindFirstMock },
       conversation: { findFirst: conversationFindFirstMock },
+      coworker: { findFirst: coworkerFindFirstMock },
+      coworkerRun: { findFirst: coworkerRunFindFirstMock },
     },
   },
 }));
@@ -51,6 +57,8 @@ describe("Generation terminal canonical event", () => {
     generationUpdateWhereMock.mockReturnValue({ returning: generationUpdateReturningMock });
     generationUpdateReturningMock.mockResolvedValue([{ id: "gen-1" }]);
     conversationFindFirstMock.mockResolvedValue(null);
+    coworkerFindFirstMock.mockResolvedValue(null);
+    coworkerRunFindFirstMock.mockResolvedValue(null);
     generationFindFirstMock.mockResolvedValue({
       id: "gen-1",
       conversationId: "conv-1",
@@ -62,6 +70,8 @@ describe("Generation terminal canonical event", () => {
         authSource: "user",
         autoApprove: true,
         lastSandboxProvider: "daytona",
+        type: "chat",
+        syntheticKind: null,
       },
       messageId: "msg-1",
       status: "completed",

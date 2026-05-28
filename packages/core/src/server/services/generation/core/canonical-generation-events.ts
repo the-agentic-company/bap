@@ -7,6 +7,7 @@ import {
   recordCounter,
   recordHistogram,
 } from "../../../utils/observability";
+import { emitGenerationSloTerminalEvent } from "../../slo-journey";
 
 type GenerationTerminalOutcome = "completed" | "failed" | "cancelled" | "timed_out";
 
@@ -473,6 +474,14 @@ export async function emitGenerationTerminalCanonicalEvent(generationId: string)
       toolCallMetrics: toolSummary.toolCallMetrics,
       inputTokens: genRecord.inputTokens,
       outputTokens: genRecord.outputTokens,
+    });
+    await emitGenerationSloTerminalEvent({
+      generationId,
+      conversationId: genRecord.conversationId,
+      conversationType: conv?.type,
+      status: genRecord.status,
+      completionReason: genRecord.completionReason,
+      syntheticKind: conv?.syntheticKind,
     });
   } catch (error) {
     await db

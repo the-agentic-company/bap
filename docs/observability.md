@@ -237,11 +237,77 @@ These host ports are configurable via `CMDCLAW_*_PORT` env vars in local worktre
 - Grafana: `http://127.0.0.1:3400`
 - Alert rules: `http://127.0.0.1:8428/api/v1/rules`
 
+## SLO Metrics
+
+The local and hosted stacks include CmdClaw SLO rules generated from Pyrra YAML
+and shown through Grafana. Pyrra is used only as rule/dashboard tooling; there
+is no separate Pyrra UI in the local or hosted stack.
+
+Live service telemetry is the source of truth for new SLO events. CmdClaw emits
+`cmdclaw_slo_events_total` from the authoritative terminal owner for each SLO
+Journey, with bounded labels:
+
+- `journey`: `chat`, `coworker_builder`, `coworker_run`, or `global`
+- `result`: `good` or `bad`
+- `traffic`: `real` or `synthetic`
+
+`global` is a rollup label emitted alongside each concrete journey event, not a
+separate product journey. A terminal journey emits exactly one concrete journey
+sample and one matching `global` sample with the same result and traffic
+provenance.
+
+Default SLO reporting includes both `traffic="real"` and `traffic="synthetic"`
+because synthetic journeys exercise user-representative paths and their
+failures are app reliability failures. Operators can still filter by traffic
+provenance when they need to separate organic user traffic from synthetic
+replay or probe traffic during debugging.
+
+Generation-backed journeys use the terminal Generation canonical event path as
+their live SLO emission point. Coworker Run SLO emission has a coworker-run-level
+dedupe guard because a Coworker Run can fail before a Generation exists and that
+pre-Generation failure is still part of the user-facing reliability journey.
+The Coworker Run guard should be a durable `slo_emitted_at` claim on the
+`coworker_run` row. Only the process that atomically claims a null guard emits
+the concrete `coworker_run` sample and matching `global` sample; if metric
+emission fails after the claim, the guard should be reset so emission can be
+retried.
+SLO Journey classification, terminal result classification, traffic labeling,
+global rollup emission, and metric emission should live in one SLO Journey
+module. Terminal owners pass terminal facts into that module instead of
+duplicating SLO rules in Generation telemetry, Coworker Run status updates,
+backfill SQL, and replay scripts.
+The core SLO classifier should be facts-based and testable without database
+side effects. Live entrypoints can wrap that classifier with persistence claims
+and metric emission, while backfill and replay can reuse the same journey and
+result vocabulary without routing through live persistence code.
+Live telemetry should not emit `unknown_coworker_generation`; unclassified
+coworker Generations indicate a model gap that should be fixed instead of
+normalized as a first-class SLO Journey. Historical scripts may still contain
+legacy handling until the backfill and replay workflows are updated.
+
+SLO result classification uses terminal reason semantics, not lifecycle status
+alone. Completed journeys are `good`. User-intended cancellations are `good`.
+Errors, timeouts, auth or approval expiry, runtime recovery failures,
+pre-Generation trigger/setup failures, and other platform-driven terminal
+states are `bad`. The terminal reason vocabulary should remain bounded so SLO
+classification does not depend on ad hoc text parsing.
+
+Pre-Generation Coworker Run failures should also leave a safe diagnostic event
+because they do not produce a terminal Generation canonical event. That event
+should carry bounded identifiers and normalized reason/error fields needed for
+debugging, but the SLO counter labels should remain limited to journey, result,
+and traffic.
+
+Deploy live SLO emission before relying on hosted backfill. Backfill fills the
+historical dashboard window, but live emission is what keeps staging and
+production accumulating fresh SLO samples after deploy.
+
 ## SLO Backfill
 
-The local stack includes CmdClaw SLO rules generated from Pyrra YAML and shown
-through Grafana. Pyrra is used only as rule/dashboard tooling; there is no
-separate Pyrra UI in the local or hosted stack.
+Historical backfill is a one-off operator action used to seed the hosted
+dashboard window after live SLO emission is deployed. It is not a recurring
+reliability job; ongoing SLO samples come from live service telemetry and
+synthetic replay or probes.
 
 Backfill the last 30 days of production conversation reliability into local
 VictoriaMetrics:
@@ -254,10 +320,23 @@ The backfill reads `DATABASE_URL_PROD` with SELECT-only queries and imports
 hourly cumulative samples for `cmdclaw_slo_events_total` into VictoriaMetrics.
 The SLO dashboard is available in Grafana as `CmdClaw SLOs`.
 
+Hosted backfill should be run explicitly for staging and production after the
+live SLO emission deploy has been verified. Each hosted run should target the
+matching database and VictoriaMetrics import endpoint, write
+`traffic="real"`, and then be verified in the corresponding hosted Grafana SLO
+dashboard.
+
+Backfill and synthetic replay must use the same SLO Journey and result
+classification rules as live emission. Historical aggregation should include
+completed, errored, and cancelled terminal journeys; user-intended cancellations
+count as `good`, while platform-driven cancellations, errors, and
+pre-Generation Coworker Run failures count as `bad`. Backfill and replay should
+not create new `unknown_coworker_generation` samples.
+
 Real backfill samples are written with `traffic="real"`. Synthetic replay
-samples use the same metric family with `traffic="synthetic"`, so existing SLO
-queries include both by default and operators can filter by traffic provenance
-when debugging.
+samples use the same metric family with `traffic="synthetic"`, so default SLO
+queries include both while preserving the traffic provenance label for
+debugging.
 
 ## SLO Synthetic Replay
 

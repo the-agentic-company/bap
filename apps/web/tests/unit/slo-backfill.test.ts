@@ -5,6 +5,7 @@ import {
   importSloBucketsToVictoriaMetrics,
   renderPrometheusImportRows,
   resolveSloBackfillWindow,
+  SLO_JOURNEYS,
   type RawSloBucket,
 } from "../../scripts/slo-backfill";
 
@@ -56,7 +57,7 @@ describe("slo backfill", () => {
       },
       {
         bucket: new Date("2026-05-17T03:00:00.000Z"),
-        journey: "unknown_coworker_generation",
+        journey: "chat",
         result: "bad",
         count: 99,
       },
@@ -80,14 +81,7 @@ describe("slo backfill", () => {
           sample.result === "bad",
       )?.value,
     ).toBe(1);
-    expect(
-      samples.find(
-        (sample) =>
-          sample.timestampMs === Date.parse("2026-05-17T03:00:00.000Z") &&
-          sample.journey === "unknown_coworker_generation" &&
-          sample.result === "bad",
-      )?.value,
-    ).toBe(0);
+    expect(SLO_JOURNEYS).not.toContain("unknown_coworker_generation");
   });
 
   test("keeps overlapping counter samples stable when the backfill window shifts", () => {
@@ -204,15 +198,17 @@ describe("slo backfill", () => {
     expect(sql).toContain("cr_by_conversation.conversation_id = g.conversation_id");
     expect(sql).toContain("run_generation.conversation_id = g.conversation_id");
     expect(sql).toContain("then 'coworker_run'");
-    expect(sql).toContain("when c.type = 'coworker' then 'unknown_coworker_generation'");
+    expect(sql).toContain("when c.type = 'coworker' then null");
+    expect(sql).not.toContain("unknown_coworker_generation");
     expect(sql).toContain("left join coworker_run cr on cr.generation_id = g.id");
     expect(sql).toContain("and cr.id is null");
     expect(sql).toContain("seed_events as");
     expect(sql).toContain('true as "isSeed"');
     expect(sql).toContain("where event_at < $1");
     expect(sql).toContain("where event_at >= $1");
-    expect(sql).toContain("where g.status in ('completed', 'error')");
-    expect(sql).toContain("where cr.status in ('completed', 'error')");
+    expect(sql).toContain("where g.status in ('completed', 'error', 'cancelled')");
+    expect(sql).toContain("where cr.status in ('completed', 'error', 'cancelled')");
+    expect(sql).toContain("coalesce(g.completion_reason, 'user_cancel')");
     expect(values).toEqual([window.from, window.toExclusive]);
   });
 });

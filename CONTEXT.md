@@ -48,6 +48,10 @@ _Avoid_: version
 A browser-originated observability record that describes what the **User** experienced in the client and can be correlated with **Canonical Service Events** by trace id, **Generation**, or conversation identifiers. A **Client Observation** is accepted only through an allowlisted event contract; it can add evidence about page state, stream timing, or visible errors, but it is not the authoritative record of server behavior and is not application state stored in Postgres by default.
 _Avoid_: client log, frontend log, browser log
 
+**Error Diagnostic**:
+A redacted observability summary of an exception or failure, including safe fields such as error name, message, stack, normalized code, category, provider, and upstream status when available. An **Error Diagnostic** preserves operational debugging signal without storing credentials, request bodies, provider payloads, or other forbidden content.
+_Avoid_: raw error, serialized error, error object
+
 **Audit Record**:
 A durable product or security fact that records which actor performed which action on which resource at what time. **Audit Records** are separate from **Canonical Service Events** and are not part of the first observability rollout.
 _Avoid_: audit log, observability log
@@ -75,6 +79,10 @@ _Avoid_: awaiting start message, paused, approval
 **User Input Prompt**:
 The coworker-authored question shown during a **Pending Start** to ask for the **Start Message**.
 _Avoid_: start prompt, first-run prompt, parameter prompt
+
+**SLO Journey**:
+A low-cardinality, user-facing reliability slice whose success is measured by one authoritative terminal outcome, including failures that prevent the user from completing the workflow at all. **SLO Journey** values describe real product workflows such as chat, coworker builder, and coworker run; global SLO reporting is a rollup across journeys, not a separate journey.
+_Avoid_: workflow, metric label, global journey
 
 **Waiting Generation**:
 A non-terminal **Generation** that is intentionally waiting for durable human action, such as approval or authentication, before it can continue.
@@ -119,6 +127,10 @@ _Avoid_: attached file, related file
 **Modulr Document Resource**:
 The MCP resource that exposes the bytes of a selected **Modulr Customer Document** after a tool has returned a resource link.
 _Avoid_: download response, inline file
+
+**Modulr Download Artifact**:
+A short-lived CmdClaw-owned file artifact created from a selected **Modulr Customer Document** so the **User** can retrieve it through CmdClaw without the runtime sandbox needing direct object-storage access.
+_Avoid_: sandbox S3 file, externally hosted download, direct bucket link
 
 **Modulr Workspace Connection**:
 A workspace-owned Modulr integration connection for one broker/company database. CmdClaw derives short-lived Modulr bearer tokens from this connection when invoking Modulr MCP tools.

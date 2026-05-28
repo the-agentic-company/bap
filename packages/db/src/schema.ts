@@ -1188,11 +1188,7 @@ export const coworkerRunStatusEnum = pgEnum("coworker_run_status", [
   "error",
   "cancelled",
 ]);
-export type SloReplayJourney =
-  | "chat"
-  | "coworker_builder"
-  | "coworker_run"
-  | "unknown_coworker_generation";
+export type SloReplayJourney = "chat" | "coworker_builder" | "coworker_run";
 export type SloReplayStatus = "pending" | "running" | "completed" | "error" | "setup_failed";
 export const coworkerEmailAliasStatusEnum = pgEnum("coworker_email_alias_status", [
   "active",
@@ -1302,6 +1298,7 @@ export const coworkerRun = pgTable(
     errorMessage: text("error_message"),
     debugInfo: jsonb("debug_info").$type<Record<string, unknown>>(),
     syntheticKind: text("synthetic_kind").$type<SyntheticTrafficKind>(),
+    sloEmittedAt: timestamp("slo_emitted_at"),
   },
   (table) => [
     index("coworker_run_coworker_id_idx").on(table.coworkerId),

@@ -1,5 +1,6 @@
 import type { IntegrationType } from "@cmdclaw/core/server/oauth/config";
 import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@cmdclaw/core/lib/coworker-tool-policy";
+import { SLO_CONCRETE_JOURNEYS } from "@cmdclaw/core/server/services/slo-journey-classification";
 import { closePool, db as localDb } from "@cmdclaw/db/client";
 import { coworker, coworkerRun, generation, sloReplayRun, user } from "@cmdclaw/db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
@@ -28,12 +29,7 @@ export const SLO_REPLAY_TARGET_EMAIL_ALLOWLIST = [
   "louis@heybap.com",
 ] as const;
 
-const REPLAY_JOURNEYS = [
-  "chat",
-  "coworker_builder",
-  "coworker_run",
-  "unknown_coworker_generation",
-] as const;
+const REPLAY_JOURNEYS = SLO_CONCRETE_JOURNEYS;
 
 type ReplayJourney = (typeof REPLAY_JOURNEYS)[number];
 type TargetEnv = "staging" | "prod";
@@ -313,10 +309,14 @@ async function fetchSourceReplayEvents(
               where cr_by_conversation.conversation_id = g.conversation_id
                  or run_generation.conversation_id = g.conversation_id
             ) then 'coworker_run'
-            when c.type = 'coworker' then 'unknown_coworker_generation'
+            when c.type = 'coworker' then null
             else 'chat'
           end as journey,
-          case when g.status = 'error' then 'bad' else 'good' end as result,
+          case
+            when g.status = 'completed' then 'good'
+            when g.status = 'cancelled' and coalesce(g.completion_reason, 'user_cancel') in ('user_cancel', 'cancelled') then 'good'
+            else 'bad'
+          end as result,
           g.id as source_generation_id,
           null::text as source_coworker_run_id,
           c.user_id as source_user_id,
@@ -337,7 +337,7 @@ async function fetchSourceReplayEvents(
           order by m.created_at asc
           limit 1
         ) first_user_message on true
-        where g.status in ('completed', 'error')
+        where g.status in ('completed', 'error', 'cancelled')
           and cr.id is null
           and coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) >= $1
           and coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) < $2
@@ -346,7 +346,11 @@ async function fetchSourceReplayEvents(
         select
           coalesce(cr.finished_at, cr.started_at) as event_at,
           'coworker_run' as journey,
-          case when cr.status = 'error' then 'bad' else 'good' end as result,
+          case
+            when cr.status = 'completed' then 'good'
+            when cr.status = 'cancelled' and coalesce(g.completion_reason, 'user_cancel') in ('user_cancel', 'cancelled') then 'good'
+            else 'bad'
+          end as result,
           cr.generation_id as source_generation_id,
           cr.id as source_coworker_run_id,
           cr.owner_id as source_user_id,
@@ -367,12 +371,12 @@ async function fetchSourceReplayEvents(
           order by m.created_at asc
           limit 1
         ) first_user_message on true
-        where cr.status in ('completed', 'error')
+        where cr.status in ('completed', 'error', 'cancelled')
           and coalesce(cr.finished_at, cr.started_at) >= $1
           and coalesce(cr.finished_at, cr.started_at) < $2
       ),
       all_events as (
-        select * from generation_events
+        select * from generation_events where journey is not null
         union all
         select * from coworker_run_events
       )

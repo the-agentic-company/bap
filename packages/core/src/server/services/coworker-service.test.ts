@@ -18,6 +18,7 @@ const coworkerRunFindFirstMock = vi.fn();
 const workspaceExecutorSourceFindManyMock = vi.fn();
 const getEnabledIntegrationTypesMock = vi.fn();
 const getRemoteIntegrationCredentialsMock = vi.fn();
+const emitPreGenerationCoworkerRunFailureSloEventMock = vi.fn();
 
 const insertValuesMock = vi.fn();
 const insertMock = vi.fn(() => ({ values: insertValuesMock }));
@@ -73,6 +74,10 @@ vi.mock("../integrations/remote-integrations", async () => {
   };
 });
 
+vi.mock("./slo-journey", () => ({
+  emitPreGenerationCoworkerRunFailureSloEvent: emitPreGenerationCoworkerRunFailureSloEventMock,
+}));
+
 let triggerCoworkerRun: typeof import("./coworker-service").triggerCoworkerRun;
 let startPendingCoworkerRun: typeof import("./coworker-service").startPendingCoworkerRun;
 
@@ -120,6 +125,7 @@ describe("triggerCoworkerRun", () => {
         HUBSPOT_ACCESS_TOKEN: "remote-hubspot-token",
       },
     });
+    emitPreGenerationCoworkerRunFailureSloEventMock.mockResolvedValue(true);
 
     insertValuesMock.mockImplementation((values: unknown) => {
       const record = values as Record<string, unknown>;
@@ -755,6 +761,14 @@ describe("triggerCoworkerRun", () => {
         payload: expect.objectContaining({ stage: "start_generation" }),
       }),
     );
+    expect(emitPreGenerationCoworkerRunFailureSloEventMock).toHaveBeenCalledWith({
+      coworkerRunId: "run-1",
+      coworkerId: "wf-1",
+      ownerId: "user-1",
+      workspaceId: "ws-1",
+      syntheticKind: undefined,
+      normalizedErrorCode: "start_generation_failed",
+    });
   });
 
   it("reconciles stale orphan and terminal runs before starting a new run", async () => {
