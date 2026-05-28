@@ -6,9 +6,9 @@ import {
 } from "@cmdclaw/core/lib/generation-errors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as jestDomVitest from "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 void jestDomVitest;
 
@@ -99,6 +99,10 @@ describe("useGeneration", () => {
     invalidateQueriesMock.mockReset();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it("normalizes pre-start RPC failures before onStarted", async () => {
     runGenerationStreamMock.mockRejectedValueOnce({
       code: "BAD_REQUEST",
@@ -168,6 +172,35 @@ describe("useGeneration", () => {
           }),
         }),
       );
+    });
+  });
+
+  it("refreshes the active conversation when generation starts", async () => {
+    runGenerationStreamMock.mockImplementationOnce(async ({ callbacks }) => {
+      callbacks.onStarted?.("gen-1", "conv-1");
+      return null;
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ForwardingHarness />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Forward" }));
+
+    await waitFor(() => {
+      expect(invalidateQueriesMock).toHaveBeenCalledWith({
+        queryKey: ["conversation", "get", "conv-1"],
+      });
     });
   });
 });

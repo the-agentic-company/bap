@@ -127,6 +127,7 @@ describe("triggerCoworkerRun", () => {
     });
     emitPreGenerationCoworkerRunFailureSloEventMock.mockResolvedValue(true);
 
+    let insertedUserMessageCount = 0;
     insertValuesMock.mockImplementation((values: unknown) => {
       const record = values as Record<string, unknown>;
       if (record.type === "coworker" && "title" in record) {
@@ -140,8 +141,11 @@ describe("triggerCoworkerRun", () => {
         };
       }
       if ("role" in record && "conversationId" in record) {
+        insertedUserMessageCount += 1;
         return {
-          returning: vi.fn().mockResolvedValue([{ id: "msg-user-1", ...record }]),
+          returning: vi.fn().mockResolvedValue([
+            { id: `msg-user-${insertedUserMessageCount}`, ...record },
+          ]),
         };
       }
       if ("coworkerId" in record && "status" in record) {
@@ -332,6 +336,36 @@ describe("triggerCoworkerRun", () => {
     );
   });
 
+  it("includes saved coworker instructions in the generation user prompt", async () => {
+    await triggerCoworkerRun({
+      coworkerId: "wf-1",
+      triggerPayload: { source: "manual", reason: "live click" },
+      userId: "user-1",
+      userRole: "admin",
+    });
+
+    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("## Coworker Instructions\nDo the coworker"),
+      }),
+    );
+    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("## Do\nDo this"),
+      }),
+    );
+    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("## Don't\nDo not do that"),
+      }),
+    );
+    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('"reason": "live click"'),
+      }),
+    );
+  });
+
   it("uses remote enabled integrations for all-tools manual runs", async () => {
     await triggerCoworkerRun({
       coworkerId: "wf-1",
@@ -517,6 +551,11 @@ describe("triggerCoworkerRun", () => {
     );
     expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        content: expect.stringContaining("## Coworker Instructions\nDraft an email"),
+      }),
+    );
+    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
         content: expect.stringContaining("## User Input\nalice@example.com"),
       }),
     );
@@ -598,10 +637,23 @@ describe("triggerCoworkerRun", () => {
         content: "",
       }),
     );
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: "conv-pending",
+        role: "user",
+        content: expect.stringContaining("## Coworker Instructions\nReview files"),
+      }),
+    );
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('"userInputPrompt": "What should I do with the file?"'),
+      }),
+    );
     expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
       expect.objectContaining({
         conversationId: "conv-pending",
-        existingUserMessageId: "msg-user-1",
+        existingUserMessageId: "msg-user-2",
+        content: expect.stringContaining("## Coworker Instructions\nReview files"),
         fileAttachments: [
           {
             name: "forwarded.pdf",

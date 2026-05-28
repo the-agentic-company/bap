@@ -2146,6 +2146,9 @@ export function useGeneration() {
                 currentConversationId = conversationId;
                 callbacks.onStarted?.(generationId, conversationId);
                 queryClient.invalidateQueries({
+                  queryKey: ["conversation", "get", conversationId],
+                });
+                queryClient.invalidateQueries({
                   queryKey: ["conversation", "list"],
                 });
                 queryClient.invalidateQueries({
