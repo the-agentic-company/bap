@@ -981,7 +981,7 @@ export const generation = pgTable(
       .notNull(),
     suspendedAt: timestamp("suspended_at"),
     resumeInterruptId: text("resume_interrupt_id"),
-    lastRuntimeEventAt: timestamp("last_runtime_event_at").defaultNow().notNull(),
+    lastRuntimeProgressAt: timestamp("last_runtime_progress_at").defaultNow().notNull(),
     recoveryAttempts: integer("recovery_attempts").default(0).notNull(),
     completionReason: text("completion_reason"),
     // Metadata

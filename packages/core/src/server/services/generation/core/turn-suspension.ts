@@ -147,7 +147,7 @@ export class GenerationTurnSuspender {
       contentParts: ctx.contentParts,
       remainingRunMs,
       suspendedAt: now,
-      lastRuntimeEventAt: ctx.lastRuntimeEventAt,
+      lastRuntimeProgressAt: ctx.lastRuntimeProgressAt,
     });
 
     this.deps.broadcast(ctx, {
@@ -216,7 +216,7 @@ export class GenerationTurnSuspender {
       contentParts: ctx.contentParts,
       remainingRunMs,
       suspendedAt: now,
-      lastRuntimeEventAt: ctx.lastRuntimeEventAt,
+      lastRuntimeProgressAt: ctx.lastRuntimeProgressAt,
     });
 
     if (snapshotSaved) {

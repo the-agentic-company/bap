@@ -438,7 +438,7 @@ export class TurnIntake {
         params.debugForceRuntimeNoProgressAfterPrompt,
     });
     const lifecycle = createGenerationLifecycle();
-    lifecycle.deadlineAt = new Date(lifecycle.lastRuntimeEventAt.getTime() + runDeadlineMs);
+    lifecycle.deadlineAt = new Date(lifecycle.lastRuntimeProgressAt.getTime() + runDeadlineMs);
     const [genRecord] = await db
       .insert(generation)
       .values({
@@ -455,7 +455,7 @@ export class TurnIntake {
         traceId,
         deadlineAt: lifecycle.deadlineAt,
         remainingRunMs: runDeadlineMs,
-        lastRuntimeEventAt: lifecycle.lastRuntimeEventAt,
+        lastRuntimeProgressAt: lifecycle.lastRuntimeProgressAt,
         recoveryAttempts: lifecycle.recoveryAttempts,
         completionReason: lifecycle.completionReason,
       })
@@ -642,7 +642,7 @@ export class TurnIntake {
     const traceId = createTraceId();
     const lifecycle = createGenerationLifecycle();
     const runDeadlineMs = resolveGenerationRunDeadlineMs(params.debugRunDeadlineMs);
-    lifecycle.deadlineAt = new Date(lifecycle.lastRuntimeEventAt.getTime() + runDeadlineMs);
+    lifecycle.deadlineAt = new Date(lifecycle.lastRuntimeProgressAt.getTime() + runDeadlineMs);
     const [genRecord] = await db
       .insert(generation)
       .values({
@@ -659,7 +659,7 @@ export class TurnIntake {
         traceId,
         deadlineAt: lifecycle.deadlineAt,
         remainingRunMs: runDeadlineMs,
-        lastRuntimeEventAt: lifecycle.lastRuntimeEventAt,
+        lastRuntimeProgressAt: lifecycle.lastRuntimeProgressAt,
         recoveryAttempts: lifecycle.recoveryAttempts,
         completionReason: lifecycle.completionReason,
       })
@@ -793,16 +793,16 @@ function resolveRuntimeNoProgressTimeoutMs(
   debugRuntimeNoProgressTimeoutMs: number | undefined,
 ): number {
   if (debugRuntimeNoProgressTimeoutMs === undefined) {
-    return generationLifecyclePolicy.runtimeNoProgressAfterPromptMs;
+    return generationLifecyclePolicy.runtimeProgressStallMs;
   }
   if (
     !Number.isInteger(debugRuntimeNoProgressTimeoutMs) ||
     debugRuntimeNoProgressTimeoutMs < 1_000 ||
     debugRuntimeNoProgressTimeoutMs >
-      generationLifecyclePolicy.runtimeNoProgressAfterPromptMs
+      generationLifecyclePolicy.runtimeProgressStallMs
   ) {
     throw new Error(
-      `debugRuntimeNoProgressTimeoutMs must be an integer between 1000 and ${generationLifecyclePolicy.runtimeNoProgressAfterPromptMs}`,
+      `debugRuntimeNoProgressTimeoutMs must be an integer between 1000 and ${generationLifecyclePolicy.runtimeProgressStallMs}`,
     );
   }
   return debugRuntimeNoProgressTimeoutMs;

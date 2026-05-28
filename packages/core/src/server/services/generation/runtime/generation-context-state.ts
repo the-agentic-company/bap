@@ -7,6 +7,7 @@ import type { GenerationLifecycleStore } from "../core/lifecycle-store";
 import type {
   RuntimeFailureClassification,
   GenerationCompletionReason,
+  RuntimeProgressKind,
 } from "../../lifecycle-policy";
 import { logServerEvent } from "../../../utils/observability";
 import { generationLifecyclePolicy } from "../../lifecycle-policy";
@@ -24,8 +25,9 @@ type GenerationContextStateDependencies = {
 export class GenerationContextState {
   constructor(private readonly deps: GenerationContextStateDependencies) {}
 
-  markRuntimeActivity(ctx: GenerationContext, at = new Date()): void {
-    ctx.lastRuntimeEventAt = at;
+  markRuntimeProgress(ctx: GenerationContext, kind: RuntimeProgressKind, at = new Date()): void {
+    ctx.lastRuntimeProgressAt = at;
+    ctx.lastRuntimeProgressKind = kind;
   }
 
   setCompletionReason(

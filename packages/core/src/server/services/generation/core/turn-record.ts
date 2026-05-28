@@ -101,7 +101,7 @@ export type AppendProgressInput = {
   resumeInterruptId?: string | null;
   recoveryAttempts?: number;
   completionReason?: GenerationCompletionReason | null;
-  lastRuntimeEventAt: Date;
+  lastRuntimeProgressAt: Date;
   debugInfo?: unknown;
 };
 

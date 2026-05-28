@@ -47,7 +47,8 @@ function resolveTerminalOutcome(
     completionReason === "approval_timeout" ||
     completionReason === "auth_timeout" ||
     completionReason === "bootstrap_timeout" ||
-    completionReason === "runtime_no_progress_after_prompt"
+    completionReason === "runtime_no_progress_after_prompt" ||
+    completionReason === "runtime_progress_stalled"
   ) {
     return "timed_out";
   }
@@ -66,6 +67,8 @@ function resolveFailurePhase(completionReason: string | null | undefined): strin
       return "run_deadline";
     case "runtime_no_progress_after_prompt":
       return "prompt_sent";
+    case "runtime_progress_stalled":
+      return "runtime";
     case "user_cancel":
       return "user_cancel";
     case "runtime_error":
@@ -341,6 +344,9 @@ export async function emitGenerationTerminalCanonicalEvent(generationId: string)
               storageKey?: unknown;
               uploadSucceeded?: unknown;
               timeoutMs?: unknown;
+              stalledMs?: unknown;
+              lastRuntimeProgressAt?: unknown;
+              lastRuntimeProgressKind?: unknown;
             }
           | null
           | undefined)
@@ -398,6 +404,18 @@ export async function emitGenerationTerminalCanonicalEvent(generationId: string)
         "cmdclaw.runtime.no_progress.timeout_ms":
           typeof runtimeDiagnosticSnapshot?.timeoutMs === "number"
             ? runtimeDiagnosticSnapshot.timeoutMs
+            : undefined,
+        "cmdclaw.runtime.progress_stall.stalled_ms":
+          typeof runtimeDiagnosticSnapshot?.stalledMs === "number"
+            ? runtimeDiagnosticSnapshot.stalledMs
+            : undefined,
+        "cmdclaw.runtime.progress_stall.last_progress_at":
+          typeof runtimeDiagnosticSnapshot?.lastRuntimeProgressAt === "string"
+            ? runtimeDiagnosticSnapshot.lastRuntimeProgressAt
+            : undefined,
+        "cmdclaw.runtime.progress_stall.last_progress_kind":
+          typeof runtimeDiagnosticSnapshot?.lastRuntimeProgressKind === "string"
+            ? runtimeDiagnosticSnapshot.lastRuntimeProgressKind
             : undefined,
         "cmdclaw.generation.duration_ms": durationMs,
         "cmdclaw.phase.sandbox_startup_ms": timing?.sandboxStartupDurationMs,

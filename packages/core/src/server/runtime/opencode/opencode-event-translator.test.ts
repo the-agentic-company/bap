@@ -62,7 +62,7 @@ describe("OpenCodeEventTranslator", () => {
       const ctx = createContext();
 
       const processEvent = async (id: string, text = "hello") => {
-        await translator.processEvent({
+        const progressKind = await translator.processEvent({
           ctx,
           event: {
             type: "message.part.updated",
@@ -79,6 +79,7 @@ describe("OpenCodeEventTranslator", () => {
           currentTextPartId: null,
           setCurrentTextPart: () => {},
         });
+        expect(progressKind).toBeNull();
       };
 
       for (let i = 0; i < 120; i += 1) {
@@ -117,7 +118,7 @@ describe("OpenCodeEventTranslator", () => {
 
     const hugeOutput = "x".repeat(120_000);
 
-    await translator.processEvent({
+    const progressKind = await translator.processEvent({
       ctx,
       event: {
         type: "message.part.updated",
@@ -145,6 +146,7 @@ describe("OpenCodeEventTranslator", () => {
     );
 
     expect(toolResult).toBeDefined();
+    expect(progressKind).toBe("tool_result");
     expect(typeof toolResult?.content).toBe("string");
     expect(String(toolResult?.content)).toContain("... (output truncated)");
     expect(String(toolResult?.content).length).toBeLessThanOrEqual(100_024);
@@ -169,7 +171,7 @@ describe("OpenCodeEventTranslator", () => {
       },
     };
 
-    await translator.processEvent({
+    const runningProgressKind = await translator.processEvent({
       ctx,
       event: {
         ...baseEvent,
@@ -187,8 +189,9 @@ describe("OpenCodeEventTranslator", () => {
       currentTextPartId: null,
       setCurrentTextPart: () => {},
     });
+    expect(runningProgressKind).toBe("tool_use");
 
-    await translator.processEvent({
+    const completedProgressKind = await translator.processEvent({
       ctx,
       event: {
         ...baseEvent,
@@ -206,9 +209,81 @@ describe("OpenCodeEventTranslator", () => {
       currentTextPartId: null,
       setCurrentTextPart: () => {},
     });
+    expect(completedProgressKind).toBe("tool_result");
 
     const serializedParts = JSON.stringify(ctx.contentParts);
     expect(serializedParts).not.toContain("\\u0000");
     expect(serializedParts).toContain("before�after");
+  });
+
+  it("reports text and reasoning deltas as runtime progress", async () => {
+    const translator = createTranslator();
+    const ctx = createContext({
+      messageRoles: new Map([["assistant-msg", "assistant"]]),
+    });
+
+    const textProgressKind = await translator.processEvent({
+      ctx,
+      event: {
+        type: "message.part.updated",
+        properties: {
+          part: {
+            id: "text-part-1",
+            type: "text",
+            text: "Bonjour",
+            messageID: "assistant-msg",
+          },
+        },
+      } as unknown as OpenCodeTrackedEvent,
+      currentTextPart: null,
+      currentTextPartId: null,
+      setCurrentTextPart: () => {},
+    });
+
+    const reasoningProgressKind = await translator.processEvent({
+      ctx,
+      event: {
+        type: "message.part.updated",
+        properties: {
+          part: {
+            id: "reasoning-part-1",
+            type: "reasoning",
+            text: "Thinking",
+            messageID: "assistant-msg",
+          },
+        },
+      } as unknown as OpenCodeTrackedEvent,
+      currentTextPart: null,
+      currentTextPartId: null,
+      setCurrentTextPart: () => {},
+    });
+
+    expect(textProgressKind).toBe("text_delta");
+    expect(reasoningProgressKind).toBe("reasoning_delta");
+  });
+
+  it("does not report empty assistant message creation as runtime progress", async () => {
+    const translator = createTranslator();
+    const ctx = createContext();
+
+    const progressKind = await translator.processEvent({
+      ctx,
+      event: {
+        type: "message.updated",
+        properties: {
+          info: {
+            id: "assistant-empty",
+            role: "assistant",
+          },
+        },
+      } as unknown as OpenCodeTrackedEvent,
+      currentTextPart: null,
+      currentTextPartId: null,
+      setCurrentTextPart: () => {},
+    });
+
+    expect(progressKind).toBeNull();
+    expect(ctx.assistantMessageIds.has("assistant-empty")).toBe(true);
+    expect(ctx.contentParts).toHaveLength(0);
   });
 });

@@ -1,6 +1,6 @@
 # Runtime Diagnostic Snapshots Are Stored As Debug Artifacts
 
-CmdClaw stores full redacted Runtime Diagnostic Snapshots as object-storage artifacts, referenced from the Generation debug index and terminal Canonical Service Event. Postgres `debugInfo` stays bounded and queryable with the snapshot id, storage key, failure code, phase, and core counters, while the full artifact can contain nested runtime state, event counters, safe response shapes, and redacted log tails needed to debug runtime-boundary failures.
+CmdClaw stores full redacted Runtime Diagnostic Snapshots as object-storage artifacts, referenced from the Generation debug index and terminal Canonical Service Event. Runtime-boundary stalls such as `runtime_no_progress_after_prompt` and `runtime_progress_stalled` capture this artifact so operators can distinguish missing initial runtime progress from progress that later stopped. Postgres `debugInfo` stays bounded and queryable with the snapshot id, storage key, failure code, phase, and core counters, while the full artifact can contain nested runtime state, event counters, safe response shapes, and redacted log tails needed to debug runtime-boundary failures.
 
 **Considered Options**
 

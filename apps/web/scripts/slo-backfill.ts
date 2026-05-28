@@ -105,7 +105,7 @@ export async function aggregateSloBuckets(
     `
       with generation_events as (
         select
-          coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) as event_at,
+          coalesce(g.completed_at, g.last_runtime_progress_at, g.started_at) as event_at,
           case
             when exists (
               select 1
@@ -133,7 +133,7 @@ export async function aggregateSloBuckets(
         left join coworker_run cr on cr.generation_id = g.id
         where g.status in ('completed', 'error', 'cancelled')
           and cr.id is null
-          and coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) < $2
+          and coalesce(g.completed_at, g.last_runtime_progress_at, g.started_at) < $2
       ),
       coworker_run_events as (
         select

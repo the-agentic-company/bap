@@ -420,7 +420,7 @@ const startGeneration = protectedProcedure
           .number()
           .int()
           .min(1_000)
-          .max(generationLifecyclePolicy.runtimeNoProgressAfterPromptMs)
+          .max(generationLifecyclePolicy.runtimeProgressStallMs)
           .optional(),
         debugForceRuntimeNoProgressAfterPrompt: z.boolean().optional(),
         selectedPlatformSkillSlugs: z.array(z.string().max(128)).max(50).optional(),

@@ -294,7 +294,7 @@ async function fetchSourceReplayEvents(
     `
       with generation_events as (
         select
-          coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) as event_at,
+          coalesce(g.completed_at, g.last_runtime_progress_at, g.started_at) as event_at,
           case
             when exists (
               select 1
@@ -339,8 +339,8 @@ async function fetchSourceReplayEvents(
         ) first_user_message on true
         where g.status in ('completed', 'error', 'cancelled')
           and cr.id is null
-          and coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) >= $1
-          and coalesce(g.completed_at, g.last_runtime_event_at, g.started_at) < $2
+          and coalesce(g.completed_at, g.last_runtime_progress_at, g.started_at) >= $1
+          and coalesce(g.completed_at, g.last_runtime_progress_at, g.started_at) < $2
       ),
       coworker_run_events as (
         select

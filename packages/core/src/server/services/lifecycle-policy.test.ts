@@ -31,7 +31,7 @@ describe("generationLifecyclePolicy", () => {
     const now = new Date("2026-03-25T10:00:00.000Z");
     expect(createGenerationLifecycle(now)).toEqual({
       deadlineAt: new Date("2026-03-25T10:15:00.000Z"),
-      lastRuntimeEventAt: now,
+      lastRuntimeProgressAt: now,
       recoveryAttempts: 0,
       completionReason: null,
     });

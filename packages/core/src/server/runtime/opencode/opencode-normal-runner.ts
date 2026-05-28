@@ -61,6 +61,8 @@ const OPENCODE_EARLY_STREAM_REATTACH_WAIT_MS = 8_000;
 const OPENCODE_STATUS_POLL_INTERVAL_MS = 500;
 const RUNTIME_NO_PROGRESS_USER_MESSAGE =
   "The runtime stopped responding before producing any output. Please retry.";
+const RUNTIME_PROGRESS_STALLED_USER_MESSAGE =
+  "The runtime stopped making progress. Please retry.";
 
 type TerminalGenerationStatus = Extract<
   GenerationStatus,
@@ -249,15 +251,15 @@ function isBootstrapTimeoutError(error: unknown): boolean {
 function resolveRuntimeNoProgressTimeoutMs(ctx: GenerationContext): number {
   const override = ctx.executionPolicy.debugRuntimeNoProgressTimeoutMs;
   if (override === undefined) {
-    return generationLifecyclePolicy.runtimeNoProgressAfterPromptMs;
+    return generationLifecyclePolicy.runtimeProgressStallMs;
   }
   if (
     !Number.isInteger(override) ||
     override < 1_000 ||
-    override > generationLifecyclePolicy.runtimeNoProgressAfterPromptMs
+    override > generationLifecyclePolicy.runtimeProgressStallMs
   ) {
     throw new Error(
-      `debugRuntimeNoProgressTimeoutMs must be an integer between 1000 and ${generationLifecyclePolicy.runtimeNoProgressAfterPromptMs}`,
+      `debugRuntimeNoProgressTimeoutMs must be an integer between 1000 and ${generationLifecyclePolicy.runtimeProgressStallMs}`,
     );
   }
   return override;
@@ -269,6 +271,10 @@ export class OpenCodeNormalRunner {
   async run(ctx: GenerationContext): Promise<void> {
     let promptTimeoutTriggered = false;
     let runtimeNoProgressTriggered = false;
+    let runtimeWatchdogReason:
+      | "runtime_no_progress_after_prompt"
+      | "runtime_progress_stalled"
+      | null = null;
     let clearPromptTimeout: (() => void) | undefined;
     let clearRuntimeNoProgressTimeout: (() => void) | undefined;
     let client: RuntimeHarnessClient | undefined;
@@ -1037,57 +1043,76 @@ export class OpenCodeNormalRunner {
       });
 
       let resolveRuntimeNoProgress:
-        | ((value: { type: "runtime_no_progress" }) => void)
+        | ((
+            value: {
+              type: "runtime_no_progress";
+              reason: "runtime_no_progress_after_prompt" | "runtime_progress_stalled";
+            },
+          ) => void)
         | undefined;
       const runtimeNoProgressPromise = new Promise<{
         type: "runtime_no_progress";
+        reason: "runtime_no_progress_after_prompt" | "runtime_progress_stalled";
       }>((resolve) => {
         resolveRuntimeNoProgress = resolve;
       });
       if (remainingRunTimeMs > runtimeNoProgressTimeoutMs) {
-        const runtimeNoProgressTimeoutId = setTimeout(() => {
+        const runtimeNoProgressTimeoutId = setInterval(() => {
           const snapshot = eventLoop.snapshot();
-          const suppressionReasons: string[] = [];
-          if (!forceRuntimeNoProgress && snapshot.stats.progressEventCount > 0) {
-            suppressionReasons.push("runtime_progress_observed");
-          }
           if (snapshot.sawSessionIdle) {
-            suppressionReasons.push("session_idle_observed");
+            return;
           }
           if (snapshot.sessionErrorMessage) {
-            suppressionReasons.push("session_error_observed");
+            return;
           }
           if (ctx.abortController.signal.aborted) {
-            suppressionReasons.push("generation_aborted");
+            return;
           }
-          if (suppressionReasons.length > 0) {
-            logServerEvent(
-              "info",
-              "OPENCODE_RUNTIME_NO_PROGRESS_CHECK_SUPPRESSED",
-              {
-                timeoutMs: runtimeNoProgressTimeoutMs,
-                eventStats: snapshot.stats,
-                suppressionReasons,
-              },
-              {
-                source: "generation-manager",
-                traceId: ctx.traceId,
-                generationId: ctx.id,
-                conversationId: ctx.conversationId,
-                userId: ctx.userId,
-                sessionId: activeSessionId,
-              },
-            );
+
+          const now = Date.now();
+          const promptElapsedMs = now - promptSentAtMs;
+          const stalledMs = now - ctx.lastRuntimeProgressAt.getTime();
+          let reason:
+            | "runtime_no_progress_after_prompt"
+            | "runtime_progress_stalled"
+            | null = null;
+
+          if (
+            forceRuntimeNoProgress ||
+            (snapshot.stats.progressEventCount === 0 &&
+              promptElapsedMs >= runtimeNoProgressTimeoutMs)
+          ) {
+            reason = "runtime_no_progress_after_prompt";
+          } else if (
+            snapshot.stats.progressEventCount > 0 &&
+            stalledMs >= runtimeNoProgressTimeoutMs
+          ) {
+            reason = "runtime_progress_stalled";
+          }
+
+          if (!reason) {
             return;
           }
 
           runtimeNoProgressTriggered = true;
+          runtimeWatchdogReason = reason;
           promptTimeoutController.abort();
           logServerEvent(
             "error",
-            "OPENCODE_RUNTIME_NO_PROGRESS_AFTER_PROMPT",
+            reason === "runtime_progress_stalled"
+              ? "OPENCODE_RUNTIME_PROGRESS_STALLED"
+              : "OPENCODE_RUNTIME_NO_PROGRESS_AFTER_PROMPT",
             {
               timeoutMs: runtimeNoProgressTimeoutMs,
+              stalledMs: reason === "runtime_progress_stalled" ? stalledMs : undefined,
+              lastRuntimeProgressAt:
+                reason === "runtime_progress_stalled"
+                  ? ctx.lastRuntimeProgressAt.toISOString()
+                  : undefined,
+              lastRuntimeProgressKind:
+                reason === "runtime_progress_stalled"
+                  ? (ctx.lastRuntimeProgressKind ?? "unknown")
+                  : undefined,
               eventStats: snapshot.stats,
             },
             {
@@ -1099,7 +1124,7 @@ export class OpenCodeNormalRunner {
               sessionId: activeSessionId,
             },
           );
-          resolveRuntimeNoProgress?.({ type: "runtime_no_progress" });
+          resolveRuntimeNoProgress?.({ type: "runtime_no_progress", reason });
           void runtimeClient
             .abort({ sessionID: activeSessionId })
             .catch((err) => {
@@ -1108,12 +1133,53 @@ export class OpenCodeNormalRunner {
                 err,
               );
             });
-        }, runtimeNoProgressTimeoutMs);
+        }, Math.min(1_000, runtimeNoProgressTimeoutMs));
         clearRuntimeNoProgressTimeout = () => {
-          clearTimeout(runtimeNoProgressTimeoutId);
+          clearInterval(runtimeNoProgressTimeoutId);
           clearRuntimeNoProgressTimeout = undefined;
         };
       }
+
+      const finishRuntimeWatchdogFailure = async (
+        reason: "runtime_no_progress_after_prompt" | "runtime_progress_stalled",
+      ) => {
+        clearPromptTimeout?.();
+        clearRuntimeNoProgressTimeout?.();
+        const diagnosticSnapshot =
+          await captureRuntimeNoProgressDiagnosticSnapshot({
+            ctx,
+            runtimeClient,
+            sandbox: runtimeSandbox,
+            sandboxProvider: runtimeSandbox.provider,
+            sessionId: activeSessionId,
+            reason,
+            timeoutMs: runtimeNoProgressTimeoutMs,
+            stalledMs:
+              reason === "runtime_progress_stalled"
+                ? Math.max(0, Date.now() - ctx.lastRuntimeProgressAt.getTime())
+                : undefined,
+            lastRuntimeProgressAt:
+              reason === "runtime_progress_stalled" ? ctx.lastRuntimeProgressAt : undefined,
+            lastRuntimeProgressKind:
+              reason === "runtime_progress_stalled"
+                ? (ctx.lastRuntimeProgressKind ?? null)
+                : undefined,
+            promptSentAtMs,
+            eventLoopSnapshot: eventLoop.snapshot(),
+          });
+        ctx.debugInfo = {
+          ...(ctx.debugInfo ?? {}),
+          runtimeDiagnosticSnapshot: diagnosticSnapshot,
+        };
+        this.callbacks.setCompletionReason(ctx, reason);
+        this.callbacks.markPhase(ctx, reason);
+        ctx.errorMessage =
+          reason === "runtime_progress_stalled"
+            ? RUNTIME_PROGRESS_STALLED_USER_MESSAGE
+            : RUNTIME_NO_PROGRESS_USER_MESSAGE;
+        this.callbacks.scheduleSave(ctx);
+        await this.callbacks.finishGeneration(ctx, "error");
+      };
 
       // Process SSE events, but do not let an open transport-only stream mask
       // the post-prompt no-progress watchdog.
@@ -1133,31 +1199,9 @@ export class OpenCodeNormalRunner {
       }
 
       if (runtimeNoProgressTriggered) {
-        clearPromptTimeout?.();
-        clearRuntimeNoProgressTimeout?.();
-        const diagnosticSnapshot =
-          await captureRuntimeNoProgressDiagnosticSnapshot({
-            ctx,
-            runtimeClient,
-            sandbox: runtimeSandbox,
-            sandboxProvider: runtimeSandbox.provider,
-            sessionId: activeSessionId,
-            timeoutMs: runtimeNoProgressTimeoutMs,
-            promptSentAtMs,
-            eventLoopSnapshot: eventLoop.snapshot(),
-          });
-        ctx.debugInfo = {
-          ...(ctx.debugInfo ?? {}),
-          runtimeDiagnosticSnapshot: diagnosticSnapshot,
-        };
-        this.callbacks.setCompletionReason(
-          ctx,
-          "runtime_no_progress_after_prompt",
+        await finishRuntimeWatchdogFailure(
+          runtimeWatchdogReason ?? "runtime_no_progress_after_prompt",
         );
-        this.callbacks.markPhase(ctx, "runtime_no_progress_after_prompt");
-        ctx.errorMessage = RUNTIME_NO_PROGRESS_USER_MESSAGE;
-        this.callbacks.scheduleSave(ctx);
-        await this.callbacks.finishGeneration(ctx, "error");
         return;
       }
 
@@ -1207,31 +1251,7 @@ export class OpenCodeNormalRunner {
           runtimeNoProgressPromise,
         ]);
         if (terminalOutcomeResult.type === "runtime_no_progress") {
-          clearPromptTimeout?.();
-          clearRuntimeNoProgressTimeout?.();
-          const diagnosticSnapshot =
-            await captureRuntimeNoProgressDiagnosticSnapshot({
-              ctx,
-              runtimeClient,
-              sandbox: runtimeSandbox,
-              sandboxProvider: runtimeSandbox.provider,
-              sessionId: activeSessionId,
-              timeoutMs: runtimeNoProgressTimeoutMs,
-              promptSentAtMs,
-              eventLoopSnapshot: eventLoop.snapshot(),
-            });
-          ctx.debugInfo = {
-            ...(ctx.debugInfo ?? {}),
-            runtimeDiagnosticSnapshot: diagnosticSnapshot,
-          };
-          this.callbacks.setCompletionReason(
-            ctx,
-            "runtime_no_progress_after_prompt",
-          );
-          this.callbacks.markPhase(ctx, "runtime_no_progress_after_prompt");
-          ctx.errorMessage = RUNTIME_NO_PROGRESS_USER_MESSAGE;
-          this.callbacks.scheduleSave(ctx);
-          await this.callbacks.finishGeneration(ctx, "error");
+          await finishRuntimeWatchdogFailure(terminalOutcomeResult.reason);
           return;
         }
         const terminalOutcome = terminalOutcomeResult.value;
@@ -1265,29 +1285,7 @@ export class OpenCodeNormalRunner {
       clearPromptTimeout?.();
       clearRuntimeNoProgressTimeout?.();
       if (promptResultOutcome.type === "runtime_no_progress") {
-        const diagnosticSnapshot =
-          await captureRuntimeNoProgressDiagnosticSnapshot({
-            ctx,
-            runtimeClient,
-            sandbox: runtimeSandbox,
-            sandboxProvider: runtimeSandbox.provider,
-            sessionId: activeSessionId,
-            timeoutMs: runtimeNoProgressTimeoutMs,
-            promptSentAtMs,
-            eventLoopSnapshot: eventLoop.snapshot(),
-          });
-        ctx.debugInfo = {
-          ...(ctx.debugInfo ?? {}),
-          runtimeDiagnosticSnapshot: diagnosticSnapshot,
-        };
-        this.callbacks.setCompletionReason(
-          ctx,
-          "runtime_no_progress_after_prompt",
-        );
-        this.callbacks.markPhase(ctx, "runtime_no_progress_after_prompt");
-        ctx.errorMessage = RUNTIME_NO_PROGRESS_USER_MESSAGE;
-        this.callbacks.scheduleSave(ctx);
-        await this.callbacks.finishGeneration(ctx, "error");
+        await finishRuntimeWatchdogFailure(promptResultOutcome.reason);
         return;
       }
       if (promptResultOutcome.type === "timed_out" || promptTimeoutTriggered) {
@@ -1306,6 +1304,8 @@ export class OpenCodeNormalRunner {
         await this.callbacks.parkGenerationForRunDeadline(ctx, runtimeClient);
         return;
       }
+      ctx.lastRuntimeProgressAt = new Date();
+      ctx.lastRuntimeProgressKind = "prompt_completed";
       this.callbacks.markPhase(ctx, "prompt_completed");
 
       const completionResolution = await resolveOpenCodePromptCompletion({

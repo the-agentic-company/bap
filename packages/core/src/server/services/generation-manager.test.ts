@@ -664,7 +664,7 @@ function createCtx(overrides: Partial<GenerationCtx> = {}): GenerationCtx {
     approvalHotWaitMs: 60_000,
     suspendedAt: null,
     resumeInterruptId: null,
-    lastRuntimeEventAt: new Date(),
+    lastRuntimeProgressAt: new Date(),
     recoveryAttempts: 0,
     completionReason: null,
     contentParts: [],
@@ -2893,7 +2893,7 @@ describe("generationManager transitions", () => {
     expect(insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         deadlineAt: expect.any(Date),
-        lastRuntimeEventAt: expect.any(Date),
+        lastRuntimeProgressAt: expect.any(Date),
         recoveryAttempts: 0,
         completionReason: null,
         executionPolicy: expect.objectContaining({
@@ -6795,6 +6795,199 @@ describe("generationManager transitions", () => {
         }),
       }),
     );
+    expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
+    vi.useRealTimers();
+  });
+
+  it("fails runRuntimeGeneration when runtime progress stalls after a completed tool result", async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(env, "ANTHROPIC_API_KEY", {
+      value: "test-key",
+      configurable: true,
+    });
+
+    vi.mocked(getCliEnvForUser).mockResolvedValue({});
+    vi.mocked(getEnabledIntegrationTypes).mockResolvedValue([]);
+    vi.mocked(getCliInstructionsWithCustom).mockResolvedValue("");
+    vi.mocked(syncMemoryFilesToSandbox).mockResolvedValue([]);
+    vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
+    vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
+    dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
+      createExecutorPreparationMock(),
+    );
+    vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
+    vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
+    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
+    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("");
+    vi.mocked(collectNewSandboxFiles).mockResolvedValue([]);
+
+    const promptMock = vi.fn(() => new Promise<never>(() => undefined));
+    vi.mocked(getOrCreateConversationRuntime).mockResolvedValue(
+      createConversationRuntimeMock({
+        promptMock,
+        subscribeMock: vi.fn().mockResolvedValue({
+          stream: asAsyncIterableThenHang([
+            {
+              type: "message.updated",
+              properties: {
+                info: {
+                  id: "assistant-msg",
+                  role: "assistant",
+                },
+              },
+            },
+            {
+              type: "message.part.updated",
+              properties: {
+                part: {
+                  id: "tool-part",
+                  type: "tool",
+                  tool: "executor_execute",
+                  callID: "tool-1",
+                  messageID: "assistant-msg",
+                  state: {
+                    status: "pending",
+                    input: { code: "return []" },
+                  },
+                },
+              },
+            },
+            {
+              type: "message.part.updated",
+              properties: {
+                part: {
+                  id: "tool-part",
+                  type: "tool",
+                  tool: "executor_execute",
+                  callID: "tool-1",
+                  messageID: "assistant-msg",
+                  state: {
+                    status: "running",
+                    input: { code: "return []" },
+                  },
+                },
+              },
+            },
+            {
+              type: "message.part.updated",
+              properties: {
+                part: {
+                  id: "tool-part",
+                  type: "tool",
+                  tool: "executor_execute",
+                  callID: "tool-1",
+                  messageID: "assistant-msg",
+                  state: {
+                    status: "completed",
+                    output: { galienTools: [] },
+                  },
+                },
+              },
+            },
+            {
+              type: "message.updated",
+              properties: {
+                info: {
+                  id: "empty-assistant-msg",
+                  role: "assistant",
+                },
+              },
+            },
+          ]),
+        }),
+        getSessionMock: vi.fn().mockResolvedValue({
+          data: {
+            id: "session-1",
+            status: "busy",
+          },
+          error: null,
+        }),
+        messagesMock: vi.fn().mockResolvedValue({
+          data: [
+            {
+              info: {
+                id: "empty-assistant-msg",
+                role: "assistant",
+                tokens: { input: 0, output: 0, reasoning: 0 },
+              },
+              parts: [],
+            },
+          ],
+          error: null,
+        }),
+        statusMock: vi.fn().mockResolvedValue({
+          data: { "session-1": { type: "busy" } },
+          error: null,
+        }),
+        readFile: vi.fn().mockResolvedValue("[OpenCode][EVENT] type=message.updated\n"),
+      }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
+    );
+
+    const mgr = asTestManager();
+    const parkSpy = vi
+      .spyOn(mgr as never, "parkGenerationForRunDeadline")
+      .mockResolvedValue(undefined);
+    const finishSpy = vi
+      .spyOn(mgr, "finishGeneration")
+      .mockResolvedValue(undefined);
+
+    const ctx = createCtx({
+      id: "gen-progress-stalled",
+      conversationId: "conv-progress-stalled",
+      model: "anthropic/claude-sonnet-4-6",
+      deadlineAt: new Date(Date.now() + 60_000),
+      executionPolicy: {
+        allowSnapshotRestoreOnRun: false,
+        debugRuntimeNoProgressTimeoutMs: 1_000,
+      },
+    });
+    const runPromise = mgr.runRuntimeGeneration(ctx);
+
+    await vi.advanceTimersByTimeAsync(100);
+    const lastRuntimeProgressAt = ctx.lastRuntimeProgressAt;
+    await vi.advanceTimersByTimeAsync(1_100);
+    await runPromise;
+
+    expect(promptMock).toHaveBeenCalledTimes(1);
+    expect(parkSpy).not.toHaveBeenCalled();
+    expect(ctx.completionReason).toBe("runtime_progress_stalled");
+    expect(ctx.errorMessage).toBe("The runtime stopped making progress. Please retry.");
+    expect(ctx.lastRuntimeProgressKind).toBe("tool_result");
+    expect(ctx.lastRuntimeProgressAt).toBe(lastRuntimeProgressAt);
+    expect(ctx.debugInfo?.runtimeDiagnosticSnapshot).toEqual(
+      expect.objectContaining({
+        reason: "runtime_progress_stalled",
+        timeoutMs: 1_000,
+        stalledMs: expect.any(Number),
+        lastRuntimeProgressAt: lastRuntimeProgressAt.toISOString(),
+        lastRuntimeProgressKind: "tool_result",
+        eventStats: expect.objectContaining({
+          eventCount: 5,
+          progressEventCount: 2,
+          toolCallCount: 1,
+        }),
+      }),
+    );
+    const snapshotPayload = JSON.parse(
+      uploadToS3Mock.mock.calls[0]?.[1].toString() ?? "{}",
+    ) as {
+      reason?: unknown;
+      stalledMs?: unknown;
+      lastRuntimeProgress?: {
+        at?: unknown;
+        kind?: unknown;
+        stalledMs?: unknown;
+      };
+    };
+    expect(snapshotPayload).toMatchObject({
+      reason: "runtime_progress_stalled",
+      lastRuntimeProgress: {
+        at: lastRuntimeProgressAt.toISOString(),
+        kind: "tool_result",
+        stalledMs: expect.any(Number),
+      },
+    });
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
     vi.useRealTimers();
   });

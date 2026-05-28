@@ -114,8 +114,8 @@ export class OpenCodeGenerationRuntimeDriver implements RuntimeDriver {
       broadcast: (ctx, event) => this.deps.broadcast(ctx, event),
       scheduleSave: (ctx) => this.deps.scheduleSave(ctx),
       saveProgress: (ctx) => this.deps.saveProgress(ctx),
-      markRuntimeActivity: (ctx) =>
-        this.deps.contextState.markRuntimeActivity(ctx),
+      markRuntimeProgress: (ctx, kind) =>
+        this.deps.contextState.markRuntimeProgress(ctx, kind),
       refreshCancellationSignal: (ctx) =>
         this.deps.refreshCancellationSignal(ctx),
       handleActionableEvent: (ctx, event, sendRuntimeDecision) =>

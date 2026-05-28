@@ -14,6 +14,7 @@ import type { RuntimeToolRef } from "../../runtime/runtime-driver";
 import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
+  RuntimeProgressKind,
 } from "../lifecycle-policy";
 import type { RemoteIntegrationSource } from "../../integrations/remote-integrations";
 import type { CoworkerBuilderContext } from "../coworker-builder-service";
@@ -199,9 +200,12 @@ export type GenerationDebugInfo = {
     id: string;
     storageKey?: string | null;
     capturedAt: string;
-    reason: "runtime_no_progress_after_prompt";
+    reason: "runtime_no_progress_after_prompt" | "runtime_progress_stalled";
     phase: "prompt_sent";
     timeoutMs: number;
+    stalledMs?: number | null;
+    lastRuntimeProgressAt?: string | null;
+    lastRuntimeProgressKind?: RuntimeProgressKind | null;
     uploadSucceeded: boolean;
     uploadError?: string | null;
     sessionId?: string | null;
@@ -242,7 +246,8 @@ export interface GenerationContext {
   approvalHotWaitMs: number;
   suspendedAt?: Date | null;
   resumeInterruptId?: string | null;
-  lastRuntimeEventAt: Date;
+  lastRuntimeProgressAt: Date;
+  lastRuntimeProgressKind?: RuntimeProgressKind | null;
   recoveryAttempts: number;
   completionReason?: GenerationCompletionReason | null;
   debugInfo?: GenerationDebugInfo;

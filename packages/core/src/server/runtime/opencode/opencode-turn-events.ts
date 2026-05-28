@@ -6,6 +6,7 @@ import {
   OpenCodeRuntimeEventLoop,
   type OpenCodeApprovalCapableClient,
 } from "./opencode-runtime-driver";
+import type { RuntimeProgressKind } from "../../services/lifecycle-policy";
 import {
   normalizeOpenCodeActionableEvent,
   sendOpenCodeRuntimeDecision,
@@ -29,7 +30,7 @@ type OpenCodeTurnEventBridgeCallbacks = {
   broadcast: (ctx: GenerationContext, event: GenerationEvent) => void;
   scheduleSave: (ctx: GenerationContext) => void;
   saveProgress: (ctx: GenerationContext) => Promise<void>;
-  markRuntimeActivity: (ctx: GenerationContext) => void;
+  markRuntimeProgress: (ctx: GenerationContext, kind: RuntimeProgressKind) => void;
   refreshCancellationSignal: (ctx: GenerationContext) => Promise<boolean>;
   handleActionableEvent: (
     ctx: GenerationContext,
@@ -98,7 +99,7 @@ export class OpenCodeTurnEventBridge {
           this.callbacks.markPhase(ctx, "first_event_received");
         }
       },
-      markRuntimeActivity: () => this.callbacks.markRuntimeActivity(ctx),
+      markRuntimeProgress: (kind) => this.callbacks.markRuntimeProgress(ctx, kind),
       refreshCancellationSignal: () => this.callbacks.refreshCancellationSignal(ctx),
       pollExternalInterruptAndSuspendIfNeeded: input.pollExternalInterruptAndSuspendIfNeeded,
       logEvent: ({ event, inspection }) => {
@@ -120,7 +121,7 @@ export class OpenCodeTurnEventBridge {
         currentTextPartId,
         setCurrentTextPart,
       }) => {
-        await this.processTrackedEvent({
+        return await this.processTrackedEvent({
           ctx,
           event,
           currentTextPart,
@@ -174,8 +175,8 @@ export class OpenCodeTurnEventBridge {
       part: { type: "text"; text: string } | null,
       partId: string | null,
     ) => void;
-  }): Promise<void> {
-    await this.translator.processEvent(input);
+  }): Promise<RuntimeProgressKind | null> {
+    return await this.translator.processEvent(input);
   }
 
   private appendSystemEvent(

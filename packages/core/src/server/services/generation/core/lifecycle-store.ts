@@ -40,7 +40,7 @@ export type FinishTurnPersistenceInput = {
   uploadedSandboxFileIds?: string[];
   errorMessage?: string;
   debugInfo?: Record<string, unknown> | null;
-  lastRuntimeEventAt: Date;
+  lastRuntimeProgressAt: Date;
   recoveryAttempts: number;
   completionReason?: GenerationCompletionReason | null;
   usage: {
@@ -116,7 +116,7 @@ export type PauseForRunDeadlineInput = {
   contentParts: ContentPart[];
   remainingRunMs: number;
   suspendedAt: Date;
-  lastRuntimeEventAt: Date;
+  lastRuntimeProgressAt: Date;
 };
 
 export type SuspendForInterruptInput = {
@@ -127,7 +127,7 @@ export type SuspendForInterruptInput = {
   contentParts: ContentPart[];
   remainingRunMs: number;
   suspendedAt: Date;
-  lastRuntimeEventAt: Date;
+  lastRuntimeProgressAt: Date;
 };
 
 export type ResumeResolvedInterruptInput = {
@@ -230,7 +230,7 @@ export class GenerationLifecycleStore {
               outputTokens: input.usage.outputTokens,
             }
           : {}),
-        lastRuntimeEventAt: input.lastRuntimeEventAt,
+        lastRuntimeProgressAt: input.lastRuntimeProgressAt,
         ...(input.deadlineAt !== undefined ? { deadlineAt: input.deadlineAt } : {}),
         ...(input.remainingRunMs !== undefined && input.remainingRunMs !== null
           ? { remainingRunMs: input.remainingRunMs }
@@ -397,7 +397,7 @@ export class GenerationLifecycleStore {
         pendingApproval: null,
         pendingAuth: null,
         contentParts: contentParts.length > 0 ? contentParts : null,
-        lastRuntimeEventAt: input.lastRuntimeEventAt,
+        lastRuntimeProgressAt: input.lastRuntimeProgressAt,
       })
       .where(eq(generation.id, input.generationId));
 
@@ -431,7 +431,7 @@ export class GenerationLifecycleStore {
         pendingApproval: null,
         pendingAuth: null,
         contentParts: contentParts.length > 0 ? contentParts : null,
-        lastRuntimeEventAt: input.lastRuntimeEventAt,
+        lastRuntimeProgressAt: input.lastRuntimeProgressAt,
       })
       .where(eq(generation.id, input.generationId));
 
@@ -691,7 +691,7 @@ export class GenerationLifecycleStore {
         contentParts: contentParts.length > 0 ? contentParts : null,
         errorMessage: sanitizedInput.errorMessage,
         debugInfo: sanitizedInput.debugInfo ?? null,
-        lastRuntimeEventAt: sanitizedInput.lastRuntimeEventAt,
+        lastRuntimeProgressAt: sanitizedInput.lastRuntimeProgressAt,
         recoveryAttempts: sanitizedInput.recoveryAttempts,
         completionReason:
           sanitizedInput.completionReason ??

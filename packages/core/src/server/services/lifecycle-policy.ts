@@ -1,6 +1,6 @@
 export const generationLifecyclePolicy = {
   bootstrapTimeoutMs: 90_000,
-  runtimeNoProgressAfterPromptMs: 90_000,
+  runtimeProgressStallMs: 90_000,
   runDeadlineMs: 15 * 60 * 1000,
   activeSandboxTimeoutMs: 20 * 60 * 1000,
   approvalHotWaitMs: 60_000,
@@ -20,10 +20,22 @@ export type GenerationCompletionReason =
   | "approval_timeout"
   | "auth_timeout"
   | "runtime_no_progress_after_prompt"
+  | "runtime_progress_stalled"
   | "infra_disconnect"
   | "sandbox_missing"
   | "broken_runtime_state"
   | "runtime_error";
+
+export type RuntimeProgressKind =
+  | "text_delta"
+  | "reasoning_delta"
+  | "tool_use"
+  | "tool_result"
+  | "permission"
+  | "question"
+  | "session_idle"
+  | "session_error"
+  | "prompt_completed";
 
 type DateLike = Date | string | number | null | undefined;
 
@@ -46,13 +58,13 @@ export type RuntimeFailureClassification =
 
 export function createGenerationLifecycle(now = new Date()): {
   deadlineAt: Date;
-  lastRuntimeEventAt: Date;
+  lastRuntimeProgressAt: Date;
   recoveryAttempts: number;
   completionReason: null;
 } {
   return {
     deadlineAt: new Date(now.getTime() + generationLifecyclePolicy.runDeadlineMs),
-    lastRuntimeEventAt: now,
+    lastRuntimeProgressAt: now,
     recoveryAttempts: 0,
     completionReason: null,
   };

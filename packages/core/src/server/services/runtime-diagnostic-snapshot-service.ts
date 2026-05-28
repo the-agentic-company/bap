@@ -6,11 +6,14 @@ import {
 import type { RuntimeHarnessClient, SandboxHandle } from "../sandbox/core/types";
 import { uploadToS3 } from "../storage/s3-client";
 import type { GenerationContext } from "./generation/types";
+import type { RuntimeProgressKind } from "./lifecycle-policy";
 
 const SNAPSHOT_CONTENT_TYPE = "application/json";
 const SNAPSHOT_PREFIX = "runtime-diagnostic-snapshots";
 
-type RuntimeDiagnosticSnapshotReason = "runtime_no_progress_after_prompt";
+type RuntimeDiagnosticSnapshotReason =
+  | "runtime_no_progress_after_prompt"
+  | "runtime_progress_stalled";
 
 export type RuntimeDiagnosticSnapshotIndex = {
   id: string;
@@ -19,6 +22,9 @@ export type RuntimeDiagnosticSnapshotIndex = {
   reason: RuntimeDiagnosticSnapshotReason;
   phase: "prompt_sent";
   timeoutMs: number;
+  stalledMs?: number | null;
+  lastRuntimeProgressAt?: string | null;
+  lastRuntimeProgressKind?: RuntimeProgressKind | null;
   uploadSucceeded: boolean;
   uploadError?: string | null;
   sessionId?: string | null;
@@ -41,6 +47,7 @@ type RuntimeDiagnosticSnapshotPayload = {
   reason: RuntimeDiagnosticSnapshotReason;
   phase: "prompt_sent";
   timeoutMs: number;
+  stalledMs?: number | null;
   generation: {
     id: string;
     conversationId: string;
@@ -62,6 +69,11 @@ type RuntimeDiagnosticSnapshotPayload = {
     elapsedMs: number;
   };
   eventStream: OpenCodeRuntimeEventLoopSnapshot;
+  lastRuntimeProgress?: {
+    at: string | null;
+    kind: RuntimeProgressKind | null;
+    stalledMs: number | null;
+  };
   probes: {
     sessionGet: RuntimeProbeSummary;
     messages: RuntimeProbeSummary;
@@ -197,7 +209,11 @@ export async function captureRuntimeNoProgressDiagnosticSnapshot(input: {
   sandbox?: SnapshotSandbox | null;
   sandboxProvider?: string | null;
   sessionId: string;
+  reason?: RuntimeDiagnosticSnapshotReason;
   timeoutMs: number;
+  stalledMs?: number | null;
+  lastRuntimeProgressAt?: Date | null;
+  lastRuntimeProgressKind?: RuntimeProgressKind | null;
   promptSentAtMs: number;
   eventLoopSnapshot: OpenCodeRuntimeEventLoopSnapshot;
 }): Promise<RuntimeDiagnosticSnapshotIndex> {
@@ -240,9 +256,10 @@ export async function captureRuntimeNoProgressDiagnosticSnapshot(input: {
     schemaVersion: "2026-05-25.runtime-diagnostic-snapshot.v1",
     id: snapshotId,
     capturedAt,
-    reason: "runtime_no_progress_after_prompt",
+    reason: input.reason ?? "runtime_no_progress_after_prompt",
     phase: "prompt_sent",
     timeoutMs: input.timeoutMs,
+    stalledMs: input.stalledMs ?? null,
     generation: {
       id: input.ctx.id,
       conversationId: input.ctx.conversationId,
@@ -264,6 +281,11 @@ export async function captureRuntimeNoProgressDiagnosticSnapshot(input: {
       elapsedMs: Math.max(0, Date.now() - input.promptSentAtMs),
     },
     eventStream: input.eventLoopSnapshot,
+    lastRuntimeProgress: {
+      at: input.lastRuntimeProgressAt?.toISOString() ?? null,
+      kind: input.lastRuntimeProgressKind ?? null,
+      stalledMs: input.stalledMs ?? null,
+    },
     probes: {
       sessionGet,
       messages,
@@ -283,9 +305,12 @@ export async function captureRuntimeNoProgressDiagnosticSnapshot(input: {
       id: snapshotId,
       storageKey,
       capturedAt,
-      reason: "runtime_no_progress_after_prompt",
+      reason: input.reason ?? "runtime_no_progress_after_prompt",
       phase: "prompt_sent",
       timeoutMs: input.timeoutMs,
+      stalledMs: input.stalledMs ?? null,
+      lastRuntimeProgressAt: input.lastRuntimeProgressAt?.toISOString() ?? null,
+      lastRuntimeProgressKind: input.lastRuntimeProgressKind ?? null,
       uploadSucceeded: true,
       sessionId: input.sessionId,
       sandboxId: input.ctx.sandboxId ?? null,
@@ -298,9 +323,12 @@ export async function captureRuntimeNoProgressDiagnosticSnapshot(input: {
       id: snapshotId,
       storageKey,
       capturedAt,
-      reason: "runtime_no_progress_after_prompt",
+      reason: input.reason ?? "runtime_no_progress_after_prompt",
       phase: "prompt_sent",
       timeoutMs: input.timeoutMs,
+      stalledMs: input.stalledMs ?? null,
+      lastRuntimeProgressAt: input.lastRuntimeProgressAt?.toISOString() ?? null,
+      lastRuntimeProgressKind: input.lastRuntimeProgressKind ?? null,
       uploadSucceeded: false,
       uploadError: formatError(error),
       sessionId: input.sessionId,

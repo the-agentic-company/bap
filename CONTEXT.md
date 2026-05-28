@@ -96,6 +96,14 @@ _Avoid_: limbo, hung run
 Evidence that a **Generation** has entered or advanced the runtime turn lifecycle, such as model output, tool use, runtime question or permission requests, prompt completion, or an explicit runtime terminal state. Transport connection, sandbox preparation, session creation, and cache work are not **Runtime Progress**.
 _Avoid_: activity, heartbeat, connection
 
+**Last Runtime Progress**:
+The timestamp of the most recent **Runtime Progress** observed for a **Generation**. It is not updated by transport activity, sandbox preparation, session creation, cache work, or empty runtime status changes.
+_Avoid_: last runtime event, last activity, heartbeat
+
+**Runtime Progress Stall**:
+A **Generation** failure where **Runtime Progress** was observed, but the runtime then stopped producing further **Runtime Progress** before reaching a terminal state or durable human wait.
+_Avoid_: no progress, run deadline, timeout
+
 **Runtime Diagnostic Snapshot**:
 A redacted operational artifact captured when a **Generation** fails in the runtime boundary and ordinary telemetry is insufficient to explain the failure. A **Runtime Diagnostic Snapshot** contains safe runtime state, counters, event types, and pointers needed for debugging, but not prompts, model output, credentials, tool payloads, or file contents.
 _Avoid_: dump, logs, trace

@@ -265,4 +265,76 @@ describe("Generation terminal canonical event", () => {
     expect(recordCounterMock).not.toHaveBeenCalled();
     expect(recordHistogramMock).not.toHaveBeenCalled();
   });
+
+  it("classifies runtime progress stalls as timed-out runtime failures", async () => {
+    generationFindFirstMock.mockResolvedValueOnce({
+      id: "gen-1",
+      conversationId: "conv-1",
+      conversation: {
+        id: "conv-1",
+        userId: "user-1",
+        workspaceId: "ws-1",
+        model: "openai/gpt-5",
+        authSource: "user",
+        autoApprove: false,
+        lastSandboxProvider: "daytona",
+        type: "chat",
+        syntheticKind: null,
+      },
+      messageId: "msg-1",
+      status: "error",
+      completionReason: "runtime_progress_stalled",
+      errorMessage: "The runtime stopped making progress. Please retry.",
+      sandboxProvider: "daytona",
+      executionPolicy: {},
+      sandboxId: "sandbox-1",
+      runtimeId: "runtime-1",
+      runtimeHarness: "opencode",
+      runtimeProtocolVersion: "opencode-v2",
+      traceId: "0123456789abcdef0123456789abcdef",
+      startedAt: new Date("2026-05-22T10:00:00.000Z"),
+      completedAt: new Date("2026-05-22T10:02:00.000Z"),
+      inputTokens: 0,
+      outputTokens: 0,
+      contentParts: [],
+      debugInfo: {
+        runtimeDiagnosticSnapshot: {
+          id: "snapshot-1",
+          storageKey: "runtime-diagnostic-snapshots/gen-1/snapshot-1.json",
+          uploadSucceeded: true,
+          timeoutMs: 90_000,
+          stalledMs: 91_000,
+          lastRuntimeProgressAt: "2026-05-22T10:00:29.000Z",
+          lastRuntimeProgressKind: "tool_result",
+        },
+      },
+    });
+
+    await expect(emitGenerationTerminalCanonicalEvent("gen-1")).resolves.toBe(true);
+
+    expect(emitCanonicalServiceEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: "timed_out",
+        attributes: expect.objectContaining({
+          "cmdclaw.generation.completion_reason": "runtime_progress_stalled",
+          "cmdclaw.failure.phase": "runtime",
+          "cmdclaw.error.normalized_code": "runtime_progress_stalled",
+          "cmdclaw.runtime.progress_stall.stalled_ms": 91_000,
+          "cmdclaw.runtime.progress_stall.last_progress_at":
+            "2026-05-22T10:00:29.000Z",
+          "cmdclaw.runtime.progress_stall.last_progress_kind": "tool_result",
+        }),
+      }),
+    );
+    expect(recordCounterMock).toHaveBeenCalledWith(
+      "cmdclaw_generation_terminal_total",
+      1,
+      expect.objectContaining({
+        outcome: "timed_out",
+        failure_phase: "runtime",
+        normalized_error_code: "runtime_progress_stalled",
+      }),
+      expect.any(String),
+    );
+  });
 });

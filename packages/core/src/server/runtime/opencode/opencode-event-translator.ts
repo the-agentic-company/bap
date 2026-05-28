@@ -4,6 +4,7 @@ import type {
   RuntimePart,
   RuntimeQuestionRequest,
 } from "../../sandbox/core/types";
+import type { RuntimeProgressKind } from "../../services/lifecycle-policy";
 import type { GenerationEvent } from "../../services/generation/types";
 import { sanitizeJsonForPostgres, sanitizePostgresText } from "../../utils/postgres-json";
 
@@ -137,7 +138,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
     currentTextPart: CurrentTextPart;
     currentTextPartId: string | null;
     setCurrentTextPart: (part: CurrentTextPart, partId: string | null) => void;
-  }): Promise<void> {
+  }): Promise<RuntimeProgressKind | null> {
     const { ctx, event, currentTextPart, currentTextPartId, setCurrentTextPart } = input;
     switch (event.type) {
       case "message.updated": {
@@ -163,9 +164,9 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
               replayTextPartId = partId;
               setCurrentTextPart(part, partId);
             };
-            await Promise.all(
+            const progressKinds = await Promise.all(
               pendingQueue.parts.map(async (pendingPart) => {
-                await this.processMessagePart({
+                return await this.processMessagePart({
                   ctx,
                   part: pendingPart,
                   currentTextPart: replayTextPart,
@@ -174,9 +175,10 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
                 });
               }),
             );
+            return progressKinds.find((kind) => kind !== null) ?? null;
           }
         }
-        break;
+        return null;
       }
 
       case "message.part.updated": {
@@ -187,7 +189,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
         if (messageID) {
           const role = ctx.messageRoles.get(messageID);
           if (role === "user") {
-            return;
+            return null;
           }
           if (role !== "assistant") {
             if (!this.shouldProcessUnknownMessagePart(ctx, part)) {
@@ -204,28 +206,27 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
                 firstQueuedAtMs: resetQueue ? now : existing.firstQueuedAtMs,
                 parts,
               });
-              return;
+              return null;
             }
           }
         }
 
-        await this.processMessagePart({
+        return await this.processMessagePart({
           ctx,
           part,
           currentTextPart,
           currentTextPartId,
           setCurrentTextPart,
         });
-        break;
       }
 
       case "session.updated": {
         ctx.sessionId = event.properties.info.id;
-        break;
+        return null;
       }
 
       case "session.status": {
-        break;
+        return null;
       }
       default:
         return assertNever(event);
@@ -260,7 +261,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
     currentTextPart: CurrentTextPart;
     currentTextPartId: string | null;
     setCurrentTextPart: (part: CurrentTextPart, partId: string | null) => void;
-  }): Promise<void> {
+  }): Promise<RuntimeProgressKind | null> {
     const { ctx, part, currentTextPart, currentTextPartId, setCurrentTextPart } = input;
     const partId = part.id;
 
@@ -285,7 +286,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
         if (isNewPart && userText) {
           const normalizedFullText = fullText.trim().replace(/\s+/g, " ");
           if (normalizedFullText === normalizedUserText) {
-            return;
+            return null;
           }
           effectiveFullText = sanitizePostgresText(dropEchoPrefix(fullText));
         }
@@ -311,8 +312,10 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
             setCurrentTextPart(newPart, partId);
           }
           this.callbacks.scheduleSave(ctx);
+          return "text_delta";
         }
       }
+      return null;
     }
 
     if (part.type === "reasoning") {
@@ -349,7 +352,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
       }
 
       this.callbacks.scheduleSave(ctx);
-      return;
+      return delta ? "reasoning_delta" : null;
     }
 
     if (part.type === "tool") {
@@ -378,10 +381,10 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
 
       switch (part.state.status) {
         case "pending":
-          return;
+          return null;
         case "running": {
           if (existingToolUse) {
-            return;
+            return null;
           }
 
           this.callbacks.broadcast(ctx, {
@@ -403,11 +406,11 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
             operation: metadata.operation,
           });
           await this.callbacks.saveProgress(ctx);
-          return;
+          return "tool_use";
         }
         case "completed": {
           if (!existingToolUse) {
-            return;
+            return null;
           }
           if (
             ctx.contentParts.some(
@@ -415,7 +418,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
                 contentPart.type === "tool_result" && contentPart.tool_use_id === toolUseId,
             )
           ) {
-            return;
+            return null;
           }
           const result = sanitizeJsonForPostgres(limitToolResultContent(part.state.output));
           this.callbacks.broadcast(ctx, {
@@ -436,11 +439,11 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
             toolResult: result,
           });
           await this.callbacks.saveProgress(ctx);
-          return;
+          return "tool_result";
         }
         case "error": {
           if (!existingToolUse) {
-            return;
+            return null;
           }
           if (
             ctx.contentParts.some(
@@ -448,7 +451,7 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
                 contentPart.type === "tool_result" && contentPart.tool_use_id === toolUseId,
             )
           ) {
-            return;
+            return null;
           }
           const result = sanitizeJsonForPostgres(
             limitToolResultContent({ error: part.state.error }),
@@ -465,12 +468,13 @@ export class OpenCodeEventTranslator<TContext extends OpenCodeTranslationContext
             content: result,
           });
           await this.callbacks.saveProgress(ctx);
-          return;
+          return "tool_result";
         }
         default:
           return assertNever(part.state);
       }
     }
+    return null;
   }
 }
 

@@ -143,7 +143,7 @@ export class TurnRunnerContextLoader {
       approvalHotWaitMs: resolveApprovalHotWaitMs(loaded.executionPolicy.debugApprovalHotWaitMs),
       suspendedAt: genRecord.suspendedAt ?? null,
       resumeInterruptId: genRecord.resumeInterruptId ?? null,
-      lastRuntimeEventAt: genRecord.lastRuntimeEventAt ?? genRecord.startedAt,
+      lastRuntimeProgressAt: genRecord.lastRuntimeProgressAt ?? genRecord.startedAt,
       recoveryAttempts: genRecord.recoveryAttempts ?? 0,
       completionReason: (genRecord.completionReason as GenerationCompletionReason | null) ?? null,
       debugInfo: (genRecord.debugInfo as GenerationDebugInfo | null) ?? undefined,

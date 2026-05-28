@@ -6,6 +6,7 @@ import type {
   RuntimeQuestionRequest,
 } from "../../sandbox/core/types";
 import { aggregateConversationUsageFromSessionMessages } from "../../services/conversation-usage-service";
+import type { RuntimeProgressKind } from "../../services/lifecycle-policy";
 
 export type OpenCodeTrackedEvent = Extract<
   RuntimeEvent,
@@ -115,11 +116,11 @@ export type OpenCodeTrackedEventProcessor = (input: {
     part: { type: "text"; text: string } | null,
     partId: string | null,
   ) => void;
-}) => Promise<void>;
+}) => Promise<RuntimeProgressKind | null>;
 
 export type OpenCodeRuntimeEventLoopCallbacks = {
   markFirstEvent: () => void;
-  markRuntimeActivity: () => void;
+  markRuntimeProgress: (kind: RuntimeProgressKind) => void;
   refreshCancellationSignal: () => Promise<boolean>;
   pollExternalInterruptAndSuspendIfNeeded?: () => Promise<void>;
   logEvent?: (input: {
@@ -398,14 +399,14 @@ export async function processOpenCodeRuntimeEvent(input: {
   event: unknown;
   stats: OpenCodeRuntimeStreamStats;
   markFirstEvent: () => void;
-  markRuntimeActivity: () => void;
+  markRuntimeProgress: (kind: RuntimeProgressKind) => void;
   refreshCancellationSignal: () => Promise<boolean>;
   pollExternalInterruptAndSuspendIfNeeded?: () => Promise<void>;
   logEvent: (input: {
     event: RuntimeEvent;
     inspection: OpenCodeRuntimeEventInspection;
   }) => void;
-  processTrackedEvent: (event: OpenCodeTrackedEvent) => Promise<void>;
+  processTrackedEvent: (event: OpenCodeTrackedEvent) => Promise<RuntimeProgressKind | null>;
   handleActionableEvent: (
     event: OpenCodeActionableEvent,
   ) => Promise<{ type: "none" | "permission" | "question" }>;
@@ -414,7 +415,6 @@ export async function processOpenCodeRuntimeEvent(input: {
 }): Promise<OpenCodeRuntimeEventProcessResult> {
   input.markFirstEvent();
   const event = input.event as RuntimeEvent;
-  input.markRuntimeActivity();
   if (await input.refreshCancellationSignal()) {
     return { outcome: "error", errorMessage: null };
   }
@@ -426,28 +426,42 @@ export async function processOpenCodeRuntimeEvent(input: {
 
   input.logEvent({ event, inspection });
 
+  let progressKind: RuntimeProgressKind | null = null;
   if (isOpenCodeTrackedEvent(event)) {
-    await input.processTrackedEvent(event);
+    progressKind = await input.processTrackedEvent(event);
   }
 
   if (isOpenCodeActionableEvent(event)) {
     const actionableResult = await input.handleActionableEvent(event);
     if (actionableResult.type === "permission") {
       input.stats.permissionCount += 1;
+      progressKind = "permission";
     } else if (actionableResult.type === "question") {
       input.stats.questionCount += 1;
+      progressKind = "question";
     }
   }
 
   if (inspection.terminalOutcome === "idle") {
+    progressKind = "session_idle";
+    input.markRuntimeProgress(progressKind);
+    input.stats.progressEventCount += 1;
     input.onIdle?.();
     return { outcome: "idle", errorMessage: null };
   }
 
   if (inspection.terminalOutcome === "error") {
     const errorMessage = inspection.errorMessage ?? "Unknown error";
+    progressKind = "session_error";
+    input.markRuntimeProgress(progressKind);
+    input.stats.progressEventCount += 1;
     input.onSessionError?.(errorMessage);
     return { outcome: "error", errorMessage };
+  }
+
+  if (progressKind) {
+    input.markRuntimeProgress(progressKind);
+    input.stats.progressEventCount += 1;
   }
 
   return { outcome: "continue", errorMessage: null };
@@ -481,13 +495,13 @@ export class OpenCodeRuntimeEventLoop {
       event: rawEvent,
       stats: this.stats,
       markFirstEvent: this.callbacks.markFirstEvent,
-      markRuntimeActivity: this.callbacks.markRuntimeActivity,
+      markRuntimeProgress: this.callbacks.markRuntimeProgress,
       refreshCancellationSignal: this.callbacks.refreshCancellationSignal,
       pollExternalInterruptAndSuspendIfNeeded:
         this.callbacks.pollExternalInterruptAndSuspendIfNeeded,
       logEvent: this.callbacks.logEvent ?? (() => undefined),
       processTrackedEvent: async (event) => {
-        await this.callbacks.processTrackedEvent({
+        return await this.callbacks.processTrackedEvent({
           event,
           currentTextPart: this.currentTextPart,
           currentTextPartId: this.currentTextPartId,
@@ -509,14 +523,6 @@ export class OpenCodeRuntimeEventLoop {
         this.callbacks.onSessionError?.(errorMessage);
       },
     });
-    if (
-      isOpenCodeTrackedEvent(rawEvent as RuntimeEvent) ||
-      isOpenCodeActionableEvent(rawEvent as RuntimeEvent) ||
-      result.outcome === "idle" ||
-      result.errorMessage
-    ) {
-      this.stats.progressEventCount += 1;
-    }
     if (result.outcome === "error" && result.errorMessage) {
       throw new Error(result.errorMessage);
     }
