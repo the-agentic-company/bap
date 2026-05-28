@@ -1,5 +1,6 @@
 .env
 .env.selfhost
+.env.*.observability
 **/.claude/*
 !**/.claude/settings.json
 .vercel

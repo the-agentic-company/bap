@@ -13,6 +13,11 @@ CmdClaw’s local observability stack is built for direct machine querying.
 - `vmalert` evaluates checked-in alert rules.
 - `Alertmanager` sends notifications, for example to Slack.
 
+## Hosted Credentials
+
+For the credentials for hosted observability, look at `.env.staging.observability` and
+`.env.prod.observability`.
+
 ## Canonical Service Events
 
 CmdClaw treats one context-rich `canonical_service_event` as the authoritative

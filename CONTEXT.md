@@ -112,6 +112,10 @@ _Avoid_: dump, logs, trace
 A stopped provider sandbox retained temporarily after a platform-suspect **Generation** failure so operators can recover and inspect runtime filesystem state. An **Archived Diagnostic Sandbox** is an operational debugging artifact, not user-facing application state, and must have bounded retention.
 _Avoid_: preserved sandbox, sandbox dump, kept sandbox
 
+**Local Runtime**:
+A user-owned runtime used for local development where a **Generation** connects to the developer's own shared OpenCode server instead of a CmdClaw-owned sandbox. A **Local Runtime** is single-tenant by assumption, uses one OpenCode session per CmdClaw conversation, and is not a production execution environment.
+_Avoid_: local sandbox, local Daytona, local run
+
 **User**:
 A person authenticated into CmdClaw. A **User** owns the set of **Connected Accounts** available to their CLI and agent runs.
 _Avoid_: account
