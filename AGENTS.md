@@ -31,7 +31,7 @@ This repository is organized into several top-level folders. Each folder can hav
 -  Create commits with `scripts/committer "<msg>" <file...>`; avoid manual `git add`/`git commit` so staging stays scoped.
 -  Follow concise, action-oriented commit messages (e.g., `CLI: add verbose flag to send`).
 -  Group related changes; avoid bundling unrelated refactors.
--  **Multi-agent safety:** when the user says "push," you may `git pull --rebase` to integrate the latest changes (never discard other agents' work). When the user says "commit," scope to your changes only. When the user says "commit all," commit everything in grouped chunks.
+-  **Multi-agent safety:** When the user says "commit," scope to your changes only. When the user says "commit all," commit everything in grouped chunks.
 -  **Multi-agent safety:** when you see unrecognized files, keep going; focus on your changes and commit only those.
 - in case you have issue with lefthook, you can bypass it is there is no issue in the files you edited
 
