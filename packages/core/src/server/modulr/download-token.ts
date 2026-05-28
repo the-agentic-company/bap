@@ -43,6 +43,10 @@ function parseDownloadClaims(value: unknown): ModulrDocumentDownloadTokenClaims 
     throw new Error("Invalid Modulr document download token payload.");
   }
 
+  if (!parsed.storageKey.startsWith(`modulr-documents/${parsed.workspaceId}/`)) {
+    throw new Error("Modulr document download token storage key does not match workspace.");
+  }
+
   return parsed as ModulrDocumentDownloadTokenClaims;
 }
 

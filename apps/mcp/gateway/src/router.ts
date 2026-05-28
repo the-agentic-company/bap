@@ -62,6 +62,10 @@ export function routeMcpRequest(
     return null;
   }
 
+  if (slug === "modulr" && rest.join("/") === "documents/download") {
+    return null;
+  }
+
   const targetBase = env[server.internalTargetEnvVar]?.trim();
   if (!targetBase) {
     throw new Error(`Missing target for MCP server "${slug}" (${server.internalTargetEnvVar}).`);

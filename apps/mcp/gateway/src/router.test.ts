@@ -26,6 +26,18 @@ describe("routeMcpRequest", () => {
     expect(routed?.target.toString()).toBe("http://127.0.0.1:4103/mcp");
   });
 
+  it("does not route the retired Modulr document download endpoint", () => {
+    const routed = routeMcpRequest(
+      new URL("https://mcp.cmdclaw.ai/modulr/documents/download?token=abc"),
+      {
+        ...env,
+        CMDCLAW_MODULR_MCP_TARGET: "http://127.0.0.1:4104",
+      },
+    );
+
+    expect(routed).toBeNull();
+  });
+
   it("matches the spec protected-resource metadata path", () => {
     expect(
       matchProtectedResourceMetadataRequest(

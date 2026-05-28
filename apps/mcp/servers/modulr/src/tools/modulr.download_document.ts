@@ -18,15 +18,11 @@ function sanitizeFilename(value: string) {
 }
 
 function resolveDownloadBaseUrl(): string {
-  if (env.CMDCLAW_MCP_BASE_URL) {
-    return env.CMDCLAW_MCP_BASE_URL.replace(/\/+$/, "");
-  }
-
   const baseUrl = resolvePublicCallbackBaseUrl({
     callbackBaseUrl: env.E2B_CALLBACK_BASE_URL,
     appUrl: env.APP_URL,
     nextPublicAppUrl: env.NEXT_PUBLIC_APP_URL,
-    nodeEnv: "development",
+    nodeEnv: env.NODE_ENV,
   });
   if (!baseUrl) {
     throw new Error("Unable to resolve CmdClaw app URL for Modulr document downloads.");
@@ -35,7 +31,7 @@ function resolveDownloadBaseUrl(): string {
 }
 
 function buildDownloadUrl(token: string): string {
-  const url = new URL("/modulr/documents/download", resolveDownloadBaseUrl());
+  const url = new URL("/api/modulr/documents/download", resolveDownloadBaseUrl());
   url.searchParams.set("token", token);
   return url.toString();
 }
@@ -109,7 +105,6 @@ export default async function downloadDocument(
       mimeType: document.mimeType,
       resourceUri: document.resourceUri,
       sizeBytes: byteLength,
-      storageKey,
       downloadUrl,
     },
   };
