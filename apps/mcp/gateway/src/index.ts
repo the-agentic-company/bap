@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:net";
+import { initializeObservabilityRuntime } from "@cmdclaw/core/server/utils/observability";
 import { resolveGatewayPublicOrigin } from "./public-origin";
 import { matchProtectedResourceMetadataRequest, routeMcpRequest } from "./router";
 import { shouldManageGatewayChildren, startManagedGatewayChildren } from "./supervisor";
@@ -9,6 +10,8 @@ import {
   MCP_SERVER_REGISTRY,
   type McpServerSlug,
 } from "../../shared/registry";
+
+initializeObservabilityRuntime("cmdclaw-mcp-gateway");
 
 const port = Number.parseInt(process.env.MCP_GATEWAY_PORT ?? process.env.PORT ?? "3010", 10);
 const hostname = process.env.HOST ?? "0.0.0.0";

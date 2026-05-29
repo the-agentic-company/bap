@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import path from "node:path";
+import { logger as telemetryLogger } from "@cmdclaw/core/server/utils/observability";
 import { MCP_SERVER_REGISTRY, type McpServerSlug } from "../../shared/registry";
 
 const DEFAULT_CHILD_HOST = "127.0.0.1";
@@ -57,8 +58,22 @@ function pipeChildLogs(slug: string, stream: NodeJS.ReadableStream | null, label
       if (line.trim().length === 0) {
         continue;
       }
-      const logger = label === "stderr" ? console.error : console.log;
-      logger(`[mcp:${slug}] ${line}`);
+      const consoleLogger = label === "stderr" ? console.error : console.log;
+      const prefixedLine = `[mcp:${slug}] ${line}`;
+      consoleLogger(prefixedLine);
+      const level = label === "stderr" ? "error" : "info";
+      const fields = {
+        event: "mcp.child_log",
+        source: "mcp-gateway-supervisor",
+        "mcp.server.slug": slug,
+        "mcp.child.stream": label,
+        line,
+      };
+      if (level === "error") {
+        telemetryLogger.error(fields, "mcp child stderr");
+      } else {
+        telemetryLogger.info(fields, "mcp child stdout");
+      }
     }
   });
 }
