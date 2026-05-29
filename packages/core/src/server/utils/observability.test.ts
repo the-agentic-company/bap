@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildConsolePayload,
   createTraceId,
   normalizeTelemetryAttributes,
   resolveObservabilityVectorUrls,
+  serializeErrorDiagnostic,
 } from "./observability";
 
 describe("resolveObservabilityVectorUrls", () => {
@@ -115,6 +117,76 @@ describe("normalizeTelemetryAttributes", () => {
       "cmdclaw.phase.pre_prompt_setup_ms": 25,
       "cmdclaw.phase.prompt_to_first_token_ms": 50,
     });
+  });
+});
+
+describe("serializeErrorDiagnostic", () => {
+  it("keeps standard Error fields that JSON.stringify would drop", () => {
+    const cause = new Error("upstream refused connection");
+    const error = Object.assign(new Error("render failed", { cause }), {
+      code: "ERR_RENDER",
+      status: 502,
+    });
+
+    expect(JSON.stringify(error)).toBe('{"code":"ERR_RENDER","status":502}');
+
+    const diagnostic = serializeErrorDiagnostic(error);
+
+    expect(diagnostic).toEqual(
+      expect.objectContaining({
+        type: "Error",
+        message: "render failed: upstream refused connection",
+        code: "ERR_RENDER",
+        status: 502,
+      }),
+    );
+    expect(diagnostic.stack).toEqual(expect.stringContaining("Error: render failed"));
+  });
+});
+
+describe("buildConsolePayload", () => {
+  it("serializes console Error arguments into message, args, and err fields", () => {
+    const payload = buildConsolePayload("error", [
+      "[render] failed to render",
+      Object.assign(new Error("template exploded"), { code: "ERR_TEMPLATE" }),
+    ]);
+
+    expect(payload.message).toBe("[render] failed to render Error: template exploded");
+    expect(payload.args).toEqual([
+      "[render] failed to render",
+      expect.objectContaining({
+        type: "Error",
+        message: "template exploded",
+        code: "ERR_TEMPLATE",
+      }),
+    ]);
+    expect(payload.err).toEqual(
+      expect.objectContaining({
+        type: "Error",
+        message: "template exploded",
+        code: "ERR_TEMPLATE",
+      }),
+    );
+  });
+
+  it("serializes nested Error values instead of forwarding empty objects", () => {
+    const payload = buildConsolePayload("error", [
+      {
+        operation: "render",
+        error: new TypeError("invalid block"),
+      },
+    ]);
+
+    expect(payload.args).toEqual([
+      {
+        operation: "render",
+        error: expect.objectContaining({
+          type: "TypeError",
+          message: "invalid block",
+        }),
+      },
+    ]);
+    expect(payload.message).toEqual(expect.stringContaining('"message":"invalid block"'));
   });
 });
 

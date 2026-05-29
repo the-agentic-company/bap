@@ -15,6 +15,7 @@ import {
   ATTR_SERVICE_NAMESPACE,
   ATTR_SERVICE_VERSION,
 } from "@opentelemetry/semantic-conventions";
+import pino from "pino";
 import {
   context,
   metrics,
@@ -132,6 +133,7 @@ const FORBIDDEN_FIELD_PATTERNS = [
 const SAFE_FIELD_PREFIXES = ["cmdclaw.phase."] as const;
 const MAX_SAFE_ARRAY_ITEMS = 25;
 const MAX_SAFE_STRING_LENGTH = 512;
+const MAX_ERROR_STACK_LENGTH = 8_192;
 
 const globalState = globalThis as typeof globalThis & {
   __cmdclawObservabilityState?: ObservabilityRuntimeState;
@@ -366,10 +368,64 @@ function safeStringify(value: unknown): string {
   }
 
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value, createLogJsonReplacer());
   } catch {
     return String(value);
   }
+}
+
+function truncateLogString(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
+}
+
+function isErrorLike(value: unknown): value is Error {
+  return value instanceof Error;
+}
+
+export function serializeErrorDiagnostic(error: Error): Record<string, unknown> {
+  const serialized = pino.stdSerializers.err(error) as Record<string, unknown>;
+  const diagnostic: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(serialized)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+    if (typeof value === "string") {
+      diagnostic[key] = truncateLogString(
+        value,
+        key === "stack" ? MAX_ERROR_STACK_LENGTH : MAX_SAFE_STRING_LENGTH,
+      );
+      continue;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      diagnostic[key] = value;
+    }
+  }
+
+  diagnostic.type ??= error.name;
+  diagnostic.message ??= truncateLogString(error.message, MAX_SAFE_STRING_LENGTH);
+  if (error.stack && !diagnostic.stack) {
+    diagnostic.stack = truncateLogString(error.stack, MAX_ERROR_STACK_LENGTH);
+  }
+
+  return diagnostic;
+}
+
+function createLogJsonReplacer(): (key: string, value: unknown) => unknown {
+  const seen = new WeakSet<object>();
+
+  return (_key, value) => {
+    if (isErrorLike(value)) {
+      return serializeErrorDiagnostic(value);
+    }
+    if (value && typeof value === "object") {
+      if (seen.has(value)) {
+        return "[Circular]";
+      }
+      seen.add(value);
+    }
+    return value;
+  };
 }
 
 function maybeParseJsonObject(value: string): Record<string, unknown> | null {
@@ -394,13 +450,25 @@ function buildConsoleMessage(args: unknown[]): string {
       if (typeof arg === "string") {
         return arg;
       }
+      if (isErrorLike(arg)) {
+        const diagnostic = serializeErrorDiagnostic(arg);
+        const type = typeof diagnostic.type === "string" ? diagnostic.type : arg.name;
+        const message =
+          typeof diagnostic.message === "string" && diagnostic.message.trim()
+            ? diagnostic.message
+            : String(arg);
+        return `${type}: ${message}`;
+      }
       return safeStringify(arg);
     })
     .join(" ")
     .trim();
 }
 
-function buildConsolePayload(level: ConsoleMethod, args: unknown[]): Record<string, unknown> {
+export function buildConsolePayload(
+  level: ConsoleMethod,
+  args: unknown[],
+): Record<string, unknown> {
   const firstString = args.length === 1 && typeof args[0] === "string" ? args[0] : null;
   const parsedPayload = firstString ? maybeParseJsonObject(firstString) : null;
   const activeIds = getActiveSpanIds();
@@ -438,6 +506,7 @@ function buildConsolePayload(level: ConsoleMethod, args: unknown[]): Record<stri
   }
 
   const message = buildConsoleMessage(args);
+  const errorDiagnostics = args.filter(isErrorLike).map(serializeErrorDiagnostic);
 
   return {
     ts: new Date().toISOString(),
@@ -457,6 +526,8 @@ function buildConsolePayload(level: ConsoleMethod, args: unknown[]): Record<stri
         return safeStringify(arg);
       }
     }),
+    ...(errorDiagnostics[0] ? { err: errorDiagnostics[0] } : {}),
+    ...(errorDiagnostics.length > 1 ? { errs: errorDiagnostics } : {}),
     ...(activeIds.traceId ? { traceId: activeIds.traceId, trace_id: activeIds.traceId } : {}),
     ...(activeIds.spanId ? { spanId: activeIds.spanId, span_id: activeIds.spanId } : {}),
   };
