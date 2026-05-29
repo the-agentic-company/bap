@@ -33,6 +33,7 @@ export type LoggerContext = {
 export type LoggerRuntimeConfig = {
   serviceName: string;
   env: string;
+  vectorLogUrl?: string | null;
 };
 
 type NormalizedLogRecord = Record<string, unknown>;
@@ -61,6 +62,7 @@ const SAFE_FIELD_PREFIXES = ["cmdclaw.phase."] as const;
 let runtimeConfig: LoggerRuntimeConfig = {
   serviceName: "cmdclaw",
   env: process.env.NODE_ENV ?? "development",
+  vectorLogUrl: null,
 };
 
 const pinoLogger = pino({
@@ -71,10 +73,14 @@ const pinoLogger = pino({
 
 let logSink: LogSink = (level, record, message) => {
   pinoLogger[level](record, message);
+  shipLogToVector(level, record, message);
 };
 
 export function configureLoggerRuntime(config: LoggerRuntimeConfig): void {
-  runtimeConfig = config;
+  runtimeConfig = {
+    ...config,
+    vectorLogUrl: config.vectorLogUrl ?? null,
+  };
 }
 
 export function setLoggerSinkForTest(sink: LogSink | null): void {
@@ -82,7 +88,40 @@ export function setLoggerSinkForTest(sink: LogSink | null): void {
     sink ??
     ((level, record, message) => {
       pinoLogger[level](record, message);
+      shipLogToVector(level, record, message);
     });
+}
+
+function shipLogToVector(level: LogLevel, record: NormalizedLogRecord, message: string): void {
+  const url = runtimeConfig.vectorLogUrl;
+  if (!url || typeof fetch !== "function") {
+    return;
+  }
+
+  const serviceName =
+    typeof record["service.name"] === "string" ? record["service.name"] : runtimeConfig.serviceName;
+  const env =
+    typeof record["deployment.environment"] === "string"
+      ? record["deployment.environment"]
+      : runtimeConfig.env;
+  const payload = {
+    ...record,
+    ts: new Date().toISOString(),
+    service: serviceName,
+    env,
+    level,
+    message,
+  };
+
+  void fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  }).catch(() => {
+    // Logging must never break the caller. Render stdout remains the primary fallback.
+  });
 }
 
 function toDottedSnakeCase(key: string): string {
@@ -173,7 +212,9 @@ export function serializeErrorDiagnostic(error: Error): Record<string, unknown> 
     }
   }
 
-  diagnostic.type ??= error.name;
+  if (!diagnostic.type || diagnostic.type === "Object") {
+    diagnostic.type = error.name;
+  }
   diagnostic.message ??= truncateLogString(error.message, MAX_SAFE_STRING_LENGTH);
   if (error.stack && !diagnostic.stack) {
     diagnostic.stack = truncateLogString(error.stack, MAX_ERROR_STACK_LENGTH);

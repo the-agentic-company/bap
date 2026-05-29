@@ -92,6 +92,7 @@ type TraceCarrier = Record<string, string>;
 type EnvLookup = Record<string, string | undefined>;
 
 export type ObservabilityVectorUrls = {
+  logUrl: string;
   metricsUrl: string;
   tracesUrl: string;
 };
@@ -106,6 +107,7 @@ type ObservabilityRuntimeState = {
   initialized: boolean;
   serviceName: string;
   env: string;
+  vectorLogUrl: string;
   vectorMetricsUrl: string;
   vectorTracesUrl: string;
   tracer: Tracer;
@@ -144,6 +146,7 @@ const runtimeState: ObservabilityRuntimeState =
       initialized: false,
       serviceName: "cmdclaw",
       env: process.env.NODE_ENV ?? "development",
+      vectorLogUrl: `http://${DEFAULT_OBSERVABILITY_HOST}:8686/logs`,
       vectorMetricsUrl: `http://${DEFAULT_OBSERVABILITY_HOST}:4318/v1/metrics`,
       vectorTracesUrl: `http://${DEFAULT_OBSERVABILITY_HOST}:4318/v1/traces`,
       tracer: trace.getTracer(INSTRUMENTATION_SCOPE),
@@ -214,6 +217,11 @@ export function resolveObservabilityVectorUrls(
   env: EnvLookup = process.env as EnvLookup,
 ): ObservabilityVectorUrls {
   return {
+    logUrl: buildVectorUrlFromEnv("/logs", env, {
+      fullUrlEnvNames: ["CMDCLAW_VECTOR_LOG_URL"],
+      portEnvNames: ["CMDCLAW_VECTOR_LOG_PORT"],
+      defaultPort: "8686",
+    }),
     metricsUrl: buildVectorUrlFromEnv("/v1/metrics", env, {
       fullUrlEnvNames: ["CMDCLAW_VECTOR_METRICS_URL"],
       portEnvNames: ["CMDCLAW_VECTOR_OTLP_HTTP_PORT", "CMDCLAW_OTEL_HTTP_PORT"],
@@ -382,13 +390,15 @@ function buildResource(serviceName: string) {
 export function initializeObservabilityRuntime(serviceName: string): void {
   runtimeState.serviceName = serviceName;
   runtimeState.env = process.env.NODE_ENV ?? "development";
+  const vectorUrls = resolveObservabilityVectorUrls();
+  runtimeState.vectorLogUrl = vectorUrls.logUrl;
+  runtimeState.vectorMetricsUrl = vectorUrls.metricsUrl;
+  runtimeState.vectorTracesUrl = vectorUrls.tracesUrl;
   configureLoggerRuntime({
     serviceName: runtimeState.serviceName,
     env: runtimeState.env,
+    vectorLogUrl: runtimeState.vectorLogUrl,
   });
-  const vectorUrls = resolveObservabilityVectorUrls();
-  runtimeState.vectorMetricsUrl = vectorUrls.metricsUrl;
-  runtimeState.vectorTracesUrl = vectorUrls.tracesUrl;
 
   if (isObservabilityDisabled()) {
     return;

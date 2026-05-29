@@ -20,7 +20,9 @@ function captureLogs() {
 
 afterEach(() => {
   setLoggerSinkForTest(null);
+  configureLoggerRuntime({ serviceName: "cmdclaw-test", env: "test", vectorLogUrl: null });
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("resolveObservabilityVectorUrls", () => {
@@ -33,6 +35,7 @@ describe("resolveObservabilityVectorUrls", () => {
     });
 
     expect(urls).toEqual({
+      logUrl: "http://cmdclaw-vector-staging:8686/logs",
       metricsUrl: "http://cmdclaw-vector-staging:4318/v1/metrics",
       tracesUrl: "http://cmdclaw-vector-staging:5318/v1/traces",
     });
@@ -40,6 +43,7 @@ describe("resolveObservabilityVectorUrls", () => {
 
   it("prefers fully qualified endpoint URLs when provided", () => {
     const urls = resolveObservabilityVectorUrls({
+      CMDCLAW_VECTOR_LOG_URL: "http://vector.example/log-ingest",
       CMDCLAW_VECTOR_METRICS_URL: "http://vector.example/metric-ingest",
       CMDCLAW_VECTOR_TRACES_URL: "http://vector.example/trace-ingest",
       CMDCLAW_VECTOR_HOST: "ignored-host",
@@ -48,6 +52,7 @@ describe("resolveObservabilityVectorUrls", () => {
     });
 
     expect(urls).toEqual({
+      logUrl: "http://vector.example/log-ingest",
       metricsUrl: "http://vector.example/metric-ingest",
       tracesUrl: "http://vector.example/trace-ingest",
     });
@@ -57,6 +62,7 @@ describe("resolveObservabilityVectorUrls", () => {
     const urls = resolveObservabilityVectorUrls({});
 
     expect(urls).toEqual({
+      logUrl: "http://127.0.0.1:8686/logs",
       metricsUrl: "http://127.0.0.1:4318/v1/metrics",
       tracesUrl: "http://127.0.0.1:5318/v1/traces",
     });
@@ -69,6 +75,7 @@ describe("resolveObservabilityVectorUrls", () => {
     });
 
     expect(urls).toEqual({
+      logUrl: "http://cmdclaw-vector-staging:8686/logs",
       metricsUrl: "http://cmdclaw-vector-staging:4318/v1/metrics",
       tracesUrl: "http://cmdclaw-vector-staging:5318/v1/traces",
     });
@@ -239,6 +246,56 @@ describe("logger", () => {
       }),
     );
     expect(records[0]?.record).not.toHaveProperty("cmdclaw.event.name");
+  });
+
+  it("ships default Pino log records to the configured Vector log endpoint", () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+    vi.stubGlobal("fetch", fetchMock);
+    configureLoggerRuntime({
+      serviceName: "cmdclaw-worker",
+      env: "production",
+      vectorLogUrl: "http://cmdclaw-vector-prod:8686/logs",
+    });
+
+    logger.error(
+      {
+        event: "RENDER_FAILED",
+        err: new Error("template exploded"),
+        generationId: "gen-1",
+      },
+      "render failed",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://cmdclaw-vector-prod:8686/logs",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: expect.any(String),
+      }),
+    );
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body).toEqual(
+      expect.objectContaining({
+        service: "cmdclaw-worker",
+        env: "production",
+        level: "error",
+        message: "render failed",
+        "service.name": "cmdclaw-worker",
+        "deployment.environment": "production",
+        "event.kind": "operational_log",
+        event: "render.failed",
+        "cmdclaw.generation.id": "gen-1",
+        err: expect.objectContaining({
+          type: "Error",
+          message: "template exploded",
+        }),
+      }),
+    );
+    expect(body.ts).toEqual(expect.any(String));
+    expect(JSON.stringify(body.err)).not.toBe("{}");
   });
 });
 
