@@ -1,0 +1,130 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const {
+  refreshTokenFindFirstMock,
+  grantFindFirstMock,
+  insertMock,
+  updateMock,
+  updateSetMock,
+  updateWhereMock,
+  updatePayloads,
+  signHostedMcpAccessTokenMock,
+} = vi.hoisted(() => {
+  const refreshTokenFindFirstMock = vi.fn();
+  const grantFindFirstMock = vi.fn();
+  const insertMock = vi.fn();
+  const updateWhereMock = vi.fn();
+  const updatePayloads: Array<Record<string, unknown>> = [];
+  const updateSetMock = vi.fn((payload: Record<string, unknown>) => {
+    updatePayloads.push(payload);
+    return { where: updateWhereMock };
+  });
+  const updateMock = vi.fn(() => ({ set: updateSetMock }));
+  const signHostedMcpAccessTokenMock = vi.fn();
+
+  return {
+    refreshTokenFindFirstMock,
+    grantFindFirstMock,
+    insertMock,
+    updateMock,
+    updateSetMock,
+    updateWhereMock,
+    updatePayloads,
+    signHostedMcpAccessTokenMock,
+  };
+});
+
+vi.mock("@/env", () => ({
+  env: {
+    CMDCLAW_SERVER_SECRET: "test-server-secret",
+  },
+}));
+
+vi.mock("@cmdclaw/db/client", () => ({
+  db: {
+    query: {
+      hostedMcpOauthRefreshToken: {
+        findFirst: refreshTokenFindFirstMock,
+      },
+      hostedMcpOauthGrant: {
+        findFirst: grantFindFirstMock,
+      },
+    },
+    insert: insertMock,
+    update: updateMock,
+  },
+}));
+
+vi.mock("@cmdclaw/core/server/billing/service", () => ({
+  getWorkspaceMembershipForUser: vi.fn(),
+  listWorkspacesForUser: vi.fn(),
+}));
+
+vi.mock("@cmdclaw/core/server/galien/service", () => ({
+  canUserUseGalienInWorkspace: vi.fn(),
+}));
+
+vi.mock("@cmdclaw/core/server/modulr/service", () => ({
+  canUserUseModulrInWorkspace: vi.fn(),
+}));
+
+vi.mock("@cmdclaw/core/server/hosted-mcp-oauth", () => ({
+  HOSTED_MCP_AUDIENCES: ["gmail", "internal", "galien", "modulr"],
+  normalizeHostedMcpScopes: (value: string[] | string | null | undefined) =>
+    Array.isArray(value) ? value : (value ?? "").split(/\s+/).filter(Boolean),
+  resolveHostedMcpIssuerUrl: (url: URL) => url,
+  signHostedMcpAccessToken: signHostedMcpAccessTokenMock,
+}));
+
+import { exchangeHostedMcpRefreshToken } from "./hosted-mcp-oauth";
+
+describe("hosted MCP OAuth refresh tokens", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    updatePayloads.length = 0;
+    signHostedMcpAccessTokenMock.mockResolvedValue("access-token");
+    refreshTokenFindFirstMock.mockResolvedValue({
+      id: "refresh-row-1",
+      grantId: "grant-1",
+      clientId: "client-1",
+      expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+      revokedAt: null,
+    });
+    grantFindFirstMock.mockResolvedValue({
+      id: "grant-1",
+      clientId: "client-1",
+      userId: "user-1",
+      workspaceId: "workspace-1",
+      audience: "galien",
+      resource: "https://mcp.example.com/galien/mcp",
+      scopes: ["galien"],
+      revokedAt: null,
+    });
+  });
+
+  it("reuses the presented refresh token and extends its expiry", async () => {
+    const tokens = await exchangeHostedMcpRefreshToken({
+      request: new Request("https://mcp.example.com/galien/token"),
+      clientId: "client-1",
+      refreshToken: "stable-refresh-token",
+      resource: "https://mcp.example.com/galien/mcp",
+    });
+
+    expect(tokens).toEqual({
+      access_token: "access-token",
+      token_type: "bearer",
+      expires_in: 3600,
+      scope: "galien",
+      refresh_token: "stable-refresh-token",
+    });
+    expect(insertMock).not.toHaveBeenCalled();
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expiresAt: expect.any(Date),
+        updatedAt: expect.any(Date),
+      }),
+    );
+    expect(updatePayloads[0]).not.toHaveProperty("revokedAt");
+    expect(updateWhereMock).toHaveBeenCalled();
+  });
+});

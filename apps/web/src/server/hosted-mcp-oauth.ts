@@ -363,6 +363,7 @@ async function issueHostedMcpTokenSet(params: {
   grant: typeof hostedMcpOauthGrant.$inferSelect;
   clientId: string;
   request: Request;
+  refreshToken?: string;
 }) {
   const accessToken = await signHostedMcpAccessToken({
     userId: params.grant.userId,
@@ -375,10 +376,12 @@ async function issueHostedMcpTokenSet(params: {
     issuer: buildIssuerUrl(params.request),
     expiresInSeconds: ACCESS_TOKEN_TTL_SECONDS,
   });
-  const refreshToken = await createRefreshTokenRecord({
-    grantId: params.grant.id,
-    clientId: params.clientId,
-  });
+  const refreshToken =
+    params.refreshToken ??
+    (await createRefreshTokenRecord({
+      grantId: params.grant.id,
+      clientId: params.clientId,
+    }));
 
   return {
     access_token: accessToken,
@@ -476,13 +479,17 @@ export async function exchangeHostedMcpRefreshToken(params: {
 
   await db
     .update(hostedMcpOauthRefreshToken)
-    .set({ revokedAt: new Date() })
+    .set({
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000),
+      updatedAt: new Date(),
+    })
     .where(eq(hostedMcpOauthRefreshToken.id, refreshTokenRow.id));
 
   return issueHostedMcpTokenSet({
     grant,
     clientId: params.clientId,
     request: params.request,
+    refreshToken: params.refreshToken,
   });
 }
 
