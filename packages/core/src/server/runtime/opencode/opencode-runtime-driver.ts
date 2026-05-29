@@ -357,6 +357,59 @@ function extractOpenCodeSessionErrorMessage(event: RuntimeEvent): string {
   return JSON.stringify(error);
 }
 
+function extractOpenCodeMessageInfoErrorMessage(message: unknown): string | null {
+  if (!message || typeof message !== "object") {
+    return null;
+  }
+
+  const record = message as Record<string, unknown>;
+  const info =
+    typeof record.info === "object" && record.info !== null
+      ? (record.info as Record<string, unknown>)
+      : null;
+
+  if (info?.role !== "assistant" || info.error == null) {
+    return null;
+  }
+
+  return formatErrorMessage(info.error);
+}
+
+function extractOpenCodeMessageErrorMessage(event: RuntimeEvent): string | null {
+  if (event.type !== "message.updated") {
+    return null;
+  }
+
+  const eventProps =
+    typeof event.properties === "object" && event.properties !== null
+      ? (event.properties as Record<string, unknown>)
+      : {};
+  return extractOpenCodeMessageInfoErrorMessage(eventProps);
+}
+
+export function extractOpenCodeMessageErrorFromSessionMessages(
+  payload: unknown,
+): string | null {
+  const messages = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>).messages
+      : null;
+
+  if (!Array.isArray(messages)) {
+    return null;
+  }
+
+  for (const message of messages) {
+    const errorMessage = extractOpenCodeMessageInfoErrorMessage(message);
+    if (errorMessage) {
+      return errorMessage;
+    }
+  }
+
+  return null;
+}
+
 export function inspectOpenCodeRuntimeEvent(event: RuntimeEvent): OpenCodeRuntimeEventInspection {
   let toolCallCountDelta = 0;
   if (event.type === "message.part.updated") {
@@ -382,6 +435,17 @@ export function inspectOpenCodeRuntimeEvent(event: RuntimeEvent): OpenCodeRuntim
       toolCallCountDelta,
       terminalOutcome: "error",
       errorMessage: extractOpenCodeSessionErrorMessage(event),
+      logEvent: true,
+    };
+  }
+
+  const messageErrorMessage = extractOpenCodeMessageErrorMessage(event);
+  if (messageErrorMessage) {
+    return {
+      eventCountDelta: 1,
+      toolCallCountDelta,
+      terminalOutcome: "error",
+      errorMessage: messageErrorMessage,
       logEvent: true,
     };
   }

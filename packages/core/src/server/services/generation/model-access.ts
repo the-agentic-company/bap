@@ -14,7 +14,10 @@ import {
 } from "../../../lib/provider-auth-source";
 import { listOpencodeFreeModels } from "../../ai/opencode-models";
 import { getProviderModels } from "../../ai/subscription-providers";
-import { hasConnectedProviderAuthForUser } from "../../control-plane/subscription-providers";
+import {
+  hasConnectedProviderAuthForUser,
+  isProviderAuthRefreshError,
+} from "../../control-plane/subscription-providers";
 
 export type ModelAccessCheckResult =
   | { allowed: true }
@@ -23,6 +26,25 @@ export type ModelAccessCheckResult =
       reason: string;
       userMessage: string;
     };
+
+function formatProviderAuthRefreshFailureMessage(input: {
+  providerID: string;
+  authSource: ProviderAuthSource | null;
+  error: unknown;
+}): ModelAccessCheckResult {
+  const providerLabel = getProviderDisplayName(input.providerID);
+  const detail = (input.error instanceof Error ? input.error.message : String(input.error))
+    .trim()
+    .replace(/[.!?]+$/g, "");
+  return {
+    allowed: false,
+    reason: `${input.providerID}_auth_refresh_failed`,
+    userMessage:
+      input.authSource === "user"
+        ? `Your ${providerLabel} connection could not be refreshed: ${detail}. Reconnect it in Settings > Connected AI Account, then retry.`
+        : `The shared ${providerLabel} connection could not be refreshed: ${detail}. Ask an admin to reconnect it, then retry.`,
+  };
+}
 
 export async function checkModelAccessForUser(params: {
   userId: string;
@@ -66,38 +88,50 @@ export async function checkModelAccessForUser(params: {
 
   const authProviderID = getProviderAuthProviderID(providerID);
   if (authSource !== null || authProviderID !== null) {
-    const availabilityChecks: ProviderAuthAvailability =
-      authProviderID === null
-        ? resolveProviderAuthAvailability({
-            providerID,
-            sharedConnectedProviderIds: env.ANTHROPIC_API_KEY ? ["anthropic"] : [],
-          })
-        : authSource === "user"
-          ? {
-              user: await hasConnectedProviderAuthForUser(params.userId, authProviderID, "user"),
-              shared: false,
-            }
-          : authSource === "shared"
+    let availabilityChecks: ProviderAuthAvailability;
+    try {
+      availabilityChecks =
+        authProviderID === null
+          ? resolveProviderAuthAvailability({
+              providerID,
+              sharedConnectedProviderIds: env.ANTHROPIC_API_KEY ? ["anthropic"] : [],
+            })
+          : authSource === "user"
             ? {
-                user: false,
-                shared: await hasConnectedProviderAuthForUser(
-                  params.userId,
-                  authProviderID,
-                  "shared",
-                ),
+                user: await hasConnectedProviderAuthForUser(params.userId, authProviderID, "user"),
+                shared: false,
               }
-            : {
-                user: await hasConnectedProviderAuthForUser(
-                  params.userId,
-                  authProviderID,
-                  "user",
-                ),
-                shared: await hasConnectedProviderAuthForUser(
-                  params.userId,
-                  authProviderID,
-                  "shared",
-                ),
-              };
+            : authSource === "shared"
+              ? {
+                  user: false,
+                  shared: await hasConnectedProviderAuthForUser(
+                    params.userId,
+                    authProviderID,
+                    "shared",
+                  ),
+                }
+              : {
+                  user: await hasConnectedProviderAuthForUser(
+                    params.userId,
+                    authProviderID,
+                    "user",
+                  ),
+                  shared: await hasConnectedProviderAuthForUser(
+                    params.userId,
+                    authProviderID,
+                    "shared",
+                  ),
+                };
+    } catch (error) {
+      if (isProviderAuthRefreshError(error)) {
+        return formatProviderAuthRefreshFailureMessage({
+          providerID,
+          authSource,
+          error,
+        });
+      }
+      throw error;
+    }
     const hasAuth = authSource ? availabilityChecks[authSource] : true;
     if (!hasAuth) {
       const providerLabel = getProviderDisplayName(providerID);

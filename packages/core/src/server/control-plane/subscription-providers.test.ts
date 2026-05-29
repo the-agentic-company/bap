@@ -148,4 +148,38 @@ describe("control-plane subscription provider auth", () => {
       authSource: "shared",
     });
   });
+
+  it("surfaces provider refresh error messages from JSON responses", async () => {
+    const expiredAuth = {
+      id: "shared-auth-1",
+      provider: "openai",
+      accessToken: "stale-access",
+      refreshToken: "stale-refresh",
+      expiresAt: new Date("2026-04-13T09:00:00.000Z"),
+    };
+
+    sharedProviderAuthFindFirstMock.mockResolvedValue(expiredAuth);
+    txSharedProviderAuthFindFirstMock.mockResolvedValue(expiredAuth);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            message:
+              "Your refresh token has already been used to generate a new access token. Please try signing in again.",
+          },
+        }),
+        { status: 401 },
+      ),
+    );
+
+    await expect(
+      getResolvedProviderAuth({
+        userId: "user-1",
+        provider: "openai",
+        authSource: "shared",
+      }),
+    ).rejects.toThrow(
+      "Token refresh failed: 401 Your refresh token has already been used to generate a new access token. Please try signing in again.",
+    );
+  });
 });

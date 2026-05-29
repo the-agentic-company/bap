@@ -586,6 +586,7 @@ const startGeneration = protectedProcedure
       );
       if (isGenerationStartError(error)) {
         throw new ORPCError(error.rpcCode, {
+          defined: true,
           message: error.message,
           data: {
             generationErrorCode: error.generationErrorCode,

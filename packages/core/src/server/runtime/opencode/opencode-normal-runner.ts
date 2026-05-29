@@ -19,6 +19,7 @@ import {
 import { resolveRuntimeEnvironmentForTurn } from "../../execution/runtime-env";
 import { composeOpencodePromptSpec } from "../../prompts/opencode-runtime-prompt";
 import {
+  extractOpenCodeMessageErrorFromSessionMessages,
   isOpaqueDiagnosticMessage,
   resolveOpenCodePromptCompletion,
   waitForOpenCodeTerminalStateAfterEarlyStreamEnd,
@@ -63,6 +64,20 @@ const RUNTIME_NO_PROGRESS_USER_MESSAGE =
   "The runtime stopped responding before producing any output. Please retry.";
 const RUNTIME_PROGRESS_STALLED_USER_MESSAGE =
   "The runtime stopped making progress. Please retry.";
+
+async function probeOpenCodeAssistantMessageError(input: {
+  runtimeClient: RuntimeHarnessClient;
+  sessionId: string;
+}): Promise<string | null> {
+  const result = await input.runtimeClient.messages({
+    sessionID: input.sessionId,
+    limit: 20,
+  });
+  if (result.error) {
+    return null;
+  }
+  return extractOpenCodeMessageErrorFromSessionMessages(result.data);
+}
 
 type TerminalGenerationStatus = Extract<
   GenerationStatus,
@@ -1171,6 +1186,49 @@ export class OpenCodeNormalRunner {
           ...(ctx.debugInfo ?? {}),
           runtimeDiagnosticSnapshot: diagnosticSnapshot,
         };
+
+        const assistantMessageError =
+          reason === "runtime_no_progress_after_prompt"
+            ? await probeOpenCodeAssistantMessageError({
+                runtimeClient,
+                sessionId: activeSessionId,
+              })
+            : null;
+
+        if (assistantMessageError) {
+          this.callbacks.setCompletionReason(ctx, "runtime_error");
+          this.callbacks.markPhase(ctx, "runtime_error");
+          ctx.errorMessage = assistantMessageError;
+          this.callbacks.captureOriginalError(
+            ctx,
+            new Error(
+              `OpenCode assistant message failed after prompt: ${assistantMessageError}`,
+            ),
+            { phase: "prompt_sent" },
+          );
+          logServerEvent(
+            "error",
+            "OPENCODE_ASSISTANT_MESSAGE_ERROR_AFTER_PROMPT",
+            {
+              originalWatchdogReason: reason,
+              timeoutMs: runtimeNoProgressTimeoutMs,
+              eventStats: eventLoop.snapshot().stats,
+              errorMessage: assistantMessageError,
+            },
+            {
+              source: "generation-manager",
+              traceId: ctx.traceId,
+              generationId: ctx.id,
+              conversationId: ctx.conversationId,
+              userId: ctx.userId,
+              sessionId: activeSessionId,
+            },
+          );
+          this.callbacks.scheduleSave(ctx);
+          await this.callbacks.finishGeneration(ctx, "error");
+          return;
+        }
+
         this.callbacks.setCompletionReason(ctx, reason);
         this.callbacks.markPhase(ctx, reason);
         ctx.errorMessage =

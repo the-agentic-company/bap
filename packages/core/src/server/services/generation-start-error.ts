@@ -19,5 +19,27 @@ export class GenerationStartError extends Error {
 }
 
 export function isGenerationStartError(error: unknown): error is GenerationStartError {
-  return error instanceof GenerationStartError;
+  if (error instanceof GenerationStartError) {
+    return true;
+  }
+
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as {
+    name?: unknown;
+    message?: unknown;
+    generationErrorCode?: unknown;
+    rpcCode?: unknown;
+  };
+
+  return (
+    candidate.name === "GenerationStartError" &&
+    typeof candidate.message === "string" &&
+    typeof candidate.generationErrorCode === "string" &&
+    (candidate.rpcCode === "BAD_REQUEST" ||
+      candidate.rpcCode === "FORBIDDEN" ||
+      candidate.rpcCode === "NOT_FOUND")
+  );
 }

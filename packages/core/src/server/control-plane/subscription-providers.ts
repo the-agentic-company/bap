@@ -23,12 +23,42 @@ const PROVIDER_AUTH_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 
 type ProviderAuthRecord = typeof providerAuth.$inferSelect;
 
+export function isProviderAuthRefreshError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.trim().startsWith("Token refresh failed:")
+  );
+}
+
 function shouldRefreshProviderAuth(expiresAt: number | null): boolean {
   if (!expiresAt) {
     return false;
   }
 
   return Date.now() >= expiresAt - PROVIDER_AUTH_REFRESH_BUFFER_MS;
+}
+
+function extractProviderTokenErrorDetail(status: number, text: string): string {
+  try {
+    const parsed = JSON.parse(text) as {
+      error?: { message?: unknown };
+      message?: unknown;
+    };
+    const message =
+      typeof parsed.error?.message === "string"
+        ? parsed.error.message
+        : typeof parsed.message === "string"
+          ? parsed.message
+          : null;
+    if (message?.trim()) {
+      return `${status} ${message.trim()}`;
+    }
+  } catch {
+    // Fall back to a compact response body below.
+  }
+
+  const detail = text.replace(/\s+/g, " ").trim().slice(0, 180);
+  return detail ? `${status} ${detail}` : String(status);
 }
 
 function toResolvedProviderAuth(
@@ -74,8 +104,9 @@ async function refreshOpenAIProviderTokens(input: {
 
   const text = await response.text();
   if (!response.ok) {
-    const detail = text.replace(/\s+/g, " ").trim().slice(0, 180);
-    throw new Error(detail ? `Token refresh failed: ${response.status} ${detail}` : `Token refresh failed: ${response.status}`);
+    throw new Error(
+      `Token refresh failed: ${extractProviderTokenErrorDetail(response.status, text)}`,
+    );
   }
 
   let parsed: unknown;

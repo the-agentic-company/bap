@@ -3321,6 +3321,34 @@ describe("generationManager transitions", () => {
     );
   });
 
+  it("surfaces shared ChatGPT token refresh failures as model access errors", async () => {
+    sharedProviderAuthFindFirstMock.mockRejectedValueOnce(
+      new Error("Token refresh failed: 401 refresh token already used"),
+    );
+
+    insertReturningMock.mockResolvedValueOnce([
+      {
+        id: "conv-new",
+        userId: "user-1",
+        model: "openai/gpt-5.4",
+        authSource: "shared",
+        autoApprove: false,
+        type: "chat",
+      },
+    ]);
+
+    await expect(
+      generationManager.startGeneration({
+        content: "hello",
+        userId: "user-1",
+        model: "openai/gpt-5.4",
+        authSource: "shared",
+      }),
+    ).rejects.toThrow(
+      "The shared ChatGPT connection could not be refreshed: Token refresh failed: 401 refresh token already used. Ask an admin to reconnect it, then retry.",
+    );
+  });
+
   it("rejects startGeneration when a Gemini model is selected without shared Gemini connection", async () => {
     sharedProviderAuthFindFirstMock.mockResolvedValueOnce(null);
 
@@ -6702,6 +6730,99 @@ describe("generationManager transitions", () => {
     expect(snapshotBody).not.toContain("do not persist this prompt");
     expect(snapshotBody).not.toContain("do not persist this output");
     expect(snapshotBody).not.toContain("secret-token");
+    expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
+    vi.useRealTimers();
+  });
+
+  it("surfaces an assistant message error when OpenCode stores one without runtime progress", async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(env, "ANTHROPIC_API_KEY", {
+      value: "test-key",
+      configurable: true,
+    });
+
+    vi.mocked(getCliEnvForUser).mockResolvedValue({});
+    vi.mocked(getEnabledIntegrationTypes).mockResolvedValue([]);
+    vi.mocked(getCliInstructionsWithCustom).mockResolvedValue("");
+    vi.mocked(syncMemoryFilesToSandbox).mockResolvedValue([]);
+    vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
+    vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
+    dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
+      createExecutorPreparationMock(),
+    );
+    vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
+    vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
+    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
+    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("");
+    vi.mocked(collectNewSandboxFiles).mockResolvedValue([]);
+
+    const promptDeferred = createDeferred<void>();
+    const messagesMock = vi.fn().mockResolvedValue({
+      data: [
+        {
+          info: {
+            role: "assistant",
+            error: { message: "Provider rejected model openai/gpt-5.4" },
+          },
+          parts: [],
+        },
+      ],
+      error: null,
+    });
+    vi.mocked(getOrCreateConversationRuntime).mockResolvedValue(
+      createConversationRuntimeMock({
+        promptMock: vi.fn(() => promptDeferred.promise),
+        subscribeMock: vi.fn().mockResolvedValue({
+          stream: asAsyncIterable([{ type: "server.connected", properties: {} }]),
+        }),
+        getSessionMock: vi.fn().mockResolvedValue({
+          data: {
+            id: "session-1",
+            status: "busy",
+          },
+          error: null,
+        }),
+        messagesMock,
+        statusMock: vi.fn().mockResolvedValue({
+          data: { "session-1": { type: "busy" } },
+          error: null,
+        }),
+      }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
+    );
+
+    const mgr = asTestManager();
+    const finishSpy = vi
+      .spyOn(mgr, "finishGeneration")
+      .mockResolvedValue(undefined);
+
+    const ctx = createCtx({
+      id: "gen-message-error",
+      conversationId: "conv-message-error",
+      model: "anthropic/claude-sonnet-4-6",
+      deadlineAt: new Date(Date.now() + 60_000),
+      executionPolicy: {
+        allowSnapshotRestoreOnRun: false,
+        debugRuntimeNoProgressTimeoutMs: 1_000,
+      },
+    });
+    const runPromise = mgr.runRuntimeGeneration(ctx);
+
+    await vi.advanceTimersByTimeAsync(1_100);
+    await runPromise;
+
+    expect(ctx.completionReason).toBe("runtime_error");
+    expect(ctx.errorMessage).toBe("Provider rejected model openai/gpt-5.4");
+    expect(ctx.debugInfo?.runtimeDiagnosticSnapshot).toEqual(
+      expect.objectContaining({
+        reason: "runtime_no_progress_after_prompt",
+        phase: "prompt_sent",
+      }),
+    );
+    expect(messagesMock).toHaveBeenCalledWith({
+      sessionID: "session-1",
+      limit: 20,
+    });
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
     vi.useRealTimers();
   });

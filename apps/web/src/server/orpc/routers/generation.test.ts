@@ -445,6 +445,7 @@ describe("generationRouter", () => {
       }),
     ).rejects.toMatchObject({
       code: "BAD_REQUEST",
+      defined: true,
       message:
         "Selected ChatGPT model is not available for your current connection. Choose another model and retry.",
       data: {
