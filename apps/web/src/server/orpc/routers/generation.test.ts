@@ -97,6 +97,12 @@ vi.mock("@cmdclaw/core/server/utils/observability", () => ({
   emitCanonicalServiceEvent: vi.fn(),
   logServerEvent: vi.fn(),
   createTraceId: vi.fn(() => "trace-test"),
+  logger: {
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
 }));
 
 vi.mock("../workspace-access", () => ({
