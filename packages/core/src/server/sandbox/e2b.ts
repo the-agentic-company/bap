@@ -14,7 +14,7 @@ import { generationLifecyclePolicy } from "../services/lifecycle-policy";
 import { restoreConversationSessionSnapshot } from "../services/opencode-session-snapshot-service";
 import { COMPACTION_SUMMARY_PREFIX, SESSION_BOUNDARY_PREFIX } from "../services/session-constants";
 import { downloadFromS3 } from "../storage/s3-client";
-import { logServerEvent, type ObservabilityContext } from "../utils/observability";
+import { logger, type ObservabilityContext } from "../utils/observability";
 import type { SandboxBackend, ExecuteResult } from "./types";
 import {
   createSandboxRuntimeClient,
@@ -112,7 +112,11 @@ function logLifecycle(
   context: ObservabilityContext = {},
 ): void {
   const enrichedContext: ObservabilityContext = { source: "e2b", ...context };
-  logServerEvent("info", event, details, enrichedContext);
+  logger.info({
+    event: event,
+    ...enrichedContext,
+    ...details,
+  });
 }
 
 export interface SandboxConfig {
@@ -231,10 +235,10 @@ export async function getOrCreateBareSandbox(
     });
     await applySandboxTimeout(sandbox);
   } catch (error) {
-    logServerEvent(
-      "error",
-      "VM_START_FAILED",
-      {
+    logger.error({
+      event: "VM_START_FAILED",
+      ...telemetryContext,
+      ...{
         conversationId: config.conversationId,
         template: TEMPLATE_NAME,
         durationMs: Date.now() - vmCreateStart,
@@ -243,8 +247,7 @@ export async function getOrCreateBareSandbox(
         hasE2BApiKey: Boolean(env.E2B_API_KEY),
         integrationEnvCount: Object.keys(config.integrationEnvs || {}).length,
       },
-      telemetryContext,
-    );
+    });
     throw error;
   }
   logLifecycle(
@@ -266,16 +269,15 @@ export async function getOrCreateBareSandbox(
   try {
     await sandbox.commands.run(`echo "export SANDBOX_ID=${sandbox.sandboxId}" >> ~/.bashrc`);
   } catch (error) {
-    logServerEvent(
-      "warn",
-      "VM_SET_SANDBOX_ID_FAILED",
-      {
+    logger.warn({
+      event: "VM_SET_SANDBOX_ID_FAILED",
+      ...{ ...telemetryContext, sandboxId: sandbox.sandboxId },
+      ...{
         conversationId: config.conversationId,
         sandboxId: sandbox.sandboxId,
         error: formatErrorMessage(error),
       },
-      { ...telemetryContext, sandboxId: sandbox.sandboxId },
-    );
+    });
   }
 
   return { sandbox, reused: false };
@@ -368,10 +370,10 @@ async function getOrCreateSandbox(
     });
     await applySandboxTimeout(sandbox);
   } catch (error) {
-    logServerEvent(
-      "error",
-      "VM_START_FAILED",
-      {
+    logger.error({
+      event: "VM_START_FAILED",
+      ...telemetryContext,
+      ...{
         conversationId: config.conversationId,
         template: TEMPLATE_NAME,
         durationMs: Date.now() - vmCreateStart,
@@ -380,8 +382,7 @@ async function getOrCreateSandbox(
         hasE2BApiKey: Boolean(env.E2B_API_KEY),
         integrationEnvCount: Object.keys(config.integrationEnvs || {}).length,
       },
-      telemetryContext,
-    );
+    });
     throw error;
   }
   logLifecycle(
@@ -404,16 +405,15 @@ async function getOrCreateSandbox(
   try {
     await sandbox.commands.run(`echo "export SANDBOX_ID=${sandbox.sandboxId}" >> ~/.bashrc`);
   } catch (error) {
-    logServerEvent(
-      "warn",
-      "VM_SET_SANDBOX_ID_FAILED",
-      {
+    logger.warn({
+      event: "VM_SET_SANDBOX_ID_FAILED",
+      ...{ ...telemetryContext, sandboxId: sandbox.sandboxId },
+      ...{
         conversationId: config.conversationId,
         sandboxId: sandbox.sandboxId,
         error: formatErrorMessage(error),
       },
-      { ...telemetryContext, sandboxId: sandbox.sandboxId },
-    );
+    });
   }
 
   const serverPort = getSandboxServerPort(config.model);

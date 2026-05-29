@@ -32,6 +32,16 @@ vi.mock("@cmdclaw/db/client", () => ({
 
 vi.mock("../utils/observability", () => ({
   logServerEvent: logServerEventMock,
+  logger: {
+    warn: (record: Record<string, unknown>) => {
+      const { event, source, ...details } = record;
+      logServerEventMock("warn", event, details, { source, userId: record.userId });
+    },
+    error: (record: Record<string, unknown>) => {
+      const { event, source, ...details } = record;
+      logServerEventMock("error", event, details, { source, userId: record.userId });
+    },
+  },
   recordCounter: recordCounterMock,
 }));
 

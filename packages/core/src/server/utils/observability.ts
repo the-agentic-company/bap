@@ -15,7 +15,6 @@ import {
   ATTR_SERVICE_NAMESPACE,
   ATTR_SERVICE_VERSION,
 } from "@opentelemetry/semantic-conventions";
-import pino from "pino";
 import {
   context,
   metrics,
@@ -32,6 +31,13 @@ import {
   type SpanKind,
   type Tracer,
 } from "@opentelemetry/api";
+import {
+  configureLoggerRuntime,
+  emitStructuredLog,
+  logger,
+  normalizeLogFields,
+  serializeErrorDiagnostic,
+} from "./logger";
 
 export type ObservabilityContext = {
   service?: string;
@@ -83,12 +89,9 @@ export type ClientObservationInput = {
 
 type TraceCarrier = Record<string, string>;
 
-type ConsoleMethod = "log" | "info" | "warn" | "error";
-
 type EnvLookup = Record<string, string | undefined>;
 
 export type ObservabilityVectorUrls = {
-  logUrl: string;
   metricsUrl: string;
   tracesUrl: string;
 };
@@ -103,7 +106,6 @@ type ObservabilityRuntimeState = {
   initialized: boolean;
   serviceName: string;
   env: string;
-  vectorLogUrl: string;
   vectorMetricsUrl: string;
   vectorTracesUrl: string;
   tracer: Tracer;
@@ -112,14 +114,11 @@ type ObservabilityRuntimeState = {
   metricReader: IMetricReader | null;
   spanProcessor: SpanProcessor | null;
   instruments: InstrumentRegistry;
-  consolePatched: boolean;
-  pendingLogExports: Set<Promise<void>>;
 };
 
 const SERVICE_NAMESPACE = "cmdclaw";
 const INSTRUMENTATION_SCOPE = "cmdclaw.observability";
 const QUEUE_TRACE_CONTEXT_KEY = "__trace_context";
-const CONSOLE_METHODS: ConsoleMethod[] = ["log", "info", "warn", "error"];
 const DEFAULT_OBSERVABILITY_HOST = "127.0.0.1";
 const ATTR_DEPLOYMENT_ENVIRONMENT = "deployment.environment" as const;
 const ATTR_CMDCLAW_INSTANCE_ID = "cmdclaw_instance_id" as const;
@@ -133,11 +132,9 @@ const FORBIDDEN_FIELD_PATTERNS = [
 const SAFE_FIELD_PREFIXES = ["cmdclaw.phase."] as const;
 const MAX_SAFE_ARRAY_ITEMS = 25;
 const MAX_SAFE_STRING_LENGTH = 512;
-const MAX_ERROR_STACK_LENGTH = 8_192;
 
 const globalState = globalThis as typeof globalThis & {
   __cmdclawObservabilityState?: ObservabilityRuntimeState;
-  __cmdclawObservabilityOriginalConsole?: Partial<Record<ConsoleMethod, typeof console.log>>;
 };
 
 const runtimeState: ObservabilityRuntimeState =
@@ -147,7 +144,6 @@ const runtimeState: ObservabilityRuntimeState =
       initialized: false,
       serviceName: "cmdclaw",
       env: process.env.NODE_ENV ?? "development",
-      vectorLogUrl: `http://${DEFAULT_OBSERVABILITY_HOST}:8686/logs`,
       vectorMetricsUrl: `http://${DEFAULT_OBSERVABILITY_HOST}:4318/v1/metrics`,
       vectorTracesUrl: `http://${DEFAULT_OBSERVABILITY_HOST}:4318/v1/traces`,
       tracer: trace.getTracer(INSTRUMENTATION_SCOPE),
@@ -160,23 +156,15 @@ const runtimeState: ObservabilityRuntimeState =
         histograms: new Map<string, Histogram>(),
         observableGauges: new Set<string>(),
       },
-      consolePatched: false,
-      pendingLogExports: new Set<Promise<void>>(),
     } satisfies ObservabilityRuntimeState;
     globalState.__cmdclawObservabilityState = initial;
     return initial;
   })();
 
 runtimeState.tracerProvider ??= null;
-runtimeState.pendingLogExports ??= new Set<Promise<void>>();
 
 function isObservabilityDisabled(): boolean {
   return (process.env.NODE_ENV ?? "development") === "test";
-}
-
-function getPendingLogExports(): Set<Promise<void>> {
-  runtimeState.pendingLogExports ??= new Set<Promise<void>>();
-  return runtimeState.pendingLogExports;
 }
 
 function getValueFromEnvRecord(env: EnvLookup, ...names: string[]): string | undefined {
@@ -219,10 +207,6 @@ function buildVectorUrlFromEnv(
     return `http://${host}:${port}${path}`;
   }
 
-  if (path === "/logs") {
-    return `http://${host}:8686${path}`;
-  }
-
   return `http://${host}:${defaultPort ?? "4318"}${path}`;
 }
 
@@ -230,10 +214,6 @@ export function resolveObservabilityVectorUrls(
   env: EnvLookup = process.env as EnvLookup,
 ): ObservabilityVectorUrls {
   return {
-    logUrl: buildVectorUrlFromEnv("/logs", env, {
-      fullUrlEnvNames: ["CMDCLAW_VECTOR_LOG_URL"],
-      portEnvNames: ["CMDCLAW_VECTOR_LOG_PORT"],
-    }),
     metricsUrl: buildVectorUrlFromEnv("/v1/metrics", env, {
       fullUrlEnvNames: ["CMDCLAW_VECTOR_METRICS_URL"],
       portEnvNames: ["CMDCLAW_VECTOR_OTLP_HTTP_PORT", "CMDCLAW_OTEL_HTTP_PORT"],
@@ -362,222 +342,6 @@ function getActiveSpanIds(): { traceId?: string; spanId?: string } {
   };
 }
 
-function safeStringify(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  try {
-    return JSON.stringify(value, createLogJsonReplacer());
-  } catch {
-    return String(value);
-  }
-}
-
-function truncateLogString(value: string, maxLength: number): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
-}
-
-function isErrorLike(value: unknown): value is Error {
-  return value instanceof Error;
-}
-
-export function serializeErrorDiagnostic(error: Error): Record<string, unknown> {
-  const serialized = pino.stdSerializers.err(error) as Record<string, unknown>;
-  const diagnostic: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(serialized)) {
-    if (value === undefined || value === null) {
-      continue;
-    }
-    if (typeof value === "string") {
-      diagnostic[key] = truncateLogString(
-        value,
-        key === "stack" ? MAX_ERROR_STACK_LENGTH : MAX_SAFE_STRING_LENGTH,
-      );
-      continue;
-    }
-    if (typeof value === "number" || typeof value === "boolean") {
-      diagnostic[key] = value;
-    }
-  }
-
-  diagnostic.type ??= error.name;
-  diagnostic.message ??= truncateLogString(error.message, MAX_SAFE_STRING_LENGTH);
-  if (error.stack && !diagnostic.stack) {
-    diagnostic.stack = truncateLogString(error.stack, MAX_ERROR_STACK_LENGTH);
-  }
-
-  return diagnostic;
-}
-
-function createLogJsonReplacer(): (key: string, value: unknown) => unknown {
-  const seen = new WeakSet<object>();
-
-  return (_key, value) => {
-    if (isErrorLike(value)) {
-      return serializeErrorDiagnostic(value);
-    }
-    if (value && typeof value === "object") {
-      if (seen.has(value)) {
-        return "[Circular]";
-      }
-      seen.add(value);
-    }
-    return value;
-  };
-}
-
-function maybeParseJsonObject(value: string): Record<string, unknown> | null {
-  const trimmed = value.trim();
-  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(trimmed);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function buildConsoleMessage(args: unknown[]): string {
-  return args
-    .map((arg) => {
-      if (typeof arg === "string") {
-        return arg;
-      }
-      if (isErrorLike(arg)) {
-        const diagnostic = serializeErrorDiagnostic(arg);
-        const type = typeof diagnostic.type === "string" ? diagnostic.type : arg.name;
-        const message =
-          typeof diagnostic.message === "string" && diagnostic.message.trim()
-            ? diagnostic.message
-            : String(arg);
-        return `${type}: ${message}`;
-      }
-      return safeStringify(arg);
-    })
-    .join(" ")
-    .trim();
-}
-
-export function buildConsolePayload(
-  level: ConsoleMethod,
-  args: unknown[],
-): Record<string, unknown> {
-  const firstString = args.length === 1 && typeof args[0] === "string" ? args[0] : null;
-  const parsedPayload = firstString ? maybeParseJsonObject(firstString) : null;
-  const activeIds = getActiveSpanIds();
-
-  if (parsedPayload) {
-    const traceId =
-      (typeof parsedPayload.traceId === "string" ? parsedPayload.traceId : undefined) ??
-      (typeof parsedPayload.trace_id === "string" ? parsedPayload.trace_id : undefined) ??
-      activeIds.traceId;
-    const spanId =
-      (typeof parsedPayload.spanId === "string" ? parsedPayload.spanId : undefined) ??
-      (typeof parsedPayload.span_id === "string" ? parsedPayload.span_id : undefined) ??
-      activeIds.spanId;
-
-    return {
-      ts: typeof parsedPayload.ts === "string" ? parsedPayload.ts : new Date().toISOString(),
-      level: typeof parsedPayload.level === "string" ? parsedPayload.level : level,
-      service:
-        typeof parsedPayload.service === "string"
-          ? parsedPayload.service
-          : runtimeState.serviceName,
-      env: typeof parsedPayload.env === "string" ? parsedPayload.env : runtimeState.env,
-      instanceId:
-        typeof parsedPayload.instanceId === "string"
-          ? parsedPayload.instanceId
-          : process.env.CMDCLAW_INSTANCE_ID,
-      worktreeSlot:
-        typeof parsedPayload.worktreeSlot === "string"
-          ? parsedPayload.worktreeSlot
-          : process.env.CMDCLAW_WORKTREE_SLOT,
-      ...parsedPayload,
-      ...(traceId ? { traceId, trace_id: traceId } : {}),
-      ...(spanId ? { spanId, span_id: spanId } : {}),
-    };
-  }
-
-  const message = buildConsoleMessage(args);
-  const errorDiagnostics = args.filter(isErrorLike).map(serializeErrorDiagnostic);
-
-  return {
-    ts: new Date().toISOString(),
-    level,
-    service: runtimeState.serviceName,
-    env: runtimeState.env,
-    instanceId: process.env.CMDCLAW_INSTANCE_ID,
-    worktreeSlot: process.env.CMDCLAW_WORKTREE_SLOT,
-    message,
-    args: args.map((arg) => {
-      if (typeof arg === "string") {
-        return arg;
-      }
-      try {
-        return JSON.parse(safeStringify(arg));
-      } catch {
-        return safeStringify(arg);
-      }
-    }),
-    ...(errorDiagnostics[0] ? { err: errorDiagnostics[0] } : {}),
-    ...(errorDiagnostics.length > 1 ? { errs: errorDiagnostics } : {}),
-    ...(activeIds.traceId ? { traceId: activeIds.traceId, trace_id: activeIds.traceId } : {}),
-    ...(activeIds.spanId ? { spanId: activeIds.spanId, span_id: activeIds.spanId } : {}),
-  };
-}
-
-function forwardLogPayload(payload: Record<string, unknown>): void {
-  if (isObservabilityDisabled()) {
-    return;
-  }
-
-  const exportPromise = fetch(runtimeState.vectorLogUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  })
-    .then(() => undefined)
-    .catch(() => {
-      // Telemetry export is best effort and must not recursively log its own failures.
-    })
-    .finally(() => {
-      getPendingLogExports().delete(exportPromise);
-    });
-
-  getPendingLogExports().add(exportPromise);
-}
-
-function patchConsole(): void {
-  if (runtimeState.consolePatched) {
-    return;
-  }
-
-  const originals = globalState.__cmdclawObservabilityOriginalConsole ?? {};
-  globalState.__cmdclawObservabilityOriginalConsole = originals;
-
-  for (const method of CONSOLE_METHODS) {
-    if (!originals[method]) {
-      originals[method] = console[method].bind(console);
-    }
-
-    console[method] = ((...args: unknown[]) => {
-      originals[method]?.(...args);
-      forwardLogPayload(buildConsolePayload(method === "log" ? "info" : method, args));
-    }) as typeof console.log;
-  }
-
-  runtimeState.consolePatched = true;
-}
-
 function getOrCreateCounter(name: string, description?: string): Counter {
   const existing = runtimeState.instruments.counters.get(name);
   if (existing) {
@@ -618,16 +382,17 @@ function buildResource(serviceName: string) {
 export function initializeObservabilityRuntime(serviceName: string): void {
   runtimeState.serviceName = serviceName;
   runtimeState.env = process.env.NODE_ENV ?? "development";
+  configureLoggerRuntime({
+    serviceName: runtimeState.serviceName,
+    env: runtimeState.env,
+  });
   const vectorUrls = resolveObservabilityVectorUrls();
-  runtimeState.vectorLogUrl = vectorUrls.logUrl;
   runtimeState.vectorMetricsUrl = vectorUrls.metricsUrl;
   runtimeState.vectorTracesUrl = vectorUrls.tracesUrl;
 
   if (isObservabilityDisabled()) {
     return;
   }
-
-  patchConsole();
 
   if (runtimeState.initialized) {
     return;
@@ -696,7 +461,6 @@ export async function shutdownObservabilityRuntime(): Promise<void> {
     runtimeState.spanProcessor?.forceFlush(),
     runtimeState.metricReader?.forceFlush(),
   ]);
-  await Promise.allSettled(Array.from(getPendingLogExports()));
   await Promise.allSettled([
     runtimeState.tracerProvider?.shutdown(),
     runtimeState.meterProvider?.shutdown(),
@@ -707,7 +471,6 @@ export async function shutdownObservabilityRuntime(): Promise<void> {
   runtimeState.meterProvider = null;
   runtimeState.metricReader = null;
   runtimeState.spanProcessor = null;
-  getPendingLogExports().clear();
 }
 
 function getObservabilityTraceContextKey(): string {
@@ -987,14 +750,19 @@ export function emitCanonicalServiceEvent(input: CanonicalServiceEventInput): vo
 
   runWithTelemetrySpan(input.eventName, payload, input.context?.traceId, () => {
     const activeIds = getActiveSpanIds();
-    logServerEvent(
+    emitStructuredLog(
       input.level ?? (input.outcome === "success" ? "info" : "error"),
-      input.eventName,
-      payload,
       {
-        ...input.context,
-        traceId: input.context?.traceId ?? activeIds.traceId,
+        ...payload,
+        ...((input.context?.traceId ?? activeIds.traceId)
+          ? {
+              trace_id: input.context?.traceId ?? activeIds.traceId,
+              traceId: input.context?.traceId ?? activeIds.traceId,
+            }
+          : {}),
+        ...(activeIds.spanId ? { span_id: activeIds.spanId, spanId: activeIds.spanId } : {}),
       },
+      input.eventName,
     );
   });
 }
@@ -1014,43 +782,21 @@ export function emitClientObservation(input: ClientObservationInput): void {
 
   runWithTelemetrySpan("cmdclaw.client_observation", payload, input.context?.traceId, () => {
     const activeIds = getActiveSpanIds();
-    logServerEvent("info", "CLIENT_OBSERVATION", payload, {
-      ...input.context,
-      traceId: input.context?.traceId ?? activeIds.traceId,
-    });
+    emitStructuredLog(
+      "info",
+      {
+        ...payload,
+        ...((input.context?.traceId ?? activeIds.traceId)
+          ? {
+              trace_id: input.context?.traceId ?? activeIds.traceId,
+              traceId: input.context?.traceId ?? activeIds.traceId,
+            }
+          : {}),
+        ...(activeIds.spanId ? { span_id: activeIds.spanId, spanId: activeIds.spanId } : {}),
+      },
+      input.eventType,
+    );
   });
 }
 
-export function logServerEvent(
-  level: LogLevel,
-  event: string,
-  details: Record<string, unknown> = {},
-  contextValue: ObservabilityContext = {},
-): void {
-  const activeIds = getActiveSpanIds();
-  const traceId = contextValue.traceId ?? activeIds.traceId;
-  const spanId = activeIds.spanId;
-
-  const payload = {
-    ts: new Date().toISOString(),
-    level,
-    event,
-    service: contextValue.service ?? runtimeState.serviceName,
-    env: runtimeState.env,
-    ...contextValue,
-    ...details,
-    ...(traceId ? { traceId, trace_id: traceId } : {}),
-    ...(spanId ? { spanId, span_id: spanId } : {}),
-  };
-
-  forwardLogPayload(payload);
-
-  const line = JSON.stringify(payload);
-  if (level === "error") {
-    console.error(line);
-  } else if (level === "warn") {
-    console.warn(line);
-  } else {
-    console.info(line);
-  }
-}
+export { logger, normalizeLogFields, serializeErrorDiagnostic };

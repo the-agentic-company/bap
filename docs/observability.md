@@ -60,6 +60,16 @@ Integration Type, tool name, operation, write/read classification, normalized
 error code, phase timing, and route or procedure identifiers. If raw content is
 needed during debugging, observability should identify the authorized product
 record to inspect rather than duplicating that content into telemetry.
+Operational Logs follow the same safety boundary. Pino may provide the logging
+engine, JSON output, and standard error serialization, but CmdClaw-owned
+normalization and redaction remain responsible for emitted field names, bounded
+values, correlation fields, and forbidden-content removal before any log line is
+written.
+Server-side Error Diagnostics may include bounded stack traces by default for
+Operational Logs and error-bearing Canonical Service Events. Stack traces remain
+diagnostic metadata; they must be length-bounded and must not be used to carry
+request bodies, tool payloads, prompts, model output, credentials, or other
+forbidden content.
 
 Telemetry attribute names use OpenTelemetry-style dotted snake_case. Prefer
 official semantic convention names such as `service.name`,
@@ -70,6 +80,13 @@ official semantic convention names such as `service.name`,
 `cmdclaw.outcome`. TypeScript code may use camelCase internally, but emitted
 telemetry is normalized to the canonical attribute names. JSON logs may retain
 backend-friendly correlation aliases such as `trace_id` and `span_id`.
+Operational Logs use `event.kind="operational_log"` and a dotted snake case
+`event` field for the diagnostic event name. `cmdclaw.event.name` is reserved
+for Canonical Service Events and Client Observations.
+Shared runtime fields and active trace/span identifiers may be added
+automatically by the logging runtime. Product pivots such as Generation,
+conversation, User, workspace, and sandbox identifiers should be supplied
+explicitly at the call site or through a scoped child logger.
 
 Generation outcome is defined by the terminal product lifecycle, not by the
 request that created or observed it. A Generation is successful when it reaches

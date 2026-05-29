@@ -1,7 +1,7 @@
 import { db } from "@cmdclaw/db/client";
 import { coworker, coworkerRun } from "@cmdclaw/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
-import { logServerEvent, recordCounter } from "../utils/observability";
+import { logger, recordCounter } from "../utils/observability";
 import {
   classifySloResult,
   classifySloTerminalEvent,
@@ -130,15 +130,14 @@ export async function emitGenerationSloTerminalEvent(
   }
 
   if (facts.conversationType === "coworker") {
-    logServerEvent(
-      "warn",
-      "SLO_JOURNEY_UNCLASSIFIED_COWORKER_GENERATION",
-      {
+    logger.warn({
+      event: "SLO_JOURNEY_UNCLASSIFIED_COWORKER_GENERATION",
+      ...{ source: "slo-journey" },
+      ...{
         generationId: facts.generationId,
         conversationId: facts.conversationId,
       },
-      { source: "slo-journey" },
-    );
+    });
     return;
   }
 
@@ -160,21 +159,20 @@ export async function emitPreGenerationCoworkerRunFailureSloEvent(input: {
   syntheticKind?: string | null;
   normalizedErrorCode: string;
 }): Promise<boolean> {
-  logServerEvent(
-    "error",
-    "COWORKER_RUN_PRE_GENERATION_FAILURE",
-    {
+  logger.error({
+    event: "COWORKER_RUN_PRE_GENERATION_FAILURE",
+    ...{
+      source: "coworker-service",
+      userId: input.ownerId,
+    },
+    ...{
       coworkerId: input.coworkerId,
       coworkerRunId: input.coworkerRunId,
       workspaceId: input.workspaceId ?? null,
       terminalReason: "start_generation_failed",
       normalizedErrorCode: input.normalizedErrorCode,
     },
-    {
-      source: "coworker-service",
-      userId: input.ownerId,
-    },
-  );
+  });
 
   return emitCoworkerRunSloTerminalEvent({
     coworkerRunId: input.coworkerRunId,

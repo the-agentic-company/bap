@@ -8,7 +8,7 @@ import {
   COWORKER_GENERATION_JOB_NAME,
   getQueue,
 } from "../../../queues";
-import { logServerEvent } from "../../../utils/observability";
+import { logger } from "../../../utils/observability";
 import { generationLifecyclePolicy } from "../../lifecycle-policy";
 import { GenerationLeaseStore } from "../core/generation-lease";
 import type { GenerationLifecycleStore } from "../core/lifecycle-store";
@@ -25,10 +25,7 @@ export type GenerationRunType = "chat" | "coworker";
 type GenerationRunQueueDependencies = {
   activeGenerations: Map<string, GenerationContext>;
   lifecycleStore: GenerationLifecycleStore;
-  runQueuedGeneration: (
-    generationId: string,
-    runMode: GenerationRunMode,
-  ) => Promise<void>;
+  runQueuedGeneration: (generationId: string, runMode: GenerationRunMode) => Promise<void>;
   formatErrorMessage: (error: unknown) => string;
 };
 
@@ -41,9 +38,7 @@ export class GenerationRunQueue {
 
   constructor(private readonly deps: GenerationRunQueueDependencies) {}
 
-  getGenerationRunType(
-    ctx: Pick<GenerationContext, "coworkerRunId">,
-  ): GenerationRunType {
+  getGenerationRunType(ctx: Pick<GenerationContext, "coworkerRunId">): GenerationRunType {
     return ctx.coworkerRunId ? "coworker" : "chat";
   }
 
@@ -51,17 +46,11 @@ export class GenerationRunQueue {
     return this.generationLeaseStore.acquire(generationId);
   }
 
-  async renewGenerationLease(
-    generationId: string,
-    token: string,
-  ): Promise<void> {
+  async renewGenerationLease(generationId: string, token: string): Promise<void> {
     return this.generationLeaseStore.renew(generationId, token);
   }
 
-  async releaseGenerationLease(
-    generationId: string,
-    token: string,
-  ): Promise<void> {
+  async releaseGenerationLease(generationId: string, token: string): Promise<void> {
     return this.generationLeaseStore.release(generationId, token);
   }
 
@@ -76,10 +65,7 @@ export class GenerationRunQueue {
     },
   ): Promise<void> {
     const queue = getQueue();
-    const jobName =
-      type === "coworker"
-        ? COWORKER_GENERATION_JOB_NAME
-        : CHAT_GENERATION_JOB_NAME;
+    const jobName = type === "coworker" ? COWORKER_GENERATION_JOB_NAME : CHAT_GENERATION_JOB_NAME;
     await queue.add(
       jobName,
       {
@@ -89,9 +75,7 @@ export class GenerationRunQueue {
       },
       {
         jobId: buildQueueJobId([jobName, generationId, options?.dedupeKey]),
-        ...(options?.delayMs && options.delayMs > 0
-          ? { delay: options.delayMs }
-          : {}),
+        ...(options?.delayMs && options.delayMs > 0 ? { delay: options.delayMs } : {}),
         removeOnComplete: true,
         removeOnFail: 500,
       },
@@ -134,12 +118,8 @@ export class GenerationRunQueue {
     });
   }
 
-  async touchConversationLastUserVisibleAction(
-    conversationId: string,
-  ): Promise<void> {
-    await this.deps.lifecycleStore.touchConversationLastUserVisibleAction(
-      conversationId,
-    );
+  async touchConversationLastUserVisibleAction(conversationId: string): Promise<void> {
+    await this.deps.lifecycleStore.touchConversationLastUserVisibleAction(conversationId);
   }
 
   private clearQueuedGenerationSelfHeal(generationId: string): void {
@@ -162,8 +142,7 @@ export class GenerationRunQueue {
     }
 
     this.clearQueuedGenerationSelfHeal(generationId);
-    const delayMs =
-      Math.max(0, queueDelayMs) + Math.max(0, GEN_QUEUE_SELF_HEAL_DELAY_MS);
+    const delayMs = Math.max(0, queueDelayMs) + Math.max(0, GEN_QUEUE_SELF_HEAL_DELAY_MS);
     const timer = setTimeout(() => {
       this.queuedGenerationSelfHealTimers.delete(generationId);
       void this.runQueuedGenerationSelfHealIfStalled({
@@ -214,21 +193,18 @@ export class GenerationRunQueue {
       return;
     }
 
-    const streamPresent = await generationStreamExists(
-      input.generationId,
-    ).catch((error) => {
-      logServerEvent(
-        "warn",
-        "GENERATION_QUEUE_SELF_HEAL_STREAM_CHECK_FAILED",
-        {
-          error: this.deps.formatErrorMessage(error),
-        },
-        {
+    const streamPresent = await generationStreamExists(input.generationId).catch((error) => {
+      logger.warn({
+        event: "GENERATION_QUEUE_SELF_HEAL_STREAM_CHECK_FAILED",
+        ...{
           source: "generation-manager",
           generationId: input.generationId,
           conversationId: genRecord.conversationId,
         },
-      );
+        ...{
+          error: this.deps.formatErrorMessage(error),
+        },
+      });
       return false;
     });
 
@@ -236,18 +212,17 @@ export class GenerationRunQueue {
       return;
     }
 
-    logServerEvent(
-      "warn",
-      "GENERATION_QUEUE_SELF_HEAL_TRIGGERED",
-      {
-        runMode: input.runMode,
-      },
-      {
+    logger.warn({
+      event: "GENERATION_QUEUE_SELF_HEAL_TRIGGERED",
+      ...{
         source: "generation-manager",
         generationId: input.generationId,
         conversationId: genRecord.conversationId,
       },
-    );
+      ...{
+        runMode: input.runMode,
+      },
+    });
 
     await this.deps.runQueuedGeneration(input.generationId, input.runMode);
   }

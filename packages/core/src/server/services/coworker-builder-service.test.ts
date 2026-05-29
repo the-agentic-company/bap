@@ -21,12 +21,15 @@ vi.mock("./coworker-metadata", () => ({
 
 vi.mock("../utils/observability", () => ({
   logServerEvent: logServerEventMock,
+  logger: {
+    error: (record: Record<string, unknown>) => {
+      const { event, source, userId, ...details } = record;
+      logServerEventMock("error", event, { userId, ...details }, { source, userId });
+    },
+  },
 }));
 
-import {
-  applyCoworkerEdit,
-  coworkerBuilderEditSchema,
-} from "./coworker-builder-service";
+import { applyCoworkerEdit, coworkerBuilderEditSchema } from "./coworker-builder-service";
 
 function createDbStub() {
   const findFirst = vi.fn();

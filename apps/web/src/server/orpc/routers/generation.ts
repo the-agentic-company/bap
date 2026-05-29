@@ -9,7 +9,7 @@ import { listSelectablePlatformSkills } from "@cmdclaw/core/server/services/plat
 import {
   createTraceId,
   emitCanonicalServiceEvent,
-  logServerEvent,
+  logger,
 } from "@cmdclaw/core/server/utils/observability";
 import { db } from "@cmdclaw/db/client";
 import { generation, conversation, coworkerRun, generationInterrupt } from "@cmdclaw/db/schema";
@@ -535,14 +535,11 @@ const startGeneration = protectedProcedure
             input.selectedPlatformSkillSlugs?.length ?? 0,
         },
       });
-      logServerEvent(
-        "info",
-        "RPC_START_GENERATION_OK",
-        {
-          elapsedMs: Date.now() - startedAt,
-        },
-        successLogContext,
-      );
+      logger.info({
+        event: "RPC_START_GENERATION_OK",
+        ...successLogContext,
+        elapsedMs: Date.now() - startedAt,
+      });
 
       return result;
     } catch (error) {
@@ -573,17 +570,14 @@ const startGeneration = protectedProcedure
             input.selectedPlatformSkillSlugs?.length ?? 0,
         },
       });
-      logServerEvent(
-        "error",
-        "RPC_START_GENERATION_FAILED",
-        {
-          elapsedMs: Date.now() - startedAt,
-          conversationId: input.conversationId,
-          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-          generationErrorCode: isGenerationStartError(error) ? error.generationErrorCode : null,
-        },
-        logContext,
-      );
+      logger.error({
+        event: "RPC_START_GENERATION_FAILED",
+        ...logContext,
+        elapsedMs: Date.now() - startedAt,
+        conversationId: input.conversationId,
+        error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        generationErrorCode: isGenerationStartError(error) ? error.generationErrorCode : null,
+      });
       if (isGenerationStartError(error)) {
         throw new ORPCError(error.rpcCode, {
           defined: true,
@@ -805,12 +799,11 @@ const subscribeGeneration = protectedProcedure
       userId: context.user.id,
       traceId: streamId,
     };
-    logServerEvent(
-      "info",
-      "RPC_SUBSCRIBE_GENERATION_OPENED",
-      generationManager.getStreamCountersSnapshot(),
-      logContext,
-    );
+    logger.info({
+      event: "RPC_SUBSCRIBE_GENERATION_OPENED",
+      ...logContext,
+      ...generationManager.getStreamCountersSnapshot(),
+    });
 
     const stream = generationManager.subscribeToGeneration(input.generationId, context.user.id, {
       cursor: input.cursor,
@@ -840,15 +833,12 @@ const subscribeGeneration = protectedProcedure
           ...generationManager.getStreamCountersSnapshot(),
         },
       });
-      logServerEvent(
-        "info",
-        "RPC_SUBSCRIBE_GENERATION_CLOSED",
-        {
-          elapsedMs: Date.now() - openedAt,
-          ...generationManager.getStreamCountersSnapshot(),
-        },
-        logContext,
-      );
+      logger.info({
+        event: "RPC_SUBSCRIBE_GENERATION_CLOSED",
+        ...logContext,
+        elapsedMs: Date.now() - openedAt,
+        ...generationManager.getStreamCountersSnapshot(),
+      });
     }
   });
 

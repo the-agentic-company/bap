@@ -1,10 +1,5 @@
 import { db } from "@cmdclaw/db/client";
-import {
-  conversation,
-  generation,
-  message,
-  messageAttachment,
-} from "@cmdclaw/db/schema";
+import { conversation, generation, message, messageAttachment } from "@cmdclaw/db/schema";
 import { eq } from "drizzle-orm";
 import type { IntegrationType } from "../../oauth/config";
 import type { RuntimeToolRef } from "../../runtime/runtime-driver";
@@ -18,7 +13,7 @@ import {
   getQueue,
 } from "../../queues";
 import { getLatestGenerationStreamEnvelope } from "../../redis/generation-event-bus";
-import { logServerEvent } from "../../utils/observability";
+import { logger } from "../../utils/observability";
 import {
   generationInterruptService,
   type GenerationInterruptRecord,
@@ -27,10 +22,7 @@ import { writeSessionTranscriptFromConversation } from "../memory-service";
 import { clearConversationSessionSnapshot } from "../runtime-session-snapshot-service";
 import { SESSION_BOUNDARY_PREFIX } from "../session-constants";
 import { conversationRuntimeService } from "../conversation-runtime-service";
-import {
-  GenerationControl,
-  getExecutionPolicyFromRecord,
-} from "./control/generation-control";
+import { GenerationControl, getExecutionPolicyFromRecord } from "./control/generation-control";
 import { GenerationLifecycleStore } from "./core/lifecycle-store";
 import { GenerationTurnFinalizer } from "./core/turn-finalizer";
 import { GenerationTurnSuspender } from "./core/turn-suspension";
@@ -59,21 +51,14 @@ import {
   type StartCoworkerGenerationInput,
   type StartGenerationInput,
 } from "./turn-intake";
-import {
-  SESSION_RESET_COMMANDS,
-  TurnRunner,
-  TurnRunnerContextLoader,
-} from "./turn-runner";
+import { SESSION_RESET_COMMANDS, TurnRunner, TurnRunnerContextLoader } from "./turn-runner";
 import type {
   GenerationContext,
   GenerationEvent,
   GenerationRunMode,
   GenerationStreamEvent,
 } from "./types";
-import {
-  generationLifecyclePolicy,
-  type GenerationCompletionReason,
-} from "../lifecycle-policy";
+import { generationLifecyclePolicy, type GenerationCompletionReason } from "../lifecycle-policy";
 
 export type { GenerationEvent };
 
@@ -139,8 +124,7 @@ class GenerationManager {
   private readonly generationRunQueue = new GenerationRunQueue({
     activeGenerations: this.activeGenerations,
     lifecycleStore: this.lifecycleStore,
-    runQueuedGeneration: (generationId, runMode) =>
-      this.runQueuedGeneration(generationId, runMode),
+    runQueuedGeneration: (generationId, runMode) => this.runQueuedGeneration(generationId, runMode),
     formatErrorMessage,
   });
   private readonly generationControl = new GenerationControl({
@@ -166,38 +150,27 @@ class GenerationManager {
     lifecycleStore: this.lifecycleStore,
     markPhase: (ctx, phase) => this.contextState.markPhase(ctx, phase),
     broadcast: (ctx, event) => this.broadcast(ctx, event),
-    stopExternalInterruptPolling: (ctx) =>
-      this.interruptParking.stopExternalInterruptPolling(ctx),
+    stopExternalInterruptPolling: (ctx) => this.interruptParking.stopExternalInterruptPolling(ctx),
     releaseSandboxSlotLease: (ctx) => this.releaseSandboxSlotLease(ctx),
-    evictActiveGenerationContext: (generationId) =>
-      this.evictActiveGenerationContext(generationId),
+    evictActiveGenerationContext: (generationId) => this.evictActiveGenerationContext(generationId),
     enqueueConversationQueuedMessageProcess: (conversationId) =>
-      this.conversationTurnQueue.enqueueConversationQueuedMessageProcess(
-        conversationId,
-      ),
-    saveSessionSnapshotIfPossible: (ctx, reason) =>
-      this.saveSessionSnapshotIfPossible(ctx, reason),
+      this.conversationTurnQueue.enqueueConversationQueuedMessageProcess(conversationId),
+    saveSessionSnapshotIfPossible: (ctx, reason) => this.saveSessionSnapshotIfPossible(ctx, reason),
   });
   private readonly turnSuspender = new GenerationTurnSuspender({
     lifecycleStore: this.lifecycleStore,
-    refreshRemainingRunBudget: (ctx, now) =>
-      this.contextState.refreshRemainingRunBudget(ctx, now),
-    setCompletionReason: (ctx, reason) =>
-      this.contextState.setCompletionReason(ctx, reason),
-    stopExternalInterruptPolling: (ctx) =>
-      this.interruptParking.stopExternalInterruptPolling(ctx),
+    refreshRemainingRunBudget: (ctx, now) => this.contextState.refreshRemainingRunBudget(ctx, now),
+    setCompletionReason: (ctx, reason) => this.contextState.setCompletionReason(ctx, reason),
+    stopExternalInterruptPolling: (ctx) => this.interruptParking.stopExternalInterruptPolling(ctx),
     saveProgress: (ctx) => this.saveProgress(ctx),
     releaseSandboxSlotLease: (ctx) => this.releaseSandboxSlotLease(ctx),
-    evictActiveGenerationContext: (generationId) =>
-      this.evictActiveGenerationContext(generationId),
+    evictActiveGenerationContext: (generationId) => this.evictActiveGenerationContext(generationId),
     broadcast: (ctx, event) => this.broadcast(ctx, event),
   });
   private readonly turnIntake = new TurnIntake({
     lifecycleStore: this.lifecycleStore,
-    persistMessageAttachments: (params) =>
-      this.persistMessageAttachments(params),
-    enqueuePreparingStuckCheck: (generationId) =>
-      this.enqueuePreparingStuckCheck(generationId),
+    persistMessageAttachments: (params) => this.persistMessageAttachments(params),
+    enqueuePreparingStuckCheck: (generationId) => this.enqueuePreparingStuckCheck(generationId),
     enqueueGenerationRun: (generationId, runType, options) =>
       this.generationRunQueue.enqueueGenerationRun(generationId, runType, options),
   });
@@ -214,63 +187,43 @@ class GenerationManager {
       this.generationRunQueue.renewGenerationLease(generationId, token),
     releaseGenerationLease: (generationId, token) =>
       this.generationRunQueue.releaseGenerationLease(generationId, token),
-    failQueuedRunBeforeContext: (input) =>
-      this.lifecycleStore.failQueuedRunBeforeContext(input),
+    failQueuedRunBeforeContext: (input) => this.lifecycleStore.failQueuedRunBeforeContext(input),
     markPhase: (ctx, phase) => this.contextState.markPhase(ctx, phase),
-    setCompletionReason: (ctx, reason) =>
-      this.contextState.setCompletionReason(ctx, reason),
+    setCompletionReason: (ctx, reason) => this.contextState.setCompletionReason(ctx, reason),
     finishGeneration: (ctx, status) => this.finishGeneration(ctx, status),
     hydrateStreamSequence: (ctx) => this.hydrateStreamSequence(ctx),
     handleSessionReset: (ctx) => this.handleSessionReset(ctx),
-    refreshCancellationSignal: (ctx, options) =>
-      this.refreshCancellationSignal(ctx, options),
-    waitForSandboxSlotLease: (ctx, options) =>
-      this.waitForSandboxSlotLease(ctx, options),
+    refreshCancellationSignal: (ctx, options) => this.refreshCancellationSignal(ctx, options),
+    waitForSandboxSlotLease: (ctx, options) => this.waitForSandboxSlotLease(ctx, options),
     releaseSandboxSlotLease: (ctx) => this.releaseSandboxSlotLease(ctx),
     enqueueGenerationTimeout: (generationId, kind, expiresAtIso) =>
       this.enqueueGenerationTimeout(generationId, kind, expiresAtIso),
     processGenerationTimeout: (generationId, kind) =>
       this.processGenerationTimeout(generationId, kind),
-    runSuspendedInterruptResume: (ctx) =>
-      this.resumeRunner.runSuspendedInterruptResume(ctx),
+    runSuspendedInterruptResume: (ctx) => this.resumeRunner.runSuspendedInterruptResume(ctx),
     runRecoveryReattach: (ctx) => this.runRecoveryReattach(ctx),
     runRuntimeGeneration: (ctx) => this.runRuntimeGeneration(ctx),
   });
-  private readonly sandboxSlotLeaseCoordinator =
-    new SandboxSlotLeaseCoordinator({
-      getGenerationRunType: (ctx) =>
-        this.generationRunQueue.getGenerationRunType(ctx),
-      enqueueGenerationRun: (generationId, runType, options) =>
-        this.generationRunQueue.enqueueGenerationRun(
-          generationId,
-          runType,
-          options,
-        ),
-      evictActiveGenerationContext: (generationId) =>
-        this.evictActiveGenerationContext(generationId),
-      logRenewalError: (generationId, error) =>
-        console.error(
-          `[GenerationManager] Failed to renew sandbox slot for generation ${generationId}:`,
-          error,
-        ),
-    });
+  private readonly sandboxSlotLeaseCoordinator = new SandboxSlotLeaseCoordinator({
+    getGenerationRunType: (ctx) => this.generationRunQueue.getGenerationRunType(ctx),
+    enqueueGenerationRun: (generationId, runType, options) =>
+      this.generationRunQueue.enqueueGenerationRun(generationId, runType, options),
+    evictActiveGenerationContext: (generationId) => this.evictActiveGenerationContext(generationId),
+    logRenewalError: (generationId, error) =>
+      console.error(
+        `[GenerationManager] Failed to renew sandbox slot for generation ${generationId}:`,
+        error,
+      ),
+  });
   private readonly decisionFlow: DecisionFlow = new DecisionFlow({
     lifecycleStore: this.lifecycleStore,
-    getActiveRuntimeContext: (generationId) =>
-      this.activeGenerations.get(generationId),
+    getActiveRuntimeContext: (generationId) => this.activeGenerations.get(generationId),
     getExecutionPolicy: (genRecord, defaultAutoApprove) =>
       getExecutionPolicyFromRecord(genRecord, defaultAutoApprove),
-    onPendingInterrupt: async ({
-      generationId,
-      conversationId,
-      interrupt,
-      event,
-      kind,
-    }) => {
+    onPendingInterrupt: async ({ generationId, conversationId, interrupt, event, kind }) => {
       const activeCtx = this.activeGenerations.get(generationId);
       if (activeCtx) {
-        activeCtx.status =
-          kind === "auth" ? "awaiting_auth" : "awaiting_approval";
+        activeCtx.status = kind === "auth" ? "awaiting_auth" : "awaiting_approval";
         activeCtx.currentInterruptId = interrupt.id;
         this.broadcast(activeCtx, event);
         // Snapshot only when the generation is actually parked. Exporting the full
@@ -322,21 +275,13 @@ class GenerationManager {
     enqueueResolvedInterruptResume: (input) =>
       this.generationRunQueue.enqueueResolvedInterruptResume(input),
     enqueueConversationQueuedMessageProcess: (conversationId) =>
-      this.conversationTurnQueue.enqueueConversationQueuedMessageProcess(
-        conversationId,
-      ),
+      this.conversationTurnQueue.enqueueConversationQueuedMessageProcess(conversationId),
     touchConversationLastUserVisibleAction: (conversationId) =>
-      this.generationRunQueue.touchConversationLastUserVisibleAction(
-        conversationId,
-      ),
+      this.generationRunQueue.touchConversationLastUserVisibleAction(conversationId),
     processGenerationTimeout: (generationId, kind) =>
       this.processGenerationTimeout(generationId, kind),
     updateRuntimeToolPart: (runtimeClient, runtimeTool, patch) =>
-      this.runtimeCoordinator.updateRuntimeToolPart(
-        runtimeClient,
-        runtimeTool,
-        patch,
-      ),
+      this.runtimeCoordinator.updateRuntimeToolPart(runtimeClient, runtimeTool, patch),
   });
   private readonly maintenance = new GenerationMaintenance({
     abortAndEvictActiveGeneration: (generationId) => {
@@ -346,8 +291,7 @@ class GenerationManager {
       }
       this.evictActiveGenerationContext(generationId);
     },
-    hasActiveGeneration: (generationId) =>
-      this.activeGenerations.has(generationId),
+    hasActiveGeneration: (generationId) => this.activeGenerations.has(generationId),
     expireActiveGenerationTimeout: async (input) => {
       const ctx = this.activeGenerations.get(input.generationId);
       if (!ctx) {
@@ -361,27 +305,23 @@ class GenerationManager {
         await this.handleAuthTimeout(ctx);
       }
     },
-    finalizeDetachedGenerationError: (input) =>
-      this.finalizeDetachedGenerationError(input),
+    finalizeDetachedGenerationError: (input) => this.finalizeDetachedGenerationError(input),
     finalizeStaleGenerationsAsError: (input) =>
       this.lifecycleStore.finalizeStaleGenerationsAsError(input),
   });
   private readonly eventLog = new GenerationEventLog({
-    projectInterruptPendingEvent: (interrupt) =>
-      this.projectInterruptPendingEvent(interrupt),
+    projectInterruptPendingEvent: (interrupt) => this.projectInterruptPendingEvent(interrupt),
   });
-  private readonly runtimeCoordinator: RuntimeGenerationDriver =
-    new RuntimeGenerationDriver({
-      runtimeDriver: createRuntimeDriver({
-        adapter: "opencode",
-        opencode: {
+  private readonly runtimeCoordinator: RuntimeGenerationDriver = new RuntimeGenerationDriver({
+    runtimeDriver: createRuntimeDriver({
+      adapter: "opencode",
+      opencode: {
         bootstrapTimeoutMs: AGENT_PREPARING_TIMEOUT_MS,
         contextState: this.contextState,
         decisionFlow: this.decisionFlow,
         interruptParking: this.interruptParking,
         turnFinalizer: this.turnFinalizer,
-        refreshCancellationSignal: (ctx, options) =>
-          this.refreshCancellationSignal(ctx, options),
+        refreshCancellationSignal: (ctx, options) => this.refreshCancellationSignal(ctx, options),
         finishGeneration: (ctx, status) => this.finishGeneration(ctx, status),
         setSnapshotRestoreAllowance: (ctx, allowed) =>
           this.setSnapshotRestoreAllowance(ctx, allowed),
@@ -396,18 +336,16 @@ class GenerationManager {
         scheduleRecoveryReattach: (ctx) => this.scheduleRecoveryReattach(ctx),
         recordRecoveryAttempt: (ctx) => this.recordRecoveryAttempt(ctx),
         saveProgress: (ctx) => this.saveProgress(ctx),
-        getActiveContext: (generationId) =>
-          this.activeGenerations.get(generationId),
-        },
-      }),
-    });
+        getActiveContext: (generationId) => this.activeGenerations.get(generationId),
+      },
+    }),
+  });
   private readonly resumeRunner = new GenerationResumeRunner({
     lifecycleStore: this.lifecycleStore,
     decisionFlow: this.decisionFlow,
     contextState: this.contextState,
     runRuntimeGeneration: (ctx) => this.runRuntimeGeneration(ctx),
-    runRecoveryReattach: (ctx, options) =>
-      this.runRecoveryReattach(ctx, options),
+    runRecoveryReattach: (ctx, options) => this.runRecoveryReattach(ctx, options),
     finishGeneration: (ctx, status) => this.finishGeneration(ctx, status),
     saveProgress: (ctx) => this.saveProgress(ctx),
     broadcast: (ctx, event) => this.broadcast(ctx, event),
@@ -425,18 +363,14 @@ class GenerationManager {
       return;
     }
 
-    const { uploadToS3, ensureBucket } =
-      await import("../../storage/s3-client");
+    const { uploadToS3, ensureBucket } = await import("../../storage/s3-client");
     await ensureBucket();
 
     await Promise.all(
       attachments.map(async (attachment) => {
         const base64Data = attachment.dataUrl.split(",")[1] || "";
         const buffer = Buffer.from(base64Data, "base64");
-        const sanitizedFilename = attachment.name.replace(
-          /[^a-zA-Z0-9.-]/g,
-          "_",
-        );
+        const sanitizedFilename = attachment.name.replace(/[^a-zA-Z0-9.-]/g, "_");
         const storageKey = `attachments/${params.conversationId}/${params.messageId}/${Date.now()}-${sanitizedFilename}`;
         await uploadToS3(storageKey, buffer, attachment.mimeType);
         await db.insert(messageAttachment).values({
@@ -465,10 +399,7 @@ class GenerationManager {
     conversationId: string,
     userId: string,
   ): Promise<ConversationQueuedMessageRecord[]> {
-    return this.conversationTurnQueue.listConversationQueuedMessages(
-      conversationId,
-      userId,
-    );
+    return this.conversationTurnQueue.listConversationQueuedMessages(conversationId, userId);
   }
 
   async removeConversationQueuedMessage(
@@ -494,12 +425,8 @@ class GenerationManager {
     return this.conversationTurnQueue.updateConversationQueuedMessage(params);
   }
 
-  async processConversationQueuedMessages(
-    conversationId: string,
-  ): Promise<void> {
-    await this.conversationTurnQueue.processConversationQueuedMessages(
-      conversationId,
-    );
+  async processConversationQueuedMessages(conversationId: string): Promise<void> {
+    await this.conversationTurnQueue.processConversationQueuedMessages(conversationId);
   }
 
   getStreamCountersSnapshot(): {
@@ -592,15 +519,11 @@ class GenerationManager {
   private scheduleRecoveryReattach(ctx: GenerationContext): void {
     const delayMs = generationLifecyclePolicy.recoveryObserveWindowMs;
     void this.generationRunQueue
-      .enqueueGenerationRun(
-        ctx.id,
-        this.generationRunQueue.getGenerationRunType(ctx),
-        {
-          delayMs,
-          dedupeKey: `recovery-${ctx.recoveryAttempts}`,
-          runMode: "recovery_reattach",
-        },
-      )
+      .enqueueGenerationRun(ctx.id, this.generationRunQueue.getGenerationRunType(ctx), {
+        delayMs,
+        dedupeKey: `recovery-${ctx.recoveryAttempts}`,
+        runMode: "recovery_reattach",
+      })
       .catch((error) => {
         console.error(
           `[GenerationManager] Failed to enqueue recovery attempt for generation ${ctx.id}:`,
@@ -649,9 +572,7 @@ class GenerationManager {
         ? String(runAt)
         : expiresAtIso.replaceAll(/[^a-zA-Z0-9_-]/g, "-");
     const jobName =
-      kind === "approval"
-        ? GENERATION_APPROVAL_TIMEOUT_JOB_NAME
-        : GENERATION_AUTH_TIMEOUT_JOB_NAME;
+      kind === "approval" ? GENERATION_APPROVAL_TIMEOUT_JOB_NAME : GENERATION_AUTH_TIMEOUT_JOB_NAME;
     const jobId = buildQueueJobId([jobName, generationId, timeoutKey]);
     await queue.add(
       jobName,
@@ -665,9 +586,7 @@ class GenerationManager {
     );
   }
 
-  private async enqueuePreparingStuckCheck(
-    generationId: string,
-  ): Promise<void> {
+  private async enqueuePreparingStuckCheck(generationId: string): Promise<void> {
     try {
       const queue = getQueue();
       const jobName = GENERATION_PREPARING_STUCK_CHECK_JOB_NAME;
@@ -682,15 +601,14 @@ class GenerationManager {
         },
       );
     } catch (error) {
-      logServerEvent(
-        "warn",
-        "GENERATION_PREPARING_STUCK_CHECK_ENQUEUE_FAILED",
-        {
+      logger.warn({
+        event: "GENERATION_PREPARING_STUCK_CHECK_ENQUEUE_FAILED",
+        ...{ source: "generation-manager" },
+        ...{
           generationId,
           error: formatErrorMessage(error),
         },
-        { source: "generation-manager" },
-      );
+      });
     }
   }
 
@@ -737,24 +655,15 @@ class GenerationManager {
   /**
    * Cancel a generation
    */
-  async cancelGeneration(
-    generationId: string,
-    userId: string,
-  ): Promise<boolean> {
+  async cancelGeneration(generationId: string, userId: string): Promise<boolean> {
     return this.generationControl.cancelGeneration(generationId, userId);
   }
 
-  async resumeGeneration(
-    generationId: string,
-    userId: string,
-  ): Promise<boolean> {
+  async resumeGeneration(generationId: string, userId: string): Promise<boolean> {
     return this.decisionFlow.resumeGeneration(generationId, userId);
   }
 
-  async processGenerationTimeout(
-    generationId: string,
-    kind: GenerationTimeoutKind,
-  ): Promise<void> {
+  async processGenerationTimeout(generationId: string, kind: GenerationTimeoutKind): Promise<void> {
     return this.maintenance.processGenerationTimeout(generationId, kind);
   }
 
@@ -845,9 +754,7 @@ class GenerationManager {
   async getAllowedIntegrationsForGeneration(
     generationId: string,
   ): Promise<IntegrationType[] | null> {
-    return this.generationControl.getAllowedIntegrationsForGeneration(
-      generationId,
-    );
+    return this.generationControl.getAllowedIntegrationsForGeneration(generationId);
   }
 
   /**
@@ -878,26 +785,22 @@ class GenerationManager {
       if (!latest) {
         return;
       }
-      ctx.streamSequence = Math.max(
-        ctx.streamSequence,
-        latest.envelope.sequence,
-      );
+      ctx.streamSequence = Math.max(ctx.streamSequence, latest.envelope.sequence);
       ctx.streamLastCursor = latest.cursor;
     } catch (error) {
-      logServerEvent(
-        "warn",
-        "GENERATION_STREAM_SEQUENCE_HYDRATE_FAILED",
-        {
-          error: formatErrorMessage(error),
-        },
-        {
+      logger.warn({
+        event: "GENERATION_STREAM_SEQUENCE_HYDRATE_FAILED",
+        ...{
           source: "generation-manager",
           traceId: ctx.traceId,
           generationId: ctx.id,
           conversationId: ctx.conversationId,
           userId: ctx.userId,
         },
-      );
+        ...{
+          error: formatErrorMessage(error),
+        },
+      });
     }
   }
 
@@ -911,19 +814,13 @@ class GenerationManager {
         excludeUserMessages: Array.from(SESSION_RESET_COMMANDS),
       });
     } catch (err) {
-      console.error(
-        "[GenerationManager] Failed to write session transcript:",
-        err,
-      );
+      console.error("[GenerationManager] Failed to write session transcript:", err);
     }
 
     try {
       await clearConversationSessionSnapshot(ctx.conversationId);
     } catch (err) {
-      console.error(
-        "[GenerationManager] Failed to clear session snapshot:",
-        err,
-      );
+      console.error("[GenerationManager] Failed to clear session snapshot:", err);
     }
 
     await db.insert(message).values({
@@ -959,9 +856,7 @@ class GenerationManager {
     await this.runtimeCoordinator.runNormal(ctx);
   }
 
-  private async importIntegrationSkillDraftsFromSandbox(
-    ctx: GenerationContext,
-  ): Promise<void> {
+  private async importIntegrationSkillDraftsFromSandbox(ctx: GenerationContext): Promise<void> {
     if (!ctx.sandbox) {
       return;
     }
@@ -988,13 +883,10 @@ class GenerationManager {
       return;
     }
 
-    console.log(
-      `[GenerationManager] Approval timeout for generation ${ctx.id}, failing run`,
-    );
+    console.log(`[GenerationManager] Approval timeout for generation ${ctx.id}, failing run`);
     this.contextState.setCompletionReason(ctx, "approval_timeout");
     if (!ctx.errorMessage) {
-      ctx.errorMessage =
-        "Approval request expired before the run could continue.";
+      ctx.errorMessage = "Approval request expired before the run could continue.";
     }
     await generationInterruptService.resolveInterrupt({
       interruptId: ctx.currentInterruptId,
@@ -1009,13 +901,10 @@ class GenerationManager {
       return;
     }
 
-    console.log(
-      `[GenerationManager] Auth timeout for generation ${ctx.id}, failing run`,
-    );
+    console.log(`[GenerationManager] Auth timeout for generation ${ctx.id}, failing run`);
     this.contextState.setCompletionReason(ctx, "auth_timeout");
     if (!ctx.errorMessage) {
-      ctx.errorMessage =
-        "Authentication request expired before the run could continue.";
+      ctx.errorMessage = "Authentication request expired before the run could continue.";
     }
     await generationInterruptService.resolveInterrupt({
       interruptId: ctx.currentInterruptId,
@@ -1098,8 +987,7 @@ class GenerationManager {
       reason?: string;
     },
   ): Promise<
-    | { interruptId: string; status: "pending"; expiresAt?: string }
-    | { status: "accepted" }
+    { interruptId: string; status: "pending"; expiresAt?: string } | { status: "accepted" }
   > {
     return this.decisionFlow.requestAuthInterrupt(generationId, request);
   }
@@ -1146,10 +1034,7 @@ class GenerationManager {
       return await Promise.race([
         promise.then((value) => ({ type: "resolved" as const, value })),
         new Promise<{ type: "timed_out" }>((resolve) => {
-          timeoutId = setTimeout(
-            () => resolve({ type: "timed_out" }),
-            remainingRunTimeMs,
-          );
+          timeoutId = setTimeout(() => resolve({ type: "timed_out" }), remainingRunTimeMs);
         }),
       ]);
     } finally {
@@ -1181,22 +1066,15 @@ class GenerationManager {
     await this.turnFinalizer.saveProgress(ctx);
   }
 
-  private publishEventToRedisStream(
-    ctx: GenerationContext,
-    event: GenerationEvent,
-  ): void {
+  private publishEventToRedisStream(ctx: GenerationContext, event: GenerationEvent): void {
     this.eventLog.publishActive(ctx, event);
   }
 
-  private projectInterruptPendingEvent(
-    interrupt: GenerationInterruptRecord,
-  ): GenerationEvent {
+  private projectInterruptPendingEvent(interrupt: GenerationInterruptRecord): GenerationEvent {
     return this.decisionFlow.projectPendingEvent(interrupt);
   }
 
-  private projectInterruptResolvedEvent(
-    interrupt: GenerationInterruptRecord,
-  ): GenerationEvent {
+  private projectInterruptResolvedEvent(interrupt: GenerationInterruptRecord): GenerationEvent {
     return this.decisionFlow.projectResolvedEvent(interrupt);
   }
 
@@ -1219,8 +1097,7 @@ const globalForGenerationManager = globalThis as typeof globalThis & {
 };
 
 export const generationManager =
-  globalForGenerationManager.__cmdclawGenerationManager ??
-  new GenerationManager();
+  globalForGenerationManager.__cmdclawGenerationManager ?? new GenerationManager();
 
 if (process.env.NODE_ENV !== "production") {
   globalForGenerationManager.__cmdclawGenerationManager = generationManager;

@@ -11,7 +11,7 @@ import type {
 } from "../../sandbox/core/types";
 import type { ExecutionEnvironmentSession } from "../../execution/execution-environment";
 import { getOrCreateConversationRuntime } from "../../sandbox/core/orchestrator";
-import { logServerEvent } from "../../utils/observability";
+import { logger } from "../../utils/observability";
 import {
   writeRuntimeContextToSandbox,
   writeRuntimeEnvToSandbox,
@@ -20,11 +20,13 @@ import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
 } from "../../services/lifecycle-policy";
-import {
-  GenerationSuspendedError,
-} from "../../services/generation/core/turn-suspension";
+import { GenerationSuspendedError } from "../../services/generation/core/turn-suspension";
 import { composeContinuationPromptSpec } from "../../services/generation/prompts/opencode-prompt-context";
-import type { GenerationContext, GenerationEvent, GenerationStatus } from "../../services/generation/types";
+import type {
+  GenerationContext,
+  GenerationEvent,
+  GenerationStatus,
+} from "../../services/generation/types";
 import { OpenCodeTurnEventBridge } from "./opencode-turn-events";
 
 export type OpenCodeRecoveryReattachOptions = {
@@ -32,9 +34,7 @@ export type OpenCodeRecoveryReattachOptions = {
   requireLiveSession?: boolean;
   resumeInterruptId?: string;
   modeLabel?: string;
-  onRuntimeAttached?: (
-    runtimeClient: RuntimeHarnessClient,
-  ) => Promise<RuntimePromptPart[] | void>;
+  onRuntimeAttached?: (runtimeClient: RuntimeHarnessClient) => Promise<RuntimePromptPart[] | void>;
   completeAfterRuntimeAttached?: boolean;
   skipUsageCaptureAfterRuntimeAttached?: boolean;
 };
@@ -99,11 +99,7 @@ type OpenCodeRecoveryRunnerCallbacks = {
   ) => void;
 };
 
-async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  message: string,
-): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -122,10 +118,7 @@ async function withTimeout<T>(
 export class OpenCodeRecoveryRunner {
   constructor(private readonly callbacks: OpenCodeRecoveryRunnerCallbacks) {}
 
-  async run(
-    ctx: GenerationContext,
-    options?: OpenCodeRecoveryReattachOptions,
-  ): Promise<void> {
+  async run(ctx: GenerationContext, options?: OpenCodeRecoveryReattachOptions): Promise<void> {
     const requireLiveSession = options?.requireLiveSession ?? true;
     const modeLabel = options?.modeLabel ?? "recovery_reattach";
     let reattachTimeoutTriggered = false;
@@ -314,8 +307,10 @@ export class OpenCodeRecoveryRunner {
 
       await eventLoop.consume(eventStream);
 
-      const continuationPromptOutcome =
-        await this.callbacks.awaitPromiseUntilRunDeadline(ctx, continuationPromptPromise);
+      const continuationPromptOutcome = await this.callbacks.awaitPromiseUntilRunDeadline(
+        ctx,
+        continuationPromptPromise,
+      );
       clearReattachTimeout?.();
       if (reattachTimeoutTriggered || continuationPromptOutcome.type === "timed_out") {
         await this.callbacks.parkGenerationForRunDeadline(ctx, runtimeClient);
@@ -366,22 +361,21 @@ export class OpenCodeRecoveryRunner {
         return;
       }
       if (error instanceof GenerationSuspendedError) {
-        logServerEvent(
-          "info",
-          "GENERATION_SUSPENDED_FOR_INTERRUPT",
-          {
-            interruptId: error.interruptId,
-            interruptKind: error.kind,
-            remainingRunMs: ctx.remainingRunMs,
-          },
-          {
+        logger.info({
+          event: "GENERATION_SUSPENDED_FOR_INTERRUPT",
+          ...{
             source: "generation-manager",
             traceId: ctx.traceId,
             generationId: ctx.id,
             conversationId: ctx.conversationId,
             userId: ctx.userId,
           },
-        );
+          ...{
+            interruptId: error.interruptId,
+            interruptKind: error.kind,
+            remainingRunMs: ctx.remainingRunMs,
+          },
+        });
         return;
       }
       console.error("[GenerationManager] Recovery reattach error:", error);

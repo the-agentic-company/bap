@@ -2,7 +2,7 @@ import path from "path";
 import { db } from "@cmdclaw/db/client";
 import { customIntegrationCredential } from "@cmdclaw/db/schema";
 import { and, eq } from "drizzle-orm";
-import { logServerEvent } from "../utils/observability";
+import { logger } from "../utils/observability";
 import type { SandboxHandle } from "../sandbox/core/types";
 import {
   writeResolvedIntegrationSkillsToSandbox,
@@ -129,15 +129,14 @@ export async function stagePrePromptAssets(input: {
             (value): value is string => typeof value === "string",
           );
         }
-        logServerEvent(
-          "info",
-          "PRE_PROMPT_CACHE_HIT",
-          {
+        logger.info({
+          event: "PRE_PROMPT_CACHE_HIT",
+          ...input.logContext(),
+          ...{
             skillsCount: writtenSkills.length,
             integrationSkillCount: writtenIntegrationSkills.length,
           },
-          input.logContext(),
-        );
+        });
       }
     } catch {
       // Cache file absent or invalid; fall back to full prep.
@@ -242,7 +241,10 @@ export async function stagePrePromptAssets(input: {
               PRE_PROMPT_CACHE_PATH,
               JSON.stringify(nextCacheRecord, null, 2),
             );
-            logServerEvent("info", "POST_PROMPT_CACHE_WRITE_COMPLETED", {}, input.logContext());
+            logger.info({
+              event: "POST_PROMPT_CACHE_WRITE_COMPLETED",
+              ...input.logContext(),
+            });
           } catch (error) {
             console.error("[GenerationManager] Failed to write pre-prompt cache:", error);
           } finally {

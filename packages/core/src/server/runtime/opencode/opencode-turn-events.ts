@@ -1,7 +1,4 @@
-import {
-  OpenCodeEventTranslator,
-  type OpenCodeTrackedEvent,
-} from "./opencode-event-translator";
+import { OpenCodeEventTranslator, type OpenCodeTrackedEvent } from "./opencode-event-translator";
 import {
   OpenCodeRuntimeEventLoop,
   type OpenCodeApprovalCapableClient,
@@ -15,13 +12,10 @@ import {
   parseCoworkerEditApplyEnvelope,
   parseCoworkerInvocationEnvelope,
 } from "../../../lib/coworker-runtime-cli";
-import { logServerEvent } from "../../utils/observability";
+import { logger } from "../../utils/observability";
 import { getToolUseMetadata } from "../../services/generation/streams/replay-events";
 import type { GenerationContext, GenerationEvent } from "../../services/generation/types";
-import type {
-  RuntimeActionableEvent,
-  RuntimeApprovalRequest,
-} from "../runtime-driver";
+import type { RuntimeActionableEvent, RuntimeApprovalRequest } from "../runtime-driver";
 
 export type OpenCodeTurnEventLoopMode = "normal" | "recovery_reattach";
 
@@ -203,39 +197,37 @@ export class OpenCodeTurnEventBridge {
     if (envelope.status === "applied") {
       ctx.builderCoworkerContext = envelope.coworker;
       this.appendSystemEvent(ctx, { content: envelope.message, coworkerId });
-      logServerEvent(
-        "info",
-        "COWORKER_EDIT_APPLIED",
-        {
-          coworkerId,
-          changedFields: envelope.appliedChanges,
-        },
-        {
+      logger.info({
+        event: "COWORKER_EDIT_APPLIED",
+        ...{
           source: "generation-manager",
           traceId: ctx.traceId,
           generationId: ctx.id,
           conversationId: ctx.conversationId,
           userId: ctx.userId,
         },
-      );
+        ...{
+          coworkerId,
+          changedFields: envelope.appliedChanges,
+        },
+      });
       return;
     }
 
     if (envelope.status === "conflict") {
       ctx.builderCoworkerContext = envelope.coworker;
       this.appendSystemEvent(ctx, { content: envelope.message, coworkerId });
-      logServerEvent(
-        "warn",
-        "COWORKER_EDIT_CONFLICT",
-        { coworkerId },
-        {
+      logger.warn({
+        event: "COWORKER_EDIT_CONFLICT",
+        ...{
           source: "generation-manager",
           traceId: ctx.traceId,
           generationId: ctx.id,
           conversationId: ctx.conversationId,
           userId: ctx.userId,
         },
-      );
+        ...{ coworkerId },
+      });
       return;
     }
 
@@ -243,17 +235,16 @@ export class OpenCodeTurnEventBridge {
       content: `${envelope.message}: ${envelope.details.join("; ")}`,
       coworkerId,
     });
-    logServerEvent(
-      "warn",
-      "COWORKER_EDIT_VALIDATION_FAILED",
-      { coworkerId, details: envelope.details },
-      {
+    logger.warn({
+      event: "COWORKER_EDIT_VALIDATION_FAILED",
+      ...{
         source: "generation-manager",
         traceId: ctx.traceId,
         generationId: ctx.id,
         conversationId: ctx.conversationId,
         userId: ctx.userId,
       },
-    );
+      ...{ coworkerId, details: envelope.details },
+    });
   }
 }

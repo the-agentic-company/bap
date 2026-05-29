@@ -1,7 +1,7 @@
 import { db } from "@cmdclaw/db/client";
 import { message, type MessageTiming } from "@cmdclaw/db/schema";
 import { eq } from "drizzle-orm";
-import { logServerEvent } from "../../../utils/observability";
+import { logger } from "../../../utils/observability";
 import { getSandboxSlotManager } from "../../sandbox-slot-manager";
 import { sendTaskDonePush } from "../../web-push-service";
 import { collectMentionedSandboxFiles } from "../files/sandbox-file-collection";
@@ -508,10 +508,16 @@ export class GenerationTurnFinalizer {
         });
       }
 
-      logServerEvent(
-        "info",
-        "GENERATION_STREAM_PUBLISH_SUMMARY",
-        {
+      logger.info({
+        event: "GENERATION_STREAM_PUBLISH_SUMMARY",
+        ...{
+          source: "generation-manager",
+          traceId: ctx.traceId,
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+        },
+        ...{
           publishedCount: ctx.streamPublishedCount,
           lastCursor: ctx.streamLastCursor ?? null,
           lastSequence: ctx.streamSequence,
@@ -530,14 +536,7 @@ export class GenerationTurnFinalizer {
               ? Math.max(0, ctx.streamTerminalPublishedAt - ctx.startedAt.getTime())
               : undefined,
         },
-        {
-          source: "generation-manager",
-          traceId: ctx.traceId,
-          generationId: ctx.id,
-          conversationId: ctx.conversationId,
-          userId: ctx.userId,
-        },
-      );
+      });
 
       ctx.status = status;
       this.deps.evictActiveGenerationContext(ctx.id);

@@ -15,9 +15,12 @@ import {
   readGenerationStreamAfter,
   type GenerationStreamEnvelope,
 } from "../../../redis/generation-event-bus";
-import { createTraceId, logServerEvent } from "../../../utils/observability";
+import { createTraceId, logger } from "../../../utils/observability";
 import { sanitizeJsonForPostgres } from "../../../utils/postgres-json";
-import { generationInterruptService, type GenerationInterruptRecord } from "../../generation-interrupt-service";
+import {
+  generationInterruptService,
+  type GenerationInterruptRecord,
+} from "../../generation-interrupt-service";
 import type { GenerationEvent, GenerationStreamEvent } from "../types";
 import { buildGenerationReplayPartEvent } from "./replay-events";
 
@@ -154,20 +157,19 @@ export class GenerationEventLog {
     const existingSubscriptionCount = this.activeSubscriptionCounts.get(subscriptionKey) ?? 0;
     if (existingSubscriptionCount > 0) {
       this.streamCounters.deduped += 1;
-      logServerEvent(
-        "info",
-        "GENERATION_STREAM_DUPLICATE_DETECTED",
-        {
-          ...this.getCounters(),
-          existingSubscriptionCount,
-        },
-        {
+      logger.info({
+        event: "GENERATION_STREAM_DUPLICATE_DETECTED",
+        ...{
           source: "generation-event-log",
           generationId: initial.id,
           conversationId: initial.conversationId,
           userId,
         },
-      );
+        ...{
+          ...this.getCounters(),
+          existingSubscriptionCount,
+        },
+      });
     }
 
     this.activeSubscriptionCounts.set(subscriptionKey, existingSubscriptionCount + 1);
@@ -229,22 +231,21 @@ export class GenerationEventLog {
             redisReadCount += 1;
           } catch (error) {
             terminatedBy = "redis_unavailable";
-            logServerEvent(
-              "error",
-              "GENERATION_STREAM_REDIS_READ_FAILED",
-              {
-                error: formatStreamErrorMessage(error),
-                streamId,
-                cursor,
-                redisReadCount,
-              },
-              {
+            logger.error({
+              event: "GENERATION_STREAM_REDIS_READ_FAILED",
+              ...{
                 source: "generation-event-log",
                 generationId: initial.id,
                 conversationId: initial.conversationId,
                 userId,
               },
-            );
+              ...{
+                error: formatStreamErrorMessage(error),
+                streamId,
+                cursor,
+                redisReadCount,
+              },
+            });
             eventsYielded += 1;
             yield {
               type: "error",
@@ -279,7 +280,9 @@ export class GenerationEventLog {
               break;
             }
 
-            const streamPresent = isTestRuntime ? false : await generationStreamExists(generationId);
+            const streamPresent = isTestRuntime
+              ? false
+              : await generationStreamExists(generationId);
             if (!streamPresent) {
               const latestParts = (latest.contentParts ?? []) as ContentPart[];
               const sharedLength = Math.min(observedParts.length, latestParts.length);
@@ -380,10 +383,15 @@ export class GenerationEventLog {
           : "Generation is still processing but no stream events are currently available. Please retry shortly.";
         terminatedBy = "timeout";
         this.streamCounters.timedOut += 1;
-        logServerEvent(
-          "warn",
-          "GENERATION_STREAM_TIMEOUT",
-          {
+        logger.warn({
+          event: "GENERATION_STREAM_TIMEOUT",
+          ...{
+            source: "generation-event-log",
+            generationId: initial.id,
+            conversationId: initial.conversationId,
+            userId,
+          },
+          ...{
             maxWaitMs,
             conversationType: initial.conversation.type,
             streamId,
@@ -393,13 +401,7 @@ export class GenerationEventLog {
             cursor,
             latestCursor,
           },
-          {
-            source: "generation-event-log",
-            generationId: initial.id,
-            conversationId: initial.conversationId,
-            userId,
-          },
-        );
+        });
         eventsYielded += 1;
         yield { type: "error", message: errorMessage, cursor };
       }
@@ -412,10 +414,15 @@ export class GenerationEventLog {
       }
       this.streamCounters.closed += 1;
 
-      logServerEvent(
-        "info",
-        "GENERATION_STREAM_SUBSCRIPTION_SUMMARY",
-        {
+      logger.info({
+        event: "GENERATION_STREAM_SUBSCRIPTION_SUMMARY",
+        ...{
+          source: "generation-event-log",
+          generationId: initial.id,
+          conversationId: initial.conversationId,
+          userId,
+        },
+        ...{
           ...this.getCounters(),
           streamId,
           durationMs: Date.now() - startedAt,
@@ -427,13 +434,7 @@ export class GenerationEventLog {
           termination: terminatedBy ?? "consumer_closed",
           conversationType: initial.conversation.type,
         },
-        {
-          source: "generation-event-log",
-          generationId: initial.id,
-          conversationId: initial.conversationId,
-          userId,
-        },
-      );
+      });
     }
   }
 
@@ -547,22 +548,21 @@ export class GenerationEventLog {
         }
       })
       .catch((error) => {
-        logServerEvent(
-          "error",
-          "GENERATION_STREAM_PUBLISH_FAILED",
-          {
-            error: formatStreamErrorMessage(error),
-            sequence: nextSequence,
-            eventType: event.type,
-          },
-          {
+        logger.error({
+          event: "GENERATION_STREAM_PUBLISH_FAILED",
+          ...{
             source: "generation-event-log",
             traceId: ctx.traceId,
             generationId: ctx.id,
             conversationId: ctx.conversationId,
             userId: ctx.userId,
           },
-        );
+          ...{
+            error: formatStreamErrorMessage(error),
+            sequence: nextSequence,
+            eventType: event.type,
+          },
+        });
       });
 
     if (ctx.coworkerRunId) {
@@ -587,19 +587,18 @@ export class GenerationEventLog {
       };
       await publishGenerationStreamEvent(input.generationId, envelope);
     } catch (error) {
-      logServerEvent(
-        "error",
-        "GENERATION_STREAM_PUBLISH_FAILED",
-        {
-          error: formatStreamErrorMessage(error),
-          eventType: input.event.type,
-        },
-        {
+      logger.error({
+        event: "GENERATION_STREAM_PUBLISH_FAILED",
+        ...{
           source: "generation-event-log",
           generationId: input.generationId,
           conversationId: input.conversationId,
         },
-      );
+        ...{
+          error: formatStreamErrorMessage(error),
+          eventType: input.event.type,
+        },
+      });
     }
   }
 

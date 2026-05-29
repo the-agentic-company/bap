@@ -14,7 +14,7 @@ import {
   normalizeCoworkerAllowedSkillSlugs,
 } from "../../../lib/coworker-tool-policy";
 import type { IntegrationType } from "../../oauth/config";
-import { createTraceId, logServerEvent } from "../../utils/observability";
+import { createTraceId, logger } from "../../utils/observability";
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "../../../lib/chat-model-defaults";
 import { normalizeModelAuthSource } from "../../../lib/provider-auth-source";
 import { conversationRuntimeService } from "../conversation-runtime-service";
@@ -194,7 +194,9 @@ export class TurnRunnerContextLoader {
         loaded.linkedCoworker?.allowedExecutorSourceIds ??
         undefined,
       allowedSkillSlugs:
-        loaded.executionPolicy.allowedSkillSlugs ?? loaded.linkedCoworkerAllowedSkillSlugs ?? undefined,
+        loaded.executionPolicy.allowedSkillSlugs ??
+        loaded.linkedCoworkerAllowedSkillSlugs ??
+        undefined,
       coworkerPrompt: undefined,
       coworkerPromptDo: undefined,
       coworkerPromptDont: undefined,
@@ -270,10 +272,10 @@ export class TurnRunnerContextLoader {
     const builderCoworkerContext =
       genRecord.conversation.type === "coworker"
         ? await resolveCoworkerBuilderContextByConversation({
-          database: db,
-          userId: genRecord.conversation.userId!,
-          conversationId: genRecord.conversationId,
-        })
+            database: db,
+            userId: genRecord.conversation.userId!,
+            conversationId: genRecord.conversationId,
+          })
         : null;
     const pendingInterrupt = await generationInterruptService.getPendingInterruptForGeneration(
       genRecord.id,
@@ -288,22 +290,21 @@ export class TurnRunnerContextLoader {
         runtimeRecord.status !== "active" ||
         runtimeRecord.activeGenerationId !== genRecord.id)
     ) {
-      logServerEvent(
-        "warn",
-        "QUEUED_GENERATION_RUNTIME_STALE",
-        {
-          generationId: genRecord.id,
-          runtimeId: genRecord.runtimeId,
-          runtimeStatus: runtimeRecord?.status ?? null,
-          runtimeActiveGenerationId: runtimeRecord?.activeGenerationId ?? null,
-        },
-        {
+      logger.warn({
+        event: "QUEUED_GENERATION_RUNTIME_STALE",
+        ...{
           source: "generation-manager",
           generationId: genRecord.id,
           conversationId: genRecord.conversationId,
           userId: genRecord.conversation.userId ?? undefined,
         },
-      );
+        ...{
+          generationId: genRecord.id,
+          runtimeId: genRecord.runtimeId,
+          runtimeStatus: runtimeRecord?.status ?? null,
+          runtimeActiveGenerationId: runtimeRecord?.activeGenerationId ?? null,
+        },
+      });
       return { status: "runtime_stale" };
     }
 
@@ -340,10 +341,7 @@ export type TurnRunnerDependencies = {
   acquireGenerationLease(generationId: string): Promise<string | null>;
   renewGenerationLease(generationId: string, token: string): Promise<void>;
   releaseGenerationLease(generationId: string, token: string): Promise<void>;
-  failQueuedRunBeforeContext(input: {
-    generationId: string;
-    message: string;
-  }): Promise<void>;
+  failQueuedRunBeforeContext(input: { generationId: string; message: string }): Promise<void>;
   markPhase(ctx: GenerationContext, phase: string): void;
   setCompletionReason(ctx: GenerationContext, reason: GenerationCompletionReason): void;
   finishGeneration(
@@ -423,20 +421,19 @@ export class TurnRunner {
       const ctx = rehydrated.context;
       const { pendingInterrupt } = rehydrated;
 
-      logServerEvent(
-        "info",
-        "QUEUED_GENERATION_CONTEXT_REHYDRATED",
-        {
-          rehydratedAttachmentsCount: ctx.attachments?.length ?? 0,
-        },
-        {
+      logger.info({
+        event: "QUEUED_GENERATION_CONTEXT_REHYDRATED",
+        ...{
           source: "generation-manager",
           traceId: ctx.traceId,
           generationId: ctx.id,
           conversationId: ctx.conversationId,
           userId: ctx.userId,
         },
-      );
+        ...{
+          rehydratedAttachmentsCount: ctx.attachments?.length ?? 0,
+        },
+      });
 
       if (
         (ctx.status === "awaiting_approval" || ctx.status === "awaiting_auth") &&

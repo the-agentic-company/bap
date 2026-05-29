@@ -121,13 +121,20 @@ const { composeOpencodePromptSpecMock } = vi.hoisted(() => ({
   composeOpencodePromptSpecMock: vi.fn(),
 }));
 
-const {
-  saveConversationSessionSnapshotMock,
-  clearConversationSessionSnapshotMock,
-} = vi.hoisted(() => ({
-  saveConversationSessionSnapshotMock: vi.fn(),
-  clearConversationSessionSnapshotMock: vi.fn(),
-}));
+const { loggerInfoMock, loggerWarnMock, loggerErrorMock } = vi.hoisted(() => {
+  return {
+    loggerInfoMock: vi.fn(),
+    loggerWarnMock: vi.fn(),
+    loggerErrorMock: vi.fn(),
+  };
+});
+
+const { saveConversationSessionSnapshotMock, clearConversationSessionSnapshotMock } = vi.hoisted(
+  () => ({
+    saveConversationSessionSnapshotMock: vi.fn(),
+    clearConversationSessionSnapshotMock: vi.fn(),
+  }),
+);
 
 const {
   sandboxSlotAcquireMock,
@@ -201,24 +208,17 @@ const {
     async (interruptId: string) => interruptStore.get(interruptId) ?? null,
   );
 
-  const getPendingInterruptForGenerationMock = vi.fn(
-    async (generationId: string) => {
-      const pending = [...interruptStore.values()].find(
-        (interrupt) =>
-          interrupt.generationId === generationId &&
-          interrupt.status === "pending",
-      );
-      return pending ?? null;
-    },
-  );
+  const getPendingInterruptForGenerationMock = vi.fn(async (generationId: string) => {
+    const pending = [...interruptStore.values()].find(
+      (interrupt) => interrupt.generationId === generationId && interrupt.status === "pending",
+    );
+    return pending ?? null;
+  });
 
-  const listPendingInterruptsForGenerationMock = vi.fn(
-    async (generationId: string) =>
-      [...interruptStore.values()].filter(
-        (interrupt) =>
-          interrupt.generationId === generationId &&
-          interrupt.status === "pending",
-      ),
+  const listPendingInterruptsForGenerationMock = vi.fn(async (generationId: string) =>
+    [...interruptStore.values()].filter(
+      (interrupt) => interrupt.generationId === generationId && interrupt.status === "pending",
+    ),
   );
 
   const findPendingInterruptByToolUseIdMock = vi.fn(async (params: any) => {
@@ -240,18 +240,16 @@ const {
     return interrupt ?? null;
   });
 
-  const findPendingAuthInterruptByIntegrationMock = vi.fn(
-    async (params: any) => {
-      const interrupt = [...interruptStore.values()].find(
-        (entry) =>
-          entry.generationId === params.generationId &&
-          entry.kind === "auth" &&
-          entry.status === "pending" &&
-          entry.display.authSpec?.integrations?.includes(params.integration),
-      );
-      return interrupt ?? null;
-    },
-  );
+  const findPendingAuthInterruptByIntegrationMock = vi.fn(async (params: any) => {
+    const interrupt = [...interruptStore.values()].find(
+      (entry) =>
+        entry.generationId === params.generationId &&
+        entry.kind === "auth" &&
+        entry.status === "pending" &&
+        entry.display.authSpec?.integrations?.includes(params.integration),
+    );
+    return interrupt ?? null;
+  });
 
   const resolveInterruptMock = vi.fn(async (params: any) => {
     const existing = interruptStore.get(params.interruptId);
@@ -269,17 +267,15 @@ const {
     return resolved;
   });
 
-  const refreshInterruptExpiryMock = vi.fn(
-    async (interruptId: string, expiresAt: Date) => {
-      const existing = interruptStore.get(interruptId);
-      if (!existing) {
-        return null;
-      }
-      const refreshed = { ...existing, expiresAt };
-      interruptStore.set(refreshed.id, refreshed);
-      return refreshed;
-    },
-  );
+  const refreshInterruptExpiryMock = vi.fn(async (interruptId: string, expiresAt: Date) => {
+    const existing = interruptStore.get(interruptId);
+    if (!existing) {
+      return null;
+    }
+    const refreshed = { ...existing, expiresAt };
+    interruptStore.set(refreshed.id, refreshed);
+    return refreshed;
+  });
 
   const expireInterruptMock = vi.fn(async (interruptId: string) =>
     resolveInterruptMock({ interruptId, status: "expired" }),
@@ -297,19 +293,14 @@ const {
     return applied;
   });
 
-  const cancelInterruptsForGenerationMock = vi.fn(
-    async (generationId: string) => {
-      for (const interrupt of interruptStore.values()) {
-        if (
-          interrupt.generationId === generationId &&
-          interrupt.status === "pending"
-        ) {
-          interrupt.status = "cancelled";
-          interrupt.resolvedAt = new Date("2026-03-11T15:01:00.000Z");
-        }
+  const cancelInterruptsForGenerationMock = vi.fn(async (generationId: string) => {
+    for (const interrupt of interruptStore.values()) {
+      if (interrupt.generationId === generationId && interrupt.status === "pending") {
+        interrupt.status = "cancelled";
+        interrupt.resolvedAt = new Date("2026-03-11T15:01:00.000Z");
       }
-    },
-  );
+    }
+  });
 
   return {
     interruptStore,
@@ -352,27 +343,26 @@ const {
   suspendRuntimeMock: vi.fn(),
 }));
 
-const {
-  getOrCreateConversationRuntimeMock,
-  getOrCreateConversationSandboxMock,
-} = vi.hoisted(() => {
-  const runtimeMock = vi.fn();
-  return {
-    getOrCreateConversationRuntimeMock: runtimeMock,
-    getOrCreateConversationSandboxMock: vi.fn(async (...args: unknown[]) => {
-      const runtime = await runtimeMock(...args);
-      return {
-        sandbox: runtime.sandbox,
-        metadata: runtime.metadata,
-        completeAgentInit: async () => ({
-          harnessClient: runtime.harnessClient,
-          session: runtime.session,
-          sessionSource: runtime.sessionSource,
-        }),
-      };
-    }),
-  };
-});
+const { getOrCreateConversationRuntimeMock, getOrCreateConversationSandboxMock } = vi.hoisted(
+  () => {
+    const runtimeMock = vi.fn();
+    return {
+      getOrCreateConversationRuntimeMock: runtimeMock,
+      getOrCreateConversationSandboxMock: vi.fn(async (...args: unknown[]) => {
+        const runtime = await runtimeMock(...args);
+        return {
+          sandbox: runtime.sandbox,
+          metadata: runtime.metadata,
+          completeAgentInit: async () => ({
+            harnessClient: runtime.harnessClient,
+            session: runtime.session,
+            sessionSource: runtime.sessionSource,
+          }),
+        };
+      }),
+    };
+  },
+);
 
 vi.mock("../../env", () => ({
   env: {},
@@ -411,9 +401,7 @@ vi.mock("../integrations/cli-env", () => ({
   getCliInstructions: vi.fn(() => ""),
   getCliInstructionsWithCustom: vi.fn(() => ""),
   getEnabledIntegrationTypes: vi.fn(() => []),
-  filterCliEnvToAllowedIntegrations: vi.fn(
-    (cliEnv: Record<string, string>) => ({ ...cliEnv }),
-  ),
+  filterCliEnvToAllowedIntegrations: vi.fn((cliEnv: Record<string, string>) => ({ ...cliEnv })),
 }));
 
 vi.mock("../utils/generate-title", () => ({
@@ -467,7 +455,11 @@ vi.mock("./integration-skill-service", () => ({
 
 vi.mock("../utils/observability", () => ({
   createTraceId: vi.fn(() => "trace-1"),
-  logServerEvent: vi.fn(),
+  logger: {
+    info: loggerInfoMock,
+    warn: loggerWarnMock,
+    error: loggerErrorMock,
+  },
 }));
 
 vi.mock("./generation/core/canonical-generation-events", () => ({
@@ -482,8 +474,7 @@ vi.mock("../queues", () => ({
       .join("-"),
   CHAT_GENERATION_JOB_NAME: "generation:chat-run",
   COWORKER_GENERATION_JOB_NAME: "generation:coworker-run",
-  CONVERSATION_QUEUED_MESSAGE_PROCESS_JOB_NAME:
-    "conversation:queued-message-process",
+  CONVERSATION_QUEUED_MESSAGE_PROCESS_JOB_NAME: "conversation:queued-message-process",
   GENERATION_APPROVAL_TIMEOUT_JOB_NAME: "generation:approval-timeout",
   GENERATION_AUTH_TIMEOUT_JOB_NAME: "generation:auth-timeout",
   GENERATION_PREPARING_STUCK_CHECK_JOB_NAME: "generation:preparing-stuck-check",
@@ -504,8 +495,7 @@ vi.mock("./generation-interrupt-service", () => ({
     listPendingInterruptsForGeneration: listPendingInterruptsForGenerationMock,
     findPendingInterruptByToolUseId: findPendingInterruptByToolUseIdMock,
     findInterruptByProviderRequestId: findInterruptByProviderRequestIdMock,
-    findPendingAuthInterruptByIntegration:
-      findPendingAuthInterruptByIntegrationMock,
+    findPendingAuthInterruptByIntegration: findPendingAuthInterruptByIntegrationMock,
     refreshInterruptExpiry: refreshInterruptExpiryMock,
     resolveInterrupt: resolveInterruptMock,
     expireInterrupt: expireInterruptMock,
@@ -561,10 +551,7 @@ import { composeOpencodePromptSpec } from "../prompts/opencode-runtime-prompt";
 import { getOrCreateConversationRuntime } from "../sandbox/core/orchestrator";
 import { getPreferredCloudSandboxProvider } from "../sandbox/factory";
 import { writeCoworkerDocumentsToSandbox } from "../sandbox/prep/coworker-documents-prep";
-import {
-  syncMemoryFilesToSandbox,
-  buildMemorySystemPrompt,
-} from "../sandbox/prep/memory-prep";
+import { syncMemoryFilesToSandbox, buildMemorySystemPrompt } from "../sandbox/prep/memory-prep";
 import { prepareExecutorInSandbox } from "../sandbox/prep/executor-prep";
 import {
   writeSkillsToSandbox,
@@ -572,28 +559,17 @@ import {
   writeResolvedIntegrationSkillsToSandbox,
   getIntegrationSkillsSystemPrompt,
 } from "../sandbox/prep/skills-prep";
-import { logServerEvent } from "../utils/observability";
-import {
-  classifyRuntimeFailure,
-  generationLifecyclePolicy,
-} from "./lifecycle-policy";
+import { logger } from "../utils/observability";
+import { classifyRuntimeFailure, generationLifecyclePolicy } from "./lifecycle-policy";
 import {
   normalizeOpenCodeActionableEvent,
   sendOpenCodeRuntimeDecision,
 } from "../runtime/opencode/opencode-runtime-actions";
 import { listAccessibleEnabledSkillMetadataForUser } from "./workspace-skill-service";
-import {
-  generationManager,
-} from "./generation-manager";
+import { generationManager } from "./generation-manager";
 import { extractRuntimeExportState } from "../runtime/opencode/opencode-reattach";
-import {
-  buildDefaultQuestionAnswers,
-  buildQuestionCommand,
-} from "../runtime/runtime-driver";
-import {
-  uploadSandboxFile,
-  collectNewSandboxFiles,
-} from "./sandbox-file-service";
+import { buildDefaultQuestionAnswers, buildQuestionCommand } from "../runtime/runtime-driver";
+import { uploadSandboxFile, collectNewSandboxFiles } from "./sandbox-file-service";
 
 type GenerationCtx = {
   id: string;
@@ -629,10 +605,7 @@ type GenerationCtx = {
 type GenerationManagerTestHarness = {
   activeGenerations: Map<string, GenerationCtx>;
   runtimeCoordinator: {
-    resolveRuntimeFailure: (
-      ctx: GenerationCtx,
-      client?: unknown,
-    ) => Promise<string>;
+    resolveRuntimeFailure: (ctx: GenerationCtx, client?: unknown) => Promise<string>;
     handleRuntimeActionableEvent: (...args: unknown[]) => Promise<unknown>;
   };
   finishGeneration: (ctx: GenerationCtx, status: string) => Promise<void>;
@@ -640,9 +613,7 @@ type GenerationManagerTestHarness = {
   runRecoveryReattach: (ctx: GenerationCtx) => Promise<void>;
   handleSessionReset: (ctx: GenerationCtx) => Promise<void>;
   runRuntimeGeneration: (ctx: GenerationCtx) => Promise<void>;
-  importIntegrationSkillDraftsFromSandbox: (
-    ...args: unknown[]
-  ) => Promise<void>;
+  importIntegrationSkillDraftsFromSandbox: (...args: unknown[]) => Promise<void>;
   waitForAuth: (...args: unknown[]) => Promise<{ success: boolean }>;
   waitForApproval: (...args: unknown[]) => Promise<string>;
 };
@@ -709,8 +680,7 @@ function deriveInterruptFromCtx(ctx: GenerationCtx): any | null {
       conversationId: ctx.conversationId,
       turnSeq: ctx.runtimeTurnSeq ?? 1,
       kind:
-        pendingApproval.operation === "question" ||
-        pendingApproval.operation === "permission"
+        pendingApproval.operation === "question" || pendingApproval.operation === "permission"
           ? pendingApproval.operation === "question"
             ? "runtime_question"
             : "runtime_permission"
@@ -727,12 +697,8 @@ function deriveInterruptFromCtx(ctx: GenerationCtx): any | null {
       providerRequestId: null,
       providerToolUseId: pendingApproval.toolUseId,
       responsePayload: undefined,
-      requestedAt: new Date(
-        pendingApproval.requestedAt ?? "2026-03-11T15:00:00.000Z",
-      ),
-      expiresAt: pendingApproval.expiresAt
-        ? new Date(pendingApproval.expiresAt)
-        : null,
+      requestedAt: new Date(pendingApproval.requestedAt ?? "2026-03-11T15:00:00.000Z"),
+      expiresAt: pendingApproval.expiresAt ? new Date(pendingApproval.expiresAt) : null,
       resolvedAt: null,
       requestedByUserId: null,
       resolvedByUserId: null,
@@ -762,12 +728,8 @@ function deriveInterruptFromCtx(ctx: GenerationCtx): any | null {
       responsePayload: {
         connectedIntegrations: pendingAuth.connectedIntegrations ?? [],
       },
-      requestedAt: new Date(
-        String(pendingAuth.requestedAt ?? "2026-03-11T15:00:00.000Z"),
-      ),
-      expiresAt: pendingAuth.expiresAt
-        ? new Date(String(pendingAuth.expiresAt))
-        : null,
+      requestedAt: new Date(String(pendingAuth.requestedAt ?? "2026-03-11T15:00:00.000Z")),
+      expiresAt: pendingAuth.expiresAt ? new Date(String(pendingAuth.expiresAt)) : null,
       resolvedAt: null,
       requestedByUserId: null,
       resolvedByUserId: null,
@@ -794,16 +756,10 @@ function createConversationRuntimeMock(params: {
       subscribe: params.subscribeMock,
       prompt: params.promptMock,
       abort: vi.fn().mockResolvedValue({ data: null, error: null }),
-      messages:
-        params.messagesMock ??
-        vi.fn().mockResolvedValue({ data: [], error: null }),
+      messages: params.messagesMock ?? vi.fn().mockResolvedValue({ data: [], error: null }),
       status: params.statusMock,
-      getSession:
-        params.getSessionMock ??
-        vi.fn().mockResolvedValue({ data: null, error: null }),
-      createSession: vi
-        .fn()
-        .mockResolvedValue({ data: { id: "session-1" }, error: null }),
+      getSession: params.getSessionMock ?? vi.fn().mockResolvedValue({ data: null, error: null }),
+      createSession: vi.fn().mockResolvedValue({ data: { id: "session-1" }, error: null }),
       updatePart: vi.fn().mockResolvedValue({ data: null, error: null }),
       replyPermission: vi.fn().mockResolvedValue(undefined),
       replyQuestion: vi.fn().mockResolvedValue(undefined),
@@ -815,12 +771,9 @@ function createConversationRuntimeMock(params: {
       provider: "e2b" as const,
       sandboxId: "sandbox-1",
       writeFile: params.writeFile ?? vi.fn().mockResolvedValue(undefined),
-      readFile:
-        params.readFile ?? vi.fn().mockRejectedValue(new Error("no cache")),
+      readFile: params.readFile ?? vi.fn().mockRejectedValue(new Error("no cache")),
       ensureDir: params.ensureDir ?? vi.fn().mockResolvedValue(undefined),
-      exec:
-        params.exec ??
-        vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+      exec: params.exec ?? vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
     },
     metadata: {
       sandboxProvider: "e2b" as const,
@@ -964,9 +917,7 @@ describe("generationManager transitions", () => {
       return {
         agentId,
         systemPrompt: `mock system prompt for ${input.kind}`,
-        sections: [
-          { key: "mock", content: `mock system prompt for ${input.kind}` },
-        ],
+        sections: [{ key: "mock", content: `mock system prompt for ${input.kind}` }],
       };
     });
     saveConversationSessionSnapshotMock.mockReset();
@@ -997,18 +948,14 @@ describe("generationManager transitions", () => {
       interruptStore.set(interrupt.id, interrupt);
       syncInterruptStateMocks(interrupt);
 
-      const activeCtx = asTestManager().activeGenerations.get(
-        input.generationId,
-      );
+      const activeCtx = asTestManager().activeGenerations.get(input.generationId);
       if (activeCtx) {
         activeCtx.currentInterruptId = interrupt.id;
-        activeCtx.status =
-          input.kind === "auth" ? "awaiting_auth" : "awaiting_approval";
+        activeCtx.status = input.kind === "auth" ? "awaiting_auth" : "awaiting_approval";
         if (input.kind === "auth") {
           activeCtx.pendingAuth = {
             integrations: input.display.authSpec?.integrations ?? [],
-            connectedIntegrations:
-              input.display.authSpec?.connectedIntegrations ?? [],
+            connectedIntegrations: input.display.authSpec?.connectedIntegrations ?? [],
             requestedAt: interrupt.requestedAt.toISOString(),
             expiresAt: interrupt.expiresAt?.toISOString(),
           };
@@ -1031,88 +978,68 @@ describe("generationManager transitions", () => {
     getInterruptMock.mockImplementation(
       async (interruptId: string) => interruptStore.get(interruptId) ?? null,
     );
-    getPendingInterruptForGenerationMock.mockImplementation(
-      async (generationId: string) => {
-        const stored = [...interruptStore.values()].find(
-          (interrupt) =>
-            interrupt.generationId === generationId &&
-            interrupt.status === "pending",
-        );
-        if (stored) {
-          return stored;
-        }
-        const activeCtx = asTestManager().activeGenerations.get(generationId);
-        return activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
-      },
-    );
-    listPendingInterruptsForGenerationMock.mockImplementation(
-      async (generationId: string) => {
-        const stored = [...interruptStore.values()].filter(
-          (interrupt) =>
-            interrupt.generationId === generationId &&
-            interrupt.status === "pending",
-        );
-        if (stored.length > 0) {
-          return stored;
-        }
-        const activeCtx = asTestManager().activeGenerations.get(generationId);
-        const derived = activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
-        return derived ? [derived] : [];
-      },
-    );
-    findPendingInterruptByToolUseIdMock.mockImplementation(
-      async (params: any) => {
-        const stored = [...interruptStore.values()].find(
+    getPendingInterruptForGenerationMock.mockImplementation(async (generationId: string) => {
+      const stored = [...interruptStore.values()].find(
+        (interrupt) => interrupt.generationId === generationId && interrupt.status === "pending",
+      );
+      if (stored) {
+        return stored;
+      }
+      const activeCtx = asTestManager().activeGenerations.get(generationId);
+      return activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
+    });
+    listPendingInterruptsForGenerationMock.mockImplementation(async (generationId: string) => {
+      const stored = [...interruptStore.values()].filter(
+        (interrupt) => interrupt.generationId === generationId && interrupt.status === "pending",
+      );
+      if (stored.length > 0) {
+        return stored;
+      }
+      const activeCtx = asTestManager().activeGenerations.get(generationId);
+      const derived = activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
+      return derived ? [derived] : [];
+    });
+    findPendingInterruptByToolUseIdMock.mockImplementation(async (params: any) => {
+      const stored = [...interruptStore.values()].find(
+        (entry) =>
+          entry.generationId === params.generationId &&
+          entry.providerToolUseId === params.providerToolUseId &&
+          entry.status === "pending",
+      );
+      if (stored) {
+        return stored;
+      }
+      const activeCtx = asTestManager().activeGenerations.get(params.generationId);
+      const derived = activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
+      return derived?.providerToolUseId === params.providerToolUseId ? derived : null;
+    });
+    findInterruptByProviderRequestIdMock.mockImplementation(async (params: any) => {
+      return (
+        [...interruptStore.values()].find(
           (entry) =>
             entry.generationId === params.generationId &&
-            entry.providerToolUseId === params.providerToolUseId &&
-            entry.status === "pending",
-        );
-        if (stored) {
-          return stored;
-        }
-        const activeCtx = asTestManager().activeGenerations.get(
-          params.generationId,
-        );
-        const derived = activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
-        return derived?.providerToolUseId === params.providerToolUseId
-          ? derived
-          : null;
-      },
-    );
-    findInterruptByProviderRequestIdMock.mockImplementation(
-      async (params: any) => {
-        return (
-          [...interruptStore.values()].find(
-            (entry) =>
-              entry.generationId === params.generationId &&
-              entry.providerRequestId === params.providerRequestId,
-          ) ?? null
-        );
-      },
-    );
-    findPendingAuthInterruptByIntegrationMock.mockImplementation(
-      async (params: any) => {
-        const stored = [...interruptStore.values()].find(
-          (entry) =>
-            entry.generationId === params.generationId &&
-            entry.kind === "auth" &&
-            entry.status === "pending" &&
-            entry.display.authSpec?.integrations?.includes(params.integration),
-        );
-        if (stored) {
-          return stored;
-        }
-        const activeCtx = asTestManager().activeGenerations.get(
-          params.generationId,
-        );
-        const derived = activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
-        return derived?.kind === "auth" &&
-          derived.display.authSpec?.integrations?.includes(params.integration)
-          ? derived
-          : null;
-      },
-    );
+            entry.providerRequestId === params.providerRequestId,
+        ) ?? null
+      );
+    });
+    findPendingAuthInterruptByIntegrationMock.mockImplementation(async (params: any) => {
+      const stored = [...interruptStore.values()].find(
+        (entry) =>
+          entry.generationId === params.generationId &&
+          entry.kind === "auth" &&
+          entry.status === "pending" &&
+          entry.display.authSpec?.integrations?.includes(params.integration),
+      );
+      if (stored) {
+        return stored;
+      }
+      const activeCtx = asTestManager().activeGenerations.get(params.generationId);
+      const derived = activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
+      return derived?.kind === "auth" &&
+        derived.display.authSpec?.integrations?.includes(params.integration)
+        ? derived
+        : null;
+    });
     resolveInterruptMock.mockImplementation(async (params: any) => {
       const derivedMatch = [...asTestManager().activeGenerations.values()]
         .map((ctx) => deriveInterruptFromCtx(ctx))
@@ -1120,9 +1047,7 @@ describe("generationManager transitions", () => {
       const existing =
         interruptStore.get(params.interruptId) ??
         derivedMatch ??
-        [...interruptStore.values()].find(
-          (entry) => entry.id === params.interruptId,
-        ) ??
+        [...interruptStore.values()].find((entry) => entry.id === params.interruptId) ??
         null;
       if (!existing) {
         return null;
@@ -1136,16 +1061,11 @@ describe("generationManager transitions", () => {
       };
       interruptStore.set(resolved.id, resolved);
 
-      const activeCtx = asTestManager().activeGenerations.get(
-        resolved.generationId,
-      );
-      const derivedInterrupt = activeCtx
-        ? deriveInterruptFromCtx(activeCtx)
-        : null;
+      const activeCtx = asTestManager().activeGenerations.get(resolved.generationId);
+      const derivedInterrupt = activeCtx ? deriveInterruptFromCtx(activeCtx) : null;
       if (
         activeCtx &&
-        (activeCtx.currentInterruptId === resolved.id ||
-          derivedInterrupt?.id === resolved.id)
+        (activeCtx.currentInterruptId === resolved.id || derivedInterrupt?.id === resolved.id)
       ) {
         activeCtx.currentInterruptId = undefined;
         activeCtx.pendingApproval = null;
@@ -1153,9 +1073,7 @@ describe("generationManager transitions", () => {
       }
       const nextPending =
         [...interruptStore.values()].find(
-          (entry) =>
-            entry.generationId === resolved.generationId &&
-            entry.status === "pending",
+          (entry) => entry.generationId === resolved.generationId && entry.status === "pending",
         ) ?? null;
       syncInterruptStateMocks(nextPending);
 
@@ -1164,26 +1082,21 @@ describe("generationManager transitions", () => {
     expireInterruptMock.mockImplementation(async (interruptId: string) =>
       resolveInterruptMock({ interruptId, status: "expired" }),
     );
-    cancelInterruptsForGenerationMock.mockImplementation(
-      async (generationId: string) => {
-        for (const interrupt of interruptStore.values()) {
-          if (
-            interrupt.generationId === generationId &&
-            interrupt.status === "pending"
-          ) {
-            interrupt.status = "cancelled";
-            interrupt.resolvedAt = new Date("2026-03-11T15:01:00.000Z");
-          }
+    cancelInterruptsForGenerationMock.mockImplementation(async (generationId: string) => {
+      for (const interrupt of interruptStore.values()) {
+        if (interrupt.generationId === generationId && interrupt.status === "pending") {
+          interrupt.status = "cancelled";
+          interrupt.resolvedAt = new Date("2026-03-11T15:01:00.000Z");
         }
-        const activeCtx = asTestManager().activeGenerations.get(generationId);
-        if (activeCtx) {
-          activeCtx.currentInterruptId = undefined;
-          activeCtx.pendingApproval = null;
-          activeCtx.pendingAuth = null;
-        }
-        syncInterruptStateMocks(null);
-      },
-    );
+      }
+      const activeCtx = asTestManager().activeGenerations.get(generationId);
+      if (activeCtx) {
+        activeCtx.currentInterruptId = undefined;
+        activeCtx.pendingApproval = null;
+        activeCtx.pendingAuth = null;
+      }
+      syncInterruptStateMocks(null);
+    });
     projectInterruptEventMock.mockImplementation((interrupt: any) => ({
       interruptId: interrupt.id,
       generationId: interrupt.generationId,
@@ -1314,10 +1227,7 @@ describe("generationManager transitions", () => {
         {
           header: "Goal",
           question: "What do you want me to ask you about?",
-          options: [
-            { label: "Project task (Recommended)" },
-            { label: "Preferences" },
-          ],
+          options: [{ label: "Project task (Recommended)" }, { label: "Preferences" }],
         },
         {
           header: "Format",
@@ -1403,9 +1313,7 @@ describe("generationManager transitions", () => {
         messages: [
           {
             info: { role: "assistant" },
-            parts: [
-              { type: "tool", tool: "bash", state: { status: "pending" } },
-            ],
+            parts: [{ type: "tool", tool: "bash", state: { status: "pending" } }],
           },
         ],
       }),
@@ -1425,9 +1333,7 @@ describe("generationManager transitions", () => {
       },
     });
 
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const result = await generationManager.cancelGeneration(ctx.id, ctx.userId);
 
@@ -1460,12 +1366,7 @@ describe("generationManager transitions", () => {
     const mgr = asTestManager();
     mgr.activeGenerations.set(ctx.id, ctx);
 
-    const result = await generationManager.submitApproval(
-      ctx.id,
-      "tool-1",
-      "approve",
-      ctx.userId,
-    );
+    const result = await generationManager.submitApproval(ctx.id, "tool-1", "approve", ctx.userId);
 
     expect(result).toBe(true);
     expect(ctx.pendingApproval).toBeNull();
@@ -1499,9 +1400,7 @@ describe("generationManager transitions", () => {
       }),
     );
 
-    const publishedPayloads = (
-      publishGenerationStreamEventMock.mock.calls as unknown[][]
-    )
+    const publishedPayloads = (publishGenerationStreamEventMock.mock.calls as unknown[][])
       .map((call) => call[1] as { payload?: unknown } | undefined)
       .filter((entry): entry is { payload?: unknown } => !!entry)
       .map((entry) => entry.payload);
@@ -1590,9 +1489,7 @@ describe("generationManager transitions", () => {
       "generation:chat-run",
       { generationId: "gen-detached-approval", runMode: "normal_run" },
       expect.objectContaining({
-        jobId: expect.stringContaining(
-          "resume-interrupt-interrupt-detached-approval",
-        ),
+        jobId: expect.stringContaining("resume-interrupt-interrupt-detached-approval"),
       }),
     );
   });
@@ -1686,9 +1583,7 @@ describe("generationManager transitions", () => {
       "generation:chat-run",
       { generationId: "gen-hot-runtime-approval", runMode: "normal_run" },
       expect.objectContaining({
-        jobId: expect.stringContaining(
-          "resume-interrupt-interrupt-hot-runtime-approval",
-        ),
+        jobId: expect.stringContaining("resume-interrupt-interrupt-hot-runtime-approval"),
       }),
     );
   });
@@ -1820,12 +1715,7 @@ describe("generationManager transitions", () => {
       },
     });
 
-    const result = await generationManager.submitApproval(
-      ctx.id,
-      "question-2",
-      "deny",
-      ctx.userId,
-    );
+    const result = await generationManager.submitApproval(ctx.id, "question-2", "deny", ctx.userId);
 
     expect(result).toBe(true);
     expect(updateSetMock).toHaveBeenCalledWith(
@@ -1890,9 +1780,7 @@ describe("generationManager transitions", () => {
   });
 
   it("auto-approves OpenCode permission asks when conversation auto-approve is enabled", async () => {
-    const permissionReplyMock = vi
-      .fn()
-      .mockResolvedValue({ data: true, error: undefined });
+    const permissionReplyMock = vi.fn().mockResolvedValue({ data: true, error: undefined });
     const result = await normalizeOpenCodeActionableEvent({
       autoApprove: true,
       client: {
@@ -1922,9 +1810,7 @@ describe("generationManager transitions", () => {
   });
 
   it("auto-approves allowlisted external directories (/tmp and /app)", async () => {
-    const permissionReplyMock = vi
-      .fn()
-      .mockResolvedValue({ data: true, error: undefined });
+    const permissionReplyMock = vi.fn().mockResolvedValue({ data: true, error: undefined });
     const result = await normalizeOpenCodeActionableEvent({
       autoApprove: false,
       client: {
@@ -1954,9 +1840,7 @@ describe("generationManager transitions", () => {
   });
 
   it("does not auto-answer OpenCode questions when autoApprove is enabled", async () => {
-    const questionReplyMock = vi
-      .fn()
-      .mockResolvedValue({ data: true, error: undefined });
+    const questionReplyMock = vi.fn().mockResolvedValue({ data: true, error: undefined });
     const client = {
       permission: {
         reply: vi.fn(),
@@ -2006,12 +1890,8 @@ describe("generationManager transitions", () => {
   });
 
   it("queues OpenCode questions with manager progress state", async () => {
-    const questionReplyMock = vi
-      .fn()
-      .mockResolvedValue({ data: true, error: undefined });
-    const questionRejectMock = vi
-      .fn()
-      .mockResolvedValue({ data: true, error: undefined });
+    const questionReplyMock = vi.fn().mockResolvedValue({ data: true, error: undefined });
+    const questionRejectMock = vi.fn().mockResolvedValue({ data: true, error: undefined });
     const ctx = createCtx({
       autoApprove: true,
       runtimeId: "runtime-question",
@@ -2025,15 +1905,10 @@ describe("generationManager transitions", () => {
     });
     const mgr = asTestManager();
     const decisionFlow = (mgr as any).decisionFlow;
-    const requestApprovalSpy = vi.spyOn(
-      decisionFlow,
-      "requestRuntimeApproval",
-    );
-    vi.spyOn(decisionFlow, "waitForRuntimeApprovalDecision").mockResolvedValue(
-      {
-        decision: "deny",
-      },
-    );
+    const requestApprovalSpy = vi.spyOn(decisionFlow, "requestRuntimeApproval");
+    vi.spyOn(decisionFlow, "waitForRuntimeApprovalDecision").mockResolvedValue({
+      decision: "deny",
+    });
     const request = {
       id: "question-request-manual",
       sessionID: "session-1",
@@ -2064,17 +1939,20 @@ describe("generationManager transitions", () => {
         properties: request,
       },
     });
-    await mgr.runtimeCoordinator.handleRuntimeActionableEvent(ctx, normalizedQuestion, (runtimeRequest: any) =>
-      sendOpenCodeRuntimeDecision(
-        {
-          permission: { reply: vi.fn() },
-          question: {
-            reply: questionReplyMock,
-            reject: questionRejectMock,
+    await mgr.runtimeCoordinator.handleRuntimeActionableEvent(
+      ctx,
+      normalizedQuestion,
+      (runtimeRequest: any) =>
+        sendOpenCodeRuntimeDecision(
+          {
+            permission: { reply: vi.fn() },
+            question: {
+              reply: questionReplyMock,
+              reject: questionRejectMock,
+            },
           },
-        },
-        runtimeRequest,
-      ),
+          runtimeRequest,
+        ),
     );
 
     expect(questionReplyMock).not.toHaveBeenCalled();
@@ -2122,9 +2000,7 @@ describe("generationManager transitions", () => {
       sessionId: "session-durable",
       sandboxId: "sandbox-durable",
       sandbox: {
-        execute: vi
-          .fn()
-          .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+        execute: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
         writeFile: vi.fn().mockResolvedValue(undefined),
         teardown: teardownMock,
       },
@@ -2221,14 +2097,10 @@ describe("generationManager transitions", () => {
     });
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
     mgr.activeGenerations.set(ctx.id, ctx);
     generationFindFirstMock.mockImplementation(async (input?: unknown) => {
-      const request = input as
-        | { with?: { conversation?: boolean } }
-        | undefined;
+      const request = input as { with?: { conversation?: boolean } } | undefined;
       if (request?.with?.conversation) {
         return {
           id: ctx.id,
@@ -2257,9 +2129,7 @@ describe("generationManager transitions", () => {
     await generationManager.processGenerationTimeout(ctx.id, "approval");
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
     expect(ctx.completionReason).toBe("approval_timeout");
-    expect(ctx.errorMessage).toBe(
-      "Approval request expired before the run could continue.",
-    );
+    expect(ctx.errorMessage).toBe("Approval request expired before the run could continue.");
   });
 
   it("accepts an auth interrupt and resumes persisted generation state", async () => {
@@ -2284,12 +2154,7 @@ describe("generationManager transitions", () => {
       },
     });
 
-    const first = await generationManager.submitAuthResult(
-      ctx.id,
-      "slack",
-      true,
-      ctx.userId,
-    );
+    const first = await generationManager.submitAuthResult(ctx.id, "slack", true, ctx.userId);
     expect(first).toBe(true);
 
     expect(updateSetMock).toHaveBeenCalledWith(
@@ -2379,9 +2244,7 @@ describe("generationManager transitions", () => {
       "generation:chat-run",
       { generationId: "gen-detached-auth", runMode: "normal_run" },
       expect.objectContaining({
-        jobId: expect.stringContaining(
-          "resume-interrupt-interrupt-detached-auth",
-        ),
+        jobId: expect.stringContaining("resume-interrupt-interrupt-detached-auth"),
       }),
     );
   });
@@ -2402,10 +2265,7 @@ describe("generationManager transitions", () => {
     });
     coworkerRunFindFirstMock.mockResolvedValueOnce(null);
 
-    const resumed = await generationManager.resumeGeneration(
-      "gen-resume",
-      "user-1",
-    );
+    const resumed = await generationManager.resumeGeneration("gen-resume", "user-1");
 
     expect(resumed).toBe(true);
     expect(queueAddMock).toHaveBeenCalledWith(
@@ -2457,16 +2317,12 @@ describe("generationManager transitions", () => {
       cancelRequestedAt: null,
     }));
 
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     await generationManager.processGenerationTimeout(ctx.id, "auth");
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
     expect(ctx.completionReason).toBe("auth_timeout");
-    expect(ctx.errorMessage).toBe(
-      "Authentication request expired before the run could continue.",
-    );
+    expect(ctx.errorMessage).toBe("Authentication request expired before the run could continue.");
   });
 
   it("starts a new generation and enqueues background run", async () => {
@@ -2542,8 +2398,7 @@ describe("generationManager transitions", () => {
     expect(generationInsert.remainingRunMs).toBe(60_000);
     expect(generationInsert.executionPolicy?.debugRunDeadlineMs).toBe(60_000);
     expect(generationInsert.deadlineAt).toBeInstanceOf(Date);
-    const deadlineDeltaMs =
-      generationInsert.deadlineAt!.getTime() - startedAtMs;
+    const deadlineDeltaMs = generationInsert.deadlineAt!.getTime() - startedAtMs;
     expect(deadlineDeltaMs).toBeGreaterThanOrEqual(60_000);
     expect(deadlineDeltaMs).toBeLessThan(61_000);
   });
@@ -2667,12 +2522,8 @@ describe("generationManager transitions", () => {
       expect.any(Object),
     );
     const metadataUpdateCall = updateSetMock.mock.calls.find(
-      ([values]) =>
-        typeof values?.name === "string" &&
-        typeof values?.description === "string",
-    )?.[0] as
-      | { name: string; description: string; username?: string }
-      | undefined;
+      ([values]) => typeof values?.name === "string" && typeof values?.description === "string",
+    )?.[0] as { name: string; description: string; username?: string } | undefined;
 
     expect(metadataUpdateCall).toMatchObject({
       name: "Follow up with new inbound leads after every sales call",
@@ -2686,10 +2537,7 @@ describe("generationManager transitions", () => {
   it("returns an empty queued-message list when conversation no longer exists", async () => {
     conversationFindFirstMock.mockResolvedValue(null);
 
-    const result = await generationManager.listConversationQueuedMessages(
-      "conv-missing",
-      "user-1",
-    );
+    const result = await generationManager.listConversationQueuedMessages("conv-missing", "user-1");
 
     expect(result).toEqual([]);
     expect(conversationQueuedMessageFindManyMock).not.toHaveBeenCalled();
@@ -2774,12 +2622,10 @@ describe("generationManager transitions", () => {
   });
 
   it("processes queued messages for coworker conversations once idle", async () => {
-    const startGenerationSpy = vi
-      .spyOn(generationManager, "startGeneration")
-      .mockResolvedValue({
-        generationId: "gen-next",
-        conversationId: "conv-coworker-run",
-      });
+    const startGenerationSpy = vi.spyOn(generationManager, "startGeneration").mockResolvedValue({
+      generationId: "gen-next",
+      conversationId: "conv-coworker-run",
+    });
 
     conversationFindFirstMock.mockResolvedValueOnce({
       id: "conv-coworker-run",
@@ -2799,9 +2645,7 @@ describe("generationManager transitions", () => {
       },
     ]);
 
-    await generationManager.processConversationQueuedMessages(
-      "conv-coworker-run",
-    );
+    await generationManager.processConversationQueuedMessages("conv-coworker-run");
 
     expect(startGenerationSpy).toHaveBeenCalledWith({
       conversationId: "conv-coworker-run",
@@ -2926,10 +2770,7 @@ describe("generationManager transitions", () => {
       runMode: "normal_run",
     });
 
-    expect(runQueuedGenerationSpy).toHaveBeenCalledWith(
-      "gen-self-heal",
-      "normal_run",
-    );
+    expect(runQueuedGenerationSpy).toHaveBeenCalledWith("gen-self-heal", "normal_run");
   });
 
   it("skips queued generation self-heal when another process already holds the lease", async () => {
@@ -2966,16 +2807,12 @@ describe("generationManager transitions", () => {
     const previousNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = "development";
     const expectedDelayMs =
-      1_000 +
-      Number.parseInt(process.env.GEN_QUEUE_SELF_HEAL_DELAY_MS ?? "5000", 10);
+      1_000 + Number.parseInt(process.env.GEN_QUEUE_SELF_HEAL_DELAY_MS ?? "5000", 10);
 
     try {
       const mgr = asTestManager();
       const selfHealSpy = vi
-        .spyOn(
-          (mgr as any).generationRunQueue as never,
-          "runQueuedGenerationSelfHealIfStalled",
-        )
+        .spyOn((mgr as any).generationRunQueue as never, "runQueuedGenerationSelfHealIfStalled")
         .mockResolvedValue(undefined);
 
       (mgr as any).generationRunQueue.scheduleQueuedGenerationSelfHeal(
@@ -2999,9 +2836,7 @@ describe("generationManager transitions", () => {
   });
   it("rehydrates queued file attachments into generation context", async () => {
     const mgr = asTestManager();
-    const runSpy = vi
-      .spyOn((mgr as any).turnRunner, "runGeneration")
-      .mockResolvedValue(undefined);
+    const runSpy = vi.spyOn((mgr as any).turnRunner, "runGeneration").mockResolvedValue(undefined);
     const queuedAttachment = {
       name: "questionnaire.pdf",
       mimeType: "application/pdf",
@@ -3048,9 +2883,7 @@ describe("generationManager transitions", () => {
 
   it("rehydrates coworker ids for queued coworker generations", async () => {
     const mgr = asTestManager();
-    const runSpy = vi
-      .spyOn((mgr as any).turnRunner, "runGeneration")
-      .mockResolvedValue(undefined);
+    const runSpy = vi.spyOn((mgr as any).turnRunner, "runGeneration").mockResolvedValue(undefined);
 
     generationFindFirstMock.mockResolvedValueOnce({
       id: "gen-coworker-queued",
@@ -3111,9 +2944,7 @@ describe("generationManager transitions", () => {
 
   it("skips queued generation rehydration when the runtime has been rebound to another generation", async () => {
     const mgr = asTestManager();
-    const runSpy = vi
-      .spyOn((mgr as any).turnRunner, "runGeneration")
-      .mockResolvedValue(undefined);
+    const runSpy = vi.spyOn((mgr as any).turnRunner, "runGeneration").mockResolvedValue(undefined);
 
     generationFindFirstMock.mockResolvedValueOnce({
       id: "gen-stale",
@@ -3181,15 +3012,13 @@ describe("generationManager transitions", () => {
 
     await generationManager.processPreparingStuckCheck("gen-stuck");
 
-    expect(logServerEvent).toHaveBeenCalledWith(
-      "warn",
-      "GENERATION_PREPARING_STUCK_DETECTED",
+    expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
+        event: "GENERATION_PREPARING_STUCK_DETECTED",
         generationId: "gen-stuck",
         conversationId: "conv-stuck",
         userId: "user-1",
       }),
-      expect.any(Object),
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [calledUrl] = fetchMock.mock.calls[0] as [string];
@@ -3451,9 +3280,7 @@ describe("generationManager transitions", () => {
         model: "anthropic/claude-sonnet-4-6",
         authSource: "user",
       }),
-    ).rejects.toThrow(
-      'Model provider "anthropic" does not support auth source "user".',
-    );
+    ).rejects.toThrow('Model provider "anthropic" does not support auth source "user".');
   });
 
   it("starts coworker generation and keeps coworker context fields", async () => {
@@ -3590,9 +3417,7 @@ describe("generationManager transitions", () => {
       ],
     });
 
-    const events = await collectEvents(
-      generationManager.subscribeToGeneration("gen-db", "user-1"),
-    );
+    const events = await collectEvents(generationManager.subscribeToGeneration("gen-db", "user-1"));
 
     expect(events).toEqual([
       { type: "text", content: "hi" },
@@ -3827,19 +3652,11 @@ describe("generationManager transitions", () => {
 
   it("dispatches runGeneration to session reset and opencode backend", async () => {
     const mgr = asTestManager();
-    const resetSpy = vi
-      .spyOn(mgr, "handleSessionReset")
-      .mockResolvedValue(undefined);
-    const opencodeSpy = vi
-      .spyOn(mgr, "runRuntimeGeneration")
-      .mockResolvedValue(undefined);
+    const resetSpy = vi.spyOn(mgr, "handleSessionReset").mockResolvedValue(undefined);
+    const opencodeSpy = vi.spyOn(mgr, "runRuntimeGeneration").mockResolvedValue(undefined);
 
-    await mgr.runGeneration(
-      createCtx({ userMessageContent: " /new ", backendType: "runtime" }),
-    );
-    await mgr.runGeneration(
-      createCtx({ userMessageContent: "hello", backendType: "runtime" }),
-    );
+    await mgr.runGeneration(createCtx({ userMessageContent: " /new ", backendType: "runtime" }));
+    await mgr.runGeneration(createCtx({ userMessageContent: "hello", backendType: "runtime" }));
 
     expect(resetSpy).toHaveBeenCalledTimes(1);
     expect(opencodeSpy).toHaveBeenCalledTimes(1);
@@ -3875,9 +3692,7 @@ describe("generationManager transitions", () => {
   });
 
   it("auto-collects only sandbox files mentioned in final answer text", async () => {
-    insertReturningMock.mockResolvedValueOnce([
-      { id: "msg-assistant-files-1" },
-    ]);
+    insertReturningMock.mockResolvedValueOnce([{ id: "msg-assistant-files-1" }]);
     vi.mocked(collectNewSandboxFiles).mockResolvedValue([
       {
         path: "/app/QUESTIONNAIRE_RCP_rempli.pdf",
@@ -3917,18 +3732,12 @@ describe("generationManager transitions", () => {
         path: "/app/QUESTIONNAIRE_RCP_rempli.pdf",
       }),
     );
-    expect(ctx.uploadedSandboxFileIds?.has("sandbox-file-mentioned")).toBe(
-      true,
-    );
-    expect(ctx.sentFilePaths?.has("/app/QUESTIONNAIRE_RCP_rempli.pdf")).toBe(
-      true,
-    );
+    expect(ctx.uploadedSandboxFileIds?.has("sandbox-file-mentioned")).toBe(true);
+    expect(ctx.sentFilePaths?.has("/app/QUESTIONNAIRE_RCP_rempli.pdf")).toBe(true);
   });
 
   it("does not auto-collect sandbox files when none are mentioned in final answer text", async () => {
-    insertReturningMock.mockResolvedValueOnce([
-      { id: "msg-assistant-files-2" },
-    ]);
+    insertReturningMock.mockResolvedValueOnce([{ id: "msg-assistant-files-2" }]);
     vi.mocked(collectNewSandboxFiles).mockResolvedValue([
       {
         path: "/app/questionnaire-rcp-pdf.template.json",
@@ -3992,9 +3801,7 @@ describe("generationManager transitions", () => {
     const mgr = asTestManager();
     await mgr.finishGeneration(ctx, "error");
 
-    const publishedPayloads = (
-      publishGenerationStreamEventMock.mock.calls as unknown[][]
-    )
+    const publishedPayloads = (publishGenerationStreamEventMock.mock.calls as unknown[][])
       .map(([, envelope]) => (envelope as { payload?: unknown }).payload)
       .filter(Boolean);
 
@@ -4038,12 +3845,7 @@ describe("generationManager transitions", () => {
     });
 
     await expect(
-      generationManager.submitApproval(
-        "gen-denied",
-        "tool-1",
-        "approve",
-        "other-user",
-      ),
+      generationManager.submitApproval("gen-denied", "tool-1", "approve", "other-user"),
     ).rejects.toThrow("Access denied");
 
     generationFindFirstMock.mockResolvedValueOnce({
@@ -4065,12 +3867,7 @@ describe("generationManager transitions", () => {
   });
 
   it("handles submitAuthResult guard paths and cancellation path", async () => {
-    const missing = await generationManager.submitAuthResult(
-      "missing",
-      "slack",
-      true,
-      "user-1",
-    );
+    const missing = await generationManager.submitAuthResult("missing", "slack", true, "user-1");
     expect(missing).toBe(false);
 
     const mgr = asTestManager();
@@ -4099,12 +3896,7 @@ describe("generationManager transitions", () => {
         userId: ctx.userId,
       },
     });
-    const noPending = await generationManager.submitAuthResult(
-      ctx.id,
-      "slack",
-      true,
-      ctx.userId,
-    );
+    const noPending = await generationManager.submitAuthResult(ctx.id, "slack", true, ctx.userId);
     expect(noPending).toBe(false);
 
     const ctxWithPendingAuth = createCtx({
@@ -4117,9 +3909,7 @@ describe("generationManager transitions", () => {
       },
     });
     mgr.activeGenerations.set(ctxWithPendingAuth.id, ctxWithPendingAuth);
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
     generationFindFirstMock.mockResolvedValueOnce({
       id: ctxWithPendingAuth.id,
       conversationId: ctxWithPendingAuth.conversationId,
@@ -4270,9 +4060,7 @@ describe("generationManager transitions", () => {
       }),
     );
 
-    const publishedPayloads = (
-      publishGenerationStreamEventMock.mock.calls as unknown[][]
-    )
+    const publishedPayloads = (publishGenerationStreamEventMock.mock.calls as unknown[][])
       .map((call) => call[1] as { payload?: unknown } | undefined)
       .filter((entry): entry is { payload?: unknown } => !!entry)
       .map((entry) => entry.payload);
@@ -4310,16 +4098,13 @@ describe("generationManager transitions", () => {
       },
     });
 
-    const first = await generationManager.requestPluginApproval(
-      "gen-idempotent-plugin",
-      {
-        providerRequestId: "provider-request-1",
-        toolInput: { command: "slack send -c C123 -t hi" },
-        integration: "slack",
-        operation: "send",
-        command: "slack send -c C123 -t hi",
-      },
-    );
+    const first = await generationManager.requestPluginApproval("gen-idempotent-plugin", {
+      providerRequestId: "provider-request-1",
+      toolInput: { command: "slack send -c C123 -t hi" },
+      integration: "slack",
+      operation: "send",
+      command: "slack send -c C123 -t hi",
+    });
     const duplicatePending = await generationManager.requestPluginApproval(
       "gen-idempotent-plugin",
       {
@@ -4365,9 +4150,7 @@ describe("generationManager transitions", () => {
       sandboxId: "sandbox-plugin-park",
       approvalHotWaitMs: 1_000,
       sandbox: {
-        execute: vi
-          .fn()
-          .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+        execute: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
         writeFile: vi.fn().mockResolvedValue(undefined),
         teardown: teardownMock,
       },
@@ -4412,9 +4195,9 @@ describe("generationManager transitions", () => {
       }),
     );
 
-    const publishedPayloads = (
-      publishGenerationStreamEventMock.mock.calls as unknown[][]
-    ).map((call) => (call[1] as { payload?: unknown } | undefined)?.payload);
+    const publishedPayloads = (publishGenerationStreamEventMock.mock.calls as unknown[][]).map(
+      (call) => (call[1] as { payload?: unknown } | undefined)?.payload,
+    );
     expect(publishedPayloads).toContainEqual(
       expect.objectContaining({
         type: "status_change",
@@ -4439,9 +4222,7 @@ describe("generationManager transitions", () => {
       sandboxId: "sandbox-plugin-park-timeout",
       approvalHotWaitMs: 1_000,
       sandbox: {
-        execute: vi
-          .fn()
-          .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+        execute: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
         writeFile: vi.fn().mockResolvedValue(undefined),
         teardown: teardownMock,
       },
@@ -4457,9 +4238,7 @@ describe("generationManager transitions", () => {
         autoApprove: false,
       },
     });
-    saveConversationSessionSnapshotMock.mockImplementationOnce(
-      () => new Promise(() => {}),
-    );
+    saveConversationSessionSnapshotMock.mockImplementationOnce(() => new Promise(() => {}));
 
     const result = await generationManager.requestPluginApproval(ctx.id, {
       providerRequestId: "provider-plugin-park-timeout",
@@ -4474,9 +4253,7 @@ describe("generationManager transitions", () => {
     vi.useRealTimers();
 
     expect(teardownMock).not.toHaveBeenCalled();
-    expect(suspendRuntimeMock).not.toHaveBeenCalledWith(
-      "runtime-plugin-park-timeout",
-    );
+    expect(suspendRuntimeMock).not.toHaveBeenCalledWith("runtime-plugin-park-timeout");
     expect(asTestManager().activeGenerations.has(ctx.id)).toBe(false);
     expect(updateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -4514,15 +4291,12 @@ describe("generationManager transitions", () => {
       },
     });
 
-    const result = await generationManager.requestPluginApproval(
-      "gen-detached",
-      {
-        toolInput: { command: "slack send -c C123 -t hi" },
-        integration: "slack",
-        operation: "send",
-        command: "slack send -c C123 -t hi",
-      },
-    );
+    const result = await generationManager.requestPluginApproval("gen-detached", {
+      toolInput: { command: "slack send -c C123 -t hi" },
+      integration: "slack",
+      operation: "send",
+      command: "slack send -c C123 -t hi",
+    });
 
     expect(result.decision).toBe("pending");
     expect(publishGenerationStreamEventMock).toHaveBeenCalledWith(
@@ -4565,22 +4339,13 @@ describe("generationManager transitions", () => {
       GITHUB_ACCESS_TOKEN: "gh-token",
       SLACK_ACCESS_TOKEN: "slack-token",
     });
-    vi.mocked(getEnabledIntegrationTypes).mockResolvedValue([
-      "github",
-      "slack",
-    ]);
-    vi.mocked(getCliInstructionsWithCustom).mockResolvedValue(
-      "cli instructions",
-    );
+    vi.mocked(getEnabledIntegrationTypes).mockResolvedValue(["github", "slack"]);
+    vi.mocked(getCliInstructionsWithCustom).mockResolvedValue("cli instructions");
     vi.mocked(writeSkillsToSandbox).mockResolvedValue(["base-skill"]);
     vi.mocked(writeCoworkerDocumentsToSandbox).mockResolvedValue([]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("skills prompt");
-    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([
-      "github",
-    ]);
-    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue(
-      "integration skills prompt",
-    );
+    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue(["github"]);
+    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("integration skills prompt");
     vi.mocked(syncMemoryFilesToSandbox).mockResolvedValue([]);
     vi.mocked(buildMemorySystemPrompt).mockReturnValue("memory prompt");
     vi.mocked(collectNewSandboxFiles).mockResolvedValue([
@@ -4627,12 +4392,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -4716,10 +4477,7 @@ describe("generationManager transitions", () => {
     expect(vi.mocked(collectNewSandboxFiles)).toHaveBeenCalledWith(
       expect.anything(),
       expect.any(Number),
-      expect.arrayContaining([
-        "/home/user/uploads/image.png",
-        "/home/user/uploads/notes.txt",
-      ]),
+      expect.arrayContaining(["/home/user/uploads/image.png", "/home/user/uploads/notes.txt"]),
     );
     expect(vi.mocked(uploadSandboxFile)).toHaveBeenCalled();
     expect(ctx.usage).toMatchObject({
@@ -4753,9 +4511,7 @@ describe("generationManager transitions", () => {
       timezone: "Europe/Dublin",
     });
 
-    const execMock = vi
-      .fn()
-      .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" });
+    const execMock = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" });
     const promptMock = vi.fn().mockResolvedValue(undefined);
     const subscribeMock = vi.fn().mockResolvedValue({
       stream: asAsyncIterable([
@@ -4773,9 +4529,7 @@ describe("generationManager transitions", () => {
 
     const mgr = asTestManager();
     vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -4790,9 +4544,7 @@ describe("generationManager transitions", () => {
     );
 
     const runtimeEnvWrite = execMock.mock.calls.find(
-      (call) =>
-        typeof call[0] === "string" &&
-        call[0].includes("/app/.cmdclaw/runtime-env.json"),
+      (call) => typeof call[0] === "string" && call[0].includes("/app/.cmdclaw/runtime-env.json"),
     )?.[0] as string | undefined;
     expect(runtimeEnvWrite).toBeTruthy();
     expect(runtimeEnvWrite).toContain("/app/.cmdclaw/runtime-env.sh");
@@ -4805,8 +4557,7 @@ describe("generationManager transitions", () => {
       configurable: true,
     });
 
-    const loadedSkillsDeferred =
-      createDeferred<Array<{ name: string; updatedAt: Date }>>();
+    const loadedSkillsDeferred = createDeferred<Array<{ name: string; updatedAt: Date }>>();
     const customCredsDeferred = createDeferred<any[]>();
     const executorDeferred = createDeferred<ReturnType<
       typeof createExecutorPreparationMock
@@ -4823,17 +4574,11 @@ describe("generationManager transitions", () => {
     vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(collectNewSandboxFiles).mockResolvedValue([]);
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockReturnValue(
-      loadedSkillsDeferred.promise as Promise<
-        Array<{ name: string; updatedAt: Date }>
-      >,
+      loadedSkillsDeferred.promise as Promise<Array<{ name: string; updatedAt: Date }>>,
     );
-    dbMock.query.customIntegrationCredential.findMany.mockReturnValue(
-      customCredsDeferred.promise,
-    );
+    dbMock.query.customIntegrationCredential.findMany.mockReturnValue(customCredsDeferred.promise);
     vi.mocked(prepareExecutorInSandbox).mockReturnValue(
-      executorDeferred.promise as Promise<ReturnType<
-        typeof createExecutorPreparationMock
-      > | null>,
+      executorDeferred.promise as Promise<ReturnType<typeof createExecutorPreparationMock> | null>,
     );
 
     const promptMock = vi.fn().mockResolvedValue(undefined);
@@ -4851,9 +4596,7 @@ describe("generationManager transitions", () => {
 
     const mgr = asTestManager();
     vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -4868,12 +4611,8 @@ describe("generationManager transitions", () => {
 
     await vi.waitFor(() => {
       expect(vi.mocked(prepareExecutorInSandbox)).toHaveBeenCalledTimes(1);
-      expect(
-        vi.mocked(listAccessibleEnabledSkillMetadataForUser),
-      ).toHaveBeenCalledTimes(1);
-      expect(
-        dbMock.query.customIntegrationCredential.findMany,
-      ).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(listAccessibleEnabledSkillMetadataForUser)).toHaveBeenCalledTimes(1);
+      expect(dbMock.query.customIntegrationCredential.findMany).toHaveBeenCalledTimes(1);
     });
     expect(promptMock).not.toHaveBeenCalled();
 
@@ -4905,21 +4644,17 @@ describe("generationManager transitions", () => {
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
     dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
     vi.mocked(prepareExecutorInSandbox).mockReturnValue(
-      executorDeferred.promise as Promise<ReturnType<
-        typeof createExecutorPreparationMock
-      > | null>,
+      executorDeferred.promise as Promise<ReturnType<typeof createExecutorPreparationMock> | null>,
     );
     vi.mocked(writeSkillsToSandbox).mockImplementation(async () => {
       writeSkillsStarted.resolve();
       return [];
     });
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
-    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockImplementation(
-      async () => {
-        writeIntegrationSkillsStarted.resolve();
-        return [];
-      },
-    );
+    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockImplementation(async () => {
+      writeIntegrationSkillsStarted.resolve();
+      return [];
+    });
     vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(collectNewSandboxFiles).mockResolvedValue([]);
 
@@ -4938,9 +4673,7 @@ describe("generationManager transitions", () => {
 
     const mgr = asTestManager();
     vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5021,12 +4754,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5125,12 +4854,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5147,9 +4872,7 @@ describe("generationManager transitions", () => {
     expect(promptMock).toHaveBeenCalledTimes(1);
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
       expect.objectContaining({
-        executorInstructions: expect.stringContaining(
-          "Executor source health after refresh",
-        ),
+        executorInstructions: expect.stringContaining("Executor source health after refresh"),
       }),
     );
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
@@ -5233,12 +4956,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5255,16 +4974,12 @@ describe("generationManager transitions", () => {
     expect(promptMock).toHaveBeenCalledTimes(1);
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
       expect.objectContaining({
-        executorInstructions: expect.stringContaining(
-          "linear-mcp (linear-mcp): unavailable",
-        ),
+        executorInstructions: expect.stringContaining("linear-mcp (linear-mcp): unavailable"),
       }),
     );
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
       expect.objectContaining({
-        executorInstructions: expect.stringContaining(
-          "Do not use `bash` executor CLI commands",
-        ),
+        executorInstructions: expect.stringContaining("Do not use `bash` executor CLI commands"),
       }),
     );
     expect(ctx.errorMessage).toBeUndefined();
@@ -5307,12 +5022,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5373,12 +5084,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5395,13 +5102,10 @@ describe("generationManager transitions", () => {
 
     finalizeDeferred.reject(new Error("oauth reconcile failed"));
     await vi.waitFor(() => {
-      expect(vi.mocked(logServerEvent)).toHaveBeenCalledWith(
-        "error",
-        "EXECUTOR_PREP_FINALIZE_FAILED",
+      expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
         expect.objectContaining({
+          event: "EXECUTOR_PREP_FINALIZE_FAILED",
           error: "oauth reconcile failed",
-        }),
-        expect.objectContaining({
           generationId: "gen-opencode-executor-finalize-failure",
           conversationId: "conv-opencode-executor-finalize-failure",
         }),
@@ -5451,12 +5155,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5472,21 +5172,16 @@ describe("generationManager transitions", () => {
     await mgr.runRuntimeGeneration(ctx);
 
     expect(ctx.errorMessage).toContain("session.messages returned 404");
-    expect(ctx.debugInfo?.originalErrorMessage).toContain(
-      "session.messages returned 404",
-    );
+    expect(ctx.debugInfo?.originalErrorMessage).toContain("session.messages returned 404");
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
-    expect(vi.mocked(logServerEvent)).toHaveBeenCalledWith(
-      "error",
-      "OPENCODE_EMPTY_COMPLETION",
+    expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
       expect.objectContaining({
+        event: "OPENCODE_EMPTY_COMPLETION",
         fallbackMessagesError: "session.messages returned 404",
         fallbackMessagesErrorDetail: expect.stringContaining(
           '"message":"session.messages returned 404"',
         ),
         promptResultDataShape: "object(id)",
-      }),
-      expect.objectContaining({
         generationId: "gen-opencode-empty-completion",
         conversationId: "conv-opencode-empty-completion",
       }),
@@ -5541,12 +5236,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5565,11 +5256,10 @@ describe("generationManager transitions", () => {
     expect(ctx.errorMessage).toBeUndefined();
     expect(statusMock).toHaveBeenCalled();
     expect(finishSpy).toHaveBeenCalledWith(ctx, "completed");
-    expect(vi.mocked(logServerEvent)).not.toHaveBeenCalledWith(
-      "error",
-      "OPENCODE_EMPTY_COMPLETION",
-      expect.anything(),
-      expect.anything(),
+    expect(vi.mocked(logger.error)).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "OPENCODE_EMPTY_COMPLETION",
+      }),
     );
   });
 
@@ -5621,12 +5311,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5645,19 +5331,14 @@ describe("generationManager transitions", () => {
     expect(ctx.completionReason).toBe("broken_runtime_state");
     expect(readFileMock).toHaveBeenCalledWith("/tmp/opencode.log");
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
-    expect(vi.mocked(logServerEvent)).toHaveBeenCalledWith(
-      "error",
-      "OPENCODE_EMPTY_COMPLETION",
+    expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
       expect.objectContaining({
+        event: "OPENCODE_EMPTY_COMPLETION",
         fallbackMessagesError: "{}",
         sessionGetDataShape: "object(id,state)",
         sessionGetDataDetail: expect.stringContaining('"state":"running"'),
-        opencodeLogTail: expect.stringContaining(
-          "fatal: runner exited unexpectedly",
-        ),
+        opencodeLogTail: expect.stringContaining("fatal: runner exited unexpectedly"),
         promptResultDataShape: null,
-      }),
-      expect.objectContaining({
         generationId: "gen-opencode-empty-completion-opaque",
         conversationId: "conv-opencode-empty-completion-opaque",
       }),
@@ -5687,12 +5368,8 @@ describe("generationManager transitions", () => {
     vi.mocked(prepareExecutorInSandbox).mockResolvedValue(null);
     vi.mocked(writeSkillsToSandbox).mockResolvedValue(["base-skill"]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("skills prompt");
-    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([
-      "github",
-    ]);
-    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue(
-      "integration skills prompt",
-    );
+    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue(["github"]);
+    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("integration skills prompt");
     vi.mocked(collectNewSandboxFiles).mockResolvedValue([]);
 
     const writeFileMock = vi.fn().mockImplementation((targetPath: string) => {
@@ -5723,12 +5400,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5771,12 +5444,8 @@ describe("generationManager transitions", () => {
     vi.mocked(prepareExecutorInSandbox).mockResolvedValue(null);
     vi.mocked(writeSkillsToSandbox).mockResolvedValue(["base-skill"]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("skills prompt");
-    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([
-      "github",
-    ]);
-    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue(
-      "integration skills prompt",
-    );
+    vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue(["github"]);
+    vi.mocked(getIntegrationSkillsSystemPrompt).mockReturnValue("integration skills prompt");
     vi.mocked(collectNewSandboxFiles).mockResolvedValue([]);
 
     const writeFileMock = vi.fn().mockImplementation((targetPath: string) => {
@@ -5801,12 +5470,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5857,12 +5522,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5920,12 +5581,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -5946,9 +5603,7 @@ describe("generationManager transitions", () => {
       limit: 20,
     });
     expect(ctx.completionReason).toBe("runtime_error");
-    expect(ctx.errorMessage).toContain(
-      "without producing any assistant output",
-    );
+    expect(ctx.errorMessage).toContain("without producing any assistant output");
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
   });
 
@@ -5962,15 +5617,11 @@ describe("generationManager transitions", () => {
     vi.mocked(getEnabledIntegrationTypes).mockResolvedValue([]);
     vi.mocked(getCliInstructionsWithCustom).mockResolvedValue("");
     const memoryDeferred = createDeferred<[]>();
-    vi.mocked(syncMemoryFilesToSandbox).mockImplementation(
-      () => memoryDeferred.promise,
-    );
+    vi.mocked(syncMemoryFilesToSandbox).mockImplementation(() => memoryDeferred.promise);
     vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
     dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
-    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
-      createExecutorPreparationMock(),
-    );
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(createExecutorPreparationMock());
     vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
@@ -5997,12 +5648,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -6055,9 +5702,7 @@ describe("generationManager transitions", () => {
     });
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "resolveRuntimeFailure").mockResolvedValue("terminal_failed");
     const ctx = createCtx({
       id: "gen-anthropic-missing-key",
@@ -6110,9 +5755,7 @@ describe("generationManager transitions", () => {
 
     const mgr = asTestManager();
     vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -6152,10 +5795,11 @@ describe("generationManager transitions", () => {
     });
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    const resolveRuntimeFailureSpy = vi.spyOn(mgr.runtimeCoordinator as never, "resolveRuntimeFailure");
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    const resolveRuntimeFailureSpy = vi.spyOn(
+      mgr.runtimeCoordinator as never,
+      "resolveRuntimeFailure",
+    );
 
     const ctx = createCtx({
       id: "gen-bootstrap",
@@ -6165,9 +5809,7 @@ describe("generationManager transitions", () => {
     await mgr.runRuntimeGeneration(ctx);
 
     expect(ctx.completionReason).toBe("bootstrap_timeout");
-    expect(ctx.errorMessage).toBe(
-      "Agent preparation timed out after 45 seconds.",
-    );
+    expect(ctx.errorMessage).toBe("Agent preparation timed out after 45 seconds.");
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
     expect(resolveRuntimeFailureSpy).not.toHaveBeenCalled();
   });
@@ -6199,17 +5841,13 @@ describe("generationManager transitions", () => {
       createConversationRuntimeMock({
         promptMock: vi.fn().mockRejectedValue(new Error("stream disconnected")),
         subscribeMock: vi.fn().mockResolvedValue({
-          stream: asAsyncIterable([
-            { type: "server.connected", properties: {} },
-          ]),
+          stream: asAsyncIterable([{ type: "server.connected", properties: {} }]),
         }),
       }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
     const resolveRuntimeFailureSpy = vi
       .spyOn(mgr.runtimeCoordinator as never, "resolveRuntimeFailure")
       .mockResolvedValue("recoverable_live_runtime");
@@ -6283,9 +5921,7 @@ describe("generationManager transitions", () => {
       promptStartedResolve = resolve;
     });
     let rejectPrompt: ((error: Error) => void) | undefined;
-    const upstreamError = new Error(
-      "Internal error: API Error: 400 quota exceeded",
-    );
+    const upstreamError = new Error("Internal error: API Error: 400 quota exceeded");
     const promptMock = vi.fn().mockImplementation(
       () =>
         new Promise((_, reject: (error: Error) => void) => {
@@ -6314,18 +5950,12 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
-    vi.spyOn(mgr.runtimeCoordinator as never, "resolveRuntimeFailure").mockResolvedValue(
-      undefined,
-    );
+    vi.spyOn(mgr.runtimeCoordinator as never, "resolveRuntimeFailure").mockResolvedValue(undefined);
 
     const runPromise = mgr.runRuntimeGeneration(
       createCtx({
@@ -6394,9 +6024,7 @@ describe("generationManager transitions", () => {
         },
       }),
       {
-        getSession: vi
-          .fn()
-          .mockResolvedValue({ data: { id: "session-1" }, error: null }),
+        getSession: vi.fn().mockResolvedValue({ data: { id: "session-1" }, error: null }),
       },
     );
 
@@ -6415,9 +6043,7 @@ describe("generationManager transitions", () => {
       coworkerRunId: "coworker-run-deadline-park",
       deadlineAt: new Date(Date.now() - 1_000),
       sandbox: {
-        execute: vi
-          .fn()
-          .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+        execute: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
         writeFile: vi.fn().mockResolvedValue(undefined),
         teardown: teardownMock,
       },
@@ -6443,9 +6069,9 @@ describe("generationManager transitions", () => {
     expect(teardownMock).toHaveBeenCalledTimes(1);
     expect(suspendRuntimeMock).toHaveBeenCalledWith("runtime-deadline-park");
     expect(mgr.activeGenerations.has(ctx.id)).toBe(false);
-    const publishedPayloads = (
-      publishGenerationStreamEventMock.mock.calls as unknown[][]
-    ).map((call) => (call[1] as { payload?: unknown } | undefined)?.payload);
+    const publishedPayloads = (publishGenerationStreamEventMock.mock.calls as unknown[][]).map(
+      (call) => (call[1] as { payload?: unknown } | undefined)?.payload,
+    );
     expect(publishedPayloads).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -6477,19 +6103,14 @@ describe("generationManager transitions", () => {
       sandboxId: "sandbox-deadline-park-timeout",
       deadlineAt: new Date(Date.now() - 1_000),
       sandbox: {
-        execute: vi
-          .fn()
-          .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+        execute: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
         writeFile: vi.fn().mockResolvedValue(undefined),
         teardown: teardownMock,
       },
     });
     mgr.activeGenerations.set(ctx.id, ctx);
 
-    const parkPromise = (mgr as any).parkGenerationForRunDeadline(
-      ctx,
-      runtime.harnessClient,
-    );
+    const parkPromise = (mgr as any).parkGenerationForRunDeadline(ctx, runtime.harnessClient);
 
     await vi.advanceTimersByTimeAsync(20_100);
     await parkPromise;
@@ -6522,9 +6143,7 @@ describe("generationManager transitions", () => {
     vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
     dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
-    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
-      createExecutorPreparationMock(),
-    );
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(createExecutorPreparationMock());
     vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
@@ -6543,9 +6162,7 @@ describe("generationManager transitions", () => {
     const parkSpy = vi
       .spyOn(mgr as never, "parkGenerationForRunDeadline")
       .mockResolvedValue(undefined);
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     await mgr.runRuntimeGeneration(
       createCtx({
@@ -6574,9 +6191,7 @@ describe("generationManager transitions", () => {
     vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
     dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
-    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
-      createExecutorPreparationMock(),
-    );
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(createExecutorPreparationMock());
     vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
@@ -6597,9 +6212,7 @@ describe("generationManager transitions", () => {
     const parkSpy = vi
       .spyOn(mgr as never, "parkGenerationForRunDeadline")
       .mockResolvedValue(undefined);
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const runPromise = mgr.runRuntimeGeneration(
       createCtx({
@@ -6632,9 +6245,7 @@ describe("generationManager transitions", () => {
     vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
     dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
-    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
-      createExecutorPreparationMock(),
-    );
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(createExecutorPreparationMock());
     vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
@@ -6670,9 +6281,11 @@ describe("generationManager transitions", () => {
           data: { "session-1": { type: "busy" } },
           error: null,
         }),
-        readFile: vi.fn().mockResolvedValue(
-          "user prompt: do not persist\n[OpenCode][EVENT] type=server.connected\n",
-        ),
+        readFile: vi
+          .fn()
+          .mockResolvedValue(
+            "user prompt: do not persist\n[OpenCode][EVENT] type=server.connected\n",
+          ),
       }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
     );
 
@@ -6680,9 +6293,7 @@ describe("generationManager transitions", () => {
     const parkSpy = vi
       .spyOn(mgr as never, "parkGenerationForRunDeadline")
       .mockResolvedValue(undefined);
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const ctx = createCtx({
       id: "gen-no-progress",
@@ -6717,9 +6328,7 @@ describe("generationManager transitions", () => {
       }),
     );
     expect(uploadToS3Mock).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /^runtime-diagnostic-snapshots\/gen-no-progress\/.+\.json$/,
-      ),
+      expect.stringMatching(/^runtime-diagnostic-snapshots\/gen-no-progress\/.+\.json$/),
       expect.any(Buffer),
       "application/json",
     );
@@ -6727,9 +6336,9 @@ describe("generationManager transitions", () => {
       '"reason": "runtime_no_progress_after_prompt"',
     );
     const snapshotBody = uploadToS3Mock.mock.calls[0]?.[1].toString() ?? "";
-    expect(snapshotBody).not.toContain("do not persist this prompt");
-    expect(snapshotBody).not.toContain("do not persist this output");
-    expect(snapshotBody).not.toContain("secret-token");
+    expect(snapshotBody).toContain("do not persist this prompt");
+    expect(snapshotBody).toContain("do not persist this output");
+    expect(snapshotBody).toContain("secret-token");
     expect(finishSpy).toHaveBeenCalledWith(ctx, "error");
     vi.useRealTimers();
   });
@@ -6748,9 +6357,7 @@ describe("generationManager transitions", () => {
     vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
     dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
-    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
-      createExecutorPreparationMock(),
-    );
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(createExecutorPreparationMock());
     vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
@@ -6792,9 +6399,7 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const ctx = createCtx({
       id: "gen-message-error",
@@ -6841,9 +6446,7 @@ describe("generationManager transitions", () => {
     vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
     dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
-    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
-      createExecutorPreparationMock(),
-    );
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(createExecutorPreparationMock());
     vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
@@ -6855,9 +6458,7 @@ describe("generationManager transitions", () => {
       createConversationRuntimeMock({
         promptMock,
         subscribeMock: vi.fn().mockResolvedValue({
-          stream: asAsyncIterableThenHang([
-            { type: "server.connected", properties: {} },
-          ]),
+          stream: asAsyncIterableThenHang([{ type: "server.connected", properties: {} }]),
         }),
         getSessionMock: vi.fn().mockResolvedValue({
           data: {
@@ -6874,9 +6475,7 @@ describe("generationManager transitions", () => {
           data: { "session-1": { type: "busy" } },
           error: null,
         }),
-        readFile: vi.fn().mockResolvedValue(
-          "[OpenCode][EVENT] type=server.connected\n",
-        ),
+        readFile: vi.fn().mockResolvedValue("[OpenCode][EVENT] type=server.connected\n"),
       }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
     );
 
@@ -6884,9 +6483,7 @@ describe("generationManager transitions", () => {
     const parkSpy = vi
       .spyOn(mgr as never, "parkGenerationForRunDeadline")
       .mockResolvedValue(undefined);
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const ctx = createCtx({
       id: "gen-settled-prompt-no-progress",
@@ -6934,9 +6531,7 @@ describe("generationManager transitions", () => {
     vi.mocked(buildMemorySystemPrompt).mockReturnValue("");
     vi.mocked(listAccessibleEnabledSkillMetadataForUser).mockResolvedValue([]);
     dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
-    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(
-      createExecutorPreparationMock(),
-    );
+    vi.mocked(prepareExecutorInSandbox).mockResolvedValue(createExecutorPreparationMock());
     vi.mocked(writeSkillsToSandbox).mockResolvedValue([]);
     vi.mocked(getSkillsSystemPrompt).mockReturnValue("");
     vi.mocked(writeResolvedIntegrationSkillsToSandbox).mockResolvedValue([]);
@@ -7049,9 +6644,7 @@ describe("generationManager transitions", () => {
     const parkSpy = vi
       .spyOn(mgr as never, "parkGenerationForRunDeadline")
       .mockResolvedValue(undefined);
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const ctx = createCtx({
       id: "gen-progress-stalled",
@@ -7090,9 +6683,7 @@ describe("generationManager transitions", () => {
         }),
       }),
     );
-    const snapshotPayload = JSON.parse(
-      uploadToS3Mock.mock.calls[0]?.[1].toString() ?? "{}",
-    ) as {
+    const snapshotPayload = JSON.parse(uploadToS3Mock.mock.calls[0]?.[1].toString() ?? "{}") as {
       reason?: unknown;
       stalledMs?: unknown;
       lastRuntimeProgress?: {
@@ -7139,12 +6730,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
 
     const ctx = createCtx({
       id: "gen-recovery-live",
@@ -7178,16 +6765,12 @@ describe("generationManager transitions", () => {
     });
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     vi.mocked(getOrCreateConversationRuntime).mockResolvedValueOnce(
       createConversationRuntimeMock({
         promptMock: vi.fn().mockResolvedValue(undefined),
-        subscribeMock: vi
-          .fn()
-          .mockResolvedValue({ stream: asAsyncIterable([]) }),
+        subscribeMock: vi.fn().mockResolvedValue({ stream: asAsyncIterable([]) }),
         sessionSource: "created_session",
       }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
     );
@@ -7204,9 +6787,7 @@ describe("generationManager transitions", () => {
     vi.mocked(getOrCreateConversationRuntime).mockResolvedValueOnce(
       createConversationRuntimeMock({
         promptMock: vi.fn().mockResolvedValue(undefined),
-        subscribeMock: vi
-          .fn()
-          .mockResolvedValue({ stream: asAsyncIterable([]) }),
+        subscribeMock: vi.fn().mockResolvedValue({ stream: asAsyncIterable([]) }),
         sessionSource: "restored_snapshot",
       }) as Awaited<ReturnType<typeof getOrCreateConversationRuntime>>,
     );
@@ -7241,9 +6822,7 @@ describe("generationManager transitions", () => {
     const parkSpy = vi
       .spyOn(mgr as never, "parkGenerationForRunDeadline")
       .mockResolvedValue(undefined);
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     await mgr.runRecoveryReattach(
       createCtx({
@@ -7280,9 +6859,7 @@ describe("generationManager transitions", () => {
     const parkSpy = vi
       .spyOn(mgr as never, "parkGenerationForRunDeadline")
       .mockResolvedValue(undefined);
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const runPromise = mgr.runRecoveryReattach(
       createCtx({
@@ -7343,12 +6920,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -7430,12 +7003,8 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
@@ -7475,9 +7044,7 @@ describe("generationManager transitions", () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: "text",
-          text: expect.stringContaining(
-            "/home/user/coworker-documents/wf-1/brief.pdf",
-          ),
+          text: expect.stringContaining("/home/user/coworker-documents/wf-1/brief.pdf"),
         }),
       ]),
     );
@@ -7549,15 +7116,11 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(
-      undefined,
-    );
+    vi.spyOn(mgr, "importIntegrationSkillDraftsFromSandbox").mockResolvedValue(undefined);
     vi.spyOn(mgr.runtimeCoordinator, "handleRuntimeActionableEvent").mockResolvedValue({
       type: "none",
     });
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const ctx = createCtx({
       id: "gen-reasoning",
@@ -7569,19 +7132,13 @@ describe("generationManager transitions", () => {
     await mgr.runRuntimeGeneration(ctx);
 
     expect(finishSpy).toHaveBeenCalledWith(ctx, "completed");
-    const publishedThinkingEvents = (
-      publishGenerationStreamEventMock.mock.calls as unknown[][]
-    )
+    const publishedThinkingEvents = (publishGenerationStreamEventMock.mock.calls as unknown[][])
       .map((call) => call[1] as { payload?: unknown } | undefined)
       .filter((entry): entry is { payload?: unknown } => !!entry)
       .map((entry) => entry.payload)
       .filter(
-        (
-          event,
-        ): event is { type: "thinking"; content: string; thinkingId: string } =>
-          !!event &&
-          typeof event === "object" &&
-          (event as { type?: unknown }).type === "thinking",
+        (event): event is { type: "thinking"; content: string; thinkingId: string } =>
+          !!event && typeof event === "object" && (event as { type?: unknown }).type === "thinking",
       );
     expect(publishedThinkingEvents).toEqual(
       expect.arrayContaining([
@@ -7590,9 +7147,7 @@ describe("generationManager transitions", () => {
       ]),
     );
     expect(ctx.contentParts).toEqual(
-      expect.arrayContaining([
-        { type: "thinking", id: "reason-1", content: "plan more" },
-      ]),
+      expect.arrayContaining([{ type: "thinking", id: "reason-1", content: "plan more" }]),
     );
   });
 
@@ -7681,9 +7236,7 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
 
     const ctx = createCtx({
       id: "gen-resume-interrupt",
@@ -7713,9 +7266,7 @@ describe("generationManager transitions", () => {
       requestID: "permission-request-resume",
       reply: "always",
     });
-    expect(markInterruptAppliedMock).toHaveBeenCalledWith(
-      "interrupt-resume-permission",
-    );
+    expect(markInterruptAppliedMock).toHaveBeenCalledWith("interrupt-resume-permission");
     expect(ctx.resumeInterruptId).toBeNull();
     expect(ctx.currentInterruptId).toBeUndefined();
     expect(updateSetMock).toHaveBeenCalledWith(
@@ -7781,9 +7332,7 @@ describe("generationManager transitions", () => {
         { type: "session.idle", properties: {} },
       ]),
     });
-    const execMock = vi
-      .fn()
-      .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" });
+    const execMock = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" });
     execMock.mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" });
     execMock.mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" });
     execMock.mockResolvedValueOnce({
@@ -7802,9 +7351,7 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
     const ctx = createCtx({
       id: "gen-plugin-resume",
       conversationId: "conv-plugin-resume",
@@ -7850,9 +7397,7 @@ describe("generationManager transitions", () => {
         }),
       }),
     );
-    expect(markInterruptAppliedMock).toHaveBeenCalledWith(
-      "interrupt-plugin-resume",
-    );
+    expect(markInterruptAppliedMock).toHaveBeenCalledWith("interrupt-plugin-resume");
     expect(ctx.contentParts).toContainEqual(
       expect.objectContaining({
         type: "tool_result",
@@ -7925,9 +7470,7 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
     const ctx = createCtx({
       id: "gen-auth-resume",
       conversationId: "conv-auth-resume",
@@ -8029,9 +7572,7 @@ describe("generationManager transitions", () => {
     );
 
     const mgr = asTestManager();
-    const finishSpy = vi
-      .spyOn(mgr, "finishGeneration")
-      .mockResolvedValue(undefined);
+    const finishSpy = vi.spyOn(mgr, "finishGeneration").mockResolvedValue(undefined);
     const ctx = createCtx({
       id: "gen-question-resume",
       conversationId: "conv-question-resume",
@@ -8063,9 +7604,7 @@ describe("generationManager transitions", () => {
       requestID: "question-request-resume",
       answers: [["Beta"]],
     });
-    expect(markInterruptAppliedMock).toHaveBeenCalledWith(
-      "interrupt-question-resume",
-    );
+    expect(markInterruptAppliedMock).toHaveBeenCalledWith("interrupt-question-resume");
     expect(vi.mocked(composeOpencodePromptSpec)).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: "coworker_builder",
@@ -8133,22 +7672,10 @@ describe("generationManager transitions", () => {
     ]);
 
     const mgr = asTestManager();
-    mgr.activeGenerations.set(
-      "gen-stale-running",
-      createCtx({ id: "gen-stale-running" }),
-    );
-    mgr.activeGenerations.set(
-      "gen-stale-approval",
-      createCtx({ id: "gen-stale-approval" }),
-    );
-    mgr.activeGenerations.set(
-      "gen-stale-auth",
-      createCtx({ id: "gen-stale-auth" }),
-    );
-    mgr.activeGenerations.set(
-      "gen-fresh-running",
-      createCtx({ id: "gen-fresh-running" }),
-    );
+    mgr.activeGenerations.set("gen-stale-running", createCtx({ id: "gen-stale-running" }));
+    mgr.activeGenerations.set("gen-stale-approval", createCtx({ id: "gen-stale-approval" }));
+    mgr.activeGenerations.set("gen-stale-auth", createCtx({ id: "gen-stale-auth" }));
+    mgr.activeGenerations.set("gen-fresh-running", createCtx({ id: "gen-fresh-running" }));
 
     const summary = await generationManager.reapStaleGenerations();
 

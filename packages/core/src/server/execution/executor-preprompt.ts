@@ -1,4 +1,4 @@
-import { logServerEvent } from "../utils/observability";
+import { logger } from "../utils/observability";
 import type { RuntimeMcpServer, SandboxHandle } from "../sandbox/core/types";
 import {
   prepareExecutorInSandbox,
@@ -133,15 +133,18 @@ export async function stageExecutorPrePrompt(input: {
             result.oauthSourceStatuses,
           );
           if (sourceHealthInstructions) {
-            executorInstructions = [executorBootstrap?.instructions ?? null, sourceHealthInstructions]
+            executorInstructions = [
+              executorBootstrap?.instructions ?? null,
+              sourceHealthInstructions,
+            ]
               .filter((entry): entry is string => Boolean(entry))
               .join("\n\n");
           }
           if (result.oauthRefreshFailures.length > 0) {
-            logServerEvent(
-              "warn",
-              "EXECUTOR_PREP_REFRESH_PARTIAL_FAILED",
-              {
+            logger.warn({
+              event: "EXECUTOR_PREP_REFRESH_PARTIAL_FAILED",
+              ...input.logContext(),
+              ...{
                 oauthCacheHits: result.oauthCacheHits,
                 oauthRefreshFailureCount: result.oauthRefreshFailures.length,
                 oauthRefreshFailureNamespaces: result.oauthRefreshFailures.map(
@@ -153,8 +156,7 @@ export async function stageExecutorPrePrompt(input: {
                   error: failure.error,
                 })),
               },
-              input.logContext(),
-            );
+            });
           }
           const unavailableSelectedSources =
             input.allowedExecutorSourceIds && input.allowedExecutorSourceIds.length > 0
@@ -164,26 +166,24 @@ export async function stageExecutorPrePrompt(input: {
                     source.status !== "available",
                 )
               : [];
-          logServerEvent(
-            "info",
-            "EXECUTOR_PREP_COMPLETED",
-            {
+          logger.info({
+            event: "EXECUTOR_PREP_COMPLETED",
+            ...input.logContext(),
+            ...{
               oauthCacheHits: result.oauthCacheHits,
               oauthRefreshFailureCount: result.oauthRefreshFailures.length,
               unavailableSelectedSourceCount: unavailableSelectedSources.length,
             },
-            input.logContext(),
-          );
+          });
         } catch (error) {
           console.error("[GenerationManager] Executor OAuth reconcile failed:", error);
-          logServerEvent(
-            "error",
-            "EXECUTOR_PREP_FINALIZE_FAILED",
-            {
+          logger.error({
+            event: "EXECUTOR_PREP_FINALIZE_FAILED",
+            ...input.logContext(),
+            ...{
               error: error instanceof Error ? error.message : String(error),
             },
-            input.logContext(),
-          );
+          });
         } finally {
           completeExecutorPrepare();
         }

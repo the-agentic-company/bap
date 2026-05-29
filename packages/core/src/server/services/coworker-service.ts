@@ -21,7 +21,7 @@ import {
   getRemoteIntegrationCredentials,
   type RemoteIntegrationSource,
 } from "../integrations/remote-integrations";
-import { logServerEvent } from "../utils/observability";
+import { logger } from "../utils/observability";
 import { sanitizeJsonForPostgres, sanitizePostgresText } from "../utils/postgres-json";
 import { generationManager } from "./generation-manager";
 import { generationInterruptService } from "./generation-interrupt-service";
@@ -43,16 +43,10 @@ const ACTIVE_COWORKER_RUN_STATUSES = [
   "paused",
 ] as const;
 const DISABLED_COWORKER_TRIGGER_TYPES = ["gmail.new_email"] as const;
-const TERMINAL_GENERATION_STATUSES = [
-  "completed",
-  "cancelled",
-  "error",
-] as const;
+const TERMINAL_GENERATION_STATUSES = ["completed", "cancelled", "error"] as const;
 const ORPHAN_RUN_GRACE_MS = 2 * 60 * 1000;
 const COWORKER_PREPARING_TIMEOUT_MS = (() => {
-  const seconds = Number(
-    process.env.COWORKER_PREPARING_TIMEOUT_SECONDS ?? "300",
-  );
+  const seconds = Number(process.env.COWORKER_PREPARING_TIMEOUT_SECONDS ?? "300");
   if (!Number.isFinite(seconds) || seconds <= 0) {
     return 5 * 60 * 1000;
   }
@@ -188,9 +182,7 @@ export function isDisabledCoworkerTriggerError(error: unknown): boolean {
   );
 }
 
-export async function reconcileStaleCoworkerRunsForCoworker(
-  coworkerId: string,
-): Promise<void> {
+export async function reconcileStaleCoworkerRunsForCoworker(coworkerId: string): Promise<void> {
   const candidateRuns = await db.query.coworkerRun.findMany({
     where: and(
       eq(coworkerRun.coworkerId, coworkerId),
@@ -216,8 +208,7 @@ export async function reconcileStaleCoworkerRunsForCoworker(
     const gen = run.generation;
     if (!gen) {
       const isLikelyOrphan =
-        run.status === "running" &&
-        Date.now() - run.startedAt.getTime() > ORPHAN_RUN_GRACE_MS;
+        run.status === "running" && Date.now() - run.startedAt.getTime() > ORPHAN_RUN_GRACE_MS;
       if (!isLikelyOrphan) {
         return;
       }
@@ -227,9 +218,7 @@ export async function reconcileStaleCoworkerRunsForCoworker(
         .set({
           status: "error",
           finishedAt: run.finishedAt ?? new Date(),
-          errorMessage:
-            run.errorMessage ??
-            "Coworker run failed before generation could start.",
+          errorMessage: run.errorMessage ?? "Coworker run failed before generation could start.",
         })
         .where(eq(coworkerRun.id, run.id));
 
@@ -241,10 +230,9 @@ export async function reconcileStaleCoworkerRunsForCoworker(
         gen.status as (typeof TERMINAL_GENERATION_STATUSES)[number],
       )
     ) {
-      const pendingInterrupt =
-        await generationInterruptService.getPendingInterruptForGeneration(
-          gen.id,
-        );
+      const pendingInterrupt = await generationInterruptService.getPendingInterruptForGeneration(
+        gen.id,
+      );
       const isPreparingTimeout =
         run.status === "running" &&
         gen.status === "running" &&
@@ -301,16 +289,10 @@ export async function reconcileStaleCoworkerRunsForCoworker(
   await Promise.all(updates);
 }
 
-export async function reconcileStaleCoworkerRunsForCoworkers(
-  coworkerIds: string[],
-): Promise<void> {
-  const uniqueCoworkerIds = [
-    ...new Set(coworkerIds.filter((id) => id.length > 0)),
-  ];
+export async function reconcileStaleCoworkerRunsForCoworkers(coworkerIds: string[]): Promise<void> {
+  const uniqueCoworkerIds = [...new Set(coworkerIds.filter((id) => id.length > 0))];
   await Promise.all(
-    uniqueCoworkerIds.map((coworkerId) =>
-      reconcileStaleCoworkerRunsForCoworker(coworkerId),
-    ),
+    uniqueCoworkerIds.map((coworkerId) => reconcileStaleCoworkerRunsForCoworker(coworkerId)),
   );
 }
 
@@ -328,10 +310,7 @@ async function resolveCoworkerExecutionOptions(params: {
   resolvedRemoteIntegrationSource?: RemoteIntegrationSource;
 }> {
   const { wf, run } = params;
-  const toolAccessMode = normalizeCoworkerToolAccessMode(
-    wf.toolAccessMode,
-    wf.allowedIntegrations,
-  );
+  const toolAccessMode = normalizeCoworkerToolAccessMode(wf.toolAccessMode, wf.allowedIntegrations);
   let allowedIntegrations =
     toolAccessMode === "all"
       ? await getEnabledIntegrationTypes(wf.ownerId)
@@ -356,9 +335,7 @@ async function resolveCoworkerExecutionOptions(params: {
           })
         ).map((entry) => entry.customIntegration.slug)
       : Array.isArray(wf.allowedCustomIntegrations)
-        ? wf.allowedCustomIntegrations.filter(
-            (value): value is string => typeof value === "string",
-          )
+        ? wf.allowedCustomIntegrations.filter((value): value is string => typeof value === "string")
         : [];
   const allowedExecutorSourceIds =
     toolAccessMode === "all"
@@ -374,14 +351,10 @@ async function resolveCoworkerExecutionOptions(params: {
           })
         ).map((entry) => entry.id)
       : Array.isArray(wf.allowedExecutorSourceIds)
-        ? wf.allowedExecutorSourceIds.filter(
-            (value): value is string => typeof value === "string",
-          )
+        ? wf.allowedExecutorSourceIds.filter((value): value is string => typeof value === "string")
         : [];
   const allowedSkillSlugs =
-    toolAccessMode === "all"
-      ? undefined
-      : normalizeCoworkerAllowedSkillSlugs(wf.allowedSkillSlugs);
+    toolAccessMode === "all" ? undefined : normalizeCoworkerAllowedSkillSlugs(wf.allowedSkillSlugs);
   let resolvedRemoteIntegrationSource: RemoteIntegrationSource | undefined;
 
   if (params.remoteIntegrationSource) {
@@ -402,29 +375,24 @@ async function resolveCoworkerExecutionOptions(params: {
       allowedIntegrations = remoteCredentials.enabledIntegrations;
     }
 
-    logServerEvent(
-      "info",
-      "COWORKER_REMOTE_INTEGRATION_SOURCE_SELECTED",
-      {
+    logger.info({
+      event: "COWORKER_REMOTE_INTEGRATION_SOURCE_SELECTED",
+      ...{
+        source: "coworker-service",
+        userId: wf.ownerId,
+      },
+      ...{
         coworkerId: wf.id,
         coworkerRunId: run.id,
         targetEnv: resolvedRemoteIntegrationSource.targetEnv,
         remoteUserId: resolvedRemoteIntegrationSource.remoteUserId,
-        remoteUserEmail:
-          resolvedRemoteIntegrationSource.remoteUserEmail ?? null,
+        remoteUserEmail: resolvedRemoteIntegrationSource.remoteUserEmail ?? null,
         allowedIntegrations: [...allowedIntegrations].toSorted(),
-        attachedTokenEnvVarNames: Object.keys(
-          remoteCredentials.tokens,
-        ).toSorted(),
+        attachedTokenEnvVarNames: Object.keys(remoteCredentials.tokens).toSorted(),
         actorUserId: resolvedRemoteIntegrationSource.requestedByUserId ?? null,
-        actorUserEmail:
-          resolvedRemoteIntegrationSource.requestedByEmail ?? null,
+        actorUserEmail: resolvedRemoteIntegrationSource.requestedByEmail ?? null,
       },
-      {
-        source: "coworker-service",
-        userId: wf.ownerId,
-      },
-    );
+    });
 
     await db.insert(coworkerRunEvent).values({
       coworkerRunId: run.id,
@@ -432,15 +400,11 @@ async function resolveCoworkerExecutionOptions(params: {
       payload: {
         targetEnv: resolvedRemoteIntegrationSource.targetEnv,
         remoteUserId: resolvedRemoteIntegrationSource.remoteUserId,
-        remoteUserEmail:
-          resolvedRemoteIntegrationSource.remoteUserEmail ?? null,
+        remoteUserEmail: resolvedRemoteIntegrationSource.remoteUserEmail ?? null,
         allowedIntegrations: [...allowedIntegrations].toSorted(),
-        attachedTokenEnvVarNames: Object.keys(
-          remoteCredentials.tokens,
-        ).toSorted(),
+        attachedTokenEnvVarNames: Object.keys(remoteCredentials.tokens).toSorted(),
         actorUserId: resolvedRemoteIntegrationSource.requestedByUserId ?? null,
-        actorUserEmail:
-          resolvedRemoteIntegrationSource.requestedByEmail ?? null,
+        actorUserEmail: resolvedRemoteIntegrationSource.requestedByEmail ?? null,
       },
     });
   }
@@ -525,15 +489,11 @@ export async function triggerCoworkerRun(params: {
   const triggerPayload = normalizeTriggerPayload(params.triggerPayload);
   const trustedUserInput = normalizeTrustedUserInput(params.trustedUserInput);
   const isManualRun =
-    Object.keys(triggerPayload).length === 0 ||
-    triggerPayload.source === "manual";
+    Object.keys(triggerPayload).length === 0 || triggerPayload.source === "manual";
 
   const wf = await db.query.coworker.findFirst({
     where: params.userId
-      ? and(
-          eq(coworker.id, params.coworkerId),
-          eq(coworker.ownerId, params.userId),
-        )
+      ? and(eq(coworker.id, params.coworkerId), eq(coworker.ownerId, params.userId))
       : eq(coworker.id, params.coworkerId),
   });
 
@@ -774,12 +734,7 @@ export async function startPendingCoworkerRun(params: {
       status: "running",
       triggerPayload: sanitizeJsonForPostgres(runPayload),
     })
-    .where(
-      and(
-        eq(coworkerRun.id, pendingRun.id),
-        eq(coworkerRun.status, "needs_user_input"),
-      ),
-    )
+    .where(and(eq(coworkerRun.id, pendingRun.id), eq(coworkerRun.status, "needs_user_input")))
     .returning();
 
   if (!claimedRun) {

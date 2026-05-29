@@ -48,6 +48,10 @@ _Avoid_: version
 A browser-originated observability record that describes what the **User** experienced in the client and can be correlated with **Canonical Service Events** by trace id, **Generation**, or conversation identifiers. A **Client Observation** is accepted only through an allowlisted event contract; it can add evidence about page state, stream timing, or visible errors, but it is not the authoritative record of server behavior and is not application state stored in Postgres by default.
 _Avoid_: client log, frontend log, browser log
 
+**Operational Log**:
+A structured process-level diagnostic record used to debug service runtime behavior. An **Operational Log** may include an **Error Diagnostic**, but it is not the authoritative record for a service-owned operation.
+_Avoid_: console log, telemetry event, service event
+
 **Error Diagnostic**:
 A redacted observability summary of an exception or failure, including safe fields such as error name, message, stack, normalized code, category, provider, and upstream status when available. An **Error Diagnostic** preserves operational debugging signal without storing credentials, request bodies, provider payloads, or other forbidden content.
 _Avoid_: raw error, serialized error, error object
@@ -105,7 +109,7 @@ A **Generation** failure where **Runtime Progress** was observed, but the runtim
 _Avoid_: no progress, run deadline, timeout
 
 **Runtime Diagnostic Snapshot**:
-A redacted operational artifact captured when a **Generation** fails in the runtime boundary and ordinary telemetry is insufficient to explain the failure. A **Runtime Diagnostic Snapshot** contains safe runtime state, counters, event types, and pointers needed for debugging, but not prompts, model output, credentials, tool payloads, or file contents.
+A privileged operational artifact captured when a **Generation** fails in the runtime boundary and ordinary telemetry is insufficient to explain the failure. A **Runtime Diagnostic Snapshot** contains bounded runtime probe values, counters, event types, and pointers needed for debugging. Unlike **Operational Logs** and **Canonical Service Events**, it may include raw runtime message fields, provider errors, and log snippets because it is stored behind sensitive debug access rather than emitted into the general observability stream.
 _Avoid_: dump, logs, trace
 
 **Archived Diagnostic Sandbox**:

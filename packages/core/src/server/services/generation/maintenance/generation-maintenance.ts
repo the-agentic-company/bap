@@ -1,7 +1,7 @@
 import { db } from "@cmdclaw/db/client";
 import { coworkerRun, generation } from "@cmdclaw/db/schema";
 import { and, eq, inArray, isNull, lt } from "drizzle-orm";
-import { logServerEvent } from "../../../utils/observability";
+import { logger } from "../../../utils/observability";
 import { generationInterruptService } from "../../generation-interrupt-service";
 import {
   generationLifecyclePolicy,
@@ -48,10 +48,7 @@ export type GenerationMaintenanceDependencies = {
 export class GenerationMaintenance {
   constructor(private readonly deps: GenerationMaintenanceDependencies) {}
 
-  async processGenerationTimeout(
-    generationId: string,
-    kind: GenerationTimeoutKind,
-  ): Promise<void> {
+  async processGenerationTimeout(generationId: string, kind: GenerationTimeoutKind): Promise<void> {
     const genRecord = await db.query.generation.findFirst({
       where: eq(generation.id, generationId),
       with: { conversation: true },
@@ -159,11 +156,15 @@ export class GenerationMaintenance {
       status: genRecord.status,
     };
 
-    logServerEvent("warn", "GENERATION_PREPARING_STUCK_DETECTED", details, {
-      source: "generation-maintenance",
-      generationId: genRecord.id,
-      conversationId: genRecord.conversation.id,
-      userId,
+    logger.warn({
+      event: "GENERATION_PREPARING_STUCK_DETECTED",
+      ...{
+        source: "generation-maintenance",
+        generationId: genRecord.id,
+        conversationId: genRecord.conversation.id,
+        userId,
+      },
+      ...details,
     });
 
     if (!this.deps.hasActiveGeneration(generationId)) {
@@ -200,27 +201,30 @@ export class GenerationMaintenance {
       if (!response.ok) {
         throw new Error(`Kuma push failed (${response.status})`);
       }
-      logServerEvent("warn", "GENERATION_PREPARING_STUCK_KUMA_PUSHED", details, {
-        source: "generation-maintenance",
-        generationId: genRecord.id,
-        conversationId: genRecord.conversation.id,
-        userId,
-      });
-    } catch (error) {
-      logServerEvent(
-        "error",
-        "GENERATION_PREPARING_STUCK_KUMA_PUSH_FAILED",
-        {
-          ...details,
-          error: formatErrorMessage(error),
-        },
-        {
+      logger.warn({
+        event: "GENERATION_PREPARING_STUCK_KUMA_PUSHED",
+        ...{
           source: "generation-maintenance",
           generationId: genRecord.id,
           conversationId: genRecord.conversation.id,
           userId,
         },
-      );
+        ...details,
+      });
+    } catch (error) {
+      logger.error({
+        event: "GENERATION_PREPARING_STUCK_KUMA_PUSH_FAILED",
+        ...{
+          source: "generation-maintenance",
+          generationId: genRecord.id,
+          conversationId: genRecord.conversation.id,
+          userId,
+        },
+        ...{
+          ...details,
+          error: formatErrorMessage(error),
+        },
+      });
     }
   }
 

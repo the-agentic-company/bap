@@ -18,19 +18,19 @@ import {
   providerSupportsAuthSource,
   type ProviderAuthSource,
 } from "../../../lib/provider-auth-source";
-import { normalizeCoworkerAllowedSkillSlugs, splitCoworkerAllowedSkillSlugs } from "../../../lib/coworker-tool-policy";
+import {
+  normalizeCoworkerAllowedSkillSlugs,
+  splitCoworkerAllowedSkillSlugs,
+} from "../../../lib/coworker-tool-policy";
 import { resolveDefaultOpencodeFreeModel } from "../../ai/opencode-models";
 import type { RemoteIntegrationSource } from "../../integrations/remote-integrations";
-import { createTraceId, logServerEvent } from "../../utils/observability";
+import { createTraceId, logger } from "../../utils/observability";
 import { resolveCoworkerBuilderContextByConversation } from "../coworker-builder-service";
 import { generateCoworkerMetadataOnFirstPromptFill } from "../coworker-metadata";
 import { GenerationStartError } from "../generation-start-error";
 import { resolveSelectedPlatformSkillSlugs } from "../platform-skill-service";
 import { conversationRuntimeService } from "../conversation-runtime-service";
-import {
-  createGenerationLifecycle,
-  generationLifecyclePolicy,
-} from "../lifecycle-policy";
+import { createGenerationLifecycle, generationLifecyclePolicy } from "../lifecycle-policy";
 import type { GenerationDebugInfo } from "./types";
 import type { GenerationLifecycleStore } from "./core/lifecycle-store";
 import { checkModelAccessForUser } from "./model-access";
@@ -114,9 +114,7 @@ export class TurnIntake {
     const debugRuntimeNoProgressTimeoutMs =
       params.debugRuntimeNoProgressTimeoutMs === undefined
         ? undefined
-        : resolveRuntimeNoProgressTimeoutMs(
-            params.debugRuntimeNoProgressTimeoutMs,
-          );
+        : resolveRuntimeNoProgressTimeoutMs(params.debugRuntimeNoProgressTimeoutMs);
     const fileAttachments = params.fileAttachments;
     const requestedModel = model?.trim();
     if (requestedModel) {
@@ -143,10 +141,10 @@ export class TurnIntake {
       userId,
       conversationId: params.conversationId,
     };
-    logServerEvent(
-      "info",
-      "START_GENERATION_REQUESTED",
-      {
+    logger.info({
+      event: "START_GENERATION_REQUESTED",
+      ...logContext,
+      ...{
         hasConversationId: Boolean(params.conversationId),
         requestedModel: requestedModel ?? null,
         hasAllowedIntegrations: params.allowedIntegrations !== undefined,
@@ -154,8 +152,7 @@ export class TurnIntake {
         fileAttachmentsCount: fileAttachments?.length ?? 0,
         selectedPlatformSkillCount: params.selectedPlatformSkillSlugs?.length ?? 0,
       },
-      logContext,
-    );
+    });
 
     if (params.conversationId) {
       const existing = await db.query.generation.findFirst({
@@ -185,15 +182,14 @@ export class TurnIntake {
         });
       }
     }
-    logServerEvent(
-      "info",
-      "START_GENERATION_PHASE_DONE",
-      {
+    logger.info({
+      event: "START_GENERATION_PHASE_DONE",
+      ...logContext,
+      ...{
         phase: "active_generation_check",
         elapsedMs: Date.now() - startGenerationStartedAt,
       },
-      logContext,
-    );
+    });
 
     let conv: typeof conversation.$inferSelect;
     let isNewConversation = false;
@@ -270,44 +266,41 @@ export class TurnIntake {
       authSource: resolvedAuthSource,
     });
     if (!accessCheck.allowed) {
-      logServerEvent(
-        "warn",
-        "START_GENERATION_MODEL_ACCESS_DENIED",
-        {
+      logger.warn({
+        event: "START_GENERATION_MODEL_ACCESS_DENIED",
+        ...{ ...logContext, conversationId: conv.id },
+        ...{
           requestedModel: requestedModel ?? null,
           resolvedModel,
           reason: accessCheck.reason,
         },
-        { ...logContext, conversationId: conv.id },
-      );
+      });
       throw new GenerationStartError({
         generationErrorCode: START_GENERATION_ERROR_CODES.MODEL_ACCESS_DENIED,
         rpcCode: "BAD_REQUEST",
         message: accessCheck.userMessage,
       });
     }
-    logServerEvent(
-      "info",
-      "START_GENERATION_PHASE_DONE",
-      {
+    logger.info({
+      event: "START_GENERATION_PHASE_DONE",
+      ...{ ...logContext, conversationId: conv.id },
+      ...{
         phase: "model_access_validated",
         elapsedMs: Date.now() - startGenerationStartedAt,
         resolvedModel,
         resolvedAuthSource,
       },
-      { ...logContext, conversationId: conv.id },
-    );
-    logServerEvent(
-      "info",
-      "START_GENERATION_PHASE_DONE",
-      {
+    });
+    logger.info({
+      event: "START_GENERATION_PHASE_DONE",
+      ...{ ...logContext, conversationId: conv.id },
+      ...{
         phase: "conversation_ready",
         elapsedMs: Date.now() - startGenerationStartedAt,
         resolvedConversationId: conv.id,
         isNewConversation,
       },
-      { ...logContext, conversationId: conv.id },
-    );
+    });
 
     const selectedPlatformSkillSlugs = await resolveSelectedPlatformSkillSlugs(
       params.selectedPlatformSkillSlugs,
@@ -383,16 +376,15 @@ export class TurnIntake {
       }
     }
 
-    logServerEvent(
-      "info",
-      "START_GENERATION_PHASE_DONE",
-      {
+    logger.info({
+      event: "START_GENERATION_PHASE_DONE",
+      ...{ ...logContext, conversationId: conv.id },
+      ...{
         phase: "message_saved",
         elapsedMs: Date.now() - startGenerationStartedAt,
         messageId: userMsg.id,
       },
-      { ...logContext, conversationId: conv.id },
-    );
+    });
 
     if (fileAttachments && fileAttachments.length > 0) {
       try {
@@ -401,26 +393,24 @@ export class TurnIntake {
           messageId: userMsg.id,
           attachments: fileAttachments,
         });
-        logServerEvent(
-          "info",
-          "START_GENERATION_PHASE_DONE",
-          {
+        logger.info({
+          event: "START_GENERATION_PHASE_DONE",
+          ...{ ...logContext, conversationId: conv.id },
+          ...{
             phase: "attachments_uploaded",
             elapsedMs: Date.now() - startGenerationStartedAt,
             fileAttachmentsCount: fileAttachments.length,
           },
-          { ...logContext, conversationId: conv.id },
-        );
+        });
       } catch (err) {
-        logServerEvent(
-          "error",
-          "START_GENERATION_ATTACHMENTS_UPLOAD_FAILED",
-          {
+        logger.error({
+          event: "START_GENERATION_ATTACHMENTS_UPLOAD_FAILED",
+          ...{ ...logContext, conversationId: conv.id },
+          ...{
             elapsedMs: Date.now() - startGenerationStartedAt,
             error: formatErrorMessage(err),
           },
-          { ...logContext, conversationId: conv.id },
-        );
+        });
       }
     }
 
@@ -434,8 +424,7 @@ export class TurnIntake {
       debugRunDeadlineMs: params.debugRunDeadlineMs,
       debugApprovalHotWaitMs,
       debugRuntimeNoProgressTimeoutMs,
-      debugForceRuntimeNoProgressAfterPrompt:
-        params.debugForceRuntimeNoProgressAfterPrompt,
+      debugForceRuntimeNoProgressAfterPrompt: params.debugForceRuntimeNoProgressAfterPrompt,
     });
     const lifecycle = createGenerationLifecycle();
     lifecycle.deadlineAt = new Date(lifecycle.lastRuntimeProgressAt.getTime() + runDeadlineMs);
@@ -464,67 +453,63 @@ export class TurnIntake {
       conversationId: conv.id,
       generationId: genRecord.id,
     });
-    logServerEvent(
-      "info",
-      "START_GENERATION_PHASE_DONE",
-      {
+    logger.info({
+      event: "START_GENERATION_PHASE_DONE",
+      ...{ ...logContext, conversationId: conv.id, generationId: genRecord.id },
+      ...{
         phase: "generation_record_created",
         elapsedMs: Date.now() - startGenerationStartedAt,
         generationId: genRecord.id,
         runtimeId: runtimeBinding.runtimeId,
         turnSeq: runtimeBinding.turnSeq,
       },
-      { ...logContext, conversationId: conv.id, generationId: genRecord.id },
-    );
+    });
 
     await this.deps.lifecycleStore.markConversationGenerationStarted({
       conversationId: conv.id,
       generationId: genRecord.id,
     });
     await this.deps.enqueuePreparingStuckCheck(genRecord.id);
-    logServerEvent(
-      "info",
-      "START_GENERATION_PHASE_DONE",
-      {
+    logger.info({
+      event: "START_GENERATION_PHASE_DONE",
+      ...{ ...logContext, conversationId: conv.id, generationId: genRecord.id },
+      ...{
         phase: "conversation_status_updated",
         elapsedMs: Date.now() - startGenerationStartedAt,
       },
-      { ...logContext, conversationId: conv.id, generationId: genRecord.id },
-    );
+    });
 
     await this.deps.enqueueGenerationRun(genRecord.id, "chat", { traceId });
 
-    logServerEvent(
-      "info",
-      "GENERATION_ENQUEUED",
-      {
+    logger.info({
+      event: "GENERATION_ENQUEUED",
+      ...{
+        source: "generation-manager",
+        traceId,
+        generationId: genRecord.id,
+        conversationId: conv.id,
+        userId,
+      },
+      ...{
         backendType: "runtime",
         delivery: "queue",
         enqueuedAttachmentsCount: fileAttachments?.length ?? 0,
       },
-      {
+    });
+    logger.info({
+      event: "START_GENERATION_RETURNING",
+      ...{
         source: "generation-manager",
         traceId,
         generationId: genRecord.id,
         conversationId: conv.id,
         userId,
       },
-    );
-    logServerEvent(
-      "info",
-      "START_GENERATION_RETURNING",
-      {
+      ...{
         elapsedMs: Date.now() - startGenerationStartedAt,
         generationId: genRecord.id,
       },
-      {
-        source: "generation-manager",
-        traceId,
-        generationId: genRecord.id,
-        conversationId: conv.id,
-        userId,
-      },
-    );
+    });
 
     return {
       generationId: genRecord.id,
@@ -558,9 +543,7 @@ export class TurnIntake {
     const debugRuntimeNoProgressTimeoutMs =
       params.debugRuntimeNoProgressTimeoutMs === undefined
         ? undefined
-        : resolveRuntimeNoProgressTimeoutMs(
-            params.debugRuntimeNoProgressTimeoutMs,
-          );
+        : resolveRuntimeNoProgressTimeoutMs(params.debugRuntimeNoProgressTimeoutMs);
 
     let conv: typeof conversation.$inferSelect;
     let userMessageId: string | null = null;
@@ -636,8 +619,7 @@ export class TurnIntake {
         params.conversationId && params.existingUserMessageId ? content : undefined,
       debugRunDeadlineMs: params.debugRunDeadlineMs,
       debugRuntimeNoProgressTimeoutMs,
-      debugForceRuntimeNoProgressAfterPrompt:
-        params.debugForceRuntimeNoProgressAfterPrompt,
+      debugForceRuntimeNoProgressAfterPrompt: params.debugForceRuntimeNoProgressAfterPrompt,
     });
     const traceId = createTraceId();
     const lifecycle = createGenerationLifecycle();
@@ -676,18 +658,17 @@ export class TurnIntake {
 
     await this.deps.enqueueGenerationRun(genRecord.id, "coworker", { traceId });
 
-    logServerEvent(
-      "info",
-      "COWORKER_GENERATION_ENQUEUED",
-      { delivery: "queue" },
-      {
+    logger.info({
+      event: "COWORKER_GENERATION_ENQUEUED",
+      ...{
         source: "generation-manager",
         traceId,
         generationId: genRecord.id,
         conversationId: conv.id,
         userId,
       },
-    );
+      ...{ delivery: "queue" },
+    });
 
     return {
       generationId: genRecord.id,
@@ -750,10 +731,8 @@ function buildExecutionPolicy(params: {
     queuedUserMessageContent: params.queuedUserMessageContent,
     debugRunDeadlineMs: params.debugRunDeadlineMs,
     debugApprovalHotWaitMs: params.debugApprovalHotWaitMs,
-    debugRuntimeNoProgressTimeoutMs:
-      params.debugRuntimeNoProgressTimeoutMs,
-    debugForceRuntimeNoProgressAfterPrompt:
-      params.debugForceRuntimeNoProgressAfterPrompt,
+    debugRuntimeNoProgressTimeoutMs: params.debugRuntimeNoProgressTimeoutMs,
+    debugForceRuntimeNoProgressAfterPrompt: params.debugForceRuntimeNoProgressAfterPrompt,
   };
 }
 
@@ -798,8 +777,7 @@ function resolveRuntimeNoProgressTimeoutMs(
   if (
     !Number.isInteger(debugRuntimeNoProgressTimeoutMs) ||
     debugRuntimeNoProgressTimeoutMs < 1_000 ||
-    debugRuntimeNoProgressTimeoutMs >
-      generationLifecyclePolicy.runtimeProgressStallMs
+    debugRuntimeNoProgressTimeoutMs > generationLifecyclePolicy.runtimeProgressStallMs
   ) {
     throw new Error(
       `debugRuntimeNoProgressTimeoutMs must be an integer between 1000 and ${generationLifecyclePolicy.runtimeProgressStallMs}`,

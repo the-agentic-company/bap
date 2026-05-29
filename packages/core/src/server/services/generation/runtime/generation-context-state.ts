@@ -1,15 +1,11 @@
-import type {
-  GenerationDebugInfo,
-  GenerationContext,
-  RemoteRunDebugPhase,
-} from "../types";
+import type { GenerationDebugInfo, GenerationContext, RemoteRunDebugPhase } from "../types";
 import type { GenerationLifecycleStore } from "../core/lifecycle-store";
 import type {
   RuntimeFailureClassification,
   GenerationCompletionReason,
   RuntimeProgressKind,
 } from "../../lifecycle-policy";
-import { logServerEvent } from "../../../utils/observability";
+import { logger } from "../../../utils/observability";
 import { generationLifecyclePolicy } from "../../lifecycle-policy";
 import { createSandboxBackend } from "../../../execution/sandbox-backend-adapter";
 import { resolveRuntimeEnvironmentForTurn } from "../../../execution/runtime-env";
@@ -61,10 +57,7 @@ export class GenerationContextState {
     });
   }
 
-  updateDebugInfo(
-    ctx: GenerationContext,
-    patch: Partial<GenerationDebugInfo>,
-  ): void {
+  updateDebugInfo(ctx: GenerationContext, patch: Partial<GenerationDebugInfo>): void {
     const existing = ctx.debugInfo ?? {};
     const remoteRunPatch = patch.remoteRun;
 
@@ -95,9 +88,7 @@ export class GenerationContextState {
         targetEnv: ctx.remoteIntegrationSource.targetEnv,
         remoteUserId: ctx.remoteIntegrationSource.remoteUserId,
         remoteUserEmail: ctx.remoteIntegrationSource.remoteUserEmail ?? null,
-        allowedIntegrations: ctx.allowedIntegrations
-          ? [...ctx.allowedIntegrations]
-          : undefined,
+        allowedIntegrations: ctx.allowedIntegrations ? [...ctx.allowedIntegrations] : undefined,
       },
     });
   }
@@ -122,10 +113,16 @@ export class GenerationContextState {
     });
     this.deps.scheduleSave(ctx);
 
-    logServerEvent(
-      "info",
-      "REMOTE_RUN_PHASE",
-      {
+    logger.info({
+      event: "REMOTE_RUN_PHASE",
+      ...{
+        source: "generation-manager",
+        traceId: ctx.traceId,
+        generationId: ctx.id,
+        conversationId: ctx.conversationId,
+        userId: ctx.userId,
+      },
+      ...{
         phase,
         targetEnv: ctx.remoteIntegrationSource.targetEnv,
         remoteUserId: ctx.remoteIntegrationSource.remoteUserId,
@@ -133,14 +130,7 @@ export class GenerationContextState {
         attachedTokenEnvVarNames: extra?.attachedTokenEnvVarNames ?? null,
         sessionErrorMessage: extra?.sessionErrorMessage ?? null,
       },
-      {
-        source: "generation-manager",
-        traceId: ctx.traceId,
-        generationId: ctx.id,
-        conversationId: ctx.conversationId,
-        userId: ctx.userId,
-      },
-    );
+    });
   }
 
   captureOriginalError(
@@ -170,24 +160,23 @@ export class GenerationContextState {
     }
     this.deps.scheduleSave(ctx);
 
-    logServerEvent(
-      "error",
-      "GENERATION_CAUGHT_ERROR",
-      {
-        phase,
-        originalErrorAt: capturedAt,
-        runtimeFailure: options?.runtimeFailure ?? null,
-        originalErrorMessage: formatted,
-        originalErrorName: error instanceof Error ? error.name : null,
-      },
-      {
+    logger.error({
+      event: "GENERATION_CAUGHT_ERROR",
+      ...{
         source: "generation-manager",
         traceId: ctx.traceId,
         generationId: ctx.id,
         conversationId: ctx.conversationId,
         userId: ctx.userId,
       },
-    );
+      ...{
+        phase,
+        originalErrorAt: capturedAt,
+        runtimeFailure: options?.runtimeFailure ?? null,
+        originalErrorMessage: formatted,
+        originalErrorName: error instanceof Error ? error.name : null,
+      },
+    });
   }
 
   getRemainingRunTimeMs(ctx: Pick<GenerationContext, "deadlineAt">): number {
@@ -195,18 +184,12 @@ export class GenerationContextState {
   }
 
   refreshRemainingRunBudget(ctx: GenerationContext, now = new Date()): number {
-    const remainingRunMs = Math.max(
-      0,
-      ctx.deadlineAt.getTime() - now.getTime(),
-    );
+    const remainingRunMs = Math.max(0, ctx.deadlineAt.getTime() - now.getTime());
     ctx.remainingRunMs = remainingRunMs;
     return remainingRunMs;
   }
 
-  resumeDeadlineFromRemainingBudget(
-    ctx: GenerationContext,
-    now = new Date(),
-  ): Date {
+  resumeDeadlineFromRemainingBudget(ctx: GenerationContext, now = new Date()): Date {
     const remainingRunMs =
       ctx.remainingRunMs && ctx.remainingRunMs > 0
         ? ctx.remainingRunMs
@@ -215,9 +198,7 @@ export class GenerationContextState {
     return ctx.deadlineAt;
   }
 
-  getApprovalHotWaitMs(
-    ctx: Pick<GenerationContext, "approvalHotWaitMs">,
-  ): number {
+  getApprovalHotWaitMs(ctx: Pick<GenerationContext, "approvalHotWaitMs">): number {
     return Math.max(1_000, ctx.approvalHotWaitMs);
   }
 
@@ -236,20 +217,15 @@ export class GenerationContextState {
   async bindRuntimeSandboxToContext(
     ctx: GenerationContext,
     params: {
-      runtimeSandbox: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["sandbox"];
-      runtimeMetadata?: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["metadata"];
+      runtimeSandbox: Awaited<ReturnType<typeof getOrCreateConversationRuntime>>["sandbox"];
+      runtimeMetadata?: Awaited<ReturnType<typeof getOrCreateConversationRuntime>>["metadata"];
       executionEnvironment?: ExecutionEnvironment;
     },
   ): Promise<void> {
     ctx.sandboxId = params.runtimeSandbox.sandboxId;
     ctx.executionEnvironment = params.executionEnvironment;
     ctx.runtimeHarness = params.runtimeMetadata?.runtimeHarness ?? null;
-    ctx.runtimeProtocolVersion =
-      params.runtimeMetadata?.runtimeProtocolVersion ?? null;
+    ctx.runtimeProtocolVersion = params.runtimeMetadata?.runtimeProtocolVersion ?? null;
 
     await this.deps.lifecycleStore.bindRuntimeSandbox({
       generationId: ctx.id,
@@ -265,12 +241,8 @@ export class GenerationContextState {
   async bindRuntimeSessionToContext(
     ctx: GenerationContext,
     params: {
-      runtimeSandbox: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["sandbox"];
-      runtimeMetadata?: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["metadata"];
+      runtimeSandbox: Awaited<ReturnType<typeof getOrCreateConversationRuntime>>["sandbox"];
+      runtimeMetadata?: Awaited<ReturnType<typeof getOrCreateConversationRuntime>>["metadata"];
       executionEnvironment?: ExecutionEnvironment;
       sessionId: string;
     },
@@ -282,9 +254,7 @@ export class GenerationContextState {
   async persistRuntimeSessionBinding(
     ctx: GenerationContext,
     params: {
-      runtimeMetadata?: Awaited<
-        ReturnType<typeof getOrCreateConversationRuntime>
-      >["metadata"];
+      runtimeMetadata?: Awaited<ReturnType<typeof getOrCreateConversationRuntime>>["metadata"];
       sessionId: string;
     },
   ): Promise<void> {

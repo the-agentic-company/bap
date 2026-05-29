@@ -10,18 +10,11 @@ import {
   type CoworkerToolAccessMode,
 } from "../../lib/coworker-tool-policy";
 import { coworker } from "@cmdclaw/db/schema";
-import { logServerEvent } from "../utils/observability";
+import { logger } from "../utils/observability";
 
-const BUILDER_ALLOWED_TRIGGER_TYPES = [
-  "manual",
-  "schedule",
-  "twitter.new_dm",
-] as const;
+const BUILDER_ALLOWED_TRIGGER_TYPES = ["manual", "schedule", "twitter.new_dm"] as const;
 
-const LEGACY_READ_ONLY_TRIGGER_TYPES = [
-  EMAIL_FORWARDED_TRIGGER_TYPE,
-  "gmail.new_email",
-] as const;
+const LEGACY_READ_ONLY_TRIGGER_TYPES = [EMAIL_FORWARDED_TRIGGER_TYPE, "gmail.new_email"] as const;
 
 const modelReferenceSchema = z
   .string()
@@ -268,31 +261,31 @@ export async function resolveCoworkerBuilderContextByConversation(params: {
 }
 
 function buildChangedFields(params: {
-    current: {
-      name: string;
-      description: string | null;
-      username: string | null;
-      prompt: string;
-      model: string;
-      toolAccessMode: CoworkerToolAccessMode;
-      triggerType: string;
-      schedule: unknown;
-      allowedIntegrations: string[];
-      requiresUserInput: boolean;
-      userInputPrompt: string | null;
+  current: {
+    name: string;
+    description: string | null;
+    username: string | null;
+    prompt: string;
+    model: string;
+    toolAccessMode: CoworkerToolAccessMode;
+    triggerType: string;
+    schedule: unknown;
+    allowedIntegrations: string[];
+    requiresUserInput: boolean;
+    userInputPrompt: string | null;
   };
   next: {
-      name: string;
-      description: string | null;
-      username: string | null;
-      prompt: string;
-      model: string;
-      toolAccessMode: CoworkerToolAccessMode;
-      triggerType: string;
-      schedule: unknown;
-      allowedIntegrations: string[];
-      requiresUserInput: boolean;
-      userInputPrompt: string | null;
+    name: string;
+    description: string | null;
+    username: string | null;
+    prompt: string;
+    model: string;
+    toolAccessMode: CoworkerToolAccessMode;
+    triggerType: string;
+    schedule: unknown;
+    allowedIntegrations: string[];
+    requiresUserInput: boolean;
+    userInputPrompt: string | null;
   };
 }): string[] {
   const changed: string[] = [];
@@ -498,7 +491,8 @@ export async function applyCoworkerEdit(params: {
     normalizeCoworkerToolAccessMode(existing.toolAccessMode, existing.allowedIntegrations);
   const nextSchedule =
     params.changes.schedule !== undefined ? params.changes.schedule : (existing.schedule ?? null);
-  const nextRequiresUserInput = params.changes.requiresUserInput ?? existing.requiresUserInput ?? false;
+  const nextRequiresUserInput =
+    params.changes.requiresUserInput ?? existing.requiresUserInput ?? false;
   const nextUserInputPrompt =
     params.changes.userInputPrompt !== undefined
       ? params.changes.userInputPrompt?.trim() || null
@@ -556,7 +550,7 @@ export async function applyCoworkerEdit(params: {
         ? nextSchedule
         : params.changes.schedule !== undefined
           ? params.changes.schedule
-        : (existing.schedule ?? null),
+          : (existing.schedule ?? null),
     allowedIntegrations: normalizedIntegrations ?? (existing.allowedIntegrations as string[]),
     requiresUserInput: nextRequiresUserInput,
     userInputPrompt: nextUserInputPrompt,
@@ -734,19 +728,18 @@ export async function applyCoworkerEdit(params: {
   });
 
   if (!verifiedUnknown) {
-    logServerEvent(
-      "error",
-      "COWORKER_EDIT_VERIFY_FAILED",
-      {
+    logger.error({
+      event: "COWORKER_EDIT_VERIFY_FAILED",
+      ...{
+        source: "coworker-builder-service",
+        userId: params.userId,
+      },
+      ...{
         coworkerId: updated.id,
         changedFields,
         reason: "coworker_missing_after_update",
       },
-      {
-        source: "coworker-builder-service",
-        userId: params.userId,
-      },
-    );
+    });
     return {
       status: "validation_error",
       message: "Coworker edit verification failed",
@@ -761,20 +754,19 @@ export async function applyCoworkerEdit(params: {
     next: nextState,
   });
   if (mismatchedFields.length > 0) {
-    logServerEvent(
-      "error",
-      "COWORKER_EDIT_VERIFY_FAILED",
-      {
+    logger.error({
+      event: "COWORKER_EDIT_VERIFY_FAILED",
+      ...{
+        source: "coworker-builder-service",
+        userId: params.userId,
+      },
+      ...{
         coworkerId: updated.id,
         changedFields,
         mismatchedFields,
         reason: "persisted_fields_mismatched",
       },
-      {
-        source: "coworker-builder-service",
-        userId: params.userId,
-      },
-    );
+    });
     return {
       status: "validation_error",
       message: "Coworker edit verification failed",

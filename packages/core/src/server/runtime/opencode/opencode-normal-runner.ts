@@ -32,15 +32,12 @@ import type {
   SandboxHandle,
 } from "../../sandbox/core/types";
 import { getOrCreateConversationSandbox } from "../../sandbox/core/orchestrator";
-import {
-  buildMemorySystemPrompt,
-  syncMemoryFilesToSandbox,
-} from "../../sandbox/prep/memory-prep";
+import { buildMemorySystemPrompt, syncMemoryFilesToSandbox } from "../../sandbox/prep/memory-prep";
 import {
   getIntegrationSkillsSystemPrompt,
   getSkillsSystemPrompt,
 } from "../../sandbox/prep/skills-prep";
-import { logServerEvent } from "../../utils/observability";
+import { logger } from "../../utils/observability";
 import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
@@ -62,8 +59,7 @@ const OPENCODE_EARLY_STREAM_REATTACH_WAIT_MS = 8_000;
 const OPENCODE_STATUS_POLL_INTERVAL_MS = 500;
 const RUNTIME_NO_PROGRESS_USER_MESSAGE =
   "The runtime stopped responding before producing any output. Please retry.";
-const RUNTIME_PROGRESS_STALLED_USER_MESSAGE =
-  "The runtime stopped making progress. Please retry.";
+const RUNTIME_PROGRESS_STALLED_USER_MESSAGE = "The runtime stopped making progress. Please retry.";
 
 async function probeOpenCodeAssistantMessageError(input: {
   runtimeClient: RuntimeHarnessClient;
@@ -79,10 +75,7 @@ async function probeOpenCodeAssistantMessageError(input: {
   return extractOpenCodeMessageErrorFromSessionMessages(result.data);
 }
 
-type TerminalGenerationStatus = Extract<
-  GenerationStatus,
-  "completed" | "cancelled" | "error"
->;
+type TerminalGenerationStatus = Extract<GenerationStatus, "completed" | "cancelled" | "error">;
 
 type NormalRunnerCallbacks = {
   bootstrapTimeoutMs: number;
@@ -91,10 +84,7 @@ type NormalRunnerCallbacks = {
     ctx: GenerationContext,
     options?: { force?: boolean },
   ) => Promise<boolean>;
-  finishGeneration: (
-    ctx: GenerationContext,
-    status: TerminalGenerationStatus,
-  ) => Promise<void>;
+  finishGeneration: (ctx: GenerationContext, status: TerminalGenerationStatus) => Promise<void>;
   setCompletionReason: (
     ctx: GenerationContext,
     reason: GenerationCompletionReason | null | undefined,
@@ -131,10 +121,7 @@ type NormalRunnerCallbacks = {
       sessionId: string;
     },
   ) => Promise<void>;
-  setSnapshotRestoreAllowance: (
-    ctx: GenerationContext,
-    allowed: boolean,
-  ) => Promise<void>;
+  setSnapshotRestoreAllowance: (ctx: GenerationContext, allowed: boolean) => Promise<void>;
   getRemainingRunTimeMs: (ctx: Pick<GenerationContext, "deadlineAt">) => number;
   parkGenerationForRunDeadline: (
     ctx: GenerationContext,
@@ -142,17 +129,13 @@ type NormalRunnerCallbacks = {
   ) => Promise<void>;
   startExternalInterruptPolling: (ctx: GenerationContext) => void;
   stopExternalInterruptPolling: (ctx: GenerationContext) => void;
-  pollExternalInterruptAndSuspendIfNeeded: (
-    ctx: GenerationContext,
-  ) => Promise<void>;
+  pollExternalInterruptAndSuspendIfNeeded: (ctx: GenerationContext) => Promise<void>;
   awaitPromiseUntilRunDeadline: <T>(
     ctx: Pick<GenerationContext, "deadlineAt">,
     promise: Promise<T>,
   ) => Promise<{ type: "resolved"; value: T } | { type: "timed_out" }>;
   scheduleSave: (ctx: GenerationContext) => void;
-  importIntegrationSkillDraftsFromSandbox: (
-    ctx: GenerationContext,
-  ) => Promise<void>;
+  importIntegrationSkillDraftsFromSandbox: (ctx: GenerationContext) => Promise<void>;
   captureUsageFromRuntimeSession: (
     ctx: GenerationContext,
     runtimeClient: RuntimeHarnessClient,
@@ -173,10 +156,7 @@ type NormalRunnerCallbacks = {
     collectAndExposeMentionedSandboxFiles: (
       ctx: GenerationContext,
       input: {
-        summaryMessage: (input: {
-          discoveredCount: number;
-          exposedCount: number;
-        }) => string;
+        summaryMessage: (input: { discoveredCount: number; exposedCount: number }) => string;
         collectionErrorMessage: string;
         uploadErrorMessage: (filePath: string) => string;
       },
@@ -184,11 +164,7 @@ type NormalRunnerCallbacks = {
   };
 };
 
-async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  message: string,
-): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -258,9 +234,7 @@ function safeJsonStringify(value: unknown): string | null {
 }
 
 function isBootstrapTimeoutError(error: unknown): boolean {
-  return formatErrorMessage(error).startsWith(
-    "Error: Agent preparation timed out after ",
-  );
+  return formatErrorMessage(error).startsWith("Error: Agent preparation timed out after ");
 }
 
 function resolveRuntimeNoProgressTimeoutMs(ctx: GenerationContext): number {
@@ -294,23 +268,16 @@ export class OpenCodeNormalRunner {
     let clearRuntimeNoProgressTimeout: (() => void) | undefined;
     let client: RuntimeHarnessClient | undefined;
     try {
-      if (
-        await this.callbacks.refreshCancellationSignal(ctx, { force: true })
-      ) {
+      if (await this.callbacks.refreshCancellationSignal(ctx, { force: true })) {
         await this.callbacks.finishGeneration(ctx, "cancelled");
         return;
       }
 
-      if (
-        parseModelReference(ctx.model).providerID === "anthropic" &&
-        !env.ANTHROPIC_API_KEY
-      ) {
+      if (parseModelReference(ctx.model).providerID === "anthropic" && !env.ANTHROPIC_API_KEY) {
         throw new Error("ANTHROPIC_API_KEY is not configured");
       }
 
-      const { customSkillNames } = splitCoworkerAllowedSkillSlugs(
-        ctx.allowedSkillSlugs ?? [],
-      );
+      const { customSkillNames } = splitCoworkerAllowedSkillSlugs(ctx.allowedSkillSlugs ?? []);
       this.callbacks.ensureRemoteRunDebugInfo(ctx);
       const {
         allowedIntegrations,
@@ -334,31 +301,26 @@ export class OpenCodeNormalRunner {
             if (!ctx.remoteIntegrationSource) {
               return;
             }
-            logServerEvent(
-              "info",
-              "REMOTE_INTEGRATION_CREDENTIALS_ATTACHED",
-              {
-                targetEnv: ctx.remoteIntegrationSource.targetEnv,
-                remoteUserId: ctx.remoteIntegrationSource.remoteUserId,
-                remoteUserEmail,
-                allowedIntegrations: [...allowedIntegrations].toSorted(),
-                attachedTokenEnvVarNames,
-              },
-              {
+            logger.info({
+              event: "REMOTE_INTEGRATION_CREDENTIALS_ATTACHED",
+              ...{
                 source: "generation-manager",
                 traceId: ctx.traceId,
                 generationId: ctx.id,
                 conversationId: ctx.conversationId,
                 userId: ctx.userId,
               },
-            );
-            this.callbacks.recordRemoteRunPhase(
-              ctx,
-              "remote_credentials_fetched",
-              {
+              ...{
+                targetEnv: ctx.remoteIntegrationSource.targetEnv,
+                remoteUserId: ctx.remoteIntegrationSource.remoteUserId,
+                remoteUserEmail,
+                allowedIntegrations: [...allowedIntegrations].toSorted(),
                 attachedTokenEnvVarNames,
               },
-            );
+            });
+            this.callbacks.recordRemoteRunPhase(ctx, "remote_credentials_fetched", {
+              attachedTokenEnvVarNames,
+            });
           },
         },
       );
@@ -374,8 +336,7 @@ export class OpenCodeNormalRunner {
       const initDeadlineAt = Date.now() + this.callbacks.bootstrapTimeoutMs;
       const buildPreparingTimeoutMessage = () =>
         `Agent preparation timed out after ${Math.round(this.callbacks.bootstrapTimeoutMs / 1000)} seconds.`;
-      const remainingPreparingTimeoutMs = () =>
-        Math.max(1, initDeadlineAt - Date.now());
+      const remainingPreparingTimeoutMs = () => Math.max(1, initDeadlineAt - Date.now());
       const initWarnAfterMs = 15_000;
 
       let sessionId: string | undefined;
@@ -390,33 +351,29 @@ export class OpenCodeNormalRunner {
         type: "status_change",
         status: "sandbox_init_started",
       });
-      logServerEvent(
-        "info",
-        "SANDBOX_INIT_STARTED",
-        {},
-        {
+      logger.info({
+        event: "SANDBOX_INIT_STARTED",
+        ...{
           source: "generation-manager",
           traceId: ctx.traceId,
           generationId: ctx.id,
           conversationId: ctx.conversationId,
           userId: ctx.userId,
         },
-      );
+      });
       const sandboxInitWarnTimer = setTimeout(() => {
-        const elapsedMs =
-          this.callbacks.bootstrapTimeoutMs - remainingPreparingTimeoutMs();
-        logServerEvent(
-          "warn",
-          "SANDBOX_INIT_SLOW",
-          { elapsedMs },
-          {
+        const elapsedMs = this.callbacks.bootstrapTimeoutMs - remainingPreparingTimeoutMs();
+        logger.warn({
+          event: "SANDBOX_INIT_SLOW",
+          ...{
             source: "generation-manager",
             traceId: ctx.traceId,
             generationId: ctx.id,
             conversationId: ctx.conversationId,
             userId: ctx.userId,
           },
-        );
+          ...{ elapsedMs },
+        });
       }, initWarnAfterMs);
 
       try {
@@ -435,8 +392,7 @@ export class OpenCodeNormalRunner {
               sandboxProviderOverride: ctx.sandboxProviderOverride,
               title: conv?.title || "Conversation",
               replayHistory: hasExistingMessages,
-              allowSnapshotRestore:
-                ctx.executionPolicy.allowSnapshotRestoreOnRun !== false,
+              allowSnapshotRestore: ctx.executionPolicy.allowSnapshotRestoreOnRun !== false,
               telemetry: {
                 source: "generation-manager",
                 traceId: ctx.traceId,
@@ -460,12 +416,16 @@ export class OpenCodeNormalRunner {
                   type: "status_change",
                   status,
                 });
-                logServerEvent("info", status.toUpperCase(), details ?? {}, {
-                  source: "generation-manager",
-                  traceId: ctx.traceId,
-                  generationId: ctx.id,
-                  conversationId: ctx.conversationId,
-                  userId: ctx.userId,
+                logger.info({
+                  event: status.toUpperCase(),
+                  ...{
+                    source: "generation-manager",
+                    traceId: ctx.traceId,
+                    generationId: ctx.id,
+                    conversationId: ctx.conversationId,
+                    userId: ctx.userId,
+                  },
+                  ...(details ?? {}),
                 });
               },
             },
@@ -481,23 +441,19 @@ export class OpenCodeNormalRunner {
           type: "status_change",
           status: "sandbox_init_failed",
         });
-        logServerEvent(
-          "error",
-          "SANDBOX_INIT_FAILED",
-          {
-            error:
-              error instanceof Error
-                ? `${error.name}: ${error.message}`
-                : String(error),
-          },
-          {
+        logger.error({
+          event: "SANDBOX_INIT_FAILED",
+          ...{
             source: "generation-manager",
             traceId: ctx.traceId,
             generationId: ctx.id,
             conversationId: ctx.conversationId,
             userId: ctx.userId,
           },
-        );
+          ...{
+            error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+          },
+        });
         throw error;
       } finally {
         clearTimeout(sandboxInitWarnTimer);
@@ -522,43 +478,36 @@ export class OpenCodeNormalRunner {
         type: "status_change",
         status: "agent_init_started",
       });
-      logServerEvent(
-        "info",
-        "AGENT_INIT_STARTED",
-        {},
-        {
+      logger.info({
+        event: "AGENT_INIT_STARTED",
+        ...{
           source: "generation-manager",
           traceId: ctx.traceId,
           generationId: ctx.id,
           conversationId: ctx.conversationId,
           userId: ctx.userId,
         },
-      );
+      });
       const agentInitWarnTimer = setTimeout(() => {
         const elapsedMs = Date.now() - agentInitStartedAt;
-        logServerEvent(
-          "warn",
-          "AGENT_INIT_SLOW",
-          { elapsedMs },
-          {
+        logger.warn({
+          event: "AGENT_INIT_SLOW",
+          ...{
             source: "generation-manager",
             traceId: ctx.traceId,
             generationId: ctx.id,
             conversationId: ctx.conversationId,
             userId: ctx.userId,
           },
-        );
+          ...{ elapsedMs },
+        });
       }, initWarnAfterMs);
 
       let resolveExecutorSessionMcpServers: (
         value: RuntimeMcpServer[] | undefined,
       ) => void = () => {};
-      let rejectExecutorSessionMcpServers: (
-        reason?: unknown,
-      ) => void = () => {};
-      const executorSessionMcpServersPromise: Promise<
-        RuntimeMcpServer[] | undefined
-      > =
+      let rejectExecutorSessionMcpServers: (reason?: unknown) => void = () => {};
+      const executorSessionMcpServersPromise: Promise<RuntimeMcpServer[] | undefined> =
         runtimeMetadata?.runtimeHarness === "opencode"
           ? new Promise((resolve, reject) => {
               resolveExecutorSessionMcpServers = resolve;
@@ -594,16 +543,9 @@ export class OpenCodeNormalRunner {
               sessionId,
             },
           });
-          logServerEvent(
-            "info",
-            "AGENT_INIT_READY",
-            {
-              durationMs: ctx.agentInitReadyAt - agentInitStartedAt,
-              sandboxProvider: runtimeMetadata?.sandboxProvider,
-              runtimeHarness: runtimeMetadata?.runtimeHarness,
-              runtimeProtocolVersion: runtimeMetadata?.runtimeProtocolVersion,
-            },
-            {
+          logger.info({
+            event: "AGENT_INIT_READY",
+            ...{
               source: "generation-manager",
               traceId: ctx.traceId,
               generationId: ctx.id,
@@ -612,7 +554,13 @@ export class OpenCodeNormalRunner {
               sessionId,
               sandboxId: runtimeSandbox.sandboxId,
             },
-          );
+            ...{
+              durationMs: ctx.agentInitReadyAt - agentInitStartedAt,
+              sandboxProvider: runtimeMetadata?.sandboxProvider,
+              runtimeHarness: runtimeMetadata?.runtimeHarness,
+              runtimeProtocolVersion: runtimeMetadata?.runtimeProtocolVersion,
+            },
+          });
         } catch (error) {
           ctx.agentInitFailedAt = Date.now();
           this.callbacks.markPhase(ctx, "agent_init_failed");
@@ -620,24 +568,20 @@ export class OpenCodeNormalRunner {
             type: "status_change",
             status: "agent_init_failed",
           });
-          logServerEvent(
-            "error",
-            "AGENT_INIT_FAILED",
-            {
-              durationMs: ctx.agentInitFailedAt - agentInitStartedAt,
-              error:
-                error instanceof Error
-                  ? `${error.name}: ${error.message}`
-                  : String(error),
-            },
-            {
+          logger.error({
+            event: "AGENT_INIT_FAILED",
+            ...{
               source: "generation-manager",
               traceId: ctx.traceId,
               generationId: ctx.id,
               conversationId: ctx.conversationId,
               userId: ctx.userId,
             },
-          );
+            ...{
+              durationMs: ctx.agentInitFailedAt - agentInitStartedAt,
+              error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+            },
+          });
           throw error;
         } finally {
           clearTimeout(agentInitWarnTimer);
@@ -654,10 +598,7 @@ export class OpenCodeNormalRunner {
       const markPrePromptStep = (step: string, startedAt: number) => {
         prePromptBreakdown[step] = Date.now() - startedAt;
       };
-      const markPrePromptPhase = (
-        step: string,
-        status: "started" | "completed",
-      ) => {
+      const markPrePromptPhase = (step: string, status: "started" | "completed") => {
         this.callbacks.markPhase(ctx, `pre_prompt_${step}_${status}`);
       };
       const runPrePromptStep = async <T>(
@@ -685,58 +626,35 @@ export class OpenCodeNormalRunner {
 
       const memorySyncPromise = (async () => {
         try {
-          await runPrePromptStep(
-            "memory_sync",
-            "syncMemoryFilesToSandboxMs",
-            async () => {
-              await syncMemoryFilesToSandbox(ctx.userId, runtimeSandbox);
-            },
-          );
+          await runPrePromptStep("memory_sync", "syncMemoryFilesToSandboxMs", async () => {
+            await syncMemoryFilesToSandbox(ctx.userId, runtimeSandbox);
+          });
         } catch (err) {
-          console.error(
-            "[GenerationManager] Failed to sync memory to sandbox:",
-            err,
-          );
+          console.error("[GenerationManager] Failed to sync memory to sandbox:", err);
           memoryInstructions = buildMemorySystemPrompt();
         }
       })();
 
       const runtimeContextWritePromise = (async () => {
         try {
-          await runPrePromptStep(
-            "runtime_context_write",
-            "writeRuntimeContextMs",
-            async () => {
-              if (
-                ctx.runtimeId &&
-                ctx.runtimeCallbackToken &&
-                ctx.runtimeTurnSeq
-              ) {
-                const runtimeContext: RuntimeContextFile = {
-                  runtimeId: ctx.runtimeId,
-                  turnSeq: ctx.runtimeTurnSeq,
-                  callbackToken: ctx.runtimeCallbackToken,
-                  updatedAt: new Date().toISOString(),
-                };
-                await writeRuntimeContextToSandbox(
-                  runtimeSandbox,
-                  runtimeContext,
-                );
-              }
-              await writeRuntimeEnvToSandbox(runtimeSandbox, sandboxRuntimeEnv);
-            },
-          );
+          await runPrePromptStep("runtime_context_write", "writeRuntimeContextMs", async () => {
+            if (ctx.runtimeId && ctx.runtimeCallbackToken && ctx.runtimeTurnSeq) {
+              const runtimeContext: RuntimeContextFile = {
+                runtimeId: ctx.runtimeId,
+                turnSeq: ctx.runtimeTurnSeq,
+                callbackToken: ctx.runtimeCallbackToken,
+                updatedAt: new Date().toISOString(),
+              };
+              await writeRuntimeContextToSandbox(runtimeSandbox, runtimeContext);
+            }
+            await writeRuntimeEnvToSandbox(runtimeSandbox, sandboxRuntimeEnv);
+          });
         } catch (error) {
-          console.error(
-            "[GenerationManager] Failed to write runtime metadata to sandbox:",
-            error,
-          );
+          console.error("[GenerationManager] Failed to write runtime metadata to sandbox:", error);
         }
       })();
 
-      const executorPreparePromise = (async (): Promise<
-        () => Promise<void>
-      > => {
+      const executorPreparePromise = (async (): Promise<() => Promise<void>> => {
         const preparedExecutor = await stageExecutorPrePrompt({
           runtimeSandbox,
           workspaceId: ctx.workspaceId,
@@ -824,9 +742,8 @@ export class OpenCodeNormalRunner {
         writtenSkills = enabledSkillRows.map((entry) => entry.name);
       }
       const skillsInstructions = getSkillsSystemPrompt(writtenSkills);
-      const integrationSkillsInstructions = getIntegrationSkillsSystemPrompt(
-        writtenIntegrationSkills,
-      );
+      const integrationSkillsInstructions =
+        getIntegrationSkillsSystemPrompt(writtenIntegrationSkills);
 
       const promptSpecInput = buildOpencodePromptSpecInputForContext(ctx, {
         cliInstructions,
@@ -843,8 +760,7 @@ export class OpenCodeNormalRunner {
       );
       const runtimeClient = client;
 
-      const verboseOpenCodeEventLogs =
-        process.env.OPENCODE_VERBOSE_EVENTS === "1";
+      const verboseOpenCodeEventLogs = process.env.OPENCODE_VERBOSE_EVENTS === "1";
       let stagedCoworkerDocumentCount = 0;
       let stagedUploadCount = 0;
       let stagedUploadFailureCount = 0;
@@ -874,9 +790,7 @@ export class OpenCodeNormalRunner {
         modelID: parsedModel.modelID,
       };
 
-      const promptParts: RuntimePromptPart[] = [
-        { type: "text", text: ctx.userMessageContent },
-      ];
+      const promptParts: RuntimePromptPart[] = [{ type: "text", text: ctx.userMessageContent }];
       const stagedPromptAttachments = await stageRuntimePromptAttachments({
         runtimeSandbox,
         coworkerId: ctx.coworkerId,
@@ -891,25 +805,17 @@ export class OpenCodeNormalRunner {
         },
       });
       promptParts.push(...stagedPromptAttachments.promptParts);
-      stagedCoworkerDocumentCount =
-        stagedPromptAttachments.stagedCoworkerDocumentCount;
+      stagedCoworkerDocumentCount = stagedPromptAttachments.stagedCoworkerDocumentCount;
       stagedUploadCount = stagedPromptAttachments.stagedUploadCount;
-      stagedUploadFailureCount =
-        stagedPromptAttachments.stagedUploadFailureCount;
+      stagedUploadFailureCount = stagedPromptAttachments.stagedUploadFailureCount;
       if (
         stagedCoworkerDocumentCount > 0 ||
         stagedUploadCount > 0 ||
         stagedUploadFailureCount > 0
       ) {
-        logServerEvent(
-          "info",
-          "ATTACHMENTS_STAGED",
-          {
-            stagedCoworkerDocumentCount,
-            stagedUploadCount,
-            stagedUploadFailureCount,
-          },
-          {
+        logger.info({
+          event: "ATTACHMENTS_STAGED",
+          ...{
             source: "generation-manager",
             traceId: ctx.traceId,
             generationId: ctx.id,
@@ -917,19 +823,18 @@ export class OpenCodeNormalRunner {
             userId: ctx.userId,
             sessionId: activeSessionId,
           },
-        );
+          ...{
+            stagedCoworkerDocumentCount,
+            stagedUploadCount,
+            stagedUploadFailureCount,
+          },
+        });
       }
 
       markPrePromptStep("prePromptSetupTotalMs", prePromptStartedAt);
-      logServerEvent(
-        "info",
-        "PRE_PROMPT_BREAKDOWN",
-        {
-          cacheHit: prePromptCacheHit,
-          sandboxMode: ctx.agentSandboxMode ?? "unknown",
-          ...prePromptBreakdown,
-        },
-        {
+      logger.info({
+        event: "PRE_PROMPT_BREAKDOWN",
+        ...{
           source: "generation-manager",
           traceId: ctx.traceId,
           generationId: ctx.id,
@@ -938,14 +843,17 @@ export class OpenCodeNormalRunner {
           sandboxId: runtimeSandbox.sandboxId,
           sessionId: ctx.sessionId,
         },
-      );
+        ...{
+          cacheHit: prePromptCacheHit,
+          sandboxMode: ctx.agentSandboxMode ?? "unknown",
+          ...prePromptBreakdown,
+        },
+      });
 
       // Send the prompt to OpenCode
-      logServerEvent(
-        "info",
-        "OPENCODE_PROMPT_SENT",
-        {},
-        {
+      logger.info({
+        event: "OPENCODE_PROMPT_SENT",
+        ...{
           source: "generation-manager",
           traceId: ctx.traceId,
           generationId: ctx.id,
@@ -953,7 +861,7 @@ export class OpenCodeNormalRunner {
           userId: ctx.userId,
           sessionId: activeSessionId,
         },
-      );
+      });
       if (ctx.remoteIntegrationSource) {
         this.callbacks.recordRemoteRunPhase(ctx, "prompt_sent");
       }
@@ -974,11 +882,9 @@ export class OpenCodeNormalRunner {
       const promptTimeoutId = setTimeout(() => {
         promptTimeoutTriggered = true;
         promptTimeoutController.abort();
-        logServerEvent(
-          "error",
-          "OPENCODE_PROMPT_TIMEOUT",
-          { timeoutMs: remainingRunTimeMs },
-          {
+        logger.error({
+          event: "OPENCODE_PROMPT_TIMEOUT",
+          ...{
             source: "generation-manager",
             traceId: ctx.traceId,
             generationId: ctx.id,
@@ -986,15 +892,11 @@ export class OpenCodeNormalRunner {
             userId: ctx.userId,
             sessionId: activeSessionId,
           },
-        );
-        void runtimeClient
-          .abort({ sessionID: activeSessionId })
-          .catch((err) => {
-            console.error(
-              "[GenerationManager] Failed to abort timed out OpenCode session:",
-              err,
-            );
-          });
+          ...{ timeoutMs: remainingRunTimeMs },
+        });
+        void runtimeClient.abort({ sessionID: activeSessionId }).catch((err) => {
+          console.error("[GenerationManager] Failed to abort timed out OpenCode session:", err);
+        });
       }, remainingRunTimeMs);
       clearPromptTimeout = () => {
         clearTimeout(promptTimeoutId);
@@ -1034,13 +936,9 @@ export class OpenCodeNormalRunner {
           console.log("[GenerationManager] Session idle - generation complete");
         },
         onSessionError: (errorMessage) => {
-          logServerEvent(
-            "error",
-            "OPENCODE_SESSION_ERROR",
-            {
-              errorMessage,
-            },
-            {
+          logger.error({
+            event: "OPENCODE_SESSION_ERROR",
+            ...{
               source: "generation-manager",
               traceId: ctx.traceId,
               generationId: ctx.id,
@@ -1048,7 +946,10 @@ export class OpenCodeNormalRunner {
               userId: ctx.userId,
               sessionId: activeSessionId,
             },
-          );
+            ...{
+              errorMessage,
+            },
+          });
           if (ctx.remoteIntegrationSource) {
             this.callbacks.recordRemoteRunPhase(ctx, "session_error", {
               sessionErrorMessage: errorMessage,
@@ -1058,12 +959,10 @@ export class OpenCodeNormalRunner {
       });
 
       let resolveRuntimeNoProgress:
-        | ((
-            value: {
-              type: "runtime_no_progress";
-              reason: "runtime_no_progress_after_prompt" | "runtime_progress_stalled";
-            },
-          ) => void)
+        | ((value: {
+            type: "runtime_no_progress";
+            reason: "runtime_no_progress_after_prompt" | "runtime_progress_stalled";
+          }) => void)
         | undefined;
       const runtimeNoProgressPromise = new Promise<{
         type: "runtime_no_progress";
@@ -1072,83 +971,82 @@ export class OpenCodeNormalRunner {
         resolveRuntimeNoProgress = resolve;
       });
       if (remainingRunTimeMs > runtimeNoProgressTimeoutMs) {
-        const runtimeNoProgressTimeoutId = setInterval(() => {
-          const snapshot = eventLoop.snapshot();
-          if (snapshot.sawSessionIdle) {
-            return;
-          }
-          if (snapshot.sessionErrorMessage) {
-            return;
-          }
-          if (ctx.abortController.signal.aborted) {
-            return;
-          }
+        const runtimeNoProgressTimeoutId = setInterval(
+          () => {
+            const snapshot = eventLoop.snapshot();
+            if (snapshot.sawSessionIdle) {
+              return;
+            }
+            if (snapshot.sessionErrorMessage) {
+              return;
+            }
+            if (ctx.abortController.signal.aborted) {
+              return;
+            }
 
-          const now = Date.now();
-          const promptElapsedMs = now - promptSentAtMs;
-          const stalledMs = now - ctx.lastRuntimeProgressAt.getTime();
-          let reason:
-            | "runtime_no_progress_after_prompt"
-            | "runtime_progress_stalled"
-            | null = null;
+            const now = Date.now();
+            const promptElapsedMs = now - promptSentAtMs;
+            const stalledMs = now - ctx.lastRuntimeProgressAt.getTime();
+            let reason: "runtime_no_progress_after_prompt" | "runtime_progress_stalled" | null =
+              null;
 
-          if (
-            forceRuntimeNoProgress ||
-            (snapshot.stats.progressEventCount === 0 &&
-              promptElapsedMs >= runtimeNoProgressTimeoutMs)
-          ) {
-            reason = "runtime_no_progress_after_prompt";
-          } else if (
-            snapshot.stats.progressEventCount > 0 &&
-            stalledMs >= runtimeNoProgressTimeoutMs
-          ) {
-            reason = "runtime_progress_stalled";
-          }
+            if (
+              forceRuntimeNoProgress ||
+              (snapshot.stats.progressEventCount === 0 &&
+                promptElapsedMs >= runtimeNoProgressTimeoutMs)
+            ) {
+              reason = "runtime_no_progress_after_prompt";
+            } else if (
+              snapshot.stats.progressEventCount > 0 &&
+              stalledMs >= runtimeNoProgressTimeoutMs
+            ) {
+              reason = "runtime_progress_stalled";
+            }
 
-          if (!reason) {
-            return;
-          }
+            if (!reason) {
+              return;
+            }
 
-          runtimeNoProgressTriggered = true;
-          runtimeWatchdogReason = reason;
-          promptTimeoutController.abort();
-          logServerEvent(
-            "error",
-            reason === "runtime_progress_stalled"
-              ? "OPENCODE_RUNTIME_PROGRESS_STALLED"
-              : "OPENCODE_RUNTIME_NO_PROGRESS_AFTER_PROMPT",
-            {
-              timeoutMs: runtimeNoProgressTimeoutMs,
-              stalledMs: reason === "runtime_progress_stalled" ? stalledMs : undefined,
-              lastRuntimeProgressAt:
+            runtimeNoProgressTriggered = true;
+            runtimeWatchdogReason = reason;
+            promptTimeoutController.abort();
+            logger.error({
+              event:
                 reason === "runtime_progress_stalled"
-                  ? ctx.lastRuntimeProgressAt.toISOString()
-                  : undefined,
-              lastRuntimeProgressKind:
-                reason === "runtime_progress_stalled"
-                  ? (ctx.lastRuntimeProgressKind ?? "unknown")
-                  : undefined,
-              eventStats: snapshot.stats,
-            },
-            {
-              source: "generation-manager",
-              traceId: ctx.traceId,
-              generationId: ctx.id,
-              conversationId: ctx.conversationId,
-              userId: ctx.userId,
-              sessionId: activeSessionId,
-            },
-          );
-          resolveRuntimeNoProgress?.({ type: "runtime_no_progress", reason });
-          void runtimeClient
-            .abort({ sessionID: activeSessionId })
-            .catch((err) => {
+                  ? "OPENCODE_RUNTIME_PROGRESS_STALLED"
+                  : "OPENCODE_RUNTIME_NO_PROGRESS_AFTER_PROMPT",
+              ...{
+                source: "generation-manager",
+                traceId: ctx.traceId,
+                generationId: ctx.id,
+                conversationId: ctx.conversationId,
+                userId: ctx.userId,
+                sessionId: activeSessionId,
+              },
+              ...{
+                timeoutMs: runtimeNoProgressTimeoutMs,
+                stalledMs: reason === "runtime_progress_stalled" ? stalledMs : undefined,
+                lastRuntimeProgressAt:
+                  reason === "runtime_progress_stalled"
+                    ? ctx.lastRuntimeProgressAt.toISOString()
+                    : undefined,
+                lastRuntimeProgressKind:
+                  reason === "runtime_progress_stalled"
+                    ? (ctx.lastRuntimeProgressKind ?? "unknown")
+                    : undefined,
+                eventStats: snapshot.stats,
+              },
+            });
+            resolveRuntimeNoProgress?.({ type: "runtime_no_progress", reason });
+            void runtimeClient.abort({ sessionID: activeSessionId }).catch((err) => {
               console.error(
                 "[GenerationManager] Failed to abort no-progress OpenCode session:",
                 err,
               );
             });
-        }, Math.min(1_000, runtimeNoProgressTimeoutMs));
+          },
+          Math.min(1_000, runtimeNoProgressTimeoutMs),
+        );
         clearRuntimeNoProgressTimeout = () => {
           clearInterval(runtimeNoProgressTimeoutId);
           clearRuntimeNoProgressTimeout = undefined;
@@ -1160,28 +1058,27 @@ export class OpenCodeNormalRunner {
       ) => {
         clearPromptTimeout?.();
         clearRuntimeNoProgressTimeout?.();
-        const diagnosticSnapshot =
-          await captureRuntimeNoProgressDiagnosticSnapshot({
-            ctx,
-            runtimeClient,
-            sandbox: runtimeSandbox,
-            sandboxProvider: runtimeSandbox.provider,
-            sessionId: activeSessionId,
-            reason,
-            timeoutMs: runtimeNoProgressTimeoutMs,
-            stalledMs:
-              reason === "runtime_progress_stalled"
-                ? Math.max(0, Date.now() - ctx.lastRuntimeProgressAt.getTime())
-                : undefined,
-            lastRuntimeProgressAt:
-              reason === "runtime_progress_stalled" ? ctx.lastRuntimeProgressAt : undefined,
-            lastRuntimeProgressKind:
-              reason === "runtime_progress_stalled"
-                ? (ctx.lastRuntimeProgressKind ?? null)
-                : undefined,
-            promptSentAtMs,
-            eventLoopSnapshot: eventLoop.snapshot(),
-          });
+        const diagnosticSnapshot = await captureRuntimeNoProgressDiagnosticSnapshot({
+          ctx,
+          runtimeClient,
+          sandbox: runtimeSandbox,
+          sandboxProvider: runtimeSandbox.provider,
+          sessionId: activeSessionId,
+          reason,
+          timeoutMs: runtimeNoProgressTimeoutMs,
+          stalledMs:
+            reason === "runtime_progress_stalled"
+              ? Math.max(0, Date.now() - ctx.lastRuntimeProgressAt.getTime())
+              : undefined,
+          lastRuntimeProgressAt:
+            reason === "runtime_progress_stalled" ? ctx.lastRuntimeProgressAt : undefined,
+          lastRuntimeProgressKind:
+            reason === "runtime_progress_stalled"
+              ? (ctx.lastRuntimeProgressKind ?? null)
+              : undefined,
+          promptSentAtMs,
+          eventLoopSnapshot: eventLoop.snapshot(),
+        });
         ctx.debugInfo = {
           ...(ctx.debugInfo ?? {}),
           runtimeDiagnosticSnapshot: diagnosticSnapshot,
@@ -1201,21 +1098,12 @@ export class OpenCodeNormalRunner {
           ctx.errorMessage = assistantMessageError;
           this.callbacks.captureOriginalError(
             ctx,
-            new Error(
-              `OpenCode assistant message failed after prompt: ${assistantMessageError}`,
-            ),
+            new Error(`OpenCode assistant message failed after prompt: ${assistantMessageError}`),
             { phase: "prompt_sent" },
           );
-          logServerEvent(
-            "error",
-            "OPENCODE_ASSISTANT_MESSAGE_ERROR_AFTER_PROMPT",
-            {
-              originalWatchdogReason: reason,
-              timeoutMs: runtimeNoProgressTimeoutMs,
-              eventStats: eventLoop.snapshot().stats,
-              errorMessage: assistantMessageError,
-            },
-            {
+          logger.error({
+            event: "OPENCODE_ASSISTANT_MESSAGE_ERROR_AFTER_PROMPT",
+            ...{
               source: "generation-manager",
               traceId: ctx.traceId,
               generationId: ctx.id,
@@ -1223,7 +1111,13 @@ export class OpenCodeNormalRunner {
               userId: ctx.userId,
               sessionId: activeSessionId,
             },
-          );
+            ...{
+              originalWatchdogReason: reason,
+              timeoutMs: runtimeNoProgressTimeoutMs,
+              eventStats: eventLoop.snapshot().stats,
+              errorMessage: assistantMessageError,
+            },
+          });
           this.callbacks.scheduleSave(ctx);
           await this.callbacks.finishGeneration(ctx, "error");
           return;
@@ -1249,10 +1143,7 @@ export class OpenCodeNormalRunner {
         eventLoopConsumePromise,
         runtimeNoProgressPromise,
       ]);
-      if (
-        eventLoopConsumeOutcome.type === "event_loop_error" &&
-        !runtimeNoProgressTriggered
-      ) {
+      if (eventLoopConsumeOutcome.type === "event_loop_error" && !runtimeNoProgressTriggered) {
         throw eventLoopConsumeOutcome.error;
       }
 
@@ -1276,14 +1167,12 @@ export class OpenCodeNormalRunner {
             maxReattachAttempts: OPENCODE_EARLY_STREAM_REATTACH_ATTEMPTS,
             reattachWaitMs: OPENCODE_EARLY_STREAM_REATTACH_WAIT_MS,
             statusPollIntervalMs: OPENCODE_STATUS_POLL_INTERVAL_MS,
-            getRemainingRunTimeMs: () =>
-              this.callbacks.getRemainingRunTimeMs(ctx),
+            getRemainingRunTimeMs: () => this.callbacks.getRemainingRunTimeMs(ctx),
             isAbortRequested: () =>
               ctx.abortController.signal.aborted ||
               runtimeNoProgressTriggered ||
               promptTimeoutTriggered,
-            refreshCancellationSignal: () =>
-              this.callbacks.refreshCancellationSignal(ctx),
+            refreshCancellationSignal: () => this.callbacks.refreshCancellationSignal(ctx),
             pollExternalInterruptAndSuspendIfNeeded: () =>
               this.callbacks.pollExternalInterruptAndSuspendIfNeeded(ctx),
             onEvent: (rawEvent) => eventLoop.process(rawEvent),
@@ -1294,16 +1183,10 @@ export class OpenCodeNormalRunner {
               );
             },
             logStatusPollError: (error) => {
-              console.warn(
-                "[GenerationManager] OpenCode status poll returned an error:",
-                error,
-              );
+              console.warn("[GenerationManager] OpenCode status poll returned an error:", error);
             },
             logStatusReconciliationFailure: (error) => {
-              console.warn(
-                "[GenerationManager] OpenCode status reconciliation failed:",
-                error,
-              );
+              console.warn("[GenerationManager] OpenCode status reconciliation failed:", error);
             },
           }).then((value) => ({ type: "terminal" as const, value })),
           runtimeNoProgressPromise,
@@ -1351,8 +1234,7 @@ export class OpenCodeNormalRunner {
         return;
       }
       const promptResultEnvelope = promptResultOutcome.value;
-      const observedTerminalIdle =
-        eventLoop.snapshot().sawSessionIdle || reconciledTerminalIdle;
+      const observedTerminalIdle = eventLoop.snapshot().sawSessionIdle || reconciledTerminalIdle;
       const sessionErrorMessage = eventLoop.snapshot().sessionErrorMessage;
       if (sessionErrorMessage) {
         throw new Error(sessionErrorMessage);
@@ -1386,10 +1268,7 @@ export class OpenCodeNormalRunner {
           );
         },
         logFallbackMessagesError: (error) => {
-          console.warn(
-            "[GenerationManager] Failed fallback session.messages fetch:",
-            error,
-          );
+          console.warn("[GenerationManager] Failed fallback session.messages fetch:", error);
         },
       });
 
@@ -1410,13 +1289,12 @@ export class OpenCodeNormalRunner {
           content: completionResolution.assistantText,
         });
         this.callbacks.scheduleSave(ctx);
-        logServerEvent(
-          "info",
-          completionResolution.assistantTextSource === "session_messages"
-            ? "OPENCODE_FALLBACK_ASSISTANT_APPLIED"
-            : "OPENCODE_PROMPT_RESULT_ASSISTANT_APPLIED",
-          { chars: completionResolution.assistantText.length },
-          {
+        logger.info({
+          event:
+            completionResolution.assistantTextSource === "session_messages"
+              ? "OPENCODE_FALLBACK_ASSISTANT_APPLIED"
+              : "OPENCODE_PROMPT_RESULT_ASSISTANT_APPLIED",
+          ...{
             source: "generation-manager",
             traceId: ctx.traceId,
             generationId: ctx.id,
@@ -1424,7 +1302,8 @@ export class OpenCodeNormalRunner {
             userId: ctx.userId,
             sessionId: activeSessionId,
           },
-        );
+          ...{ chars: completionResolution.assistantText.length },
+        });
       }
 
       if (!ctx.assistantContent.trim()) {
@@ -1438,12 +1317,9 @@ export class OpenCodeNormalRunner {
         }
 
         if (!ctx.assistantContent.trim() && !observedTerminalIdle) {
-          const emptyCompletionDiagnostics =
-            completionResolution.emptyCompletionDiagnostics;
+          const emptyCompletionDiagnostics = completionResolution.emptyCompletionDiagnostics;
           if (!emptyCompletionDiagnostics) {
-            throw new Error(
-              "OpenCode empty-completion diagnostics were not collected.",
-            );
+            throw new Error("OpenCode empty-completion diagnostics were not collected.");
           }
           const bestTranscriptError = completionResolution.bestTranscriptError;
           this.callbacks.setCompletionReason(ctx, "runtime_error");
@@ -1461,29 +1337,9 @@ export class OpenCodeNormalRunner {
               phase: "prompt_completed",
             },
           );
-          logServerEvent(
-            "error",
-            "OPENCODE_EMPTY_COMPLETION",
-            {
-              sessionIdleObserved: observedTerminalIdle,
-              fallbackMessagesError: completionResolution.fallbackMessagesError,
-              fallbackMessagesErrorDetail:
-                completionResolution.fallbackMessagesErrorDetail,
-              fallbackMessagesPayloadShape:
-                completionResolution.fallbackMessagesPayloadShape,
-              promptResultDataShape: completionResolution.promptResultDataShape,
-              sessionGetError: emptyCompletionDiagnostics.sessionGetError,
-              sessionGetErrorDetail:
-                emptyCompletionDiagnostics.sessionGetErrorDetail,
-              sessionGetDataShape:
-                emptyCompletionDiagnostics.sessionGetDataShape,
-              sessionGetDataDetail:
-                emptyCompletionDiagnostics.sessionGetDataDetail,
-              opencodeLogTail: emptyCompletionDiagnostics.opencodeLogTail,
-              opencodeLogReadError:
-                emptyCompletionDiagnostics.opencodeLogReadError,
-            },
-            {
+          logger.error({
+            event: "OPENCODE_EMPTY_COMPLETION",
+            ...{
               source: "generation-manager",
               traceId: ctx.traceId,
               generationId: ctx.id,
@@ -1491,7 +1347,20 @@ export class OpenCodeNormalRunner {
               userId: ctx.userId,
               sessionId: activeSessionId,
             },
-          );
+            ...{
+              sessionIdleObserved: observedTerminalIdle,
+              fallbackMessagesError: completionResolution.fallbackMessagesError,
+              fallbackMessagesErrorDetail: completionResolution.fallbackMessagesErrorDetail,
+              fallbackMessagesPayloadShape: completionResolution.fallbackMessagesPayloadShape,
+              promptResultDataShape: completionResolution.promptResultDataShape,
+              sessionGetError: emptyCompletionDiagnostics.sessionGetError,
+              sessionGetErrorDetail: emptyCompletionDiagnostics.sessionGetErrorDetail,
+              sessionGetDataShape: emptyCompletionDiagnostics.sessionGetDataShape,
+              sessionGetDataDetail: emptyCompletionDiagnostics.sessionGetDataDetail,
+              opencodeLogTail: emptyCompletionDiagnostics.opencodeLogTail,
+              opencodeLogReadError: emptyCompletionDiagnostics.opencodeLogReadError,
+            },
+          });
           await this.callbacks.finishGeneration(ctx, "error");
           return;
         }
@@ -1504,42 +1373,26 @@ export class OpenCodeNormalRunner {
         try {
           await this.callbacks.importIntegrationSkillDraftsFromSandbox(ctx);
         } catch (error) {
-          console.error(
-            "[GenerationManager] Failed to import integration skill drafts:",
-            error,
-          );
+          console.error("[GenerationManager] Failed to import integration skill drafts:", error);
         }
       }
 
       // Collect new files created in the sandbox during generation
       let uploadedSandboxFileCount = 0;
       const { stats: opencodeStats } = eventLoop.snapshot();
-      const shouldCollectSandboxFiles =
-        opencodeStats.toolCallCount > 0 || stagedUploadCount > 0;
-      if (
-        ctx.sandbox &&
-        ctx.generationMarkerTime &&
-        shouldCollectSandboxFiles
-      ) {
+      const shouldCollectSandboxFiles = opencodeStats.toolCallCount > 0 || stagedUploadCount > 0;
+      if (ctx.sandbox && ctx.generationMarkerTime && shouldCollectSandboxFiles) {
         uploadedSandboxFileCount =
-          await this.callbacks.turnFinalizer.collectAndExposeMentionedSandboxFiles(
-            ctx,
-            {
-              summaryMessage: ({ discoveredCount, exposedCount }) =>
-                `[GenerationManager] Found ${discoveredCount} new files in E2B sandbox; exposing ${exposedCount} based on final-answer mentions`,
-              collectionErrorMessage:
-                "[GenerationManager] Failed to collect sandbox files:",
-              uploadErrorMessage: (filePath) =>
-                `[GenerationManager] Failed to upload sandbox file ${filePath}:`,
-            },
-          );
+          await this.callbacks.turnFinalizer.collectAndExposeMentionedSandboxFiles(ctx, {
+            summaryMessage: ({ discoveredCount, exposedCount }) =>
+              `[GenerationManager] Found ${discoveredCount} new files in E2B sandbox; exposing ${exposedCount} based on final-answer mentions`,
+            collectionErrorMessage: "[GenerationManager] Failed to collect sandbox files:",
+            uploadErrorMessage: (filePath) =>
+              `[GenerationManager] Failed to upload sandbox file ${filePath}:`,
+          });
       }
       this.callbacks.markPhase(ctx, "post_processing_completed");
-      await this.callbacks.captureUsageFromRuntimeSession(
-        ctx,
-        runtimeClient,
-        activeSessionId,
-      );
+      await this.callbacks.captureUsageFromRuntimeSession(ctx, runtimeClient, activeSessionId);
 
       // Check if aborted
       if (ctx.abortController.signal.aborted) {
@@ -1563,22 +1416,21 @@ export class OpenCodeNormalRunner {
       clearPromptTimeout?.();
       clearRuntimeNoProgressTimeout?.();
       if (error instanceof GenerationSuspendedError) {
-        logServerEvent(
-          "info",
-          "GENERATION_SUSPENDED_FOR_INTERRUPT",
-          {
-            interruptId: error.interruptId,
-            interruptKind: error.kind,
-            remainingRunMs: ctx.remainingRunMs,
-          },
-          {
+        logger.info({
+          event: "GENERATION_SUSPENDED_FOR_INTERRUPT",
+          ...{
             source: "generation-manager",
             traceId: ctx.traceId,
             generationId: ctx.id,
             conversationId: ctx.conversationId,
             userId: ctx.userId,
           },
-        );
+          ...{
+            interruptId: error.interruptId,
+            interruptKind: error.kind,
+            remainingRunMs: ctx.remainingRunMs,
+          },
+        });
         return;
       }
       if (isBootstrapTimeoutError(error)) {
@@ -1586,16 +1438,13 @@ export class OpenCodeNormalRunner {
           phase: this.callbacks.getCurrentPhase(ctx) ?? "agent_init_failed",
         });
         this.callbacks.setCompletionReason(ctx, "bootstrap_timeout");
-        ctx.errorMessage =
-          error instanceof Error ? error.message : formatErrorMessage(error);
+        ctx.errorMessage = error instanceof Error ? error.message : formatErrorMessage(error);
         await this.callbacks.finishGeneration(ctx, "error");
         return;
       }
       if (error instanceof ExecutorPromptReadyError) {
         this.callbacks.captureOriginalError(ctx, error.cause ?? error, {
-          phase:
-            this.callbacks.getCurrentPhase(ctx) ??
-            "pre_prompt_executor_prepare_failed",
+          phase: this.callbacks.getCurrentPhase(ctx) ?? "pre_prompt_executor_prepare_failed",
         });
         this.callbacks.setCompletionReason(ctx, "runtime_error");
         ctx.errorMessage = error.message;
@@ -1607,19 +1456,13 @@ export class OpenCodeNormalRunner {
         return;
       }
       console.error("[GenerationManager] Error:", error);
-      const runtimeFailure = await this.callbacks.resolveRuntimeFailure(
-        ctx,
-        client,
-      );
+      const runtimeFailure = await this.callbacks.resolveRuntimeFailure(ctx, client);
       this.callbacks.captureOriginalError(ctx, error, { runtimeFailure });
       if (runtimeFailure === "recoverable_live_runtime") {
         this.callbacks.scheduleRecoveryReattach(ctx);
         return;
       }
-      if (
-        runtimeFailure === "waiting_approval" ||
-        runtimeFailure === "waiting_auth"
-      ) {
+      if (runtimeFailure === "waiting_approval" || runtimeFailure === "waiting_auth") {
         return;
       }
       if (runtimeFailure === "sandbox_missing") {
@@ -1638,16 +1481,11 @@ export class OpenCodeNormalRunner {
         this.callbacks.setCompletionReason(ctx, "infra_disconnect");
       }
       if (!ctx.errorMessage && runtimeFailure !== "terminal_completed") {
-        ctx.errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
+        ctx.errorMessage = error instanceof Error ? error.message : "Unknown error";
       }
       if (runtimeFailure === "terminal_completed") {
         if (client && ctx.sessionId) {
-          await this.callbacks.captureUsageFromRuntimeSession(
-            ctx,
-            client,
-            ctx.sessionId,
-          );
+          await this.callbacks.captureUsageFromRuntimeSession(ctx, client, ctx.sessionId);
         }
         await this.callbacks.finishGeneration(ctx, "completed");
         return;
