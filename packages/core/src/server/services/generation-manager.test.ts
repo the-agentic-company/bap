@@ -451,6 +451,7 @@ vi.mock("./integration-skill-service", () => ({
 
 vi.mock("../utils/observability", () => ({
   createTraceId: vi.fn(() => "trace-1"),
+  emitCanonicalServiceEvent: vi.fn(),
   logger: {
     info: loggerInfoMock,
     warn: loggerWarnMock,

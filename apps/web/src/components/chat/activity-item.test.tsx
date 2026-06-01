@@ -77,13 +77,10 @@ const executorToolCallFixture: ActivityItemData = {
   id: "tool-5",
   timestamp: 5,
   type: "tool_call",
-  content: "executor_execute",
-  toolName: "executor_execute",
+  content: "linear-mcp.list_issues",
+  toolName: "linear-mcp.list_issues",
   status: "complete",
-  input: {
-    code: "const matches = await tools['linear.mcp.list_issues']({ assignee: 'me' });\nreturn matches;",
-    timeoutMs: 30_000,
-  },
+  input: { assignee: "me" },
   result: { ok: true },
 };
 
@@ -166,7 +163,7 @@ describe("ActivityItem", () => {
     expect(container.textContent).not.toContain("[0m");
   });
 
-  it("renders executor code separately and uses the mapped integration icon", () => {
+  it("renders native MCP input and uses the mapped integration icon", () => {
     render(
       <ActivityItem item={executorToolCallFixture} executorSources={executorSourcesFixture} />,
     );
@@ -176,17 +173,8 @@ describe("ActivityItem", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Show tool details" }));
 
-    expect(screen.getByText("Code")).toBeInTheDocument();
-    expect(
-      screen.getByText((content) => {
-        return (
-          content.includes("const matches = await tools['linear.mcp.list_issues']") &&
-          content.includes("return matches;")
-        );
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Metadata")).toBeInTheDocument();
-    expect(screen.getByText(/"timeoutMs": 30000/)).toBeInTheDocument();
+    expect(screen.getByText("Request (linear-mcp.list_issues)")).toBeInTheDocument();
+    expect(screen.getByText(/"assignee": "me"/)).toBeInTheDocument();
     expect(screen.getByText("Response")).toBeInTheDocument();
   });
 });
