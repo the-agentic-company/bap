@@ -6,10 +6,8 @@ import { InboxItem } from "./inbox-item";
 
 type Props = {
   items: InboxItemType[];
-  expandedIds: Set<string>;
   editingIds: Set<string>;
   busyItemId?: string | null;
-  onToggleExpanded: (id: string) => void;
   onToggleEditing: (id: string) => void;
   onApprove: (item: InboxItemType, questionAnswers?: string[][]) => void;
   onDeny: (item: InboxItemType) => void;
@@ -26,10 +24,8 @@ type Props = {
 
 export function InboxList({
   items,
-  expandedIds,
   editingIds,
   busyItemId,
-  onToggleExpanded,
   onToggleEditing,
   onApprove,
   onDeny,
@@ -49,7 +45,7 @@ export function InboxList({
         <div className="space-y-2 text-center">
           <p className="text-muted-foreground text-sm font-medium">No items in inbox</p>
           <p className="text-muted-foreground/60 text-[13px]">
-            Approvals, auth requests, continuation tasks, and errors will appear here.
+            Coworker runs will appear here as they move through the workflow.
           </p>
         </div>
       </div>
@@ -62,10 +58,8 @@ export function InboxList({
         <InboxListRow
           key={item.id}
           item={item}
-          isExpanded={expandedIds.has(item.id)}
           isEditing={editingIds.has(item.id)}
           isBusy={busyItemId === item.id}
-          onToggleExpanded={onToggleExpanded}
           onToggleEditing={onToggleEditing}
           onApprove={onApprove}
           onDeny={onDeny}
@@ -86,10 +80,8 @@ export function InboxList({
 
 function InboxListRow({
   item,
-  isExpanded,
   isEditing,
   isBusy,
-  onToggleExpanded,
   onToggleEditing,
   onApprove,
   onDeny,
@@ -104,10 +96,8 @@ function InboxListRow({
   onMarkAsRead,
 }: {
   item: InboxItemType;
-  isExpanded: boolean;
   isEditing: boolean;
   isBusy: boolean;
-  onToggleExpanded: (id: string) => void;
   onToggleEditing: (id: string) => void;
   onApprove: (item: InboxItemType, questionAnswers?: string[][]) => void;
   onDeny: (item: InboxItemType) => void;
@@ -121,9 +111,6 @@ function InboxListRow({
   onOpenBuilder: (item: InboxCoworkerItem) => void;
   onMarkAsRead: (item: InboxItemType) => void;
 }) {
-  const handleToggle = useCallback(() => {
-    onToggleExpanded(item.id);
-  }, [item.id, onToggleExpanded]);
   const handleToggleEditing = useCallback(() => {
     onToggleEditing(item.id);
   }, [item.id, onToggleEditing]);
@@ -179,10 +166,8 @@ function InboxListRow({
   return (
     <InboxItem
       item={item}
-      isExpanded={isExpanded}
       isEditing={isEditing}
       isBusy={isBusy}
-      onToggle={handleToggle}
       onToggleEditing={handleToggleEditing}
       onApprove={handleApprove}
       onDeny={handleDeny}

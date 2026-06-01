@@ -85,6 +85,7 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/orpc/hooks", () => ({
   useInboxItems: (input: unknown) => mockUseInboxItems(input),
+  useInfiniteInboxItems: (input: unknown) => mockUseInboxItems(input),
   useCoworkerList: () => mockCoworkerList(),
   useSubmitApproval: () => ({ mutateAsync: mockSubmitApprovalMutateAsync }),
   useSubmitAuthResult: () => ({ mutateAsync: mockSubmitAuthResultMutateAsync }),
@@ -112,6 +113,21 @@ describe("InboxPage", () => {
         items: [
           {
             kind: "coworker",
+            id: "run-completed",
+            runId: "run-completed",
+            coworkerId: "cw-1",
+            coworkerName: "Inbox Triage",
+            builderAvailable: true,
+            title: "Inbox Triage · Mar 30, 16:32",
+            status: "completed",
+            updatedAt: new Date("2026-03-30T16:40:00.000Z"),
+            createdAt: new Date("2026-03-30T16:32:00.000Z"),
+            generationId: "gen-completed",
+            conversationId: "conv-completed",
+            errorMessage: null,
+          },
+          {
+            kind: "coworker",
             id: "run-1",
             runId: "run-1",
             coworkerId: "cw-1",
@@ -135,37 +151,42 @@ describe("InboxPage", () => {
             },
           },
           {
-            kind: "chat",
-            id: "conv-paused",
-            conversationId: "conv-paused",
-            conversationTitle: "Long email analysis",
-            title: "Long email analysis",
+            kind: "coworker",
+            id: "run-paused",
+            runId: "run-paused",
+            coworkerId: "cw-1",
+            coworkerName: "Inbox Triage",
+            builderAvailable: true,
+            title: "Inbox Triage · Mar 30, 15:00",
             status: "paused",
             updatedAt: new Date("2026-03-30T15:35:00.000Z"),
             createdAt: new Date("2026-03-30T15:00:00.000Z"),
             generationId: "gen-paused",
+            conversationId: "conv-paused",
             pauseReason: "run_deadline",
             errorMessage: null,
-          },
-          {
-            kind: "chat",
-            id: "conv-2",
-            conversationId: "conv-2",
-            conversationTitle: "Follow up with prospect",
-            title: "Follow up with prospect",
-            status: "error",
-            updatedAt: new Date("2026-03-30T13:35:00.000Z"),
-            createdAt: new Date("2026-03-30T13:00:00.000Z"),
-            generationId: "gen-2",
-            errorMessage: "Chat failed",
           },
         ],
         sourceOptions: [{ coworkerId: "cw-1", coworkerName: "Inbox Triage" }],
       },
       isLoading: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
     });
     mockCoworkerList.mockReturnValue({
-      data: [{ id: "cw-1", name: "Inbox Triage", status: "on" }],
+      data: [
+        {
+          id: "cw-1",
+          name: "Inbox Triage",
+          username: "inbox-triage",
+          description: "Keeps the queue moving.",
+          status: "on",
+          triggerType: "manual",
+          recentRuns: [{ id: "run-1", status: "awaiting_approval", startedAt: new Date() }],
+        },
+      ],
+      isLoading: false,
     });
     mockSubmitApprovalMutateAsync.mockResolvedValue({ success: true });
     mockSubmitAuthResultMutateAsync.mockResolvedValue({ success: true });
@@ -194,33 +215,34 @@ describe("InboxPage", () => {
     expect(mockUseInboxItems).not.toHaveBeenCalled();
   });
 
-  it("renders real inbox rows and updates the inbox query when type filter changes", async () => {
+  it("renders coworker inbox rows and queries coworkers only", () => {
     render(<InboxPage />);
 
+    expect(screen.getByText("Inbox Triage · Mar 30, 16:32")).toBeTruthy();
+    expect(screen.getByText("Inbox Triage · Mar 30, 15:00")).toBeTruthy();
     expect(screen.getByText("Inbox Triage · Mar 30, 14:32")).toBeTruthy();
-    expect(screen.getByText("Follow up with prospect")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Chats" })).toBeNull();
+    expect(screen.queryByPlaceholderText("Trigger a coworker manually...")).toBeNull();
     expect(mockUseInboxItems).toHaveBeenCalledWith(
       expect.objectContaining({
-        statuses: ["awaiting_approval", "awaiting_auth", "paused"],
+        type: "coworkers",
+        statuses: [
+          "needs_user_input",
+          "running",
+          "awaiting_approval",
+          "awaiting_auth",
+          "paused",
+          "completed",
+          "error",
+          "cancelled",
+        ],
       }),
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Chats" }));
-
-    await waitFor(() => {
-      expect(mockUseInboxItems).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          type: "chats",
-          statuses: ["awaiting_approval", "awaiting_auth", "paused"],
-        }),
-      );
-    });
   });
 
-  it("continues a paused runtime item and opens the resumed thread", async () => {
+  it("continues a paused coworker run and opens the run", async () => {
     render(<InboxPage />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /Long email analysis/i })[0]!);
     fireEvent.click(await screen.findByRole("button", { name: /Continue/i }));
 
     await waitFor(() => {
@@ -231,13 +253,11 @@ describe("InboxPage", () => {
       });
     });
 
-    expect(mockRouterPush).toHaveBeenCalledWith("/chat/conv-paused");
+    expect(mockRouterPush).toHaveBeenCalledWith("/coworkers/runs/run-paused");
   });
 
   it("wires approve and edit-before-approval actions to real mutations", async () => {
     render(<InboxPage />);
-
-    fireEvent.click(screen.getAllByRole("button", { name: /Inbox Triage · Mar 30, 14:32/i })[0]!);
 
     fireEvent.click(await screen.findByRole("button", { name: /Approve/i }));
     await waitFor(() => {
@@ -270,9 +290,8 @@ describe("InboxPage", () => {
   it("wires mark-as-read to the inbox mutation", async () => {
     render(<InboxPage />);
 
-    const rowButtons = screen.getAllByRole("button", { name: /Inbox Triage · Mar 30, 14:32/i });
-    fireEvent.click(rowButtons[rowButtons.length - 1]!);
-    fireEvent.click(await screen.findByRole("button", { name: /Mark as read/i }));
+    const markReadButtons = await screen.findAllByRole("button", { name: /Mark read/i });
+    fireEvent.click(markReadButtons[1]!);
 
     await waitFor(() => {
       expect(mockMarkAsReadMutateAsync).toHaveBeenCalledWith({
@@ -305,12 +324,15 @@ describe("InboxPage", () => {
         sourceOptions: [{ coworkerId: "cw-1", coworkerName: "Email Drafter" }],
       },
       isLoading: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
     });
 
     render(<InboxPage />);
 
-    expect(screen.getByText("Needs your input")).toBeTruthy();
-    fireEvent.click(screen.getAllByRole("button", { name: /Email Drafter/i })[0]!);
+    expect(screen.getByText("Email Drafter · Mar 30, 14:32")).toBeTruthy();
+    expect(screen.getAllByText("Needs your input").length).toBeGreaterThan(0);
     fireEvent.click(await screen.findByRole("button", { name: /Dismiss/i }));
 
     await waitFor(() => {

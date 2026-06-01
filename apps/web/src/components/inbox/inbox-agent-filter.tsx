@@ -2,7 +2,8 @@
 
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
-import type { InboxItemStatus, InboxSourceOption } from "./types";
+import { InboxCoworkerSelector, type InboxCoworkerSelectorItem } from "./inbox-coworker-selector";
+import type { InboxItemStatus } from "./types";
 
 function FilterChip({
   label,
@@ -30,38 +31,30 @@ function FilterChip({
 }
 
 type Props = {
-  typeFilter: "all" | "coworkers" | "chats";
-  onTypeFilterChange: (next: "all" | "coworkers" | "chats") => void;
   statusFilters: InboxItemStatus[];
   onToggleStatus: (status: InboxItemStatus) => void;
   sourceCoworkerId?: string;
   onSourceCoworkerChange: (coworkerId?: string) => void;
-  sourceOptions: InboxSourceOption[];
+  coworkers: InboxCoworkerSelectorItem[];
+  isLoadingCoworkers?: boolean;
 };
 
 export function InboxAgentFilter({
-  typeFilter,
-  onTypeFilterChange,
   statusFilters,
   onToggleStatus,
   sourceCoworkerId,
   onSourceCoworkerChange,
-  sourceOptions,
+  coworkers,
+  isLoadingCoworkers,
 }: Props) {
-  const handleAllTypeClick = useCallback(() => {
-    onTypeFilterChange("all");
-  }, [onTypeFilterChange]);
-  const handleCoworkersTypeClick = useCallback(() => {
-    onTypeFilterChange("coworkers");
-  }, [onTypeFilterChange]);
-  const handleChatsTypeClick = useCallback(() => {
-    onTypeFilterChange("chats");
-  }, [onTypeFilterChange]);
   const handleAwaitingApprovalToggle = useCallback(() => {
     onToggleStatus("awaiting_approval");
   }, [onToggleStatus]);
   const handleNeedsUserInputToggle = useCallback(() => {
     onToggleStatus("needs_user_input");
+  }, [onToggleStatus]);
+  const handleRunningToggle = useCallback(() => {
+    onToggleStatus("running");
   }, [onToggleStatus]);
   const handleAwaitingAuthToggle = useCallback(() => {
     onToggleStatus("awaiting_auth");
@@ -69,29 +62,18 @@ export function InboxAgentFilter({
   const handlePausedToggle = useCallback(() => {
     onToggleStatus("paused");
   }, [onToggleStatus]);
+  const handleCompletedToggle = useCallback(() => {
+    onToggleStatus("completed");
+  }, [onToggleStatus]);
   const handleErrorToggle = useCallback(() => {
     onToggleStatus("error");
   }, [onToggleStatus]);
-  const handleSourceChange = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => {
-      const nextValue = event.target.value.trim();
-      onSourceCoworkerChange(nextValue ? nextValue : undefined);
-    },
-    [onSourceCoworkerChange],
-  );
+  const handleCancelledToggle = useCallback(() => {
+    onToggleStatus("cancelled");
+  }, [onToggleStatus]);
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterChip label="All" active={typeFilter === "all"} onClick={handleAllTypeClick} />
-        <FilterChip
-          label="Coworkers"
-          active={typeFilter === "coworkers"}
-          onClick={handleCoworkersTypeClick}
-        />
-        <FilterChip label="Chats" active={typeFilter === "chats"} onClick={handleChatsTypeClick} />
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
         <FilterChip
           label="Needs your input"
@@ -104,6 +86,11 @@ export function InboxAgentFilter({
           onClick={handleAwaitingApprovalToggle}
         />
         <FilterChip
+          label="Running"
+          active={statusFilters.includes("running")}
+          onClick={handleRunningToggle}
+        />
+        <FilterChip
           label="Awaiting auth"
           active={statusFilters.includes("awaiting_auth")}
           onClick={handleAwaitingAuthToggle}
@@ -114,24 +101,27 @@ export function InboxAgentFilter({
           onClick={handlePausedToggle}
         />
         <FilterChip
+          label="Completed"
+          active={statusFilters.includes("completed")}
+          onClick={handleCompletedToggle}
+        />
+        <FilterChip
           label="Error"
           active={statusFilters.includes("error")}
           onClick={handleErrorToggle}
         />
+        <FilterChip
+          label="Cancelled"
+          active={statusFilters.includes("cancelled")}
+          onClick={handleCancelledToggle}
+        />
 
-        <select
-          value={typeFilter === "chats" ? "" : (sourceCoworkerId ?? "")}
-          onChange={handleSourceChange}
-          disabled={typeFilter === "chats" || sourceOptions.length === 0}
-          className="bg-background text-foreground border-border/50 h-8 rounded-md border px-2.5 text-[12px] outline-none disabled:opacity-50"
-        >
-          <option value="">All coworkers</option>
-          {sourceOptions.map((option) => (
-            <option key={option.coworkerId} value={option.coworkerId}>
-              {option.coworkerName}
-            </option>
-          ))}
-        </select>
+        <InboxCoworkerSelector
+          coworkers={coworkers}
+          selectedCoworkerId={sourceCoworkerId}
+          onSelectCoworker={onSourceCoworkerChange}
+          isLoading={isLoadingCoworkers}
+        />
       </div>
     </div>
   );

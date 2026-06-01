@@ -11,7 +11,6 @@ import type {
   ToolApprovalData,
 } from "@/components/inbox/types";
 import { InboxAgentFilter } from "@/components/inbox/inbox-agent-filter";
-import { InboxCreateInput } from "@/components/inbox/inbox-create-input";
 import { InboxList } from "@/components/inbox/inbox-list";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { client } from "@/orpc/client";
@@ -22,26 +21,23 @@ import {
   useGetAuthUrl,
   useGetOrCreateBuilderConversation,
   useInboxEditApprovalAndResend,
+  useInfiniteInboxItems,
   useInboxMarkAsRead,
-  useInboxItems,
   useSubmitApproval,
   useSubmitAuthResult,
-  useTriggerCoworker,
 } from "@/orpc/hooks";
 
 const ALL_STATUSES: InboxItemStatus[] = [
   "needs_user_input",
+  "running",
   "awaiting_approval",
   "awaiting_auth",
   "paused",
+  "completed",
   "error",
+  "cancelled",
 ];
-const DEFAULT_STATUS_FILTERS: InboxItemStatus[] = [
-  "needs_user_input",
-  "awaiting_approval",
-  "awaiting_auth",
-  "paused",
-];
+const DEFAULT_STATUS_FILTERS: InboxItemStatus[] = ALL_STATUSES;
 
 function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -71,22 +67,6 @@ function normalizeInboxItems(items: InboxItem[] | undefined): InboxItem[] {
       });
       continue;
     }
-
-    normalized.push({
-      kind: "chat",
-      id: item.id,
-      conversationId: item.conversationId,
-      conversationTitle: item.conversationTitle,
-      title: item.title,
-      status: item.status,
-      updatedAt: toDate(item.updatedAt),
-      createdAt: toDate(item.createdAt),
-      generationId: item.generationId,
-      errorMessage: item.errorMessage,
-      pauseReason: item.pauseReason,
-      pendingApproval: item.pendingApproval,
-      pendingAuth: item.pendingAuth,
-    });
   }
   return normalized;
 }
@@ -95,12 +75,11 @@ function InboxPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authCallbackHandledRef = useRef<string | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "coworkers" | "chats">("all");
   const [statusFilters, setStatusFilters] = useState<InboxItemStatus[]>(DEFAULT_STATUS_FILTERS);
   const [sourceCoworkerId, setSourceCoworkerId] = useState<string | undefined>(undefined);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -108,19 +87,19 @@ function InboxPageContent() {
     setSearchQuery(event.target.value);
   }, []);
 
-  const inboxQuery = useInboxItems({
-    limit: 20,
-    type: typeFilter,
+  const inboxQuery = useInfiniteInboxItems({
+    limit: 50,
+    type: "coworkers",
     statuses: statusFilters,
-    sourceCoworkerId: typeFilter === "chats" ? undefined : sourceCoworkerId,
+    sourceCoworkerId,
     query: deferredSearchQuery,
   });
   const coworkersQuery = useCoworkerList();
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = inboxQuery;
   const submitApproval = useSubmitApproval();
   const submitAuthResult = useSubmitAuthResult();
   const cancelGeneration = useCancelGeneration();
   const enqueueConversationMessage = useEnqueueConversationMessage();
-  const triggerCoworker = useTriggerCoworker();
   const getAuthUrl = useGetAuthUrl();
   const getOrCreateBuilderConversation = useGetOrCreateBuilderConversation();
   const editApprovalAndResend = useInboxEditApprovalAndResend();
@@ -157,36 +136,51 @@ function InboxPageContent() {
     () => normalizeInboxItems(inboxQuery.data?.items as InboxItem[] | undefined),
     [inboxQuery.data?.items],
   );
-  const sourceOptions = useMemo(
+  const coworkers = useMemo(
     () =>
-      (inboxQuery.data?.sourceOptions ?? []) as Array<{ coworkerId: string; coworkerName: string }>,
-    [inboxQuery.data?.sourceOptions],
-  );
-  const activeCoworkers = useMemo(
-    () =>
-      ((coworkersQuery.data ?? []) as Array<{ id: string; name: string; status: string }>)
-        .filter((coworker) => coworker.status === "on")
-        .map((coworker) => ({ id: coworker.id, name: coworker.name })),
+      (
+        (coworkersQuery.data ?? []) as Array<{
+          id: string;
+          name?: string | null;
+          username?: string | null;
+          description?: string | null;
+          status: "on" | "off";
+          triggerType: string;
+          isPinned?: boolean;
+          sharedAt?: Date | string | null;
+          recentRuns?: { id?: string; status: string; startedAt?: Date | string | null }[];
+        }>
+      ).map((coworker) => ({
+        id: coworker.id,
+        name: coworker.name,
+        username: coworker.username,
+        description: coworker.description,
+        status: coworker.status,
+        triggerType: coworker.triggerType,
+        isPinned: coworker.isPinned,
+        sharedAt: coworker.sharedAt,
+        recentRuns: coworker.recentRuns,
+      })),
     [coworkersQuery.data],
   );
 
   useEffect(() => {
-    if (typeFilter === "chats") {
-      setSourceCoworkerId(undefined);
+    const node = loadMoreRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      return;
     }
-  }, [typeFilter]);
 
-  const toggleExpanded = useCallback((id: string) => {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting) && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: "480px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const toggleEditing = useCallback((id: string) => {
     setEditingIds((current) => {
@@ -209,6 +203,9 @@ function InboxPageContent() {
       return [...current, status];
     });
   }, []);
+  const handleLoadMoreClick = useCallback(() => {
+    void fetchNextPage();
+  }, [fetchNextPage]);
 
   const runItemAction = useCallback(async (itemId: string, action: () => Promise<void>) => {
     setBusyItemId(itemId);
@@ -443,11 +440,6 @@ function InboxPageContent() {
         });
       });
 
-      setExpandedIds((current) => {
-        const next = new Set(current);
-        next.delete(item.id);
-        return next;
-      });
       setEditingIds((current) => {
         const next = new Set(current);
         next.delete(item.id);
@@ -457,25 +449,6 @@ function InboxPageContent() {
     [markInboxItemAsRead, runItemAction],
   );
 
-  const handleManualTrigger = useCallback(
-    async (input: {
-      coworkerId: string;
-      message: string;
-      attachments: Array<{ name: string; mimeType: string; dataUrl: string }>;
-    }) => {
-      const result = await triggerCoworker.mutateAsync({
-        id: input.coworkerId,
-        payload: {
-          source: "manual_inbox",
-        },
-        trustedUserInput: input.message,
-        fileAttachments: input.attachments,
-      });
-      toast.success("Run started.");
-      router.push(`/coworkers/runs/${result.runId}`);
-    },
-    [router, triggerCoworker],
-  );
   const handleApproveWithToast = useCallback(
     (item: InboxItem, questionAnswers?: string[][]) => {
       void handleApprove(item, questionAnswers).catch((error) => {
@@ -574,30 +547,19 @@ function InboxPageContent() {
             />
           </div>
           <InboxAgentFilter
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
             statusFilters={statusFilters}
             onToggleStatus={toggleStatus}
             sourceCoworkerId={sourceCoworkerId}
             onSourceCoworkerChange={setSourceCoworkerId}
-            sourceOptions={sourceOptions}
-          />
-        </div>
-
-        <div className="mb-5 rounded-lg border">
-          <InboxCreateInput
-            coworkers={activeCoworkers}
-            onSubmit={handleManualTrigger}
-            isSubmitting={triggerCoworker.isPending}
+            coworkers={coworkers}
+            isLoadingCoworkers={coworkersQuery.isLoading}
           />
         </div>
 
         <InboxList
           items={items}
-          expandedIds={expandedIds}
           editingIds={editingIds}
           busyItemId={busyItemId}
-          onToggleExpanded={toggleExpanded}
           onToggleEditing={toggleEditing}
           onApprove={handleApproveWithToast}
           onDeny={handleDenyWithToast}
@@ -611,6 +573,26 @@ function InboxPageContent() {
           onOpenBuilder={handleOpenBuilderWithToast}
           onMarkAsRead={handleMarkAsReadWithToast}
         />
+        <div ref={loadMoreRef} className="flex min-h-12 items-center justify-center py-4">
+          {isFetchingNextPage ? (
+            <div className="text-muted-foreground inline-flex items-center gap-2 text-xs">
+              <Loader2 className="size-3 animate-spin" />
+              Loading older runs
+            </div>
+          ) : hasNextPage ? (
+            <button
+              type="button"
+              onClick={handleLoadMoreClick}
+              className="text-muted-foreground hover:text-foreground rounded-md px-3 py-1.5 text-xs transition-colors"
+            >
+              Load older runs
+            </button>
+          ) : items.length > 0 ? (
+            <p className="text-muted-foreground/60 text-xs">
+              Showing coworker runs from the last 90 days
+            </p>
+          ) : null}
+        </div>
       </main>
     </div>
   );

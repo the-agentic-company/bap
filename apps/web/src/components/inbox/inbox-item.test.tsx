@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { InboxItem } from "./inbox-item";
-import type { InboxItem as InboxItemType } from "./types";
+import type { InboxCoworkerItem } from "./types";
 
 const baseHandlers = {
   onToggle: vi.fn(),
@@ -20,7 +20,7 @@ const baseHandlers = {
   onMarkAsRead: vi.fn(),
 };
 
-function buildPendingItem(): InboxItemType {
+function buildPendingItem(): InboxCoworkerItem {
   return {
     kind: "coworker",
     id: "run-pending",
@@ -38,7 +38,22 @@ function buildPendingItem(): InboxItemType {
   };
 }
 
+function buildCompletedItem(): InboxCoworkerItem {
+  return {
+    ...buildPendingItem(),
+    id: "run-completed",
+    runId: "run-completed",
+    title: "Email Drafter · May 26, 14:40",
+    status: "completed",
+    generationId: "gen-completed",
+  };
+}
+
 describe("InboxItem", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("labels pending starts as Needs your input and exposes Dismiss separately from Mark as read", () => {
     const handlers = {
       ...baseHandlers,
@@ -46,23 +61,28 @@ describe("InboxItem", () => {
       onMarkAsRead: vi.fn(),
     };
 
-    render(
-      <InboxItem
-        item={buildPendingItem()}
-        isExpanded
-        isEditing={false}
-        isBusy={false}
-        {...handlers}
-      />,
-    );
+    render(<InboxItem item={buildPendingItem()} isEditing={false} isBusy={false} {...handlers} />);
 
     expect(screen.getByText("Needs your input")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /Mark as read/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Mark read/i }));
     expect(handlers.onMarkAsRead).toHaveBeenCalledTimes(1);
     expect(handlers.onStop).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: /Dismiss/i }));
     expect(handlers.onStop).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders completed runs as history without stop controls", () => {
+    render(
+      <InboxItem item={buildCompletedItem()} isEditing={false} isBusy={false} {...baseHandlers} />,
+    );
+
+    expect(screen.getByText("completed")).toBeTruthy();
+    expect(screen.getByText(/Updated/)).toBeTruthy();
+    expect(screen.queryByText(/Started/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Stop/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Dismiss/i })).toBeNull();
+    expect(screen.queryByPlaceholderText("Reply and open thread...")).toBeNull();
   });
 });

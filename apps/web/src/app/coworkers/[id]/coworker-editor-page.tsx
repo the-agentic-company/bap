@@ -438,9 +438,17 @@ function CoworkerChatPanel({
   );
 }
 
-export default function CoworkerEditorPage() {
+type CoworkerEditorPageProps = {
+  coworkerIdOverride?: string;
+  embedded?: boolean;
+};
+
+export default function CoworkerEditorPage({
+  coworkerIdOverride,
+  embedded = false,
+}: CoworkerEditorPageProps = {}) {
   const params = useParams<{ id: string }>();
-  const coworkerId = params?.id;
+  const coworkerId = coworkerIdOverride ?? params?.id;
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -514,7 +522,7 @@ export default function CoworkerEditorPage() {
       limit: 12,
     });
   const routeRunId = useMemo(() => {
-    if (!coworkerId || !pathname) {
+    if (embedded || !coworkerId || !pathname) {
       return null;
     }
 
@@ -525,9 +533,9 @@ export default function CoworkerEditorPage() {
 
     const runId = pathname.slice(prefix.length);
     return runId.length > 0 ? runId : null;
-  }, [coworkerId, pathname]);
+  }, [coworkerId, embedded, pathname]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(routeRunId);
-  const isRunsRoute = pathname?.startsWith(`/coworkers/${coworkerId}/runs`) ?? false;
+  const isRunsRoute = !embedded && (pathname?.startsWith(`/coworkers/${coworkerId}/runs`) ?? false);
   const baseTabParam = searchParams.get("tab");
   const routeBaseTab: CoworkerTab | null =
     baseTabParam === "chat" ||
@@ -538,9 +546,12 @@ export default function CoworkerEditorPage() {
       ? baseTabParam
       : null;
   const currentRoutePath = useMemo(() => {
+    if (embedded && coworkerId) {
+      return `/agents?agent=${encodeURIComponent(coworkerId)}`;
+    }
     const query = searchParams.toString();
     return query && pathname ? `${pathname}?${query}` : (pathname ?? `/coworkers/${coworkerId}`);
-  }, [coworkerId, pathname, searchParams]);
+  }, [coworkerId, embedded, pathname, searchParams]);
   const shouldLoadCoworkerImpersonationTarget = Boolean(
     coworkerId && !routeRunId && !isLoading && !coworker,
   );
@@ -619,13 +630,13 @@ export default function CoworkerEditorPage() {
     deleteCoworker.mutate(coworkerId, {
       onSuccess: () => {
         toast.success("Coworker deleted");
-        router.push("/coworkers");
+        router.push(embedded ? "/agents" : "/coworkers");
       },
       onError: () => {
         toast.error("Failed to delete coworker");
       },
     });
-  }, [coworkerId, deleteCoworker, router]);
+  }, [coworkerId, deleteCoworker, embedded, router]);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasInitializedEditorRef = useRef(false);
   const initializedCoworkerIdRef = useRef<string | null>(null);
@@ -1619,7 +1630,15 @@ export default function CoworkerEditorPage() {
   const buildCoworkerEditorHref = useCallback(
     (tab?: Exclude<CoworkerTab, "runs"> | null) => {
       if (!coworkerId) {
-        return "/coworkers";
+        return embedded ? "/agents" : "/coworkers";
+      }
+
+      if (embedded) {
+        const params = new URLSearchParams({ agent: coworkerId });
+        if (tab && tab !== "instruction") {
+          params.set("tab", tab);
+        }
+        return `/agents?${params.toString()}`;
       }
 
       if (!tab || tab === "instruction") {
@@ -1628,13 +1647,21 @@ export default function CoworkerEditorPage() {
 
       return `/coworkers/${coworkerId}?tab=${tab}`;
     },
-    [coworkerId],
+    [coworkerId, embedded],
   );
 
   const buildCoworkerPanelHref = useCallback(
     (options?: { runId?: string | null }) => {
       if (!coworkerId) {
-        return "/coworkers";
+        return embedded ? "/agents" : "/coworkers";
+      }
+
+      if (embedded) {
+        const params = new URLSearchParams({ agent: coworkerId, tab: "runs" });
+        if (options?.runId) {
+          params.set("run", options.runId);
+        }
+        return `/agents?${params.toString()}`;
       }
 
       if (options?.runId) {
@@ -1643,7 +1670,7 @@ export default function CoworkerEditorPage() {
 
       return `/coworkers/${coworkerId}/runs`;
     },
-    [coworkerId],
+    [coworkerId, embedded],
   );
 
   const handleRunClick = useCallback(
@@ -1657,6 +1684,9 @@ export default function CoworkerEditorPage() {
 
       setActiveTab("runs");
       setSelectedRunId(result.runId);
+      if (embedded) {
+        return;
+      }
       if (isMobile) {
         router.replace(buildCoworkerPanelHref({ runId: result.runId }));
         return;
@@ -1668,7 +1698,7 @@ export default function CoworkerEditorPage() {
         buildCoworkerPanelHref({ runId: result.runId }),
       );
     },
-    [buildCoworkerPanelHref, handleRun, isMobile, router],
+    [buildCoworkerPanelHref, embedded, handleRun, isMobile, router],
   );
 
   const handleRemoteRunClick = useCallback(async () => {
@@ -1689,6 +1719,9 @@ export default function CoworkerEditorPage() {
 
     setActiveTab("runs");
     setSelectedRunId(result.runId);
+    if (embedded) {
+      return;
+    }
     if (isMobile) {
       router.replace(buildCoworkerPanelHref({ runId: result.runId }));
       return;
@@ -1699,7 +1732,15 @@ export default function CoworkerEditorPage() {
       "",
       buildCoworkerPanelHref({ runId: result.runId }),
     );
-  }, [buildCoworkerPanelHref, handleRun, isMobile, remoteTargetEnv, router, selectedRemoteUser]);
+  }, [
+    buildCoworkerPanelHref,
+    embedded,
+    handleRun,
+    isMobile,
+    remoteTargetEnv,
+    router,
+    selectedRemoteUser,
+  ]);
 
   const isRunDisabled = !hasAgentInstructions || triggerCoworker.isPending || isStartingRun;
   const isRunning = triggerCoworker.isPending || isStartingRun;
@@ -1711,6 +1752,10 @@ export default function CoworkerEditorPage() {
       setSelectedRunId(null);
 
       if (!coworkerId) {
+        return;
+      }
+
+      if (embedded) {
         return;
       }
 
@@ -1739,6 +1784,7 @@ export default function CoworkerEditorPage() {
       buildCoworkerEditorHref,
       buildCoworkerPanelHref,
       coworkerId,
+      embedded,
       isMobile,
       isRunsRoute,
       routeBaseTab,
@@ -1749,6 +1795,9 @@ export default function CoworkerEditorPage() {
     (runId: string) => {
       setActiveTab("runs");
       setSelectedRunId(runId);
+      if (embedded) {
+        return;
+      }
       if (isMobile) {
         router.push(buildCoworkerPanelHref({ runId }));
         return;
@@ -1756,18 +1805,21 @@ export default function CoworkerEditorPage() {
 
       window.history.pushState(window.history.state, "", buildCoworkerPanelHref({ runId }));
     },
-    [buildCoworkerPanelHref, isMobile, router],
+    [buildCoworkerPanelHref, embedded, isMobile, router],
   );
   const handleBackToRuns = useCallback(() => {
     setActiveTab("runs");
     setSelectedRunId(null);
+    if (embedded) {
+      return;
+    }
     if (isMobile) {
       router.replace(buildCoworkerPanelHref());
       return;
     }
 
     window.history.replaceState(window.history.state, "", buildCoworkerPanelHref());
-  }, [buildCoworkerPanelHref, isMobile, router]);
+  }, [buildCoworkerPanelHref, embedded, isMobile, router]);
   const handleOpenDeleteDialog = useCallback(() => {
     setShowDeleteDialog(true);
   }, []);

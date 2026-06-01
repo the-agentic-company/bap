@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   Check,
-  ChevronRight,
   ExternalLink,
   KeyRound,
   Loader2,
@@ -15,7 +14,7 @@ import {
   TimerReset,
   Wrench,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { AuthRequestCard } from "@/components/chat/auth-request-card";
 import { ToolApprovalCard } from "@/components/chat/tool-approval-card";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
@@ -26,18 +25,24 @@ import { InboxEditForm } from "./inbox-edit-form";
 
 const STATUS_CONFIG = {
   needs_user_input: { color: "bg-emerald-500", icon: MessageCircleQuestion },
+  running: { color: "bg-sky-500", icon: Loader2 },
   awaiting_approval: { color: "bg-amber-500", icon: ShieldCheck },
   awaiting_auth: { color: "bg-orange-500", icon: KeyRound },
   paused: { color: "bg-blue-500", icon: TimerReset },
+  completed: { color: "bg-emerald-500", icon: Check },
   error: { color: "bg-red-500", icon: AlertTriangle },
+  cancelled: { color: "bg-muted-foreground/45", icon: Square },
 } as const;
 
 const STATUS_LABELS: Record<InboxItemType["status"], string> = {
   needs_user_input: "Needs your input",
+  running: "running",
   awaiting_approval: "awaiting approval",
   awaiting_auth: "awaiting auth",
   paused: "needs continuation",
+  completed: "completed",
   error: "error",
+  cancelled: "cancelled",
 };
 
 function formatRelative(date: Date): string {
@@ -59,9 +64,14 @@ function formatRelative(date: Date): string {
 
 function StatusDot({ status }: { status: InboxItemType["status"] }) {
   const config = STATUS_CONFIG[status];
+  const isActive = !["completed", "cancelled", "error"].includes(status);
   return (
     <span className="relative flex h-2.5 w-2.5 shrink-0">
-      <span className={cn("absolute inset-0 animate-ping rounded-full opacity-40", config.color)} />
+      {isActive ? (
+        <span
+          className={cn("absolute inset-0 animate-ping rounded-full opacity-40", config.color)}
+        />
+      ) : null}
       <span className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", config.color)} />
     </span>
   );
@@ -123,10 +133,8 @@ function ReplyField({
 
 type Props = {
   item: InboxItemType;
-  isExpanded: boolean;
   isEditing: boolean;
   isBusy?: boolean;
-  onToggle: () => void;
   onToggleEditing: () => void;
   onApprove: (questionAnswers?: string[][]) => void;
   onDeny: () => void;
@@ -143,10 +151,8 @@ type Props = {
 
 export function InboxItem({
   item,
-  isExpanded,
   isEditing,
-  isBusy,
-  onToggle,
+  isBusy: _isBusy,
   onToggleEditing,
   onApprove,
   onDeny,
@@ -162,96 +168,85 @@ export function InboxItem({
 }: Props) {
   const statusConfig = STATUS_CONFIG[item.status];
   const StatusIcon = statusConfig.icon;
-  const sourceLabel = useMemo(
-    () => (item.kind === "coworker" ? `@${item.coworkerName}` : "Chat"),
-    [item],
-  );
 
   const showStop =
-    (Boolean(item.generationId) || item.status === "needs_user_input") &&
-    item.status !== "error" &&
-    item.status !== "paused";
+    (item.status === "running" ||
+      item.status === "awaiting_approval" ||
+      item.status === "awaiting_auth" ||
+      item.status === "needs_user_input") &&
+    (Boolean(item.generationId) || item.status === "needs_user_input");
   const showContinue = item.status === "paused" && item.pauseReason === "run_deadline";
   const showBuilder = item.kind === "coworker" && item.status === "error" && item.builderAvailable;
+  const showReply = item.status === "needs_user_input" || item.status === "paused";
 
   return (
-    <div className="group/item overflow-hidden rounded-lg border transition-colors">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="hover:bg-accent/30 flex w-full items-center gap-3.5 px-5 py-4 text-left transition-colors"
-      >
-        <StatusDot status={item.status} />
+    <div className="border-border bg-card group/item overflow-hidden rounded-lg border shadow-sm transition-colors">
+      <div className="bg-muted/10 min-w-0 space-y-4 overflow-hidden px-5 py-4">
+        <div className="flex items-start gap-3.5">
+          <StatusDot status={item.status} />
 
-        {item.kind === "coworker" ? (
-          <CoworkerAvatar username={item.coworkerName} size={24} className="rounded-full" />
-        ) : null}
+          {item.kind === "coworker" ? (
+            <CoworkerAvatar username={item.coworkerName} size={28} className="rounded-full" />
+          ) : null}
 
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-medium">{item.title}</span>
-            <span className="bg-secondary text-secondary-foreground rounded-full px-2 py-0.5 text-[10px] uppercase">
-              {item.kind}
-            </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="min-w-0 truncate text-sm font-semibold">{item.title}</span>
+              <span className="bg-secondary text-secondary-foreground rounded-full px-2 py-0.5 text-[10px] uppercase">
+                {item.kind}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="text-muted-foreground hidden items-center text-xs sm:inline-flex">
-          {sourceLabel}
-        </div>
-
-        <span className="text-muted-foreground/60 w-8 text-right text-xs tabular-nums">
-          {formatRelative(item.updatedAt)}
-        </span>
-
-        {isBusy ? (
-          <Loader2 className="text-muted-foreground/40 h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <ChevronRight
-            className={cn(
-              "text-muted-foreground/40 h-3.5 w-3.5 transition-transform duration-150",
-              isExpanded && "rotate-90",
-            )}
-          />
-        )}
-      </button>
-
-      {isExpanded ? (
-        <div className="border-border/30 min-w-0 space-y-4 overflow-hidden border-t px-5 py-4">
-          <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[12px]">
-            <StatusIcon
-              className={cn(
-                "h-3.5 w-3.5",
-                item.status === "awaiting_approval" && "text-amber-400",
-                item.status === "needs_user_input" && "text-emerald-400",
-                item.status === "awaiting_auth" && "text-orange-400",
-                item.status === "paused" && "text-blue-400",
-                item.status === "error" && "text-red-400",
-              )}
-            />
-            <span className="font-mono text-[11px] tracking-wide uppercase">
-              {STATUS_LABELS[item.status]}
-            </span>
-            <span className="text-muted-foreground/40">|</span>
-            <span>{sourceLabel}</span>
-            <span className="text-muted-foreground/40">|</span>
-            <span className="tabular-nums">{formatRelative(item.createdAt)} ago</span>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[12px]">
+              <StatusIcon
+                className={cn(
+                  "h-3.5 w-3.5",
+                  item.status === "awaiting_approval" && "text-amber-400",
+                  item.status === "needs_user_input" && "text-emerald-400",
+                  item.status === "running" && "text-sky-400",
+                  item.status === "awaiting_auth" && "text-orange-400",
+                  item.status === "paused" && "text-blue-400",
+                  item.status === "completed" && "text-emerald-400",
+                  item.status === "error" && "text-red-400",
+                  item.status === "cancelled" && "text-muted-foreground",
+                )}
+              />
+              <span className="font-mono text-[11px] tracking-wide uppercase">
+                {STATUS_LABELS[item.status]}
+              </span>
+            </div>
+            <div className="text-muted-foreground/70 text-[12px] tabular-nums">
+              Updated {formatRelative(item.updatedAt)} ago
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" className="h-7 text-[12px]" onClick={onOpenTarget}>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              className="bg-foreground text-background hover:bg-foreground/90 h-8 border-transparent px-3 text-[12px] shadow-sm"
+              onClick={onOpenTarget}
+            >
               <ExternalLink className="mr-1 h-3.5 w-3.5" />
-              Open
+              Open run
             </Button>
-            <Button size="sm" variant="outline" className="h-7 text-[12px]" onClick={onMarkAsRead}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-background/80 hover:bg-accent h-8 px-3 text-[12px] shadow-sm"
+              onClick={onMarkAsRead}
+            >
               <Check className="mr-1 h-3.5 w-3.5" />
-              Mark as read
+              Mark read
             </Button>
             {showBuilder && onOpenBuilder ? (
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-[12px]"
+                className="bg-background/80 hover:bg-accent h-8 px-3 text-[12px] shadow-sm"
                 onClick={onOpenBuilder}
               >
                 <Wrench className="mr-1 h-3.5 w-3.5" />
@@ -259,88 +254,98 @@ export function InboxItem({
               </Button>
             ) : null}
             {showStop ? (
-              <Button size="sm" variant="outline" className="h-7 text-[12px]" onClick={onStop}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-background/80 hover:bg-accent h-8 px-3 text-[12px] shadow-sm"
+                onClick={onStop}
+              >
                 <Square className="mr-1 h-3.5 w-3.5" />
                 {item.status === "needs_user_input" ? "Dismiss" : "Stop"}
               </Button>
             ) : null}
             {showContinue ? (
-              <Button size="sm" variant="outline" className="h-7 text-[12px]" onClick={onContinue}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="bg-background/80 hover:bg-accent h-8 px-3 text-[12px] shadow-sm"
+                onClick={onContinue}
+              >
                 <TimerReset className="mr-1 h-3.5 w-3.5" />
                 Continue
               </Button>
             ) : null}
           </div>
-
-          {item.pendingApproval && !isEditing ? (
-            <div className="space-y-2">
-              <div className="[&_.whitespace-pre-wrap]:break-words [&_pre]:break-words [&_pre]:whitespace-pre-wrap">
-                <ToolApprovalCard
-                  toolUseId={item.pendingApproval.toolUseId}
-                  toolName={item.pendingApproval.toolName}
-                  toolInput={item.pendingApproval.toolInput}
-                  integration={item.pendingApproval.integration}
-                  operation={item.pendingApproval.operation}
-                  command={item.pendingApproval.command}
-                  status="pending"
-                  onApprove={onApprove}
-                  onDeny={onDeny}
-                  isLoading={isBusy}
-                />
-              </div>
-              <div className="flex items-center gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2">
-                <Pencil className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                <span className="text-muted-foreground flex-1 text-[12px]">
-                  Want to modify the action before approving?
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 border-blue-500/30 text-[12px] text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
-                  onClick={onToggleEditing}
-                >
-                  <Pencil className="mr-1.5 h-3 w-3" />
-                  Edit
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {item.pendingApproval && isEditing ? (
-            <InboxEditForm
-              toolApproval={item.pendingApproval}
-              onSave={onSaveEdit}
-              onCancel={onToggleEditing}
-            />
-          ) : null}
-
-          {item.pendingAuth ? (
-            <AuthRequestCard
-              integrations={item.pendingAuth.integrations}
-              connectedIntegrations={item.pendingAuth.connectedIntegrations}
-              reason={item.pendingAuth.reason}
-              status="pending"
-              onConnect={onAuthConnect}
-              onCancel={onAuthCancel}
-              isLoading={isBusy}
-            />
-          ) : null}
-
-          {item.errorMessage ? (
-            <div className="rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
-              <p className="font-mono text-[12px] text-red-400">{item.errorMessage}</p>
-            </div>
-          ) : null}
-
-          {showContinue ? (
-            <div className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[12px] text-blue-300">
-              This run hit the max runtime and can be continued from the saved conversation state.
-            </div>
-          ) : null}
-
-          <ReplyField disabled={isBusy} onSend={onReply} />
         </div>
-      ) : null}
+
+        {item.pendingApproval && !isEditing ? (
+          <div className="space-y-2">
+            <div className="[&_.whitespace-pre-wrap]:break-words [&_pre]:break-words [&_pre]:whitespace-pre-wrap">
+              <ToolApprovalCard
+                toolUseId={item.pendingApproval.toolUseId}
+                toolName={item.pendingApproval.toolName}
+                toolInput={item.pendingApproval.toolInput}
+                integration={item.pendingApproval.integration}
+                operation={item.pendingApproval.operation}
+                command={item.pendingApproval.command}
+                status="pending"
+                onApprove={onApprove}
+                onDeny={onDeny}
+                isLoading={_isBusy}
+              />
+            </div>
+            <div className="flex items-center gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2">
+              <Pencil className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+              <span className="text-muted-foreground flex-1 text-[12px]">
+                Want to modify the action before approving?
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 border-blue-500/30 text-[12px] text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+                onClick={onToggleEditing}
+              >
+                <Pencil className="mr-1.5 h-3 w-3" />
+                Edit
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {item.pendingApproval && isEditing ? (
+          <InboxEditForm
+            toolApproval={item.pendingApproval}
+            onSave={onSaveEdit}
+            onCancel={onToggleEditing}
+          />
+        ) : null}
+
+        {item.pendingAuth ? (
+          <AuthRequestCard
+            integrations={item.pendingAuth.integrations}
+            connectedIntegrations={item.pendingAuth.connectedIntegrations}
+            reason={item.pendingAuth.reason}
+            status="pending"
+            onConnect={onAuthConnect}
+            onCancel={onAuthCancel}
+            isLoading={_isBusy}
+          />
+        ) : null}
+
+        {item.errorMessage ? (
+          <div className="rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
+            <p className="font-mono text-[12px] text-red-400">{item.errorMessage}</p>
+          </div>
+        ) : null}
+
+        {showContinue ? (
+          <div className="rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[12px] text-blue-300">
+            This run hit the max runtime and can be continued from the saved conversation state.
+          </div>
+        ) : null}
+
+        {showReply ? <ReplyField disabled={_isBusy} onSend={onReply} /> : null}
+      </div>
     </div>
   );
 }

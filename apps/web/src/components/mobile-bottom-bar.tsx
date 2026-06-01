@@ -17,7 +17,7 @@ type BottomTab = {
 const tabs: BottomTab[] = [
   { icon: MessageSquare, label: "Chat", href: "/chat" },
   { icon: WandSparkles, label: "Create", href: "/" },
-  { icon: Cuboid, label: "Coworkers", href: "/coworkers" },
+  { icon: Cuboid, label: "Agents", href: "/agents" },
   { icon: LayoutTemplate, label: "Templates", href: "/templates" },
 ];
 

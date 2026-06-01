@@ -183,10 +183,12 @@ export function InteractiveCoworkerCard({
   coworker,
   className,
   onClick,
+  nounLabel = "Coworker",
 }: {
   coworker: InteractiveCoworkerCardData;
   className?: string;
   onClick?: () => void;
+  nounLabel?: string;
 }) {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -264,14 +266,14 @@ export function InteractiveCoworkerCard({
       setIsUpdatingStatus(true);
       try {
         await updateCoworker.mutateAsync({ id: coworker.id, status: nextStatus });
-        toast.success(`Coworker turned ${nextStatus}.`);
+        toast.success(`${nounLabel} turned ${nextStatus}.`);
       } catch {
-        toast.error("Failed to update coworker.");
+        toast.error(`Failed to update ${nounLabel.toLowerCase()}.`);
       } finally {
         setIsUpdatingStatus(false);
       }
     },
-    [updateCoworker, coworker.id, isOn],
+    [updateCoworker, coworker.id, isOn, nounLabel],
   );
 
   const handleToggleShare = useCallback(async () => {
@@ -279,28 +281,28 @@ export function InteractiveCoworkerCard({
     try {
       if (coworker.sharedAt) {
         await unshareCoworker.mutateAsync(coworker.id);
-        toast.success("Coworker unshared.");
+        toast.success(`${nounLabel} unshared.`);
       } else {
         await shareCoworker.mutateAsync(coworker.id);
-        toast.success("Coworker shared with workspace.");
+        toast.success(`${nounLabel} shared with workspace.`);
       }
     } catch {
       toast.error("Failed to update sharing.");
     } finally {
       setIsUpdatingShare(false);
     }
-  }, [shareCoworker, unshareCoworker, coworker.id, coworker.sharedAt]);
+  }, [shareCoworker, unshareCoworker, coworker.id, coworker.sharedAt, nounLabel]);
 
   const handleDelete = useCallback(async () => {
     try {
       await deleteCoworkerMutation.mutateAsync(coworker.id);
-      toast.success("Coworker deleted.");
+      toast.success(`${nounLabel} deleted.`);
     } catch {
-      toast.error("Failed to delete coworker.");
+      toast.error(`Failed to delete ${nounLabel.toLowerCase()}.`);
     } finally {
       setPendingDelete(false);
     }
-  }, [deleteCoworkerMutation, coworker.id]);
+  }, [deleteCoworkerMutation, coworker.id, nounLabel]);
 
   const handleStopPropagation = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -593,7 +595,7 @@ export function InteractiveCoworkerCard({
   const footer = (
     <div className="mt-auto flex items-center justify-between pt-3">
       <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium">
-        Coworker
+        {nounLabel}
       </span>
       <div className="flex items-center gap-0.5">
         <Link
@@ -645,7 +647,7 @@ export function InteractiveCoworkerCard({
       <AlertDialog open={pendingDelete} onOpenChange={setPendingDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete coworker</AlertDialogTitle>
+            <AlertDialogTitle>Delete {nounLabel.toLowerCase()}</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete {getCoworkerDisplayName(coworker.name)}? This action
               cannot be undone.
