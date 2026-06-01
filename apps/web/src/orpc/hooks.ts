@@ -456,7 +456,7 @@ export function useConnectGalien() {
     mutationFn: (input: { username: string; password: string }) => client.galien.connect(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["galien", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -468,7 +468,7 @@ export function useDisconnectGalien() {
     mutationFn: () => client.galien.disconnect(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["galien", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -501,7 +501,7 @@ export function useConnectModulr() {
     mutationFn: (input: ModulrConnectionInput) => client.modulr.connect(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -513,7 +513,7 @@ export function useDisconnectModulr() {
     mutationFn: () => client.modulr.disconnect(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -535,7 +535,7 @@ export function useAdminAddModulrAccess() {
     onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ["modulr", "admin-access", input.workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -549,7 +549,7 @@ export function useAdminRemoveModulrAccess() {
     onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ["modulr", "admin-access", input.workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -571,7 +571,7 @@ export function useAdminAddGalienAccess() {
     onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ["galien", "admin-access", input.workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["galien", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -585,7 +585,7 @@ export function useAdminUpdateGalienAccessTargetEnv() {
     onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ["galien", "admin-access", input.workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["galien", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -599,7 +599,7 @@ export function useAdminRemoveGalienAccess() {
     onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ["galien", "admin-access", input.workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["galien", "status"] });
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -788,8 +788,8 @@ export function useLinkLinkedIn() {
 
 export function useWorkspaceMcpServerList() {
   return useQuery({
-    queryKey: ["executorSource", "list"],
-    queryFn: () => client.executorSource.list(),
+    queryKey: ["workspaceMcpServer", "list"],
+    queryFn: () => client.workspaceMcpServer.list(),
   });
 }
 
@@ -812,9 +812,9 @@ export function useCreateWorkspaceMcpServer() {
       authQueryParam?: string | null;
       authPrefix?: string | null;
       enabled?: boolean;
-    }) => client.executorSource.create(input),
+    }) => client.workspaceMcpServer.create(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -839,9 +839,9 @@ export function useUpdateWorkspaceMcpServer() {
       authQueryParam?: string | null;
       authPrefix?: string | null;
       enabled?: boolean;
-    }) => client.executorSource.update(input),
+    }) => client.workspaceMcpServer.update(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -850,9 +850,9 @@ export function useDeleteWorkspaceMcpServer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => client.executorSource.delete({ id }),
+    mutationFn: (id: string) => client.workspaceMcpServer.delete({ id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -862,9 +862,9 @@ export function useStartWorkspaceMcpServerOAuth() {
 
   return useMutation({
     mutationFn: (input: { workspaceMcpServerId: string; redirectUrl: string }) =>
-      client.executorSource.startOAuth(input),
+      client.workspaceMcpServer.startOAuth(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -878,9 +878,9 @@ export function useSetWorkspaceMcpServerCredential() {
       secret: string;
       displayName?: string | null;
       enabled?: boolean;
-    }) => client.executorSource.setCredential(input),
+    }) => client.workspaceMcpServer.setCredential(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }
@@ -890,9 +890,9 @@ export function useDisconnectWorkspaceMcpServerCredential() {
 
   return useMutation({
     mutationFn: (workspaceMcpServerId: string) =>
-      client.executorSource.disconnectCredential({ workspaceMcpServerId }),
+      client.workspaceMcpServer.disconnectCredential({ workspaceMcpServerId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["executorSource"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },
   });
 }

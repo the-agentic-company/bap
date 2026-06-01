@@ -3892,7 +3892,7 @@ function CoworkerSettingsPanel({
                 <section>
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-                      Executor Sources
+                      Integrations
                     </h3>
                     <div className="flex items-center gap-1.5">
                       <span className="text-muted-foreground text-[10px]">
@@ -3911,7 +3911,7 @@ function CoworkerSettingsPanel({
                   </div>
                   {executorSourceEntries.length === 0 ? (
                     <p className="text-muted-foreground py-4 text-center text-xs">
-                      No workspace Executor sources available.
+                      No workspace integrations available.
                     </p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2">

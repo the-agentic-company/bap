@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1780316400000,
+      "tag": "0000_workspace_mcp_big_bang",
+      "breakpoints": true
+    }
+  ]
+}

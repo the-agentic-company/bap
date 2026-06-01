@@ -33,7 +33,7 @@ import {
   getIntegrationSkillsSystemPrompt,
   getSkillsSystemPrompt,
 } from "../../sandbox/prep/skills-prep";
-import { logger } from "../../utils/observability";
+import { emitCanonicalServiceEvent, logger } from "../../utils/observability";
 import type {
   GenerationCompletionReason,
   RuntimeFailureClassification,
@@ -513,6 +513,7 @@ export class OpenCodeNormalRunner {
             })
           : Promise.resolve(undefined);
       let runtimeMcpWarnings: Array<{ serverName: string; message: string }> = [];
+      let resolvedWorkspaceMcpServerNames: string[] = [];
 
       const runtimeSessionPromise = (async () => {
         try {
@@ -668,6 +669,9 @@ export class OpenCodeNormalRunner {
               message: `${unavailable.name} tools are unavailable: ${unavailable.reason}`,
             });
           }
+          resolvedWorkspaceMcpServerNames = resolved.requestedServers.map(
+            (entry) => entry.server.name,
+          );
           resolveWorkspaceMcpSessionServers(resolved.requestedServers.map((entry) => entry.server));
         } catch (error) {
           rejectWorkspaceMcpSessionServers(error);
@@ -732,6 +736,45 @@ export class OpenCodeNormalRunner {
         sessionId,
       });
       const activeSessionId = sessionId;
+      const workspaceMcpWarningNames = runtimeMcpWarnings.map((warning) => warning.serverName);
+      logger.info({
+        event: "WORKSPACE_MCP_RECONCILIATION_COMPLETED",
+        generationId: ctx.id,
+        conversationId: ctx.conversationId,
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId ?? undefined,
+        sandboxId: runtimeSandbox.sandboxId,
+        sessionId,
+        requestedServerCount: resolvedWorkspaceMcpServerNames.length,
+        warningCount: runtimeMcpWarnings.length,
+        requestedServers: resolvedWorkspaceMcpServerNames,
+        warningServers: workspaceMcpWarningNames,
+      });
+      emitCanonicalServiceEvent({
+        level: runtimeMcpWarnings.length > 0 ? "warn" : "info",
+        eventName: "cmdclaw.workspace_mcp.reconciliation",
+        operationName: "workspace_mcp.reconcile",
+        eventId: `generation:${ctx.id}:workspace_mcp_reconcile`,
+        outcome: runtimeMcpWarnings.length > 0 ? "degraded" : "connected",
+        context: {
+          source: "opencode-normal-runner",
+          traceId: ctx.traceId,
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+          sandboxId: runtimeSandbox.sandboxId,
+          sessionId,
+        },
+        attributes: {
+          "cmdclaw.generation.id": ctx.id,
+          "cmdclaw.conversation.id": ctx.conversationId,
+          "cmdclaw.workspace.id": ctx.workspaceId ?? undefined,
+          "cmdclaw.workspace_mcp.requested_count": resolvedWorkspaceMcpServerNames.length,
+          "cmdclaw.workspace_mcp.warning_count": runtimeMcpWarnings.length,
+          "cmdclaw.workspace_mcp.requested_servers": resolvedWorkspaceMcpServerNames,
+          "cmdclaw.workspace_mcp.warning_servers": workspaceMcpWarningNames,
+        },
+      });
 
       if (runtimeMcpWarnings.length > 0) {
         const warningText = [

@@ -25,3 +25,8 @@ The toolbox shows selectable **Workspace MCP Servers** based on CmdClaw access p
 Hosted MCP OAuth remains a separate inbound authorization concern for clients connecting to CmdClaw-hosted MCP servers. The Executor credential path becomes outbound **Workspace MCP Authorization** for CmdClaw configuring third-party or managed workspace MCP servers.
 
 The first-party MCP server layout under `apps/mcp/servers/*` is independent of Executor and is not part of this refactor. The new workspace MCP model points at those existing managed server endpoints where appropriate.
+
+Some file and URL path names that are not user-facing API contracts may temporarily retain
+`executor-source` or `/sources/` while the Big Bang runtime and product semantics move to Workspace
+MCP Server. They must not appear in user-facing copy, persisted runtime identifiers, database schema
+names, sandbox setup, or newly introduced public API keys.

@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const source = await db.query.workspaceMcpServer.findFirst({
-        where: eq(workspaceMcpServer.id, executorPending.sourceId),
+        where: eq(workspaceMcpServer.id, executorPending.workspaceMcpServerId),
       });
 
       if (!source || source.kind !== "mcp" || source.authType !== "oauth2") {

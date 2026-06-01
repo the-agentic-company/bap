@@ -56,9 +56,9 @@ vi.mock("@/server/executor-source-oauth", () => ({
   storeWorkspaceMcpServerOAuthPending: storeWorkspaceMcpServerOAuthPendingMock,
 }));
 
-import { executorSourceInputSchema, executorSourceRouter } from "./executor-source";
+import { workspaceMcpServerInputSchema, workspaceMcpServerRouter } from "./executor-source";
 
-const executorSourceRouterAny = executorSourceRouter as unknown as Record<
+const workspaceMcpServerRouterAny = workspaceMcpServerRouter as unknown as Record<
   string,
   (args: unknown) => Promise<unknown>
 >;
@@ -85,7 +85,7 @@ function createContext() {
   };
 }
 
-describe("executorSourceRouter", () => {
+describe("workspaceMcpServerRouter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireActiveWorkspaceAccessMock.mockResolvedValue({
@@ -98,8 +98,8 @@ describe("executorSourceRouter", () => {
     });
   });
 
-  it("accepts oauth2 auth for MCP sources", () => {
-    const parsed = executorSourceInputSchema.safeParse({
+  it("accepts oauth2 auth for Workspace MCP Servers", () => {
+    const parsed = workspaceMcpServerInputSchema.safeParse({
       kind: "mcp",
       name: "Linear MCP",
       namespace: "linear-mcp",
@@ -112,7 +112,7 @@ describe("executorSourceRouter", () => {
   });
 
   it("rejects non-MCP Workspace MCP Server kinds", () => {
-    const parsed = executorSourceInputSchema.safeParse({
+    const parsed = workspaceMcpServerInputSchema.safeParse({
       kind: "http",
       name: "GitHub",
       namespace: "github",
@@ -148,7 +148,7 @@ describe("executorSourceRouter", () => {
       },
     });
 
-    const result = await executorSourceRouterAny.startOAuth({
+    const result = await workspaceMcpServerRouterAny.startOAuth({
       input: {
         workspaceMcpServerId: "src-1",
         redirectUrl: "https://app.example.com/toolbox/sources/src-1",
@@ -169,7 +169,7 @@ describe("executorSourceRouter", () => {
     expect(storeWorkspaceMcpServerOAuthPendingMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
-        sourceId: "src-1",
+        workspaceMcpServerId: "src-1",
         redirectUrl: "https://app.example.com/toolbox/sources/src-1",
       }),
     );
@@ -187,7 +187,7 @@ describe("executorSourceRouter", () => {
     });
 
     await expect(
-      executorSourceRouterAny.startOAuth({
+      workspaceMcpServerRouterAny.startOAuth({
         input: {
           workspaceMcpServerId: "src-1",
           redirectUrl: "https://app.example.com/toolbox/sources/src-1",
@@ -206,7 +206,7 @@ describe("executorSourceRouter", () => {
     const valuesMock = vi.fn(() => ({ returning: returningMock }));
     context.db.insert.mockReturnValue({ values: valuesMock });
 
-    const result = await executorSourceRouterAny.create({
+    const result = await workspaceMcpServerRouterAny.create({
       input: {
         kind: "mcp",
         name: "Linear MCP",

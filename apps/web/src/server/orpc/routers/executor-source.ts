@@ -18,8 +18,8 @@ import { protectedProcedure } from "../middleware";
 import { requireActiveWorkspaceAccess, requireActiveWorkspaceAdmin } from "../workspace-access";
 
 const stringMapSchema = z.record(z.string(), z.string()).default({});
-const executorSourceKindSchema = z.enum(["mcp"]);
-const executorSourceAuthTypeSchema = z.enum(["none", "api_key", "bearer", "oauth2"]);
+const workspaceMcpServerKindSchema = z.enum(["mcp"]);
+const workspaceMcpServerAuthTypeSchema = z.enum(["none", "api_key", "bearer", "oauth2"]);
 const workspaceIdSchema = z.object({ workspaceId: z.string() });
 
 function generateState(): string {
@@ -30,8 +30,8 @@ function getAppUrl(): string {
   return process.env.APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 }
 
-const executorSourceBaseSchema = z.object({
-  kind: executorSourceKindSchema,
+const workspaceMcpServerBaseSchema = z.object({
+  kind: workspaceMcpServerKindSchema,
   name: z.string().min(1).max(120),
   namespace: z.string().min(1).max(120),
   endpoint: z.string().url(),
@@ -40,7 +40,7 @@ const executorSourceBaseSchema = z.object({
   headers: stringMapSchema.optional(),
   queryParams: stringMapSchema.optional(),
   defaultHeaders: stringMapSchema.optional(),
-  authType: executorSourceAuthTypeSchema.default("none"),
+  authType: workspaceMcpServerAuthTypeSchema.default("none"),
   authHeaderName: z.string().max(120).nullish(),
   authQueryParam: z.string().max(120).nullish(),
   authPrefix: z.string().max(120).nullish(),
@@ -48,21 +48,23 @@ const executorSourceBaseSchema = z.object({
 });
 
 function validateWorkspaceMcpServerInput(
-  _value: z.infer<typeof executorSourceBaseSchema>,
+  _value: z.infer<typeof workspaceMcpServerBaseSchema>,
   _ctx: z.RefinementCtx,
 ) {}
 
-export const executorSourceInputSchema = executorSourceBaseSchema.superRefine(
+export const workspaceMcpServerInputSchema = workspaceMcpServerBaseSchema.superRefine(
   validateWorkspaceMcpServerInput,
 );
 
-const adminWorkspaceMcpServerBaseSchema = workspaceIdSchema.extend(executorSourceBaseSchema.shape);
+const adminWorkspaceMcpServerBaseSchema = workspaceIdSchema.extend(
+  workspaceMcpServerBaseSchema.shape,
+);
 
 const adminWorkspaceMcpServerInputSchema = adminWorkspaceMcpServerBaseSchema.superRefine(
   validateWorkspaceMcpServerInput,
 );
 
-const executorSourceUpdateInputSchema = executorSourceBaseSchema
+const workspaceMcpServerUpdateInputSchema = workspaceMcpServerBaseSchema
   .extend({ id: z.string() })
   .superRefine(validateWorkspaceMcpServerInput);
 
@@ -85,8 +87,8 @@ function normalizeStringMap(
 }
 
 function normalizeAuthSettings(input: {
-  kind: z.infer<typeof executorSourceKindSchema>;
-  authType: z.infer<typeof executorSourceAuthTypeSchema>;
+  kind: z.infer<typeof workspaceMcpServerKindSchema>;
+  authType: z.infer<typeof workspaceMcpServerAuthTypeSchema>;
   authHeaderName?: string | null;
   authQueryParam?: string | null;
   authPrefix?: string | null;
@@ -138,13 +140,13 @@ async function getAdminWorkspace(
 async function getAdminSource(
   context: Pick<AuthenticatedContext, "db" | "user">,
   workspaceId: string,
-  sourceId: string,
+  workspaceMcpServerId: string,
 ) {
   await getAdminWorkspace(context, workspaceId);
 
   const source = await context.db.query.workspaceMcpServer.findFirst({
     where: and(
-      eq(workspaceMcpServer.id, sourceId),
+      eq(workspaceMcpServer.id, workspaceMcpServerId),
       eq(workspaceMcpServer.workspaceId, workspaceId),
     ),
   });
@@ -250,7 +252,7 @@ const startOAuth = protectedProcedure
     await storeWorkspaceMcpServerOAuthPending({
       state,
       userId: context.user.id,
-      sourceId: source.id,
+      workspaceMcpServerId: source.id,
       redirectUrl: input.redirectUrl,
       session,
     });
@@ -259,7 +261,7 @@ const startOAuth = protectedProcedure
   });
 
 const create = protectedProcedure
-  .input(executorSourceInputSchema)
+  .input(workspaceMcpServerInputSchema)
   .handler(async ({ input, context }) => {
     const access = await requireActiveWorkspaceAdmin(context.user.id);
     const namespace = normalizeExecutorNamespace(input.namespace);
@@ -375,7 +377,7 @@ const adminCreate = protectedProcedure
   });
 
 const update = protectedProcedure
-  .input(executorSourceUpdateInputSchema)
+  .input(workspaceMcpServerUpdateInputSchema)
   .handler(async ({ input, context }) => {
     const access = await requireActiveWorkspaceAdmin(context.user.id);
     const current = await context.db.query.workspaceMcpServer.findFirst({
@@ -793,7 +795,7 @@ const adminToggleCredential = protectedProcedure
     return { success: true };
   });
 
-export const executorSourceRouter = {
+export const workspaceMcpServerRouter = {
   list,
   adminList,
   startOAuth,

@@ -69,9 +69,8 @@ ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/local/bin/chromium
 
 RUN curl -fsSL https://bun.sh/install | bash
 RUN ln -s /root/.bun/bin/bun /usr/local/bin/bun
-RUN /root/.bun/bin/bun install -g opencode-ai@${OPENCODE_VERSION} tsx executor
+RUN /root/.bun/bin/bun install -g opencode-ai@${OPENCODE_VERSION} tsx
 RUN ln -s /root/.bun/bin/opencode /usr/local/bin/opencode
-RUN ln -s /root/.bun/bin/executor /usr/local/bin/executor
 RUN ln -s /root/.bun/bin/tsx /usr/local/bin/tsx
 
 RUN npm install -g @sandbox-agent/cli@0.2.x \

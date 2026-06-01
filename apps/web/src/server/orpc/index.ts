@@ -6,7 +6,7 @@ import { conversationRouter } from "./routers/conversation";
 import { coworkerRouter } from "./routers/coworker";
 import { coworkerTagRouter } from "./routers/coworker-tag";
 import { coworkerViewRouter } from "./routers/coworker-view";
-import { executorSourceRouter } from "./routers/executor-source";
+import { workspaceMcpServerRouter } from "./routers/executor-source";
 import { galienRouter } from "./routers/galien";
 import { generationRouter } from "./routers/generation";
 import { inboxRouter } from "./routers/inbox";
@@ -39,7 +39,7 @@ export const appRouter = {
   modulr: modulrRouter,
   notification: notificationRouter,
   providerAuth: providerAuthRouter,
-  executorSource: executorSourceRouter,
+  workspaceMcpServer: workspaceMcpServerRouter,
   skill: skillRouter,
   template: templateRouter,
   user: userRouter,

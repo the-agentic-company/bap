@@ -265,10 +265,10 @@ describe("GET /api/oauth/callback", () => {
     expect(getLocation(response)).toBe("https://app.example.com/integrations?error=user_mismatch");
   });
 
-  it("redirects executor-source OAuth errors back to the source page", async () => {
+  it("redirects Workspace MCP Server OAuth errors back to the server page", async () => {
     consumeWorkspaceMcpServerOAuthPendingMock.mockResolvedValue({
       userId: "user-1",
-      sourceId: "src-1",
+      workspaceMcpServerId: "src-1",
       redirectUrl: "https://app.example.com/toolbox/sources/src-1",
       session: {
         endpoint: "https://mcp.linear.app/mcp",
@@ -293,10 +293,10 @@ describe("GET /api/oauth/callback", () => {
     );
   });
 
-  it("stores executor-source OAuth credentials and redirects back to the source page", async () => {
+  it("stores Workspace MCP Server OAuth credentials and redirects back to the server page", async () => {
     consumeWorkspaceMcpServerOAuthPendingMock.mockResolvedValue({
       userId: "user-1",
-      sourceId: "src-1",
+      workspaceMcpServerId: "src-1",
       redirectUrl: "https://app.example.com/toolbox/sources/src-1",
       session: {
         endpoint: "https://mcp.linear.app/mcp",
