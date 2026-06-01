@@ -188,6 +188,9 @@ Use **Connected Account** for an external provider identity. Use **User** for th
 **source**:
 Use **Workspace MCP Server** for an MCP endpoint exposed to agent runtimes. Do not use "source" as a product term for integration runtime configuration.
 
+**start**:
+Use **Start Message** only for the user-provided context required before a **Coworker** starts a **Generation**. Use “trigger a coworker run” when referring to asking an existing **Coworker** to execute.
+
 **client**:
 Use **Client Observation** for browser-originated telemetry. Use **Modulr Customer** for a customer record from Modulr; Modulr's API may still expose that entity as `clients`.
 

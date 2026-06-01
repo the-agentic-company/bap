@@ -50,3 +50,5 @@ Use Linear-native labels and statuses that best match the five canonical triage 
 ### Domain docs
 
 Single-context repo: read root `CONTEXT.md` and `docs/adr/` when present. See `docs/agents/domain.md`.
+
+if the port 3000 is not available, look with tmux as the server might be running there.

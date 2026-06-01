@@ -1,5 +1,5 @@
-[mcp_servers.cmdclaw-internal]
-url = "http://127.0.0.1:3010/internal"
+[mcp_servers.cmdclaw]
+url = "http://127.0.0.1:3010/cmdclaw"
 
 [mcp_servers.cmdclaw-gmail]
 url = "http://127.0.0.1:3010/gmail"
