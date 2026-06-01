@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { jwtVerify, SignJWT } from "jose";
 
-export const HOSTED_MCP_AUDIENCES = ["gmail", "internal", "galien", "modulr"] as const;
+export const HOSTED_MCP_AUDIENCES = ["gmail", "cmdclaw", "galien", "modulr"] as const;
 
 export type HostedMcpAudience = (typeof HOSTED_MCP_AUDIENCES)[number];
 export type HostedMcpScope = HostedMcpAudience;

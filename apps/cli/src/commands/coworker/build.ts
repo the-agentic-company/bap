@@ -10,6 +10,7 @@ type BuildFlags = {
   message?: string;
   attach?: string;
   trigger?: string;
+  folder?: string;
   model?: string;
   authSource?: "user" | "shared";
   integrations?: string;
@@ -62,6 +63,17 @@ export default async function (this: LocalContext, flags: BuildFlags): Promise<v
     allowedIntegrations,
   });
 
+  const trimmedFolderPath = flags.folder?.trim();
+  const folder = trimmedFolderPath
+    ? await client.coworkerFolder.createPath({ path: trimmedFolderPath })
+    : null;
+  if (folder) {
+    await client.coworkerFolder.moveCoworker({
+      coworkerId: created.id,
+      folderId: folder.id,
+    });
+  }
+
   const { conversationId } = await client.coworker.getOrCreateBuilderConversation({
     id: created.id,
   });
@@ -70,6 +82,7 @@ export default async function (this: LocalContext, flags: BuildFlags): Promise<v
   this.process.stdout.write(`  id: ${created.id}\n`);
   this.process.stdout.write(`  name: ${created.name || "(unnamed)"}\n`);
   this.process.stdout.write(`  username: ${created.username ?? "-"}\n`);
+  this.process.stdout.write(`  folder: ${folder ? trimmedFolderPath : "-"}\n`);
   this.process.stdout.write(`  builder conversation id: ${conversationId}\n\n`);
 
   await chatCommand.call(this, {

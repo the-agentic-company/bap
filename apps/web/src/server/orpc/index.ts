@@ -3,6 +3,7 @@ import { adminRouter } from "./routers/admin";
 import { adminSharedProviderAuthRouter } from "./routers/admin-shared-provider-auth";
 import { billingRouter } from "./routers/billing";
 import { conversationRouter } from "./routers/conversation";
+import { coworkerFolderRouter } from "./routers/coworker-folder";
 import { coworkerRouter } from "./routers/coworker";
 import { coworkerTagRouter } from "./routers/coworker-tag";
 import { coworkerViewRouter } from "./routers/coworker-view";
@@ -45,6 +46,7 @@ export const appRouter = {
   user: userRouter,
   voice: voiceRouter,
   coworker: coworkerRouter,
+  coworkerFolder: coworkerFolderRouter,
   coworkerTag: coworkerTagRouter,
   coworkerView: coworkerViewRouter,
   orgChart: orgChartRouter,

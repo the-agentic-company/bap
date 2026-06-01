@@ -1184,6 +1184,37 @@ export const coworkerEmailAliasStatusEnum = pgEnum("coworker_email_alias_status"
   "deleted",
 ]);
 
+export const coworkerFolder = pgTable(
+  "coworker_folder",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    parentId: text("parent_id").references((): AnyPgColumn => coworkerFolder.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    position: integer("position").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("coworker_folder_workspace_id_idx").on(table.workspaceId),
+    index("coworker_folder_parent_id_idx").on(table.parentId),
+    uniqueIndex("coworker_folder_workspace_parent_name_idx").on(
+      table.workspaceId,
+      table.parentId,
+      table.name,
+    ),
+  ],
+);
+
 export const coworker = pgTable(
   "coworker",
   {
@@ -1195,6 +1226,7 @@ export const coworker = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     workspaceId: text("workspace_id").references(() => workspace.id, { onDelete: "set null" }),
+    folderId: text("folder_id").references(() => coworkerFolder.id, { onDelete: "set null" }),
     status: coworkerStatusEnum("status").default("on").notNull(),
     triggerType: text("trigger_type").notNull(),
     prompt: text("prompt").notNull(),
@@ -1229,6 +1261,7 @@ export const coworker = pgTable(
   (table) => [
     index("coworker_owner_id_idx").on(table.ownerId),
     index("coworker_workspace_id_idx").on(table.workspaceId),
+    index("coworker_folder_id_idx").on(table.folderId),
     index("coworker_status_idx").on(table.status),
     index("coworker_shared_at_idx").on(table.sharedAt),
     uniqueIndex("coworker_username_idx").on(table.username),
@@ -1911,10 +1944,28 @@ export const coworkerRelations = relations(coworker, ({ one, many }) => ({
     fields: [coworker.workspaceId],
     references: [workspace.id],
   }),
+  folder: one(coworkerFolder, {
+    fields: [coworker.folderId],
+    references: [coworkerFolder.id],
+  }),
   runs: many(coworkerRun),
   documents: many(coworkerDocument),
   emailAliases: many(coworkerEmailAlias),
   tagAssignments: many(coworkerTagAssignment),
+}));
+
+export const coworkerFolderRelations = relations(coworkerFolder, ({ one, many }) => ({
+  workspace: one(workspace, {
+    fields: [coworkerFolder.workspaceId],
+    references: [workspace.id],
+  }),
+  parent: one(coworkerFolder, {
+    fields: [coworkerFolder.parentId],
+    references: [coworkerFolder.id],
+    relationName: "coworkerFolderChildren",
+  }),
+  children: many(coworkerFolder, { relationName: "coworkerFolderChildren" }),
+  coworkers: many(coworker),
 }));
 
 export const orgChartNodeRelations = relations(orgChartNode, ({ one }) => ({

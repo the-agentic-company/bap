@@ -152,11 +152,11 @@ function resolveHostedMcpResource(resource: string | URL): {
       resourceName: "CmdClaw Gmail MCP",
     };
   }
-  if (pathname === "/internal" || pathname === "/internal/mcp") {
+  if (pathname === "/cmdclaw" || pathname === "/cmdclaw/mcp") {
     return {
-      audience: "internal",
+      audience: "cmdclaw",
       resource: parsed.toString(),
-      resourceName: "CmdClaw Internal MCP",
+      resourceName: "CmdClaw MCP",
     };
   }
   if (pathname === "/galien" || pathname === "/galien/mcp") {

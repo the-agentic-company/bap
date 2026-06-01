@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  clientFindFirstMock,
   refreshTokenFindFirstMock,
   grantFindFirstMock,
   insertMock,
@@ -10,6 +11,7 @@ const {
   updatePayloads,
   signHostedMcpAccessTokenMock,
 } = vi.hoisted(() => {
+  const clientFindFirstMock = vi.fn();
   const refreshTokenFindFirstMock = vi.fn();
   const grantFindFirstMock = vi.fn();
   const insertMock = vi.fn();
@@ -23,6 +25,7 @@ const {
   const signHostedMcpAccessTokenMock = vi.fn();
 
   return {
+    clientFindFirstMock,
     refreshTokenFindFirstMock,
     grantFindFirstMock,
     insertMock,
@@ -45,6 +48,9 @@ vi.mock("@cmdclaw/db/client", () => ({
     query: {
       hostedMcpOauthRefreshToken: {
         findFirst: refreshTokenFindFirstMock,
+      },
+      hostedMcpOauthClient: {
+        findFirst: clientFindFirstMock,
       },
       hostedMcpOauthGrant: {
         findFirst: grantFindFirstMock,
@@ -69,14 +75,17 @@ vi.mock("@cmdclaw/core/server/modulr/service", () => ({
 }));
 
 vi.mock("@cmdclaw/core/server/hosted-mcp-oauth", () => ({
-  HOSTED_MCP_AUDIENCES: ["gmail", "internal", "galien", "modulr"],
+  HOSTED_MCP_AUDIENCES: ["gmail", "cmdclaw", "galien", "modulr"],
   normalizeHostedMcpScopes: (value: string[] | string | null | undefined) =>
     Array.isArray(value) ? value : (value ?? "").split(/\s+/).filter(Boolean),
   resolveHostedMcpIssuerUrl: (url: URL) => url,
   signHostedMcpAccessToken: signHostedMcpAccessTokenMock,
 }));
 
-import { exchangeHostedMcpRefreshToken } from "./hosted-mcp-oauth";
+import {
+  exchangeHostedMcpRefreshToken,
+  parseHostedMcpAuthorizationRequest,
+} from "./hosted-mcp-oauth";
 
 describe("hosted MCP OAuth refresh tokens", () => {
   beforeEach(() => {
@@ -99,6 +108,20 @@ describe("hosted MCP OAuth refresh tokens", () => {
       resource: "https://mcp.example.com/galien/mcp",
       scopes: ["galien"],
       revokedAt: null,
+    });
+    clientFindFirstMock.mockResolvedValue({
+      clientId: "client-1",
+      redirectUris: ["http://localhost:34567/callback/abc"],
+      tokenEndpointAuthMethod: "none",
+      grantTypes: ["authorization_code", "refresh_token"],
+      responseTypes: ["code"],
+      clientName: null,
+      clientUri: null,
+      logoUri: null,
+      contacts: null,
+      policyUri: null,
+      tosUri: null,
+      scope: null,
     });
   });
 
@@ -126,5 +149,47 @@ describe("hosted MCP OAuth refresh tokens", () => {
     );
     expect(updatePayloads[0]).not.toHaveProperty("revokedAt");
     expect(updateWhereMock).toHaveBeenCalled();
+  });
+});
+
+describe("hosted MCP OAuth authorization requests", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clientFindFirstMock.mockResolvedValue({
+      clientId: "client-1",
+      redirectUris: ["http://localhost:34567/callback/abc"],
+      tokenEndpointAuthMethod: "none",
+      grantTypes: ["authorization_code", "refresh_token"],
+      responseTypes: ["code"],
+      clientName: null,
+      clientUri: null,
+      logoUri: null,
+      contacts: null,
+      policyUri: null,
+      tosUri: null,
+      scope: null,
+    });
+  });
+
+  it("accepts the CmdClaw MCP resource used by Codex login", async () => {
+    const parsed = await parseHostedMcpAuthorizationRequest(
+      new URLSearchParams({
+        response_type: "code",
+        client_id: "client-1",
+        state: "state-1",
+        code_challenge: "challenge-1",
+        code_challenge_method: "S256",
+        redirect_uri: "http://localhost:34567/callback/abc",
+        scope: "cmdclaw",
+        resource: "http://127.0.0.1:3010/cmdclaw",
+      }),
+    );
+
+    expect(parsed).toMatchObject({
+      audience: "cmdclaw",
+      resource: "http://127.0.0.1:3010/cmdclaw",
+      resourceName: "CmdClaw MCP",
+      scopes: ["cmdclaw"],
+    });
   });
 });

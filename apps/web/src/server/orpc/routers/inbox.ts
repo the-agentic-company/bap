@@ -10,17 +10,20 @@ import {
   user,
 } from "@cmdclaw/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, type AuthenticatedContext } from "../middleware";
 import { requireActiveWorkspaceAccess } from "../workspace-access";
 
 const inboxStatusSchema = z.enum([
   "needs_user_input",
+  "running",
   "awaiting_approval",
   "awaiting_auth",
   "paused",
+  "completed",
   "error",
+  "cancelled",
 ]);
 const inboxTypeSchema = z.enum(["all", "coworkers", "chats"]);
 
@@ -82,6 +85,33 @@ type InboxSourceOption = {
   coworkerId: string;
   coworkerName: string;
 };
+
+const INBOX_HISTORY_WINDOW_DAYS = 90;
+
+const inboxCursorSchema = z.object({
+  updatedAt: z.string(),
+  itemId: z.string(),
+});
+
+type InboxCursor = z.infer<typeof inboxCursorSchema>;
+
+function encodeInboxCursor(item: InboxListItem): string {
+  return JSON.stringify({
+    updatedAt: item.updatedAt.toISOString(),
+    itemId: item.id,
+  } satisfies InboxCursor);
+}
+
+function decodeInboxCursor(value: string | undefined): InboxCursor | undefined {
+  if (!value) {
+    return undefined;
+  }
+  try {
+    return inboxCursorSchema.parse(JSON.parse(value));
+  } catch {
+    throw new ORPCError("BAD_REQUEST", { message: "Invalid inbox cursor" });
+  }
+}
 
 function formatCoworkerTitle(coworkerName: string, startedAt: Date): string {
   const formattedDate = new Intl.DateTimeFormat("en-US", {
@@ -259,7 +289,8 @@ async function requireGenerationAccessInActiveWorkspace(args: {
 const list = protectedProcedure
   .input(
     z.object({
-      limit: z.number().int().min(1).max(20).default(20),
+      limit: z.number().int().min(1).max(50).default(20),
+      cursor: z.string().optional(),
       type: inboxTypeSchema.default("all"),
       statuses: z.array(inboxStatusSchema).default([]),
       sourceCoworkerId: z.string().optional(),
@@ -271,18 +302,18 @@ const list = protectedProcedure
     async ({
       input,
       context,
-    }): Promise<{ items: InboxListItem[]; sourceOptions: InboxSourceOption[] }> => {
+    }): Promise<{
+      items: InboxListItem[];
+      sourceOptions: InboxSourceOption[];
+      nextCursor?: string;
+    }> => {
       await ensureAdmin(context);
       const {
         workspace: { id: workspaceId },
       } = await requireActiveWorkspaceAccess(context.user.id);
       const statuses = input.statuses.length > 0 ? input.statuses : inboxStatusSchema.options;
-      const conversationStatuses = statuses.filter(
-        (
-          status,
-        ): status is Exclude<(typeof inboxStatusSchema.options)[number], "needs_user_input"> =>
-          status !== "needs_user_input",
-      );
+      const cursor = decodeInboxCursor(input.cursor);
+      const historyCutoff = new Date(Date.now() - INBOX_HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
       // If tagIds filter is provided, resolve matching coworker IDs
       let tagFilteredCoworkerIds: string[] | undefined;
@@ -298,6 +329,7 @@ const list = protectedProcedure
         eq(coworkerRun.ownerId, context.user.id),
         eq(coworkerRun.workspaceId, workspaceId),
         inArray(coworkerRun.status, statuses),
+        gte(coworkerRun.startedAt, historyCutoff),
       ];
       if (input.sourceCoworkerId && input.type !== "chats") {
         coworkerFilters.push(eq(coworkerRun.coworkerId, input.sourceCoworkerId));
@@ -340,36 +372,10 @@ const list = protectedProcedure
               },
             });
 
-      const chatConversations =
-        input.type === "coworkers" || conversationStatuses.length === 0
-          ? []
-          : await context.db.query.conversation.findMany({
-              where: and(
-                eq(conversation.userId, context.user.id),
-                eq(conversation.workspaceId, workspaceId),
-                eq(conversation.type, "chat"),
-                inArray(conversation.generationStatus, conversationStatuses),
-                isNull(conversation.archivedAt),
-              ),
-              columns: {
-                id: true,
-                title: true,
-                createdAt: true,
-                updatedAt: true,
-                currentGenerationId: true,
-                generationStatus: true,
-              },
-            });
-
       const generationIds = new Set<string>();
       for (const run of coworkerRuns) {
         if (run.generationId) {
           generationIds.add(run.generationId);
-        }
-      }
-      for (const conv of chatConversations) {
-        if (conv.currentGenerationId) {
-          generationIds.add(conv.currentGenerationId);
         }
       }
 
@@ -462,71 +468,9 @@ const list = protectedProcedure
         });
       }
 
-      for (const conv of chatConversations) {
-        const interrupt = conv.currentGenerationId
-          ? interruptByGenerationId.get(conv.currentGenerationId)
-          : undefined;
-        const generationRecord = conv.currentGenerationId
-          ? generationById.get(conv.currentGenerationId)
-          : undefined;
-
-        items.push({
-          kind: "chat",
-          id: conv.id,
-          conversationId: conv.id,
-          conversationTitle: conv.title ?? "New conversation",
-          title: conv.title ?? "New conversation",
-          status: conv.generationStatus as InboxStatus,
-          updatedAt: conv.updatedAt,
-          createdAt: conv.createdAt,
-          generationId: conv.currentGenerationId,
-          errorMessage: generationRecord?.errorMessage ?? null,
-          pauseReason:
-            conv.generationStatus === "paused" ? generationRecord?.completionReason : null,
-          pendingApproval:
-            conv.generationStatus === "awaiting_approval" && interrupt?.kind !== "auth"
-              ? normalizePendingApproval(interrupt)
-              : undefined,
-          pendingAuth:
-            conv.generationStatus === "awaiting_auth" && interrupt?.kind === "auth"
-              ? normalizePendingAuth(interrupt)
-              : undefined,
-        });
-      }
-
-      const resumablePausedItems = items.filter(
-        (item) => item.status !== "paused" || item.pauseReason === "run_deadline",
-      );
-
-      const readStates =
-        resumablePausedItems.length === 0
-          ? []
-          : await context.db.query.inboxReadState.findMany({
-              where: and(
-                eq(inboxReadState.userId, context.user.id),
-                eq(inboxReadState.workspaceId, workspaceId),
-                inArray(
-                  inboxReadState.itemId,
-                  resumablePausedItems.map((item) => item.id),
-                ),
-              ),
-              columns: {
-                itemKind: true,
-                itemId: true,
-                readAt: true,
-              },
-            });
-      const readStateByItemKey = new Map(
-        readStates.map((state) => [`${state.itemKind}:${state.itemId}`, state]),
-      );
-      const unreadItems = resumablePausedItems.filter((item) => {
-        const state = readStateByItemKey.get(`${item.kind}:${item.id}`);
-        return !state || state.readAt.getTime() < item.updatedAt.getTime();
-      });
-
       const normalizedQuery = input.query.trim().toLowerCase();
       const filteredItems = normalizedQuery
-        ? unreadItems.filter((item) => {
+        ? items.filter((item) => {
             const haystack = [
               item.title,
               item.kind === "coworker" ? item.coworkerName : item.conversationTitle,
@@ -536,13 +480,35 @@ const list = protectedProcedure
               .toLowerCase();
             return haystack.includes(normalizedQuery);
           })
-        : unreadItems;
+        : items;
 
-      filteredItems.sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+      filteredItems.sort((left, right) => {
+        const updatedAtDelta = right.updatedAt.getTime() - left.updatedAt.getTime();
+        return updatedAtDelta !== 0 ? updatedAtDelta : right.id.localeCompare(left.id);
+      });
+
+      const cursorUpdatedAt = cursor ? new Date(cursor.updatedAt) : undefined;
+      const cursorItemId = cursor?.itemId;
+      const cursorFilteredItems = cursorUpdatedAt
+        ? filteredItems.filter((item) => {
+            const updatedAtMs = item.updatedAt.getTime();
+            const cursorUpdatedAtMs = cursorUpdatedAt.getTime();
+            return (
+              updatedAtMs < cursorUpdatedAtMs ||
+              (updatedAtMs === cursorUpdatedAtMs &&
+                cursorItemId !== undefined &&
+                item.id < cursorItemId)
+            );
+          })
+        : filteredItems;
+
+      const pageItems = cursorFilteredItems.slice(0, input.limit);
+      const hasNextPage = cursorFilteredItems.length > input.limit;
 
       return {
-        items: filteredItems.slice(0, input.limit),
+        items: pageItems,
         sourceOptions,
+        nextCursor: hasNextPage ? encodeInboxCursor(pageItems[pageItems.length - 1]!) : undefined,
       };
     },
   );

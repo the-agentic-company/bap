@@ -87,6 +87,12 @@ const coworkerCreateCommand = buildCommand({
         optional: true,
         brief: "Additional don't instructions",
       },
+      folder: {
+        kind: "parsed",
+        parse: (input: string) => input,
+        optional: true,
+        brief: "Folder path to create or reuse",
+      },
       autoApprove: {
         kind: "boolean",
         optional: true as const,
@@ -157,6 +163,12 @@ export const coworkerBuildCommand = buildCommand({
         parse: (input: string) => input,
         optional: true,
         brief: "Initial trigger type",
+      },
+      folder: {
+        kind: "parsed",
+        parse: (input: string) => input,
+        optional: true,
+        brief: "Folder path to create or reuse",
       },
       model: {
         kind: "parsed",

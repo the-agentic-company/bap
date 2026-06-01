@@ -331,6 +331,16 @@ export type CoworkerCreateResult = {
   status: string;
 };
 
+export type CoworkerFolder = {
+  id: string;
+  workspaceId: string;
+  parentId: string | null;
+  name: string;
+  position: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
 export type CoworkerTriggerResult = {
   coworkerId: string;
   runId: string;
@@ -453,6 +463,12 @@ export interface CmdclawApiClient {
     }): Promise<CoworkerTriggerResult>;
     getRun(input: { id: string }): Promise<CoworkerRun>;
     listRuns(input: { coworkerId: string; limit: number }): Promise<CoworkerRunSummary[]>;
+  };
+  coworkerFolder: {
+    list(): Promise<CoworkerFolder[]>;
+    createPath(input: { path: string; parentId?: string | null }): Promise<CoworkerFolder | null>;
+    moveCoworker(input: { coworkerId: string; folderId: string | null }): Promise<unknown>;
+    delete(input: { id: string }): Promise<{ success: boolean }>;
   };
   conversation: {
     get(input: { id: string }): Promise<ConversationDetails>;

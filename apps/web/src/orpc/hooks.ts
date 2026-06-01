@@ -148,7 +148,16 @@ export function useConversationList(options?: { limit?: number }) {
 export function useInboxItems(input?: {
   limit?: number;
   type?: "all" | "coworkers" | "chats";
-  statuses?: Array<"needs_user_input" | "awaiting_approval" | "awaiting_auth" | "paused" | "error">;
+  statuses?: Array<
+    | "needs_user_input"
+    | "running"
+    | "awaiting_approval"
+    | "awaiting_auth"
+    | "paused"
+    | "completed"
+    | "error"
+    | "cancelled"
+  >;
   sourceCoworkerId?: string;
   query?: string;
 }) {
@@ -172,6 +181,61 @@ export function useInboxItems(input?: {
       }),
     refetchInterval: 2000,
   });
+}
+
+export function useInfiniteInboxItems(input?: {
+  limit?: number;
+  type?: "all" | "coworkers" | "chats";
+  statuses?: Array<
+    | "needs_user_input"
+    | "running"
+    | "awaiting_approval"
+    | "awaiting_auth"
+    | "paused"
+    | "completed"
+    | "error"
+    | "cancelled"
+  >;
+  sourceCoworkerId?: string;
+  query?: string;
+}) {
+  const query = useInfiniteQuery({
+    queryKey: [
+      "inbox",
+      "list",
+      "infinite",
+      input?.limit ?? 50,
+      input?.type ?? "all",
+      input?.statuses ?? [],
+      input?.sourceCoworkerId ?? null,
+      input?.query ?? "",
+    ],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      client.inbox.list({
+        limit: input?.limit ?? 50,
+        cursor: pageParam,
+        type: input?.type ?? "all",
+        statuses: input?.statuses ?? [],
+        sourceCoworkerId: input?.sourceCoworkerId,
+        query: input?.query ?? "",
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    refetchInterval: 2000,
+  });
+
+  const data = useMemo(
+    () => ({
+      items: query.data?.pages.flatMap((page) => page.items) ?? [],
+      sourceOptions: query.data?.pages[0]?.sourceOptions ?? [],
+    }),
+    [query.data],
+  );
+
+  return {
+    ...query,
+    data,
+  };
 }
 
 export function useInboxEditApprovalAndResend() {
@@ -1519,6 +1583,36 @@ export function useGetOrCreateBuilderConversation() {
 }
 
 // ========== COWORKER TAG HOOKS ==========
+
+export function useCoworkerFolderList() {
+  return useQuery({
+    queryKey: ["coworkerFolder", "list"],
+    queryFn: () => client.coworkerFolder.list(),
+  });
+}
+
+export function useCreateCoworkerFolderPath() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { path: string; parentId?: string | null }) =>
+      client.coworkerFolder.createPath(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworkerFolder"] });
+    },
+  });
+}
+
+export function useMoveCoworkerToFolder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { coworkerId: string; folderId: string | null }) =>
+      client.coworkerFolder.moveCoworker(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworkerFolder"] });
+      queryClient.invalidateQueries({ queryKey: ["coworker", "list"] });
+    },
+  });
+}
 
 export function useCoworkerTagList() {
   return useQuery({

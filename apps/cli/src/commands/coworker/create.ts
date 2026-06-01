@@ -9,6 +9,7 @@ type CreateFlags = {
   prompt: string;
   promptDo?: string;
   promptDont?: string;
+  folder?: string;
   autoApprove?: boolean;
   model?: string;
   authSource?: "user" | "shared";
@@ -17,7 +18,7 @@ type CreateFlags = {
 };
 
 export default async function (this: LocalContext, flags: CreateFlags): Promise<void> {
-  const { runner } = await getCoworkerRunner({ server: flags.server });
+  const { client, runner } = await getCoworkerRunner({ server: flags.server });
   const created = await runner.create({
     name: flags.name,
     triggerType: flags.trigger,
@@ -30,8 +31,21 @@ export default async function (this: LocalContext, flags: CreateFlags): Promise<
     allowedIntegrations: splitCsv(flags.integrations),
   });
 
+  const trimmedFolderPath = flags.folder?.trim();
+  const folder = trimmedFolderPath
+    ? await client.coworkerFolder.createPath({ path: trimmedFolderPath })
+    : null;
+  if (folder) {
+    await client.coworkerFolder.moveCoworker({
+      coworkerId: created.id,
+      folderId: folder.id,
+    });
+  }
+
   if (flags.json) {
-    this.process.stdout.write(`${JSON.stringify(created, null, 2)}\n`);
+    this.process.stdout.write(
+      `${JSON.stringify({ ...created, folder: folder ?? undefined }, null, 2)}\n`,
+    );
     return;
   }
 
@@ -39,5 +53,6 @@ export default async function (this: LocalContext, flags: CreateFlags): Promise<
   this.process.stdout.write(`  id: ${created.id}\n`);
   this.process.stdout.write(`  name: ${created.name || "(unnamed)"}\n`);
   this.process.stdout.write(`  username: ${created.username ?? "-"}\n`);
+  this.process.stdout.write(`  folder: ${folder ? trimmedFolderPath : "-"}\n`);
   this.process.stdout.write(`  status: ${created.status}\n`);
 }
