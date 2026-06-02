@@ -29,6 +29,7 @@ import {
 } from "@/components/coworkers/remote-run-source-banner";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,8 @@ import {
 type Props = {
   coworkerSlug: string;
 };
+
+type InfoTab = "summary" | "chat";
 
 type HistoryRunItem = {
   id: string;
@@ -105,6 +108,10 @@ function getStatusClassName(status?: string) {
   }
 
   return "border-border bg-muted text-muted-foreground";
+}
+
+function getInfoTab(value: string | null): InfoTab {
+  return value === "chat" ? "chat" : "summary";
 }
 
 function LoadingState() {
@@ -282,6 +289,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     enabled: Boolean(selectedRunId),
   });
   const coworker = useCoworker(resolvedCoworkerId);
+  const activeTab = getInfoTab(searchParams.get("tab"));
   const isRunLoading =
     coworkerList.isLoading || coworkerRuns.isLoading || Boolean(selectedRunId && run.isLoading);
   const conversationId = run.data?.conversationId ?? undefined;
@@ -308,6 +316,21 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       const params = new URLSearchParams(searchParams.toString());
       params.set("run", runId);
       router.push(`/agents/info/${resolvedCoworkerSlug}?${params.toString()}`);
+    },
+    [resolvedCoworkerSlug, router, searchParams],
+  );
+
+  const handleTabChange = useCallback(
+    (nextTab: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      const infoTab = getInfoTab(nextTab);
+      if (infoTab === "summary") {
+        params.delete("tab");
+      } else {
+        params.set("tab", infoTab);
+      }
+      const query = params.toString();
+      router.push(`/agents/info/${resolvedCoworkerSlug}${query ? `?${query}` : ""}`);
     },
     [resolvedCoworkerSlug, router, searchParams],
   );
@@ -485,35 +508,43 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           </section>
         )}
 
-        <section className="grid min-h-[calc(100dvh-13rem)] gap-4 xl:grid-cols-[minmax(0,1fr)_25rem]">
-          <div className="border-border bg-card min-h-[34rem] overflow-hidden rounded-xl border">
-            {outputFile ? (
-              <OutputHtmlFrame outputFile={outputFile} />
-            ) : (
-              <EmptyPreview latestMessage={latestCoworkerMessage} />
-            )}
-          </div>
-
-          <aside className="border-border bg-card flex min-h-[28rem] flex-col overflow-hidden rounded-xl border">
-            <div className="border-border/80 flex h-11 shrink-0 items-center gap-2 border-b px-3">
-              <MessageSquareText className="text-muted-foreground h-4 w-4" />
-              <p className="truncate text-sm font-medium">Generation chat</p>
-              {conversation.isFetching ? (
-                <Loader2 className="text-muted-foreground ml-auto h-3.5 w-3.5 animate-spin" />
+        <section className="min-h-[calc(100dvh-13rem)]">
+          <div className="border-border bg-card flex min-h-[34rem] flex-col overflow-hidden rounded-xl border">
+            <div className="border-border/80 flex min-h-12 shrink-0 flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
+                <AnimatedTab value="summary">Summary</AnimatedTab>
+                <AnimatedTab value="chat">Chat</AnimatedTab>
+              </AnimatedTabs>
+              {activeTab === "chat" && conversation.isFetching ? (
+                <div className="text-muted-foreground flex items-center gap-1.5 px-1 text-xs">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Updating
+                </div>
               ) : null}
             </div>
-            <div className="min-h-0 flex-1 overflow-auto p-4">
-              {conversation.isLoading ? (
-                <LoadingState />
-              ) : messages.length > 0 ? (
-                <MessageList messages={messages} />
+
+            <div className="min-h-0 flex-1">
+              {activeTab === "summary" ? (
+                outputFile ? (
+                  <OutputHtmlFrame outputFile={outputFile} />
+                ) : (
+                  <EmptyPreview latestMessage={latestCoworkerMessage} />
+                )
               ) : (
-                <div className="text-muted-foreground flex h-full items-center justify-center text-center text-sm">
-                  No linked chat messages.
+                <div className="h-full min-h-[34rem] overflow-auto p-4">
+                  {conversation.isLoading ? (
+                    <LoadingState />
+                  ) : messages.length > 0 ? (
+                    <MessageList messages={messages} />
+                  ) : (
+                    <div className="text-muted-foreground flex h-full items-center justify-center text-center text-sm">
+                      No linked chat messages.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </aside>
+          </div>
         </section>
 
         {run.data ? (
