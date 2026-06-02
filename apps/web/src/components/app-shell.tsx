@@ -26,9 +26,7 @@ export function AppShell({
   const pathname = usePathname();
   const [showAuthenticatedSidebar, setShowAuthenticatedSidebar] = useState(initialHasSession);
   const isChatRoute =
-    pathname === "/chat" ||
-    pathname?.startsWith("/chat/") ||
-    pathname?.startsWith("/coworkers/runs/");
+    pathname === "/chat" || pathname?.startsWith("/chat/") || pathname?.startsWith("/agents/runs/");
 
   useEffect(() => {
     if (sidebarVisibility === "always") {

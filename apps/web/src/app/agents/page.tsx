@@ -1,23 +1,20 @@
 "use client";
 
-import type { CoworkerToolAccessMode } from "@cmdclaw/core/lib/coworker-tool-policy";
+import type { ProviderAuthSource } from "@cmdclaw/core/lib/provider-auth-source";
+import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@cmdclaw/core/lib/chat-model-defaults";
+import { type CoworkerToolAccessMode } from "@cmdclaw/core/lib/coworker-tool-policy";
 import {
   Activity,
   BarChart3,
-  ChevronDown,
   Clock,
+  Filter,
+  History,
+  Mail,
+  Network,
   Download,
   Eye,
-  Filter,
-  Folder,
-  FolderOpen,
-  History,
-  LayoutGrid,
   Loader2,
-  Mail,
   Menu,
-  MoreHorizontal,
-  Network,
   Play,
   Plus,
   Search,
@@ -29,12 +26,28 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type ChangeEvent, useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import type { IntegrationType } from "@/lib/integration-icons";
+import { ModelSelector } from "@/components/chat/model-selector";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { getCoworkerDisplayName } from "@/components/coworkers/coworker-card-content";
+import { InteractiveCoworkerCard } from "@/components/coworkers/interactive-coworker-card";
 import { ViewTabs } from "@/components/coworkers/view-tabs";
+// Commented out — prompt bar removed from coworkers page
+// import { VoiceIndicator } from "@/components/chat/voice-indicator";
+// import { PromptBar } from "@/components/prompt-bar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,44 +57,38 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
+import { blobToBase64, useVoiceRecording } from "@/hooks/use-voice-recording";
+import { normalizeChatModelSelection } from "@/lib/chat-model-selection";
 import { COWORKERS_OPEN_RECENT_DRAWER_EVENT } from "@/lib/coworkers-events";
+import { normalizeGenerationError } from "@/lib/generation-errors";
 import {
-  COWORKER_AVAILABLE_INTEGRATION_TYPES,
-  INTEGRATION_DISPLAY_NAMES,
   INTEGRATION_LOGOS,
-  type IntegrationType,
+  INTEGRATION_DISPLAY_NAMES,
+  COWORKER_AVAILABLE_INTEGRATION_TYPES,
 } from "@/lib/integration-icons";
+import { buildProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
 import { cn } from "@/lib/utils";
+import { client } from "@/orpc/client";
 import {
+  useCreateCoworker,
   useCoworkerList,
-  useCoworkerFolderList,
   useCoworkerViewList,
-  useCreateCoworkerFolderPath,
+  useDeleteCoworker,
   useImportCoworkerDefinition,
   useImportSharedCoworker,
   useIntegrationList,
-  useMoveCoworkerToFolder,
+  useProviderAuthStatus,
   useSharedCoworkerList,
+  useTranscribe,
 } from "@/orpc/hooks";
-import CoworkerEditorPage from "../coworkers/[id]/coworker-editor-page";
 
-type AgentItem = {
+type CoworkerItem = {
   id: string;
   name?: string | null;
   username?: string | null;
   description?: string | null;
-  folderId?: string | null;
   status: "on" | "off";
   triggerType: string;
   toolAccessMode: CoworkerToolAccessMode;
@@ -99,7 +106,7 @@ type AgentItem = {
   tags?: { id: string; name: string; color: string | null }[];
 };
 
-type SharedAgentItem = {
+type SharedCoworkerItem = {
   id: string;
   name?: string | null;
   description?: string | null;
@@ -117,22 +124,8 @@ type SharedAgentItem = {
   isOwnedByCurrentUser: boolean;
 };
 
-type FolderTag = {
-  id: string;
-  name: string;
-  path: string;
-  parentId: string | null;
-};
-
-type AgentFolderNode = {
-  id: string;
-  name: string;
-  path: string;
-  children: AgentFolderNode[];
-  agents: AgentItem[];
-};
-
-type AgentsView = "grid" | "builder";
+const DEFAULT_COWORKER_BUILDER_MODEL = DEFAULT_CONNECTED_CHATGPT_MODEL;
+const MAX_VISIBLE_TOOL_INDICATORS = 3;
 
 const TRIGGER_TYPE_OPTIONS = [
   { value: "manual", label: "Manual", icon: Play },
@@ -152,9 +145,9 @@ function formatDate(value?: Date | string | null) {
   if (!value) {
     return null;
   }
-
   const date = typeof value === "string" ? new Date(value) : value;
-  const diffMs = Date.now() - date.getTime();
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.floor(diffMs / 60000);
   const diffH = Math.floor(diffMin / 60);
   const diffD = Math.floor(diffH / 24);
@@ -175,276 +168,87 @@ function formatDate(value?: Date | string | null) {
 }
 
 function getTriggerLabel(triggerType: string) {
-  const match = TRIGGER_TYPE_OPTIONS.find((entry) => entry.value === triggerType);
-  return match?.label ?? triggerType;
+  const map: Record<string, string> = {
+    manual: "Manual",
+    schedule: "Scheduled",
+    email: "Email",
+    webhook: "Webhook",
+  };
+  return map[triggerType] ?? triggerType;
 }
 
 function buildToolSummary(
-  agent: Pick<
-    AgentItem | SharedAgentItem,
-    "toolAccessMode" | "allowedIntegrations" | "allowedSkillSlugs"
-  >,
+  coworker: Pick<CoworkerItem, "toolAccessMode" | "allowedIntegrations" | "allowedSkillSlugs">,
   connectedIntegrationTypes: IntegrationType[],
 ) {
   const integrationTypes =
-    agent.toolAccessMode === "all"
+    coworker.toolAccessMode === "all"
       ? connectedIntegrationTypes
-      : (agent.allowedIntegrations ?? []).filter((entry) =>
+      : (coworker.allowedIntegrations ?? []).filter((entry) =>
           COWORKER_AVAILABLE_INTEGRATION_TYPES.includes(entry),
         );
   const skillCount =
-    agent.toolAccessMode === "selected" ? (agent.allowedSkillSlugs?.length ?? 0) : 0;
+    coworker.toolAccessMode === "selected" ? (coworker.allowedSkillSlugs?.length ?? 0) : 0;
+  const visibleIntegrations = integrationTypes.slice(0, MAX_VISIBLE_TOOL_INDICATORS);
+  const remainingSlots = MAX_VISIBLE_TOOL_INDICATORS - visibleIntegrations.length;
+  const showSkillBadge = skillCount > 0 && remainingSlots > 0;
+  const coveredCount = visibleIntegrations.length + (showSkillBadge ? skillCount : 0);
+  const totalCount = integrationTypes.length + skillCount;
 
   return {
-    visibleIntegrations: integrationTypes.slice(0, 4),
+    visibleIntegrations,
     skillCount,
-    overflowCount: Math.max(0, integrationTypes.length + skillCount - 4),
+    showSkillBadge,
+    overflowCount: Math.max(0, totalCount - coveredCount),
   };
 }
 
-function normalizeFolderPath(value: string) {
-  return value
-    .split("/")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join("/");
-}
-
-function createEmptyFolderNode(path: string): AgentFolderNode {
-  const parts = path.split("/");
-  return {
-    id: path,
-    name: parts.at(-1) ?? path,
-    path,
-    children: [],
-    agents: [],
-  };
-}
-
-function buildAgentFolderTree(agents: AgentItem[], folderTags: FolderTag[]) {
-  const nodeByPath = new Map<string, AgentFolderNode>();
-  const nodeById = new Map<string, AgentFolderNode>();
-  const rootNodes: AgentFolderNode[] = [];
-  const unfiled: AgentItem[] = [];
-
-  function ensureNode(folder: FolderTag) {
-    const existing = nodeById.get(folder.id);
-    if (existing) {
-      return existing;
-    }
-
-    const node = createEmptyFolderNode(folder.path);
-    node.id = folder.id;
-    node.name = folder.name;
-    nodeByPath.set(folder.path, node);
-    nodeById.set(folder.id, node);
-
-    const parentFolder = folder.parentId
-      ? folderTags.find((candidate) => candidate.id === folder.parentId)
-      : null;
-    if (parentFolder) {
-      ensureNode(parentFolder).children.push(node);
-    } else {
-      rootNodes.push(node);
-    }
-
-    return node;
-  }
-
-  for (const tag of folderTags) {
-    ensureNode(tag);
-  }
-
-  for (const agent of agents) {
-    if (!agent.folderId) {
-      unfiled.push(agent);
-      continue;
-    }
-
-    const node = nodeById.get(agent.folderId);
-    if (!node) {
-      unfiled.push(agent);
-      continue;
-    }
-    node.agents.push(agent);
-  }
-
-  const sortNode = (node: AgentFolderNode) => {
-    node.children.sort((a, b) => a.name.localeCompare(b.name));
-    node.agents.sort((a, b) =>
-      getCoworkerDisplayName(a.name).localeCompare(getCoworkerDisplayName(b.name)),
-    );
-    node.children.forEach(sortNode);
-  };
-
-  rootNodes.sort((a, b) => a.name.localeCompare(b.name));
-  rootNodes.forEach(sortNode);
-  unfiled.sort((a, b) =>
-    getCoworkerDisplayName(a.name).localeCompare(getCoworkerDisplayName(b.name)),
-  );
-
-  return { rootNodes, unfiled };
-}
-
-function collectFolderIds(node: AgentFolderNode): string[] {
-  return [node.id, ...node.children.flatMap(collectFolderIds)];
-}
-
-function countFolderAgents(node: AgentFolderNode): number {
-  return (
-    node.agents.length + node.children.reduce((count, child) => count + countFolderAgents(child), 0)
-  );
-}
-
-function flattenFolderNodes(nodes: AgentFolderNode[]): AgentFolderNode[] {
-  return nodes.flatMap((node) => [node, ...flattenFolderNodes(node.children)]);
-}
-
-function AgentStatusBadge({ status }: { status: AgentItem["status"] }) {
-  const isOn = status === "on";
-  return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium",
-        isOn
-          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-          : "border-border bg-muted/50 text-muted-foreground",
-      )}
-    >
-      <span
-        className={cn("size-1.5 rounded-full", isOn ? "bg-emerald-500" : "bg-muted-foreground/50")}
-      />
-      {isOn ? "On" : "Off"}
-    </span>
-  );
-}
-
-function AgentListCard({
-  agent,
-  selected,
+function SharedCoworkerCard({
+  coworker,
   connectedIntegrationTypes,
-  folderTags,
-  onSelect,
-  onMoveToFolder,
+  isImporting,
+  onImport,
 }: {
-  agent: AgentItem;
-  selected: boolean;
+  coworker: SharedCoworkerItem;
   connectedIntegrationTypes: IntegrationType[];
-  folderTags: FolderTag[];
-  onSelect: (id: string) => void;
-  onMoveToFolder: (agent: AgentItem, folderTagId: string | null) => void;
+  isImporting: boolean;
+  onImport: (id: string) => void;
 }) {
-  const handleSelect = useCallback(() => onSelect(agent.id), [agent.id, onSelect]);
-  const currentFolderId = folderTags.some((folder) => folder.id === agent.folderId)
-    ? agent.folderId
-    : null;
-  const summary = useMemo(
-    () => buildToolSummary(agent, connectedIntegrationTypes),
-    [agent, connectedIntegrationTypes],
+  const handleImport = useCallback(() => {
+    onImport(coworker.id);
+  }, [coworker.id, onImport]);
+
+  const toolSummary = useMemo(
+    () => buildToolSummary(coworker, connectedIntegrationTypes),
+    [connectedIntegrationTypes, coworker],
   );
-  const recentRun = agent.recentRuns?.[0];
-  const handleFolderChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      event.stopPropagation();
-      onMoveToFolder(agent, event.target.value === "__unfiled" ? null : event.target.value);
-    },
-    [agent, onMoveToFolder],
-  );
-  const handleFolderClick = useCallback((event: React.MouseEvent<HTMLSelectElement>) => {
-    event.stopPropagation();
-  }, []);
-  const handleMenuClick = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation();
-  }, []);
-  const handleOpenFromMenu = useCallback(() => {
-    onSelect(agent.id);
-  }, [agent.id, onSelect]);
-  const handleMoveToUnfiled = useCallback(() => {
-    onMoveToFolder(agent, null);
-  }, [agent, onMoveToFolder]);
-  const handleMoveToFolderFromMenu = useCallback(
-    (event: Event) => {
-      const folderId = (event.currentTarget as HTMLElement).dataset.folderId;
-      if (folderId) {
-        onMoveToFolder(agent, folderId);
-      }
-    },
-    [agent, onMoveToFolder],
-  );
+
   return (
-    <div
-      className={cn(
-        "group w-full rounded-lg border bg-card p-3 text-left shadow-sm transition-colors hover:border-foreground/20 hover:bg-muted/30",
-        selected && "border-foreground/25 bg-muted/50 shadow-none",
-      )}
-    >
-      <button type="button" onClick={handleSelect} className="w-full text-left outline-none">
-        <div className="flex min-w-0 items-start gap-3">
-          <CoworkerAvatar
-            username={agent.username ?? agent.name}
-            size={36}
-            className="rounded-lg"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center justify-between gap-2">
-              <p className="truncate text-sm font-semibold">{getCoworkerDisplayName(agent.name)}</p>
-              <div className="flex shrink-0 items-center gap-1">
-                <AgentStatusBadge status={agent.status} />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={handleMenuClick}
-                      className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md opacity-0 transition-colors group-hover:opacity-100 data-[state=open]:opacity-100"
-                      aria-label={`${getCoworkerDisplayName(agent.name)} actions`}
-                    >
-                      <MoreHorizontal className="size-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56" onClick={handleMenuClick}>
-                    <DropdownMenuItem onSelect={handleOpenFromMenu}>Open</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
-                      Move to folder
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onSelect={handleMoveToUnfiled}
-                      disabled={currentFolderId === null}
-                    >
-                      <Folder className="size-4" />
-                      Unfiled
-                    </DropdownMenuItem>
-                    {folderTags.map((folder) => (
-                      <DropdownMenuItem
-                        key={folder.id}
-                        data-folder-id={folder.id}
-                        onSelect={handleMoveToFolderFromMenu}
-                        disabled={folder.id === currentFolderId}
-                      >
-                        <Folder className="size-4" />
-                        <span className="truncate">{folder.path}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {getTriggerLabel(agent.triggerType)}
-              {recentRun ? ` · ${getCoworkerRunStatusLabel(recentRun.status)}` : " · no runs"}
-            </p>
-          </div>
-        </div>
-
-        {agent.description ? (
-          <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">
-            {agent.description}
+    <div className="border-border bg-card flex h-full min-h-[160px] flex-col gap-3 rounded-xl border p-5">
+      <div className="flex items-start gap-3">
+        <CoworkerAvatar username={coworker.name} size={36} className="rounded-full" />
+        <div className="space-y-1">
+          <p className="text-sm leading-tight font-medium">
+            {getCoworkerDisplayName(coworker.name)}
           </p>
-        ) : null}
+          <p className="text-muted-foreground text-xs">
+            Shared by {coworker.owner.name?.trim() || coworker.owner.email || "A teammate"}
+          </p>
+        </div>
+      </div>
+      {coworker.description ? (
+        <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
+          {coworker.description}
+        </p>
+      ) : null}
 
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-1.5">
-            {summary.visibleIntegrations.map((key) => {
+      <div className="flex items-center gap-2">
+        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium">
+          {getTriggerLabel(coworker.triggerType)}
+        </span>
+        {toolSummary.visibleIntegrations.length > 0 && (
+          <div className="flex items-center gap-1">
+            {toolSummary.visibleIntegrations.map((key) => {
               const logo = INTEGRATION_LOGOS[key];
               if (!logo) {
                 return null;
@@ -461,292 +265,26 @@ function AgentListCard({
                 />
               );
             })}
-            {summary.skillCount > 0 ? (
-              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {summary.skillCount} skill{summary.skillCount === 1 ? "" : "s"}
-              </span>
-            ) : null}
-            {summary.overflowCount > 0 ? (
-              <span className="text-[10px] font-medium text-muted-foreground">
-                +{summary.overflowCount}
-              </span>
-            ) : null}
           </div>
-          <span className="shrink-0 text-[11px] text-muted-foreground">
-            {formatDate(recentRun?.startedAt) ?? "Not run"}
+        )}
+        {toolSummary.showSkillBadge ? (
+          <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium">
+            {toolSummary.skillCount} skill{toolSummary.skillCount === 1 ? "" : "s"}
           </span>
-        </div>
-      </button>
-      <div className="mt-3">
-        <select
-          value={currentFolderId ?? "__unfiled"}
-          onChange={handleFolderChange}
-          onClick={handleFolderClick}
-          className="h-7 w-full rounded-md border border-border bg-background px-2 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus:border-ring"
-          aria-label={`Move ${getCoworkerDisplayName(agent.name)} to folder`}
-        >
-          <option value="__unfiled">Unfiled</option>
-          {folderTags.map((tag) => (
-            <option key={tag.id} value={tag.id}>
-              {tag.path}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
-function AgentFolderTree({
-  nodes,
-  selectedAgentId,
-  connectedIntegrationTypes,
-  folderTags,
-  onSelectAgent,
-  onMoveToFolder,
-  level = 0,
-}: {
-  nodes: AgentFolderNode[];
-  selectedAgentId?: string;
-  connectedIntegrationTypes: IntegrationType[];
-  folderTags: FolderTag[];
-  onSelectAgent: (id: string) => void;
-  onMoveToFolder: (agent: AgentItem, folderTagId: string | null) => void;
-  level?: number;
-}) {
-  return (
-    <>
-      {nodes.map((node) => (
-        <AgentFolderSection
-          key={node.id}
-          node={node}
-          selectedAgentId={selectedAgentId}
-          connectedIntegrationTypes={connectedIntegrationTypes}
-          folderTags={folderTags}
-          onSelectAgent={onSelectAgent}
-          onMoveToFolder={onMoveToFolder}
-          level={level}
-        />
-      ))}
-    </>
-  );
-}
-
-function AgentFolderSection({
-  node,
-  selectedAgentId,
-  connectedIntegrationTypes,
-  folderTags,
-  onSelectAgent,
-  onMoveToFolder,
-  level,
-}: {
-  node: AgentFolderNode;
-  selectedAgentId?: string;
-  connectedIntegrationTypes: IntegrationType[];
-  folderTags: FolderTag[];
-  onSelectAgent: (id: string) => void;
-  onMoveToFolder: (agent: AgentItem, folderTagId: string | null) => void;
-  level: number;
-}) {
-  const [open, setOpen] = useState(true);
-  const toggleOpen = useCallback(() => setOpen((value) => !value), []);
-  const nestedCount = useMemo(() => {
-    const countAgents = (folder: AgentFolderNode): number =>
-      folder.agents.length +
-      folder.children.reduce((count, child) => count + countAgents(child), 0);
-    return countAgents(node);
-  }, [node]);
-  const Icon = open ? FolderOpen : Folder;
-
-  return (
-    <section
-      className={cn("rounded-lg border border-border bg-background p-2", level > 0 && "ml-3")}
-    >
-      <button
-        type="button"
-        onClick={toggleOpen}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-muted/40"
-      >
-        <Icon className="size-4 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{node.name}</span>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-          {nestedCount}
-        </span>
-        <ChevronDown
-          className={cn("size-4 text-muted-foreground transition-transform", !open && "-rotate-90")}
-        />
-      </button>
-      {open ? (
-        <div className="mt-2 space-y-2">
-          {node.agents.map((agent) => (
-            <AgentListCard
-              key={`${node.id}:${agent.id}`}
-              agent={agent}
-              selected={agent.id === selectedAgentId}
-              connectedIntegrationTypes={connectedIntegrationTypes}
-              folderTags={folderTags}
-              onSelect={onSelectAgent}
-              onMoveToFolder={onMoveToFolder}
-            />
-          ))}
-          <AgentFolderTree
-            nodes={node.children}
-            selectedAgentId={selectedAgentId}
-            connectedIntegrationTypes={connectedIntegrationTypes}
-            folderTags={folderTags}
-            onSelectAgent={onSelectAgent}
-            onMoveToFolder={onMoveToFolder}
-            level={level + 1}
-          />
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function FolderFilterTree({
-  nodes,
-  selectedFolderId,
-  onSelectFolder,
-  level = 0,
-}: {
-  nodes: AgentFolderNode[];
-  selectedFolderId: string | null;
-  onSelectFolder: (folderId: string | null) => void;
-  level?: number;
-}) {
-  return (
-    <>
-      {nodes.map((node) => (
-        <FolderFilterSection
-          key={node.id}
-          node={node}
-          selectedFolderId={selectedFolderId}
-          onSelectFolder={onSelectFolder}
-          level={level}
-        />
-      ))}
-    </>
-  );
-}
-
-function FolderFilterSection({
-  node,
-  selectedFolderId,
-  onSelectFolder,
-  level,
-}: {
-  node: AgentFolderNode;
-  selectedFolderId: string | null;
-  onSelectFolder: (folderId: string | null) => void;
-  level: number;
-}) {
-  const [open, setOpen] = useState(true);
-  const toggleOpen = useCallback(() => setOpen((value) => !value), []);
-  const handleSelect = useCallback(() => onSelectFolder(node.id), [node.id, onSelectFolder]);
-  const Icon = open ? FolderOpen : Folder;
-  const selected = selectedFolderId === node.id;
-  const count = useMemo(() => countFolderAgents(node), [node]);
-
-  return (
-    <section className={cn("space-y-1", level > 0 && "ml-3")}>
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={toggleOpen}
-          className="text-muted-foreground hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-muted/50"
-          aria-label={open ? "Collapse folder" : "Expand folder"}
-        >
-          <ChevronDown className={cn("size-4 transition-transform", !open && "-rotate-90")} />
-        </button>
-        <button
-          type="button"
-          onClick={handleSelect}
-          className={cn(
-            "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors",
-            selected
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-          )}
-        >
-          <Icon className="size-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate">{node.name}</span>
-          <span className="rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-            {count}
+        ) : null}
+        {toolSummary.overflowCount > 0 ? (
+          <span className="text-muted-foreground inline-flex items-center text-[10px] font-medium">
+            +{toolSummary.overflowCount}
           </span>
-        </button>
+        ) : null}
       </div>
-      {open ? (
-        <FolderFilterTree
-          nodes={node.children}
-          selectedFolderId={selectedFolderId}
-          onSelectFolder={onSelectFolder}
-          level={level + 1}
-        />
-      ) : null}
-    </section>
-  );
-}
 
-function SharedAgentCard({
-  agent,
-  connectedIntegrationTypes,
-  isImporting,
-  onImport,
-}: {
-  agent: SharedAgentItem;
-  connectedIntegrationTypes: IntegrationType[];
-  isImporting: boolean;
-  onImport: (id: string) => void;
-}) {
-  const handleImport = useCallback(() => onImport(agent.id), [agent.id, onImport]);
-  const summary = useMemo(
-    () => buildToolSummary(agent, connectedIntegrationTypes),
-    [agent, connectedIntegrationTypes],
-  );
-
-  return (
-    <div className="rounded-lg border bg-background p-3">
-      <div className="flex items-start gap-3">
-        <CoworkerAvatar username={agent.name} size={34} className="rounded-lg" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{getCoworkerDisplayName(agent.name)}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {agent.owner.name?.trim() || agent.owner.email || "A teammate"}
-          </p>
-        </div>
+      <div className="text-muted-foreground/70 text-xs">
+        {coworker.documentCount} document{coworker.documentCount === 1 ? "" : "s"} · shared{" "}
+        {formatDate(coworker.sharedAt) ?? "recently"}
       </div>
-      {agent.description ? (
-        <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">
-          {agent.description}
-        </p>
-      ) : null}
-      <div className="mt-3 flex items-center gap-1.5">
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-          {getTriggerLabel(agent.triggerType)}
-        </span>
-        {summary.visibleIntegrations.map((key) => {
-          const logo = INTEGRATION_LOGOS[key];
-          if (!logo) {
-            return null;
-          }
-          return (
-            <Image
-              key={key}
-              src={logo}
-              alt={INTEGRATION_DISPLAY_NAMES[key] ?? key}
-              width={14}
-              height={14}
-              className="size-3.5 shrink-0"
-              title={INTEGRATION_DISPLAY_NAMES[key] ?? key}
-            />
-          );
-        })}
-      </div>
-      <div className="mt-4 flex items-center gap-1.5">
+      <div className="mt-auto flex items-center gap-1.5">
         <Button
-          type="button"
           variant="outline"
           size="sm"
           className="h-7 gap-1.5 text-xs"
@@ -760,23 +298,24 @@ function SharedAgentCard({
           )}
           Install
         </Button>
-        {agent.prompt ? (
+        {coworker.prompt ? (
           <Dialog>
             <DialogTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
                 <Eye className="size-3" />
-                Instructions
+                View instructions
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>{getCoworkerDisplayName(agent.name)}</DialogTitle>
+                <DialogTitle>{getCoworkerDisplayName(coworker.name)}</DialogTitle>
                 <DialogDescription>
-                  Shared by {agent.owner.name?.trim() || agent.owner.email || "a teammate"}
+                  Instructions shared by{" "}
+                  {coworker.owner.name?.trim() || coworker.owner.email || "a teammate"}
                 </DialogDescription>
               </DialogHeader>
-              <div className="max-h-[400px] overflow-y-auto whitespace-pre-wrap text-sm text-muted-foreground">
-                {agent.prompt}
+              <div className="text-muted-foreground max-h-[400px] overflow-y-auto text-sm whitespace-pre-wrap">
+                {coworker.prompt}
               </div>
             </DialogContent>
           </Dialog>
@@ -786,279 +325,40 @@ function SharedAgentCard({
   );
 }
 
-export default function AgentsPage() {
+export default function CoworkersPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedAgentId = searchParams.get("agent");
-  const selectedFolderIdParam = searchParams.get("folder");
-  const activeView: AgentsView = searchParams.get("view") === "builder" ? "builder" : "grid";
   const { data: coworkers, isLoading } = useCoworkerList();
   const { data: sharedCoworkers } = useSharedCoworkerList();
   const { data: integrations } = useIntegrationList();
-  const { data: views } = useCoworkerViewList();
-  const { data: folders } = useCoworkerFolderList();
-  const createFolder = useCreateCoworkerFolderPath();
-  const moveToFolder = useMoveCoworkerToFolder();
+  const { data: providerAuthStatus } = useProviderAuthStatus();
+  const createCoworker = useCreateCoworker();
+  const deleteCoworker = useDeleteCoworker();
   const importCoworkerDefinition = useImportCoworkerDefinition();
   const importSharedCoworker = useImportSharedCoworker();
-  const importFileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [newFolderName, setNewFolderName] = useState("");
-  const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
-  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
-  const [selectedTriggerTypes, setSelectedTriggerTypes] = useState<Set<string>>(new Set());
-  const [activeViewId, setActiveViewId] = useState<string | null>(null);
-  const [importingSharedAgentId, setImportingSharedAgentId] = useState<string | null>(null);
-
+  const { isRecording, error: _voiceError, startRecording, stopRecording } = useVoiceRecording();
+  const { mutateAsync: transcribe } = useTranscribe();
   const openRecentDrawer = useCallback(() => {
     window.dispatchEvent(new CustomEvent(COWORKERS_OPEN_RECENT_DRAWER_EVENT));
   }, []);
-
-  const agentList = useMemo(() => {
-    const real = Array.isArray(coworkers) ? coworkers : [];
-    return real.map((entry) =>
-      Object.assign({}, entry, {
-        toolAccessMode: entry.toolAccessMode,
-        allowedIntegrations: (entry.allowedIntegrations ?? []) as IntegrationType[],
-        allowedSkillSlugs: entry.allowedSkillSlugs ?? [],
-      }),
-    ) as AgentItem[];
-  }, [coworkers]);
-
-  const connectedIntegrationTypes = useMemo(
-    () =>
-      (integrations ?? []).flatMap((entry) =>
-        entry.enabled &&
-        entry.setupRequired !== true &&
-        COWORKER_AVAILABLE_INTEGRATION_TYPES.includes(entry.type as IntegrationType)
-          ? ([entry.type as IntegrationType] as const)
-          : [],
-      ),
-    [integrations],
-  );
-
-  const folderTags = useMemo(() => {
-    const folderList = folders ?? [];
-    const byId = new Map(folderList.map((folder) => [folder.id, folder]));
-    const getPath = (folder: (typeof folderList)[number]): string => {
-      if (!folder.parentId) {
-        return normalizeFolderPath(folder.name);
-      }
-      const parent = byId.get(folder.parentId);
-      if (!parent) {
-        return normalizeFolderPath(folder.name);
-      }
-      return normalizeFolderPath(`${getPath(parent)}/${folder.name}`);
-    };
-
-    return folderList
-      .map((folder) => ({
-        id: folder.id,
-        name: folder.name,
-        parentId: folder.parentId,
-        path: getPath(folder),
-      }))
-      .filter((tag) => tag.path.length > 0)
-      .toSorted((a, b) => a.path.localeCompare(b.path));
-  }, [folders]);
-
-  const sharedAgentList = useMemo(
-    () =>
-      (sharedCoworkers ?? []).filter((entry) => !entry.isOwnedByCurrentUser) as SharedAgentItem[],
-    [sharedCoworkers],
-  );
-
-  const selectedAgent = useMemo(
-    () => agentList.find((agent) => agent.id === selectedAgentId) ?? agentList[0],
-    [agentList, selectedAgentId],
-  );
-  const selectedFolderId = useMemo(
-    () =>
-      selectedFolderIdParam && folderTags.some((folder) => folder.id === selectedFolderIdParam)
-        ? selectedFolderIdParam
-        : selectedFolderIdParam === "__unfiled"
-          ? "__unfiled"
-          : null,
-    [folderTags, selectedFolderIdParam],
-  );
-
-  useEffect(() => {
-    if (!selectedAgent || selectedAgentId === selectedAgent.id) {
-      return;
-    }
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set("agent", selectedAgent.id);
-    router.replace(`/agents?${nextParams.toString()}`);
-  }, [router, searchParams, selectedAgent, selectedAgentId]);
-
-  const displayedAgentList = useMemo(() => {
-    let list = agentList;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        (agent) =>
-          agent.name?.toLowerCase().includes(q) ||
-          agent.username?.toLowerCase().includes(q) ||
-          agent.description?.toLowerCase().includes(q),
-      );
-    }
-    if (selectedTagIds.size > 0) {
-      list = list.filter((agent) => (agent.tags ?? []).some((tag) => selectedTagIds.has(tag.id)));
-    }
-    if (selectedTriggerTypes.size > 0) {
-      list = list.filter((agent) => selectedTriggerTypes.has(agent.triggerType));
-    }
-    return list;
-  }, [agentList, searchQuery, selectedTagIds, selectedTriggerTypes]);
-
-  const agentTree = useMemo(
-    () => buildAgentFolderTree(displayedAgentList, folderTags),
-    [displayedAgentList, folderTags],
-  );
-  const folderFilteredAgentList = useMemo(() => {
-    if (!selectedFolderId) {
-      return displayedAgentList;
-    }
-    if (selectedFolderId === "__unfiled") {
-      return displayedAgentList.filter((agent) => !agent.folderId);
-    }
-
-    const folderNode = flattenFolderNodes(agentTree.rootNodes).find(
-      (node) => node.id === selectedFolderId,
-    );
-    const folderIds = folderNode ? collectFolderIds(folderNode) : [selectedFolderId];
-    return displayedAgentList.filter(
-      (agent) => agent.folderId && folderIds.includes(agent.folderId),
-    );
-  }, [agentTree.rootNodes, displayedAgentList, selectedFolderId]);
-  const unfiledFolderNode = useMemo(
-    () => ({
-      id: "__unfiled",
-      name: "Unfiled",
-      path: "Unfiled",
-      children: [],
-      agents: agentTree.unfiled,
-    }),
-    [agentTree.unfiled],
-  );
-
-  const displayedSharedAgentList = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return sharedAgentList;
-    }
-    const q = searchQuery.toLowerCase();
-    return sharedAgentList.filter(
-      (agent) =>
-        agent.name?.toLowerCase().includes(q) || agent.description?.toLowerCase().includes(q),
-    );
-  }, [sharedAgentList, searchQuery]);
-
-  const currentFilters = useMemo(
-    () => ({
-      tagIds: selectedTagIds.size > 0 ? [...selectedTagIds] : undefined,
-      triggerTypes: selectedTriggerTypes.size > 0 ? [...selectedTriggerTypes] : undefined,
-    }),
-    [selectedTagIds, selectedTriggerTypes],
-  );
-
-  const hasActiveFilters = selectedTagIds.size > 0 || selectedTriggerTypes.size > 0;
-
-  const selectAgent = useCallback(
-    (agentId: string) => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.set("agent", agentId);
-      nextParams.set("view", "builder");
-      router.replace(`/agents?${nextParams.toString()}`);
-    },
-    [router, searchParams],
-  );
-
-  const handleViewChange = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      const view = event.currentTarget.dataset.view as AgentsView | undefined;
-      if (!view) {
-        return;
-      }
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.set("view", view);
-      router.replace(`/agents?${nextParams.toString()}`);
-    },
-    [router, searchParams],
-  );
-
-  const handleSelectFolder = useCallback(
-    (folderId: string | null) => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      if (folderId) {
-        nextParams.set("folder", folderId);
-      } else {
-        nextParams.delete("folder");
-      }
-      nextParams.set("view", "grid");
-      router.replace(`/agents?${nextParams.toString()}`);
-    },
-    [router, searchParams],
-  );
-  const handleSelectAllFolders = useCallback(() => {
-    handleSelectFolder(null);
-  }, [handleSelectFolder]);
-  const handleSelectUnfiled = useCallback(() => {
-    handleSelectFolder("__unfiled");
-  }, [handleSelectFolder]);
-
-  const handleSearchChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => setSearchQuery(event.target.value),
-    [],
-  );
-
-  const handleNewFolderNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setNewFolderName(event.target.value);
-  }, []);
-
-  const handleCreateFolder = useCallback(async () => {
-    const path = normalizeFolderPath(newFolderName);
-    if (!path || createFolder.isPending) {
-      return;
-    }
-
-    try {
-      await createFolder.mutateAsync({ path });
-      setNewFolderName("");
-      setIsNewFolderDialogOpen(false);
-      toast.success("Folder created.");
-    } catch (error) {
-      console.error("Failed to create folder:", error);
-      toast.error("Failed to create folder.");
-    }
-  }, [createFolder, newFolderName]);
-
-  const handleNewFolderKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        void handleCreateFolder();
-      }
-    },
-    [handleCreateFolder],
-  );
-
-  const handleMoveToFolder = useCallback(
-    async (agent: AgentItem, folderTagId: string | null) => {
-      if ((agent.folderId ?? null) === folderTagId) {
-        return;
-      }
-
-      try {
-        await moveToFolder.mutateAsync({ coworkerId: agent.id, folderId: folderTagId });
-        toast.success("Agent moved.");
-      } catch (error) {
-        console.error("Failed to move agent:", error);
-        toast.error("Failed to move agent.");
-      }
-    },
-    [moveToFolder],
-  );
-
+  const [isCreating, setIsCreating] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [_inputPrefillRequest, setInputPrefillRequest] = useState<{
+    id: string;
+    text: string;
+    mode?: "replace" | "append";
+  } | null>(null);
+  const [importingSharedCoworkerId, setImportingSharedCoworkerId] = useState<string | null>(null);
+  const [deletingCoworkerId, setDeletingCoworkerId] = useState<string | null>(null);
+  const [coworkerPendingDelete, setCoworkerPendingDelete] = useState<CoworkerItem | null>(null);
+  const [model, setModel] = useState(DEFAULT_COWORKER_BUILDER_MODEL);
+  const [modelAuthSource, setModelAuthSource] = useState<ProviderAuthSource | null>("shared");
+  const [filterShared, setFilterShared] = useState(false);
+  const handleToggleFilterShared = useCallback(() => setFilterShared((v) => !v), []);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
+  const [selectedTriggerTypes, setSelectedTriggerTypes] = useState<Set<string>>(new Set());
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const { data: views } = useCoworkerViewList();
   const handleToggleTagFilter = useCallback((tagId: string) => {
     setSelectedTagIds((prev) => {
       const next = new Set(prev);
@@ -1071,7 +371,6 @@ export default function AgentsPage() {
     });
     setActiveViewId(null);
   }, []);
-
   const handleToggleTriggerType = useCallback((triggerType: string) => {
     setSelectedTriggerTypes((prev) => {
       const next = new Set(prev);
@@ -1084,7 +383,6 @@ export default function AgentsPage() {
     });
     setActiveViewId(null);
   }, []);
-
   const handleTriggerTypeButtonClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       const triggerType = event.currentTarget.dataset.triggerType;
@@ -1094,40 +392,131 @@ export default function AgentsPage() {
     },
     [handleToggleTriggerType],
   );
-
   const handleClearAllFilters = useCallback(() => {
     setSelectedTagIds(new Set());
     setSelectedTriggerTypes(new Set());
     setActiveViewId(null);
   }, []);
-
   const handleSelectView = useCallback(
     (viewId: string | null) => {
       setActiveViewId(viewId);
       if (viewId === null) {
         setSelectedTagIds(new Set());
         setSelectedTriggerTypes(new Set());
-        return;
+      } else {
+        const view = (views ?? []).find((v) => v.id === viewId);
+        if (view) {
+          const filters = view.filters as { tagIds?: string[]; triggerTypes?: string[] };
+          setSelectedTagIds(new Set(filters.tagIds ?? []));
+          setSelectedTriggerTypes(new Set(filters.triggerTypes ?? []));
+        }
       }
-
-      const view = (views ?? []).find((entry) => entry.id === viewId);
-      if (!view) {
-        return;
-      }
-      const filters = view.filters as { tagIds?: string[]; triggerTypes?: string[] };
-      setSelectedTagIds(new Set(filters.tagIds ?? []));
-      setSelectedTriggerTypes(new Set(filters.triggerTypes ?? []));
     },
     [views],
   );
-
-  const handleImportAgentClick = useCallback(() => {
-    if (!importCoworkerDefinition.isPending) {
-      importFileInputRef.current?.click();
+  const handleSearchChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value),
+    [],
+  );
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
+  const isRecordingRef = useRef(false);
+  const coworkerList = useMemo(() => {
+    const real = Array.isArray(coworkers) ? coworkers : [];
+    return real.map((entry) =>
+      Object.assign({}, entry, {
+        toolAccessMode: entry.toolAccessMode,
+        allowedIntegrations: (entry.allowedIntegrations ?? []) as IntegrationType[],
+        allowedSkillSlugs: entry.allowedSkillSlugs ?? [],
+      }),
+    );
+  }, [coworkers]);
+  const connectedIntegrationTypes = useMemo(
+    () =>
+      (integrations ?? []).flatMap((entry) =>
+        entry.enabled &&
+        entry.setupRequired !== true &&
+        COWORKER_AVAILABLE_INTEGRATION_TYPES.includes(entry.type as IntegrationType)
+          ? ([entry.type as IntegrationType] as const)
+          : [],
+      ),
+    [integrations],
+  );
+  const providerAvailability = useMemo(
+    () =>
+      buildProviderAuthAvailabilityByProvider({
+        connectedProviders: providerAuthStatus?.connected,
+        sharedConnectedProviders: providerAuthStatus?.shared,
+      }),
+    [providerAuthStatus],
+  );
+  const sharedCoworkerList = useMemo(
+    () =>
+      (sharedCoworkers ?? []).filter(
+        (entry) => !entry.isOwnedByCurrentUser,
+      ) as SharedCoworkerItem[],
+    [sharedCoworkers],
+  );
+  const sharedByMeCount = useMemo(
+    () => coworkerList.filter((c) => c.sharedAt != null).length,
+    [coworkerList],
+  );
+  const currentFilters = useMemo(
+    () => ({
+      tagIds: selectedTagIds.size > 0 ? [...selectedTagIds] : undefined,
+      triggerTypes: selectedTriggerTypes.size > 0 ? [...selectedTriggerTypes] : undefined,
+    }),
+    [selectedTagIds, selectedTriggerTypes],
+  );
+  const hasActiveFilters = selectedTagIds.size > 0 || selectedTriggerTypes.size > 0;
+  const displayedCoworkerList = useMemo(() => {
+    let list = filterShared ? coworkerList.filter((c) => c.sharedAt != null) : coworkerList;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (c) => c.name?.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q),
+      );
     }
-  }, [importCoworkerDefinition.isPending]);
+    if (selectedTagIds.size > 0) {
+      list = list.filter((c) => (c.tags ?? []).some((tag) => selectedTagIds.has(tag.id)));
+    }
+    if (selectedTriggerTypes.size > 0) {
+      list = list.filter((c) => selectedTriggerTypes.has(c.triggerType));
+    }
+    return list;
+  }, [coworkerList, filterShared, searchQuery, selectedTagIds, selectedTriggerTypes]);
+  const displayedSharedCoworkerList = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return sharedCoworkerList;
+    }
+    const q = searchQuery.toLowerCase();
+    return sharedCoworkerList.filter(
+      (c) => c.name?.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q),
+    );
+  }, [sharedCoworkerList, searchQuery]);
 
-  const handleImportAgentFileChange = useCallback(
+  const handleImportSharedCoworker = useCallback(
+    async (sourceCoworkerId: string) => {
+      setImportingSharedCoworkerId(sourceCoworkerId);
+      try {
+        const created = await importSharedCoworker.mutateAsync(sourceCoworkerId);
+        toast.success("Coworker imported.");
+        router.push(`/agents/${created.id}`);
+      } catch (error) {
+        console.error("Failed to import coworker:", error);
+        toast.error("Failed to import coworker.");
+      } finally {
+        setImportingSharedCoworkerId(null);
+      }
+    },
+    [importSharedCoworker, router],
+  );
+  const handleImportCoworkerClick = useCallback(() => {
+    if (importCoworkerDefinition.isPending) {
+      return;
+    }
+    importFileInputRef.current?.click();
+  }, [importCoworkerDefinition.isPending]);
+  const handleImportCoworkerFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       event.target.value = "";
@@ -1136,169 +525,327 @@ export default function AgentsPage() {
         return;
       }
       if (!file.name.toLowerCase().endsWith(".json")) {
-        toast.error("Select a .json agent export.");
+        toast.error("Select a .json coworker export.");
         return;
       }
 
       try {
         const definitionJson = await file.text();
         const created = await importCoworkerDefinition.mutateAsync(definitionJson);
-        toast.success("Agent imported in the off state.");
-        router.push(`/coworkers/${created.id}`);
+        toast.success("Coworker imported in the off state.");
+        router.push(`/agents/${created.id}`);
       } catch (error) {
-        console.error("Failed to import agent definition:", error);
-        toast.error("Failed to import agent.");
+        console.error("Failed to import coworker definition:", error);
+        toast.error("Failed to import coworker.");
       }
     },
     [importCoworkerDefinition, router],
   );
-
-  const handleImportSharedAgent = useCallback(
-    async (sourceCoworkerId: string) => {
-      setImportingSharedAgentId(sourceCoworkerId);
-      try {
-        const created = await importSharedCoworker.mutateAsync(sourceCoworkerId);
-        toast.success("Agent installed.");
-        router.push(`/coworkers/${created.id}`);
-      } catch (error) {
-        console.error("Failed to install shared agent:", error);
-        toast.error("Failed to install agent.");
-      } finally {
-        setImportingSharedAgentId(null);
+  const handleDeleteDialogChange = useCallback(
+    (open: boolean) => {
+      if (!open && deletingCoworkerId === null) {
+        setCoworkerPendingDelete(null);
       }
     },
-    [importSharedCoworker, router],
+    [deletingCoworkerId],
+  );
+  const handleConfirmDelete = useCallback(async () => {
+    if (!coworkerPendingDelete) {
+      return;
+    }
+    setDeletingCoworkerId(coworkerPendingDelete.id);
+    try {
+      await deleteCoworker.mutateAsync(coworkerPendingDelete.id);
+      toast.success("Coworker deleted.");
+      setCoworkerPendingDelete(null);
+    } catch (error) {
+      console.error("Failed to delete coworker:", error);
+      toast.error("Failed to delete coworker.");
+    } finally {
+      setDeletingCoworkerId(null);
+    }
+  }, [coworkerPendingDelete, deleteCoworker]);
+
+  const _stopRecordingAndTranscribe = useCallback(async () => {
+    if (!isRecordingRef.current) {
+      return;
+    }
+    isRecordingRef.current = false;
+
+    const audioBlob = await stopRecording();
+    if (!audioBlob || audioBlob.size === 0) {
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    try {
+      const base64Audio = await blobToBase64(audioBlob);
+      const result = await transcribe({
+        audio: base64Audio,
+        mimeType: audioBlob.type || "audio/webm",
+      });
+
+      if (result.text && result.text.trim()) {
+        setInputPrefillRequest({
+          id: `coworker-voice-prefill-${Date.now()}`,
+          text: result.text.trim(),
+          mode: "append",
+        });
+      }
+    } catch (error) {
+      console.error("Coworker transcription error:", error);
+    } finally {
+      setIsProcessingVoice(false);
+    }
+  }, [stopRecording, transcribe]);
+
+  const _handleStartRecording = useCallback(() => {
+    if (isCreating || isProcessingVoice || isRecordingRef.current) {
+      return;
+    }
+
+    isRecordingRef.current = true;
+    void startRecording();
+  }, [isCreating, isProcessingVoice, startRecording]);
+  const handleModelChange = useCallback(
+    (input: { model: string; authSource?: ProviderAuthSource | null }) => {
+      const normalized = normalizeChatModelSelection(input);
+      if (!normalized.model) {
+        return;
+      }
+
+      setModel(normalized.model);
+      setModelAuthSource(normalized.authSource);
+    },
+    [],
+  );
+  const _modelSelectorNode = useMemo(
+    () => (
+      <ModelSelector
+        selectedModel={model}
+        selectedAuthSource={modelAuthSource}
+        providerAvailability={providerAvailability}
+        onSelectionChange={handleModelChange}
+        disabled={isCreating || isRecording || isProcessingVoice}
+      />
+    ),
+    [
+      handleModelChange,
+      isCreating,
+      isProcessingVoice,
+      isRecording,
+      model,
+      modelAuthSource,
+      providerAvailability,
+    ],
+  );
+
+  const doCreate = useCallback(
+    async ({
+      initialMessage,
+      name,
+      prompt: coworkerPrompt,
+      triggerType,
+    }: {
+      initialMessage?: string;
+      name?: string;
+      prompt: string;
+      triggerType: "manual" | "schedule" | "email" | "webhook";
+    }) => {
+      const result = await createCoworker.mutateAsync({
+        name,
+        triggerType,
+        prompt: coworkerPrompt,
+        model,
+        authSource: modelAuthSource,
+        toolAccessMode: "all",
+        allowedIntegrations: COWORKER_AVAILABLE_INTEGRATION_TYPES,
+      });
+
+      const text = initialMessage?.trim() ?? "";
+      if (text) {
+        try {
+          const { conversationId } = await client.coworker.getOrCreateBuilderConversation({
+            id: result.id,
+          });
+          await client.generation.startGeneration({
+            conversationId,
+            content: text,
+            model,
+            authSource: modelAuthSource,
+            autoApprove: true,
+          });
+        } catch (builderError) {
+          console.error("Failed to start coworker builder generation:", builderError);
+          throw builderError;
+        }
+      }
+
+      window.location.assign(`/agents/${result.id}`);
+    },
+    [createCoworker, model, modelAuthSource],
+  );
+
+  const _handlePromptSubmit = useCallback(
+    async (text: string) => {
+      const trimmedText = text.trim();
+      if (!trimmedText || isCreating || isProcessingVoice) {
+        return;
+      }
+
+      setIsCreating(true);
+      try {
+        await doCreate({
+          initialMessage: trimmedText,
+          name: "",
+          prompt: "",
+          triggerType: "manual",
+        });
+      } catch (error) {
+        toast.error(normalizeGenerationError(error, "start_rpc").message);
+        setIsCreating(false);
+      }
+    },
+    [doCreate, isCreating, isProcessingVoice],
   );
 
   return (
-    <div className="flex min-h-screen min-w-0 overflow-x-auto bg-muted/25">
-      <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-card">
-        <div className="border-b border-border/50 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                Agents
-              </p>
-              <h2 className="mt-1 text-lg font-semibold">Workspace agents</h2>
+    <div className="space-y-10">
+      {/* Prompt bar — commented out, kept for future reference
+      <div className="px-4 pt-[12vh] pb-8">
+        <div className="mx-auto max-w-xl">
+          <h1 className="text-foreground mb-2 text-center text-xl font-semibold tracking-tight">
+            What do you want to automate?
+          </h1>
+          <p className="text-muted-foreground mb-6 text-center text-sm">
+            Describe a task and we&apos;ll build it step by step
+          </p>
+          <PromptBar
+            onSubmit={handlePromptSubmit}
+            isSubmitting={isCreating}
+            disabled={isCreating || isRecording || isProcessingVoice}
+            placeholder="e.g. Every morning, summarize my unread emails and send me a digest…"
+            isRecording={isRecording}
+            onStartRecording={handleStartRecording}
+            onStopRecording={stopRecordingAndTranscribe}
+            voiceInteractionMode="toggle"
+            prefillRequest={inputPrefillRequest}
+            renderModelSelector={modelSelectorNode}
+          />
+          {(isRecording || isProcessingVoice || voiceError) && (
+            <div className="mt-4">
+              <VoiceIndicator
+                isRecording={isRecording}
+                isProcessing={isProcessingVoice}
+                error={voiceError}
+                recordingLabel="Recording... Click the mic again to stop"
+              />
             </div>
-            <div className="flex items-center gap-1.5">
+          )}
+        </div>
+      </div>
+      */}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="text-muted-foreground size-5 animate-spin" />
+        </div>
+      ) : coworkerList.length === 0 && !searchQuery.trim() ? (
+        <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
+          <Image src="/tools/lobster.svg" alt="" width={64} height={64} className="mb-6" />
+          <h2 className="text-foreground mb-1.5 text-center text-xl font-semibold tracking-tight">
+            Build your first coworker
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-sm text-center text-sm">
+            Put repetitive tasks on autopilot.
+          </p>
+          <Link
+            href="/"
+            className="bg-foreground text-background hover:bg-foreground/90 inline-flex h-10 items-center justify-center rounded-lg px-6 text-sm font-medium transition-colors"
+          >
+            Start building
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={openRecentDrawer}
-                className="inline-flex size-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground md:hidden"
+                className="text-muted-foreground hover:text-foreground -ml-1 flex h-8 w-8 items-center justify-center rounded-md md:hidden"
                 aria-label="Recent runs"
               >
-                <Menu className="size-4" />
+                <Menu className="h-5 w-5" />
               </button>
-              <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button type="button" size="icon" variant="outline" aria-label="Create folder">
-                    <Folder className="size-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle>Create folder</DialogTitle>
-                    <DialogDescription>
-                      Use slashes for nesting, for example Growth/Research.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-3">
-                    <Input
-                      value={newFolderName}
-                      onChange={handleNewFolderNameChange}
-                      onKeyDown={handleNewFolderKeyDown}
-                      placeholder="Operations/Support"
-                    />
-                    <div className="flex justify-end">
-                      <Button
-                        type="button"
-                        onClick={handleCreateFolder}
-                        disabled={!normalizeFolderPath(newFolderName) || createFolder.isPending}
-                      >
-                        {createFolder.isPending ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Folder className="size-4" />
-                        )}
-                        Create
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <Button type="button" size="icon" variant="outline" asChild aria-label="Create agent">
-                <Link href="/">
-                  <Plus className="size-4" />
-                </Link>
-              </Button>
+              <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight">
+                My coworkers
+                <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium tabular-nums">
+                  {coworkerList.length}
+                </span>
+              </h2>
+              <Link
+                href="/agents/overview"
+                className="text-muted-foreground hover:text-foreground ml-1 flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
+              >
+                <Activity className="size-3.5" />
+                <span className="hidden sm:inline">Overview</span>
+              </Link>
+              <Link
+                href="/agents/history"
+                className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
+              >
+                <History className="size-3.5" />
+                <span className="hidden sm:inline">History</span>
+              </Link>
+              <Link
+                href="/agents/usage"
+                className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
+              >
+                <BarChart3 className="size-3.5" />
+                <span className="hidden sm:inline">Usage</span>
+              </Link>
+              <Link
+                href="/agents/org-chart"
+                className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
+              >
+                <Network className="size-3.5" />
+                <span className="hidden sm:inline">Org Chart</span>
+              </Link>
             </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 rounded-md border border-border bg-background p-0.5">
-            <button
-              type="button"
-              data-view="grid"
-              onClick={handleViewChange}
-              className={cn(
-                "flex h-8 items-center justify-center gap-1.5 rounded-[5px] text-xs font-medium transition-colors",
-                activeView === "grid"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <LayoutGrid className="size-3.5" />
-              Grid
-            </button>
-            <button
-              type="button"
-              data-view="builder"
-              onClick={handleViewChange}
-              className={cn(
-                "flex h-8 items-center justify-center gap-1.5 rounded-[5px] text-xs font-medium transition-colors",
-                activeView === "builder"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Network className="size-3.5" />
-              Builder
-            </button>
-          </div>
-
-          <div className="mt-4 grid gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="pl-9"
-                placeholder="Search agents"
-              />
-            </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <div className="relative w-full sm:w-64">
+                <Search className="text-muted-foreground/60 pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
+                <Input
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  placeholder="Search coworkers..."
+                  className="h-8 pl-8 text-xs"
+                />
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
                     className={cn(
-                      "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+                      "border-border/60 hover:border-border inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
                       selectedTriggerTypes.size > 0
                         ? "border-foreground/20 bg-foreground text-background"
-                        : "border-border text-muted-foreground hover:text-foreground",
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     <Filter className="size-3" />
-                    Trigger
                     {selectedTriggerTypes.size > 0 ? (
-                      <span className="rounded bg-background/20 px-1 text-[10px] tabular-nums">
+                      <span className="bg-background/20 rounded px-1 text-[10px] tabular-nums">
                         {selectedTriggerTypes.size}
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="hidden sm:inline">Trigger</span>
+                    )}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-40 p-1.5">
-                  <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <PopoverContent align="end" className="w-40 p-1.5">
+                  <p className="text-muted-foreground px-2 py-1 text-[10px] font-medium tracking-wider uppercase">
                     Trigger
                   </p>
                   {TRIGGER_TYPE_OPTIONS.map((trigger) => {
@@ -1310,7 +857,7 @@ export default function AgentsPage() {
                         type="button"
                         data-trigger-type={trigger.value}
                         onClick={handleTriggerTypeButtonClick}
-                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors hover:bg-muted"
+                        className="hover:bg-muted flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors"
                       >
                         <div
                           className={cn(
@@ -1320,42 +867,65 @@ export default function AgentsPage() {
                               : "border-input bg-transparent",
                           )}
                         >
-                          {isActive ? <X className="size-2.5" /> : null}
+                          {isActive && <X className="size-2.5" />}
                         </div>
-                        <Icon className="size-3 text-muted-foreground" />
+                        <Icon className="text-muted-foreground size-3" />
                         <span className="text-foreground">{trigger.label}</span>
                       </button>
                     );
                   })}
                 </PopoverContent>
               </Popover>
-
-              <input
-                ref={importFileInputRef}
-                type="file"
-                accept=".json,application/json"
-                className="hidden"
-                aria-label="Import agent JSON file"
-                onChange={handleImportAgentFileChange}
-              />
-              <button
-                type="button"
-                onClick={handleImportAgentClick}
-                disabled={importCoworkerDefinition.isPending}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-              >
-                {importCoworkerDefinition.isPending ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  <Upload className="size-3" />
-                )}
-                Import
-              </button>
             </div>
           </div>
-        </div>
+          <div className="flex items-center gap-2">
+            {sharedByMeCount > 0 ? (
+              <button
+                type="button"
+                onClick={handleToggleFilterShared}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  filterShared
+                    ? "border-foreground/20 bg-foreground text-background"
+                    : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
+                )}
+              >
+                <Share2 className="size-3" />
+                Shared with workspace
+                <span
+                  className={cn(
+                    "tabular-nums rounded-full px-1.5 text-[10px]",
+                    filterShared ? "bg-background/20" : "bg-muted",
+                  )}
+                >
+                  {sharedByMeCount}
+                </span>
+              </button>
+            ) : null}
+            <input
+              ref={importFileInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              aria-label="Import coworker JSON file"
+              onChange={handleImportCoworkerFileChange}
+            />
+            <button
+              type="button"
+              onClick={handleImportCoworkerClick}
+              disabled={importCoworkerDefinition.isPending}
+              className="border-border/60 text-muted-foreground hover:border-border hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50"
+            >
+              {importCoworkerDefinition.isPending ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Upload className="size-3" />
+              )}
+              Import coworker
+            </button>
+          </div>
 
-        <div className="border-b border-border/50 px-3 py-2">
+          {/* View tabs with integrated tag filters */}
           <ViewTabs
             activeViewId={activeViewId}
             onSelectView={handleSelectView}
@@ -1365,246 +935,110 @@ export default function AgentsPage() {
             onToggleTag={handleToggleTagFilter}
             onClearAll={handleClearAllFilters}
           />
-        </div>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
-          {isLoading ? (
-            <div className="flex h-40 items-center justify-center">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : agentList.length === 0 && !searchQuery.trim() ? (
-            <div className="flex h-full min-h-[360px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-              <Image src="/tools/lobster.svg" alt="" width={56} height={56} className="mb-5" />
-              <h2 className="text-base font-semibold">Build your first agent</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Put repetitive tasks on autopilot.
+          {displayedCoworkerList.length === 0 ? (
+            <div className="border-border rounded-xl border border-dashed p-10 text-center">
+              <p className="text-muted-foreground text-sm">
+                No coworkers match &ldquo;{searchQuery}&rdquo;
               </p>
-              <Button type="button" className="mt-5" asChild>
-                <Link href="/">
-                  <Plus className="size-4" />
-                  Start building
-                </Link>
-              </Button>
-            </div>
-          ) : displayedAgentList.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <p className="text-sm text-muted-foreground">No agents match the current filters.</p>
-            </div>
-          ) : activeView === "grid" ? (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={handleSelectAllFolders}
-                className={cn(
-                  "flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors",
-                  selectedFolderId === null
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-              >
-                <FolderOpen className="size-4" />
-                <span className="min-w-0 flex-1 truncate">All agents</span>
-                <span className="rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                  {displayedAgentList.length}
-                </span>
-              </button>
-              <FolderFilterTree
-                nodes={agentTree.rootNodes}
-                selectedFolderId={selectedFolderId}
-                onSelectFolder={handleSelectFolder}
-              />
-              {agentTree.unfiled.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={handleSelectUnfiled}
-                  className={cn(
-                    "flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors",
-                    selectedFolderId === "__unfiled"
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                  )}
-                >
-                  <Folder className="size-4" />
-                  <span className="min-w-0 flex-1 truncate">Unfiled</span>
-                  <span className="rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                    {agentTree.unfiled.length}
-                  </span>
-                </button>
-              ) : null}
             </div>
           ) : (
-            <motion.div layout className="space-y-3">
+            <motion.div layout className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               <AnimatePresence mode="popLayout">
-                {agentTree.rootNodes.length > 0 ? (
+                <motion.div
+                  key="create-new"
+                  layout
+                  className="h-full"
+                  initial={CARD_MOTION.initial}
+                  animate={CARD_MOTION.animate}
+                  exit={CARD_MOTION.exit}
+                  transition={CARD_MOTION.transition}
+                >
+                  <Link
+                    href="/"
+                    className="border-foreground/20 hover:border-foreground/30 hover:bg-muted/30 group flex h-full min-h-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed transition-all duration-150"
+                  >
+                    <div className="bg-muted/50 group-hover:bg-muted flex size-10 items-center justify-center rounded-xl transition-colors">
+                      <Plus className="text-muted-foreground size-5" />
+                    </div>
+                    <span className="text-muted-foreground text-sm font-medium">
+                      Create new coworker
+                    </span>
+                  </Link>
+                </motion.div>
+                {displayedCoworkerList.map((wf) => (
                   <motion.div
-                    key="folders"
+                    key={wf.id}
                     layout
+                    className="h-full"
                     initial={CARD_MOTION.initial}
                     animate={CARD_MOTION.animate}
                     exit={CARD_MOTION.exit}
                     transition={CARD_MOTION.transition}
-                    className="space-y-3"
                   >
-                    <AgentFolderTree
-                      nodes={agentTree.rootNodes}
-                      selectedAgentId={selectedAgent?.id}
-                      connectedIntegrationTypes={connectedIntegrationTypes}
-                      folderTags={folderTags}
-                      onSelectAgent={selectAgent}
-                      onMoveToFolder={handleMoveToFolder}
-                    />
+                    <InteractiveCoworkerCard coworker={wf} />
                   </motion.div>
-                ) : null}
-                {agentTree.unfiled.length > 0 ? (
-                  <motion.div
-                    key="unfiled"
-                    layout
-                    initial={CARD_MOTION.initial}
-                    animate={CARD_MOTION.animate}
-                    exit={CARD_MOTION.exit}
-                    transition={CARD_MOTION.transition}
-                  >
-                    <AgentFolderSection
-                      node={unfiledFolderNode}
-                      selectedAgentId={selectedAgent?.id}
-                      connectedIntegrationTypes={connectedIntegrationTypes}
-                      folderTags={folderTags}
-                      onSelectAgent={selectAgent}
-                      onMoveToFolder={handleMoveToFolder}
-                      level={0}
-                    />
-                  </motion.div>
-                ) : null}
+                ))}
               </AnimatePresence>
             </motion.div>
           )}
-
-          {displayedSharedAgentList.length > 0 ? (
-            <section className="space-y-3 pt-2">
-              <div className="flex items-center gap-2 px-1">
-                <Share2 className="size-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold">Shared by teammates</h2>
-              </div>
-              {displayedSharedAgentList.map((agent) => (
-                <SharedAgentCard
-                  key={agent.id}
-                  agent={agent}
-                  connectedIntegrationTypes={connectedIntegrationTypes}
-                  isImporting={importingSharedAgentId === agent.id}
-                  onImport={handleImportSharedAgent}
-                />
+        </div>
+      )}
+      {displayedSharedCoworkerList.length > 0 ? (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold">Shared by teammates</h2>
+            <p className="text-muted-foreground text-sm">
+              Install a coworker into your own workspace environment.
+            </p>
+          </div>
+          <motion.div layout className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <AnimatePresence mode="popLayout">
+              {displayedSharedCoworkerList.map((coworker) => (
+                <motion.div
+                  key={coworker.id}
+                  layout
+                  className="h-full"
+                  initial={CARD_MOTION.initial}
+                  animate={CARD_MOTION.animate}
+                  exit={CARD_MOTION.exit}
+                  transition={CARD_MOTION.transition}
+                >
+                  <SharedCoworkerCard
+                    coworker={coworker}
+                    connectedIntegrationTypes={connectedIntegrationTypes}
+                    isImporting={importingSharedCoworkerId === coworker.id}
+                    onImport={handleImportSharedCoworker}
+                  />
+                </motion.div>
               ))}
-            </section>
-          ) : null}
-        </div>
-
-        <div className="border-t border-border/50 p-3">
-          <div className="grid grid-cols-4 gap-1">
-            <Button type="button" variant="ghost" size="sm" asChild>
-              <Link href="/coworkers/overview" title="Overview">
-                <Activity className="size-4" />
-              </Link>
-            </Button>
-            <Button type="button" variant="ghost" size="sm" asChild>
-              <Link href="/coworkers/history" title="History">
-                <History className="size-4" />
-              </Link>
-            </Button>
-            <Button type="button" variant="ghost" size="sm" asChild>
-              <Link href="/coworkers/usage" title="Usage">
-                <BarChart3 className="size-4" />
-              </Link>
-            </Button>
-            <Button type="button" variant="ghost" size="sm" asChild>
-              <Link href="/coworkers/org-chart" title="Org chart">
-                <Network className="size-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </aside>
-
-      {activeView === "grid" ? (
-        <main className="min-h-screen min-w-[800px] flex-1 bg-background">
-          <div className="mx-auto w-full max-w-[1400px] px-6 py-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div>
-                <h1 className="text-lg font-semibold tracking-tight">
-                  {selectedFolderId === "__unfiled"
-                    ? "Unfiled agents"
-                    : selectedFolderId
-                      ? folderTags.find((folder) => folder.id === selectedFolderId)?.path
-                      : "All agents"}
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {folderFilteredAgentList.length} agent
-                  {folderFilteredAgentList.length === 1 ? "" : "s"}
-                </p>
-              </div>
-              <Button type="button" asChild>
-                <Link href="/">
-                  <Plus className="size-4" />
-                  Create agent
-                </Link>
-              </Button>
-            </div>
-
-            {folderFilteredAgentList.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-10 text-center">
-                <p className="text-sm text-muted-foreground">No agents in this folder.</p>
-              </div>
-            ) : (
-              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <AnimatePresence mode="popLayout">
-                  {folderFilteredAgentList.map((agent) => (
-                    <motion.div
-                      key={agent.id}
-                      layout
-                      initial={CARD_MOTION.initial}
-                      animate={CARD_MOTION.animate}
-                      exit={CARD_MOTION.exit}
-                      transition={CARD_MOTION.transition}
-                    >
-                      <AgentListCard
-                        agent={agent}
-                        selected={agent.id === selectedAgent?.id}
-                        connectedIntegrationTypes={connectedIntegrationTypes}
-                        folderTags={folderTags}
-                        onSelect={selectAgent}
-                        onMoveToFolder={handleMoveToFolder}
-                      />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            )}
-
-            {displayedSharedAgentList.length > 0 ? (
-              <section className="mt-8 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Share2 className="size-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold">Shared by teammates</h2>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {displayedSharedAgentList.map((agent) => (
-                    <SharedAgentCard
-                      key={agent.id}
-                      agent={agent}
-                      connectedIntegrationTypes={connectedIntegrationTypes}
-                      isImporting={importingSharedAgentId === agent.id}
-                      onImport={handleImportSharedAgent}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-          </div>
-        </main>
-      ) : selectedAgent ? (
-        <div className="min-h-screen min-w-[800px] flex-1 bg-background">
-          <CoworkerEditorPage coworkerIdOverride={selectedAgent.id} embedded />
-        </div>
+            </AnimatePresence>
+          </motion.div>
+        </section>
       ) : null}
+      <AlertDialog open={coworkerPendingDelete !== null} onOpenChange={handleDeleteDialogChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete coworker?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {coworkerPendingDelete
+                ? `Delete ${getCoworkerDisplayName(coworkerPendingDelete.name)} and its run history? This action cannot be undone.`
+                : "This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingCoworkerId !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deletingCoworkerId !== null}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+            >
+              {deletingCoworkerId !== null ? <Loader2 className="size-3 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
