@@ -1,4 +1,5 @@
 import { type XmcpConfig } from "xmcp";
+import { addCommonJsPackageBoundary } from "../xmcp-commonjs-output-plugin";
 
 const config: XmcpConfig = {
   stdio: true,
@@ -12,6 +13,7 @@ const config: XmcpConfig = {
     prompts: "./src/prompts",
     resources: "./src/resources",
   },
+  bundler: addCommonJsPackageBoundary,
 };
 
 export default config;

@@ -1,9 +1,10 @@
 "use client";
 
-import { Cuboid, LayoutTemplate, Menu, MessageSquare, WandSparkles, X } from "lucide-react";
+import { LayoutTemplate, Menu, MessageSquare, WandSparkles, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { BrickIcon } from "@/components/icons/brick-icon";
 import { MobileMenuPanel } from "@/components/mobile-menu-sheet";
 import { openNewChat } from "@/lib/open-new-chat";
 import { cn } from "@/lib/utils";
@@ -17,7 +18,7 @@ type BottomTab = {
 const tabs: BottomTab[] = [
   { icon: MessageSquare, label: "Chat", href: "/chat" },
   { icon: WandSparkles, label: "Create", href: "/" },
-  { icon: Cuboid, label: "Agents", href: "/agents" },
+  { icon: BrickIcon, label: "Agents", href: "/agents" },
   { icon: LayoutTemplate, label: "Templates", href: "/templates" },
 ];
 

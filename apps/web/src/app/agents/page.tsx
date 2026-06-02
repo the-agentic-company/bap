@@ -12,6 +12,7 @@ import {
   Folder,
   FolderOpen,
   History,
+  LayoutGrid,
   Loader2,
   Mail,
   Menu,
@@ -130,6 +131,8 @@ type AgentFolderNode = {
   children: AgentFolderNode[];
   agents: AgentItem[];
 };
+
+type AgentsView = "grid" | "builder";
 
 const TRIGGER_TYPE_OPTIONS = [
   { value: "manual", label: "Manual", icon: Play },
@@ -281,6 +284,20 @@ function buildAgentFolderTree(agents: AgentItem[], folderTags: FolderTag[]) {
   );
 
   return { rootNodes, unfiled };
+}
+
+function collectFolderIds(node: AgentFolderNode): string[] {
+  return [node.id, ...node.children.flatMap(collectFolderIds)];
+}
+
+function countFolderAgents(node: AgentFolderNode): number {
+  return (
+    node.agents.length + node.children.reduce((count, child) => count + countFolderAgents(child), 0)
+  );
+}
+
+function flattenFolderNodes(nodes: AgentFolderNode[]): AgentFolderNode[] {
+  return nodes.flatMap((node) => [node, ...flattenFolderNodes(node.children)]);
 }
 
 function AgentStatusBadge({ status }: { status: AgentItem["status"] }) {
@@ -588,6 +605,90 @@ function AgentFolderSection({
   );
 }
 
+function FolderFilterTree({
+  nodes,
+  selectedFolderId,
+  onSelectFolder,
+  level = 0,
+}: {
+  nodes: AgentFolderNode[];
+  selectedFolderId: string | null;
+  onSelectFolder: (folderId: string | null) => void;
+  level?: number;
+}) {
+  return (
+    <>
+      {nodes.map((node) => (
+        <FolderFilterSection
+          key={node.id}
+          node={node}
+          selectedFolderId={selectedFolderId}
+          onSelectFolder={onSelectFolder}
+          level={level}
+        />
+      ))}
+    </>
+  );
+}
+
+function FolderFilterSection({
+  node,
+  selectedFolderId,
+  onSelectFolder,
+  level,
+}: {
+  node: AgentFolderNode;
+  selectedFolderId: string | null;
+  onSelectFolder: (folderId: string | null) => void;
+  level: number;
+}) {
+  const [open, setOpen] = useState(true);
+  const toggleOpen = useCallback(() => setOpen((value) => !value), []);
+  const handleSelect = useCallback(() => onSelectFolder(node.id), [node.id, onSelectFolder]);
+  const Icon = open ? FolderOpen : Folder;
+  const selected = selectedFolderId === node.id;
+  const count = useMemo(() => countFolderAgents(node), [node]);
+
+  return (
+    <section className={cn("space-y-1", level > 0 && "ml-3")}>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={toggleOpen}
+          className="text-muted-foreground hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-muted/50"
+          aria-label={open ? "Collapse folder" : "Expand folder"}
+        >
+          <ChevronDown className={cn("size-4 transition-transform", !open && "-rotate-90")} />
+        </button>
+        <button
+          type="button"
+          onClick={handleSelect}
+          className={cn(
+            "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors",
+            selected
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          )}
+        >
+          <Icon className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{node.name}</span>
+          <span className="rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+            {count}
+          </span>
+        </button>
+      </div>
+      {open ? (
+        <FolderFilterTree
+          nodes={node.children}
+          selectedFolderId={selectedFolderId}
+          onSelectFolder={onSelectFolder}
+          level={level + 1}
+        />
+      ) : null}
+    </section>
+  );
+}
+
 function SharedAgentCard({
   agent,
   connectedIntegrationTypes,
@@ -689,6 +790,8 @@ export default function AgentsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedAgentId = searchParams.get("agent");
+  const selectedFolderIdParam = searchParams.get("folder");
+  const activeView: AgentsView = searchParams.get("view") === "builder" ? "builder" : "grid";
   const { data: coworkers, isLoading } = useCoworkerList();
   const { data: sharedCoworkers } = useSharedCoworkerList();
   const { data: integrations } = useIntegrationList();
@@ -770,6 +873,15 @@ export default function AgentsPage() {
     () => agentList.find((agent) => agent.id === selectedAgentId) ?? agentList[0],
     [agentList, selectedAgentId],
   );
+  const selectedFolderId = useMemo(
+    () =>
+      selectedFolderIdParam && folderTags.some((folder) => folder.id === selectedFolderIdParam)
+        ? selectedFolderIdParam
+        : selectedFolderIdParam === "__unfiled"
+          ? "__unfiled"
+          : null,
+    [folderTags, selectedFolderIdParam],
+  );
 
   useEffect(() => {
     if (!selectedAgent || selectedAgentId === selectedAgent.id) {
@@ -804,6 +916,22 @@ export default function AgentsPage() {
     () => buildAgentFolderTree(displayedAgentList, folderTags),
     [displayedAgentList, folderTags],
   );
+  const folderFilteredAgentList = useMemo(() => {
+    if (!selectedFolderId) {
+      return displayedAgentList;
+    }
+    if (selectedFolderId === "__unfiled") {
+      return displayedAgentList.filter((agent) => !agent.folderId);
+    }
+
+    const folderNode = flattenFolderNodes(agentTree.rootNodes).find(
+      (node) => node.id === selectedFolderId,
+    );
+    const folderIds = folderNode ? collectFolderIds(folderNode) : [selectedFolderId];
+    return displayedAgentList.filter(
+      (agent) => agent.folderId && folderIds.includes(agent.folderId),
+    );
+  }, [agentTree.rootNodes, displayedAgentList, selectedFolderId]);
   const unfiledFolderNode = useMemo(
     () => ({
       id: "__unfiled",
@@ -840,10 +968,44 @@ export default function AgentsPage() {
     (agentId: string) => {
       const nextParams = new URLSearchParams(searchParams.toString());
       nextParams.set("agent", agentId);
+      nextParams.set("view", "builder");
       router.replace(`/agents?${nextParams.toString()}`);
     },
     [router, searchParams],
   );
+
+  const handleViewChange = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const view = event.currentTarget.dataset.view as AgentsView | undefined;
+      if (!view) {
+        return;
+      }
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.set("view", view);
+      router.replace(`/agents?${nextParams.toString()}`);
+    },
+    [router, searchParams],
+  );
+
+  const handleSelectFolder = useCallback(
+    (folderId: string | null) => {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      if (folderId) {
+        nextParams.set("folder", folderId);
+      } else {
+        nextParams.delete("folder");
+      }
+      nextParams.set("view", "grid");
+      router.replace(`/agents?${nextParams.toString()}`);
+    },
+    [router, searchParams],
+  );
+  const handleSelectAllFolders = useCallback(() => {
+    handleSelectFolder(null);
+  }, [handleSelectFolder]);
+  const handleSelectUnfiled = useCallback(() => {
+    handleSelectFolder("__unfiled");
+  }, [handleSelectFolder]);
 
   const handleSearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => setSearchQuery(event.target.value),
@@ -1073,6 +1235,37 @@ export default function AgentsPage() {
             </div>
           </div>
 
+          <div className="mt-4 grid grid-cols-2 rounded-md border border-border bg-background p-0.5">
+            <button
+              type="button"
+              data-view="grid"
+              onClick={handleViewChange}
+              className={cn(
+                "flex h-8 items-center justify-center gap-1.5 rounded-[5px] text-xs font-medium transition-colors",
+                activeView === "grid"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <LayoutGrid className="size-3.5" />
+              Grid
+            </button>
+            <button
+              type="button"
+              data-view="builder"
+              onClick={handleViewChange}
+              className={cn(
+                "flex h-8 items-center justify-center gap-1.5 rounded-[5px] text-xs font-medium transition-colors",
+                activeView === "builder"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Network className="size-3.5" />
+              Builder
+            </button>
+          </div>
+
           <div className="mt-4 grid gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -1197,6 +1390,48 @@ export default function AgentsPage() {
             <div className="rounded-lg border border-dashed p-8 text-center">
               <p className="text-sm text-muted-foreground">No agents match the current filters.</p>
             </div>
+          ) : activeView === "grid" ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleSelectAllFolders}
+                className={cn(
+                  "flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors",
+                  selectedFolderId === null
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                )}
+              >
+                <FolderOpen className="size-4" />
+                <span className="min-w-0 flex-1 truncate">All agents</span>
+                <span className="rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                  {displayedAgentList.length}
+                </span>
+              </button>
+              <FolderFilterTree
+                nodes={agentTree.rootNodes}
+                selectedFolderId={selectedFolderId}
+                onSelectFolder={handleSelectFolder}
+              />
+              {agentTree.unfiled.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleSelectUnfiled}
+                  className={cn(
+                    "flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors",
+                    selectedFolderId === "__unfiled"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                >
+                  <Folder className="size-4" />
+                  <span className="min-w-0 flex-1 truncate">Unfiled</span>
+                  <span className="rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                    {agentTree.unfiled.length}
+                  </span>
+                </button>
+              ) : null}
+            </div>
           ) : (
             <motion.div layout className="space-y-3">
               <AnimatePresence mode="popLayout">
@@ -1289,7 +1524,83 @@ export default function AgentsPage() {
         </div>
       </aside>
 
-      {selectedAgent ? (
+      {activeView === "grid" ? (
+        <main className="min-h-screen min-w-[800px] flex-1 bg-background">
+          <div className="mx-auto w-full max-w-[1400px] px-6 py-6">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h1 className="text-lg font-semibold tracking-tight">
+                  {selectedFolderId === "__unfiled"
+                    ? "Unfiled agents"
+                    : selectedFolderId
+                      ? folderTags.find((folder) => folder.id === selectedFolderId)?.path
+                      : "All agents"}
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {folderFilteredAgentList.length} agent
+                  {folderFilteredAgentList.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <Button type="button" asChild>
+                <Link href="/">
+                  <Plus className="size-4" />
+                  Create agent
+                </Link>
+              </Button>
+            </div>
+
+            {folderFilteredAgentList.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-10 text-center">
+                <p className="text-sm text-muted-foreground">No agents in this folder.</p>
+              </div>
+            ) : (
+              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <AnimatePresence mode="popLayout">
+                  {folderFilteredAgentList.map((agent) => (
+                    <motion.div
+                      key={agent.id}
+                      layout
+                      initial={CARD_MOTION.initial}
+                      animate={CARD_MOTION.animate}
+                      exit={CARD_MOTION.exit}
+                      transition={CARD_MOTION.transition}
+                    >
+                      <AgentListCard
+                        agent={agent}
+                        selected={agent.id === selectedAgent?.id}
+                        connectedIntegrationTypes={connectedIntegrationTypes}
+                        folderTags={folderTags}
+                        onSelect={selectAgent}
+                        onMoveToFolder={handleMoveToFolder}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            )}
+
+            {displayedSharedAgentList.length > 0 ? (
+              <section className="mt-8 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Share2 className="size-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">Shared by teammates</h2>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {displayedSharedAgentList.map((agent) => (
+                    <SharedAgentCard
+                      key={agent.id}
+                      agent={agent}
+                      connectedIntegrationTypes={connectedIntegrationTypes}
+                      isImporting={importingSharedAgentId === agent.id}
+                      onImport={handleImportSharedAgent}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </main>
+      ) : selectedAgent ? (
         <div className="min-h-screen min-w-[800px] flex-1 bg-background">
           <CoworkerEditorPage coworkerIdOverride={selectedAgent.id} embedded />
         </div>

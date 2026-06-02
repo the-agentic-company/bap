@@ -7,6 +7,7 @@ import {
   handleCoworkerList,
   handleCoworkerLogs,
   handleCoworkerRun,
+  handleCoworkerRuns,
 } from "./handlers";
 
 describe("MCP handlers", () => {
@@ -260,5 +261,36 @@ describe("MCP handlers", () => {
 
     const result = await handleCoworkerLogs(client as never, "run-1");
     expect(result.run).toMatchObject({ id: "run-1" });
+  });
+
+  it("lists workspace coworker runs with filters", async () => {
+    const client = {
+      coworker: {
+        listWorkspaceRuns: vi.fn().mockResolvedValue({
+          runs: [{ id: "run-1", status: "error", errorMessage: "boom" }],
+          nextCursor: "cursor-2",
+        }),
+      },
+    };
+
+    const result = await handleCoworkerRuns({
+      client: client as never,
+      status: "error",
+      coworkerId: "cw-1",
+      limit: 25,
+      cursor: "cursor-1",
+    });
+
+    expect(client.coworker.listWorkspaceRuns).toHaveBeenCalledWith({
+      status: "error",
+      coworkerId: "cw-1",
+      limit: 25,
+      cursor: "cursor-1",
+    });
+    expect(result).toMatchObject({
+      status: "completed",
+      runs: [{ id: "run-1", status: "error" }],
+      nextCursor: "cursor-2",
+    });
   });
 });

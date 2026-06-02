@@ -1779,6 +1779,19 @@ const listWorkspaceRuns = protectedProcedure
     z.object({
       cursor: z.string().optional(),
       limit: z.number().min(1).max(100).default(50),
+      status: z
+        .enum([
+          "needs_user_input",
+          "running",
+          "awaiting_approval",
+          "awaiting_auth",
+          "paused",
+          "completed",
+          "error",
+          "cancelled",
+        ])
+        .optional(),
+      coworkerId: z.string().optional(),
     }),
   )
   .handler(async ({ input, context }) => {
@@ -1791,6 +1804,8 @@ const listWorkspaceRuns = protectedProcedure
         eq(coworkerRun.ownerId, context.user.id),
         eq(coworkerRun.workspaceId, workspaceId),
         isNull(coworkerRun.syntheticKind),
+        ...(input.status ? [eq(coworkerRun.status, input.status)] : []),
+        ...(input.coworkerId ? [eq(coworkerRun.coworkerId, input.coworkerId)] : []),
         ...(cursor
           ? [
               or(

@@ -379,6 +379,27 @@ export type CoworkerRunSummary = {
   errorMessage: string | null;
 };
 
+export type CoworkerRunStatus =
+  | "needs_user_input"
+  | "running"
+  | "awaiting_approval"
+  | "awaiting_auth"
+  | "paused"
+  | "completed"
+  | "error"
+  | "cancelled";
+
+export type CoworkerWorkspaceRun = CoworkerRunSummary & {
+  conversationId: string | null;
+  coworkerId: string | null;
+  coworkerName: string;
+};
+
+export type CoworkerWorkspaceRunsResult = {
+  runs: CoworkerWorkspaceRun[];
+  nextCursor?: string;
+};
+
 export type ConversationMessage = {
   id: string;
   role: string;
@@ -463,6 +484,12 @@ export interface CmdclawApiClient {
     }): Promise<CoworkerTriggerResult>;
     getRun(input: { id: string }): Promise<CoworkerRun>;
     listRuns(input: { coworkerId: string; limit: number }): Promise<CoworkerRunSummary[]>;
+    listWorkspaceRuns(input: {
+      cursor?: string;
+      limit?: number;
+      status?: CoworkerRunStatus;
+      coworkerId?: string;
+    }): Promise<CoworkerWorkspaceRunsResult>;
   };
   coworkerFolder: {
     list(): Promise<CoworkerFolder[]>;

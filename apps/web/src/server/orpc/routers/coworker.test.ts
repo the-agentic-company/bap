@@ -2702,4 +2702,56 @@ describe("coworkerRouter", () => {
     expect(reconcileStaleCoworkerRunsForCoworkersMock).toHaveBeenCalledWith(["wf-1"]);
     expect(listRunsArgs.orderBy).toHaveLength(2);
   });
+
+  it("lists workspace runs with status and coworker filters", async () => {
+    const context = createContext();
+
+    await coworkerRouterAny.listWorkspaceRuns({
+      input: { status: "error", coworkerId: "wf-1", limit: 25 },
+      context,
+    });
+
+    const listRunsArgs = context.db.query.coworkerRun.findMany.mock.calls[0]?.[0];
+    const conditionParts = collectSqlConditionParts(listRunsArgs.where);
+
+    expect(listRunsArgs.limit).toBe(26);
+    expect(conditionParts.columns).toContain("status");
+    expect(conditionParts.columns).toContain("coworker_id");
+    expect(conditionParts.params).toContain("error");
+    expect(conditionParts.params).toContain("wf-1");
+  });
 });
+
+function collectSqlConditionParts(value: unknown): { columns: string[]; params: unknown[] } {
+  const columns: string[] = [];
+  const params: unknown[] = [];
+  const seen = new Set<unknown>();
+
+  function visit(node: unknown) {
+    if (!node || typeof node !== "object" || seen.has(node)) {
+      return;
+    }
+    seen.add(node);
+
+    const record = node as Record<string, unknown>;
+    if (typeof record.name === "string" && typeof record.columnType === "string") {
+      columns.push(record.name);
+    }
+    if ("encoder" in record && "value" in record) {
+      params.push(record.value);
+    }
+
+    for (const child of Object.values(record)) {
+      if (Array.isArray(child)) {
+        for (const item of child) {
+          visit(item);
+        }
+      } else {
+        visit(child);
+      }
+    }
+  }
+
+  visit(value);
+  return { columns, params };
+}

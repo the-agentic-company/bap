@@ -9,7 +9,6 @@ import {
   CircleDollarSign,
   Container,
   CreditCard,
-  Cuboid,
   Gauge,
   Inbox,
   LayoutTemplate,
@@ -26,6 +25,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { BugReportDialog } from "@/components/bug-report-dialog";
+import { BrickIcon } from "@/components/icons/brick-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -225,7 +225,7 @@ export function AppSidebar() {
   const coworkerNavItems: NavItem[] = [
     ...(isAdmin ? [{ icon: Inbox, label: "Inbox", href: "/inbox" }] : []),
     { icon: MessageSquare, label: "Chat", href: "/chat", onClick: handleChatNavClick },
-    { icon: Cuboid, label: "Agents", href: "/agents" },
+    { icon: BrickIcon, label: "Agents", href: "/agents" },
     { icon: Toolbox, label: "Toolbox", href: "/toolbox" },
   ];
 
@@ -247,7 +247,7 @@ export function AppSidebar() {
 
   const adminMonitoringItems: NavItem[] = [
     { icon: Activity, label: "Chat Health", href: "/admin/chat-overview" },
-    { icon: Cuboid, label: "Coworker Overview", href: "/admin/coworker-overview" },
+    { icon: BrickIcon, label: "Coworker Overview", href: "/admin/coworker-overview" },
     { icon: Gauge, label: "Performance", href: "/admin/performance" },
     { icon: Container, label: "Sandboxes", href: "/admin/sandboxes" },
     { icon: Bug, label: "Ops", href: "/admin/ops" },

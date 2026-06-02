@@ -1,5 +1,10 @@
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@cmdclaw/core/lib/chat-model-defaults";
-import { createCoworkerRunner, runChatSession, type CmdclawApiClient } from "@cmdclaw/client";
+import {
+  createCoworkerRunner,
+  runChatSession,
+  type CmdclawApiClient,
+  type CoworkerRunStatus,
+} from "@cmdclaw/client";
 
 export async function handleChatRun(params: {
   client: CmdclawApiClient;
@@ -107,5 +112,25 @@ export async function handleCoworkerLogs(client: CmdclawApiClient, runId: string
   return {
     status: "completed" as const,
     run: await runner.logs(runId),
+  };
+}
+
+export async function handleCoworkerRuns(params: {
+  client: CmdclawApiClient;
+  cursor?: string;
+  limit?: number;
+  status?: CoworkerRunStatus;
+  coworkerId?: string;
+}) {
+  const result = await params.client.coworker.listWorkspaceRuns({
+    cursor: params.cursor,
+    limit: params.limit,
+    status: params.status,
+    coworkerId: params.coworkerId,
+  });
+
+  return {
+    status: "completed" as const,
+    ...result,
   };
 }
