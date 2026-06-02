@@ -2,25 +2,29 @@
 
 import {
   AlertCircle,
+  CheckCircle2,
   Clock,
   Download,
   FileCode2,
+  FileText,
   History,
   Loader2,
   MessageSquareText,
   Pencil,
   Play,
   RefreshCw,
+  Timer,
+  Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
+import { ChatArea } from "@/components/chat/chat-area";
 import { MessageBubble } from "@/components/chat/message-bubble";
-import { MessageList } from "@/components/chat/message-list";
 import { findLatestOutputHtmlFile } from "@/components/chat/output-preview-selection";
 import { mapPersistedMessagesToChatMessages } from "@/components/chat/persisted-message-mapper";
-import type { SandboxFileData } from "@/components/chat/message-list";
+import type { Message, MessagePart, SandboxFileData } from "@/components/chat/message-list";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { RunDebugDetails } from "@/components/coworkers/run-debug-details";
 import {
@@ -28,6 +32,7 @@ import {
   RemoteRunSourceBanner,
 } from "@/components/coworkers/remote-run-source-banner";
 import { Button } from "@/components/ui/button";
+import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
@@ -54,6 +59,16 @@ type HistoryRunItem = {
   id: string;
   status: string;
   startedAt?: Date | string | null;
+};
+
+type RunEventSummary = {
+  type: string;
+  payload: unknown;
+};
+
+type ToolSummaryItem = {
+  name: string;
+  count: number;
 };
 
 function formatRunDate(value?: Date | string | null) {
@@ -110,8 +125,129 @@ function getStatusClassName(status?: string) {
   return "border-border bg-muted text-muted-foreground";
 }
 
+function isCompletedStatus(status?: string | null) {
+  return status === "completed" || status === "success";
+}
+
 function getInfoTab(value: string | null): InfoTab {
   return value === "chat" ? "chat" : "summary";
+}
+
+function toDate(value?: Date | string | null) {
+  if (!value) {
+    return null;
+  }
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDuration(startedAt?: Date | string | null, finishedAt?: Date | string | null) {
+  const start = toDate(startedAt);
+  if (!start) {
+    return "Not available";
+  }
+
+  const finish = toDate(finishedAt) ?? new Date();
+  const durationMs = Math.max(0, finish.getTime() - start.getTime());
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
+function formatFileSize(sizeBytes?: number | null) {
+  if (!sizeBytes) {
+    return "size unknown";
+  }
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function readableToolName(part: MessagePart) {
+  if (part.type === "tool_call") {
+    if (part.integration && part.operation) {
+      return `${part.integration}.${part.operation}`;
+    }
+    return part.name;
+  }
+  if (part.type === "approval") {
+    if (part.integration && part.operation) {
+      return `${part.integration}.${part.operation}`;
+    }
+    return part.toolName;
+  }
+  return null;
+}
+
+function getPayloadRecord(payload: unknown) {
+  return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+}
+
+function getEventToolName(event: RunEventSummary) {
+  if (event.type !== "tool_use" && event.type !== "tool_result") {
+    return null;
+  }
+
+  const payload = getPayloadRecord(event.payload);
+  if (!payload) {
+    return null;
+  }
+
+  const toolName = payload.toolName ?? payload.tool_name ?? payload.name;
+  return typeof toolName === "string" && toolName.trim() ? toolName.trim() : null;
+}
+
+function collectToolSummary(messages: Message[], events?: RunEventSummary[]): ToolSummaryItem[] {
+  const counts = new Map<string, number>();
+
+  for (const message of messages) {
+    for (const part of message.parts ?? []) {
+      const name = readableToolName(part);
+      if (name) {
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+    }
+  }
+
+  if (counts.size === 0) {
+    for (const event of events ?? []) {
+      const name = getEventToolName(event);
+      if (name) {
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+    }
+  }
+
+  return Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .toSorted((left, right) => right.count - left.count || left.name.localeCompare(right.name));
+}
+
+function collectSandboxFiles(messages: Message[]) {
+  const files = new Map<string, SandboxFileData>();
+
+  for (const message of messages) {
+    for (const file of message.sandboxFiles ?? []) {
+      files.set(file.fileId, file);
+    }
+  }
+
+  return Array.from(files.values()).toSorted((left, right) =>
+    left.filename.localeCompare(right.filename),
+  );
 }
 
 function LoadingState() {
@@ -263,6 +399,171 @@ function HistoryRunButton({
   );
 }
 
+function RunSummaryPanel({
+  status,
+  startedAt,
+  finishedAt,
+  events,
+  messages,
+}: {
+  status?: string | null;
+  startedAt?: Date | string | null;
+  finishedAt?: Date | string | null;
+  events?: RunEventSummary[];
+  messages: Message[];
+}) {
+  const completed = isCompletedStatus(status);
+  const tools = useMemo(() => collectToolSummary(messages, events), [events, messages]);
+  const files = useMemo(() => collectSandboxFiles(messages), [messages]);
+  const duration = useMemo(() => formatDuration(startedAt, finishedAt), [finishedAt, startedAt]);
+
+  return (
+    <div className="space-y-5 p-4">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="border-border/70 rounded-lg border p-3">
+          <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Status
+          </div>
+          <p className="mt-2 truncate text-sm font-medium">
+            {completed ? "Completed" : (status ?? "Unknown")}
+          </p>
+        </div>
+        <div className="border-border/70 rounded-lg border p-3">
+          <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+            <Timer className="h-3.5 w-3.5" />
+            Time taken
+          </div>
+          <p className="mt-2 truncate text-sm font-medium">{duration}</p>
+        </div>
+      </div>
+
+      <section className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Wrench className="text-muted-foreground h-4 w-4" />
+          <h2 className="text-sm font-medium">Tools used</h2>
+        </div>
+        {tools.length > 0 ? (
+          <div className="space-y-1.5">
+            {tools.map((tool) => (
+              <div
+                key={tool.name}
+                className="border-border/70 flex items-center justify-between gap-3 rounded-md border px-2.5 py-2"
+              >
+                <span className="min-w-0 truncate font-mono text-xs">{tool.name}</span>
+                <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[11px]">
+                  {tool.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
+            No tool usage recorded for this Generation.
+          </p>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <div className="flex items-center gap-2">
+          <FileText className="text-muted-foreground h-4 w-4" />
+          <h2 className="text-sm font-medium">Output files</h2>
+        </div>
+        {files.length > 0 ? (
+          <div className="space-y-1.5">
+            {files.map((file) => (
+              <div key={file.fileId} className="border-border/70 rounded-md border px-2.5 py-2">
+                <p className="truncate text-xs font-medium">{file.filename}</p>
+                <p className="text-muted-foreground mt-1 truncate text-[11px]">
+                  {formatFileSize(file.sizeBytes)} · {file.path}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
+            No output files were created by this Generation.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function OutputPanel({
+  outputFile,
+  latestCoworkerMessage,
+}: {
+  outputFile?: SandboxFileData | null;
+  latestCoworkerMessage?: string;
+}) {
+  return outputFile ? (
+    <OutputHtmlFrame outputFile={outputFile} />
+  ) : (
+    <EmptyPreview latestMessage={latestCoworkerMessage} />
+  );
+}
+
+function RunDetailsPanel({
+  activeTab,
+  onTabChange,
+  isFetchingConversation,
+  run,
+  messages,
+  conversationId,
+}: {
+  activeTab: InfoTab;
+  onTabChange: (nextTab: string) => void;
+  isFetchingConversation: boolean;
+  run: {
+    status?: string | null;
+    startedAt?: Date | string | null;
+    finishedAt?: Date | string | null;
+    events?: RunEventSummary[];
+  };
+  messages: Message[];
+  conversationId?: string;
+}) {
+  return (
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="border-border/80 flex min-h-12 shrink-0 flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange}>
+          <AnimatedTab value="summary">Summary</AnimatedTab>
+          <AnimatedTab value="chat">Chat</AnimatedTab>
+        </AnimatedTabs>
+        {activeTab === "chat" && isFetchingConversation ? (
+          <div className="text-muted-foreground flex items-center gap-1.5 px-1 text-xs">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Updating
+          </div>
+        ) : null}
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {activeTab === "summary" ? (
+          <div className="h-full overflow-auto">
+            <RunSummaryPanel
+              status={run.status}
+              startedAt={run.startedAt}
+              finishedAt={run.finishedAt}
+              events={run.events}
+              messages={messages}
+            />
+          </div>
+        ) : conversationId ? (
+          <div className="flex h-full min-h-0 overflow-hidden">
+            <ChatArea conversationId={conversationId} />
+          </div>
+        ) : (
+          <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">
+            No linked chat messages.
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -310,6 +611,19 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     return undefined;
   }, [messages]);
   const remoteRunSource = run.data ? extractRemoteRunSourceDetails(run.data) : null;
+  const detailsRun = useMemo(
+    () => ({
+      status: run.data?.status,
+      startedAt: run.data?.startedAt,
+      finishedAt: run.data?.finishedAt,
+      events: run.data?.events,
+    }),
+    [run.data?.events, run.data?.finishedAt, run.data?.startedAt, run.data?.status],
+  );
+  const outputPanel = useMemo(
+    () => <OutputPanel outputFile={outputFile} latestCoworkerMessage={latestCoworkerMessage} />,
+    [latestCoworkerMessage, outputFile],
+  );
 
   const handleHistorySelect = useCallback(
     (runId: string) => {
@@ -352,24 +666,54 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     }
   }, [resolvedCoworkerId, resolvedCoworkerSlug, router, triggerCoworker]);
 
+  const detailsPanel = useMemo(
+    () => (
+      <RunDetailsPanel
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        isFetchingConversation={conversation.isFetching}
+        run={detailsRun}
+        messages={messages}
+        conversationId={conversationId}
+      />
+    ),
+    [activeTab, conversation.isFetching, conversationId, detailsRun, handleTabChange, messages],
+  );
+
   if (isRunLoading) {
     return <LoadingState />;
   }
 
-  if (!resolvedCoworkerId || (!run.data && !coworkerRuns.data?.length)) {
+  if (!resolvedCoworkerId) {
     return (
       <main className="flex min-h-[24rem] items-center justify-center p-6">
         <div className="border-border bg-card max-w-md rounded-xl border p-5 text-center">
           <AlertCircle className="text-muted-foreground mx-auto mb-3 h-5 w-5" />
-          <p className="text-sm font-medium">
-            {resolvedCoworkerId ? "No Generations yet" : "Coworker not found"}
-          </p>
+          <p className="text-sm font-medium">Coworker not found</p>
           <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-            {resolvedCoworkerId
-              ? "Trigger this coworker to populate its info page."
-              : "Use a coworker id or username in the page URL."}
+            Use a coworker id or username in the page URL.
           </p>
         </div>
+      </main>
+    );
+  }
+
+  if (!run.data && !coworkerRuns.data?.length) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center p-6">
+        <Button
+          type="button"
+          onClick={handleRunNow}
+          disabled={triggerCoworker.isPending}
+          className="bg-foreground text-background hover:bg-foreground/90 inline-flex h-10 items-center justify-center rounded-lg px-6 text-sm font-medium transition-colors"
+        >
+          {triggerCoworker.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+          Run now
+        </Button>
       </main>
     );
   }
@@ -385,8 +729,8 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const startedAt = formatRunDate(run.data?.startedAt ?? coworkerRuns.data?.[0]?.startedAt);
 
   return (
-    <main className="bg-background min-h-dvh">
-      <section className="border-border/80 bg-background/95 sticky top-0 z-10 border-b px-4 py-4 backdrop-blur-sm md:px-6">
+    <main className="bg-background flex h-dvh min-h-0 flex-col overflow-hidden">
+      <section className="border-border/80 bg-background/95 z-10 shrink-0 border-b px-4 py-4 backdrop-blur-sm md:px-6">
         <div className="mx-auto flex max-w-[92rem] flex-col gap-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
@@ -491,7 +835,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         </div>
       </section>
 
-      <div className="mx-auto flex max-w-[92rem] flex-col gap-4 p-4 md:p-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-[92rem] flex-1 flex-col gap-4 overflow-hidden p-4 md:p-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
 
         {(run.data?.status === "error" || run.data?.status === "cancelled") && (
@@ -508,47 +852,23 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           </section>
         )}
 
-        <section className="min-h-[calc(100dvh-13rem)]">
-          <div className="border-border bg-card flex min-h-[34rem] flex-col overflow-hidden rounded-xl border">
-            <div className="border-border/80 flex min-h-12 shrink-0 flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-              <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
-                <AnimatedTab value="summary">Summary</AnimatedTab>
-                <AnimatedTab value="chat">Chat</AnimatedTab>
-              </AnimatedTabs>
-              {activeTab === "chat" && conversation.isFetching ? (
-                <div className="text-muted-foreground flex items-center gap-1.5 px-1 text-xs">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Updating
-                </div>
-              ) : null}
-            </div>
-
-            <div className="min-h-0 flex-1">
-              {activeTab === "summary" ? (
-                outputFile ? (
-                  <OutputHtmlFrame outputFile={outputFile} />
-                ) : (
-                  <EmptyPreview latestMessage={latestCoworkerMessage} />
-                )
-              ) : (
-                <div className="h-full min-h-[34rem] overflow-auto p-4">
-                  {conversation.isLoading ? (
-                    <LoadingState />
-                  ) : messages.length > 0 ? (
-                    <MessageList messages={messages} />
-                  ) : (
-                    <div className="text-muted-foreground flex h-full items-center justify-center text-center text-sm">
-                      No linked chat messages.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+        <DualPanelWorkspace
+          storageKey="agent-info-output-details-width-v1"
+          defaultRightWidth={32}
+          minLeftWidth={40}
+          minRightWidth={24}
+          showTitles={false}
+          leftTitle="Output"
+          rightTitle="Details"
+          leftPanelClassName="bg-card rounded-xl"
+          rightPanelClassName="bg-card rounded-xl"
+          separatorClassName="bg-muted/40"
+          left={outputPanel}
+          right={detailsPanel}
+        />
 
         {run.data ? (
-          <div className="flex justify-end pb-6">
+          <div className="shrink-0 self-end">
             <Button type="button" variant="outline" size="sm" asChild>
               <a href={`/agents/runs/${run.data.id}`}>Open current Generation</a>
             </Button>
