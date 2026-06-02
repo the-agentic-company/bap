@@ -21,6 +21,7 @@ type LoginPageProps = {
     email?: string;
     mode?: string;
     source?: string;
+    autoLogin?: string;
   }>;
 };
 
@@ -93,6 +94,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   const callbackUrl = sanitizeReturnPath(params.callbackUrl, "/chat");
+  if (params.autoLogin === "1") {
+    redirect(`/api/dev/auto-login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+  }
+
   const requestHeaders = await headers();
   const sessionData = await auth.api
     .getSession({

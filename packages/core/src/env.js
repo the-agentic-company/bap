@@ -9,6 +9,8 @@ export const env = createEnv({
   server: {
     BETTER_AUTH_SECRET: z.string(),
     APP_URL: z.url().optional(),
+    CMDCLAW_DEV_AUTO_LOGIN: z.enum(["0", "1"]).default("0"),
+    CMDCLAW_DEV_AUTO_LOGIN_EMAIL: z.email().optional(),
     CMDCLAW_MCP_BASE_URL: z.url().optional(),
     CMDCLAW_EDITION: z.enum(["cloud", "selfhost"]).default("cloud"),
     CMDCLAW_CLOUD_API_BASE_URL: z.url().optional(),
@@ -133,6 +135,8 @@ export const env = createEnv({
   runtimeEnv: {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     APP_URL: process.env.APP_URL,
+    CMDCLAW_DEV_AUTO_LOGIN: process.env.CMDCLAW_DEV_AUTO_LOGIN,
+    CMDCLAW_DEV_AUTO_LOGIN_EMAIL: process.env.CMDCLAW_DEV_AUTO_LOGIN_EMAIL,
     CMDCLAW_MCP_BASE_URL: process.env.CMDCLAW_MCP_BASE_URL,
     CMDCLAW_EDITION: process.env.CMDCLAW_EDITION,
     CMDCLAW_CLOUD_API_BASE_URL: process.env.CMDCLAW_CLOUD_API_BASE_URL,

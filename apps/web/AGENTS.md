@@ -20,6 +20,10 @@
 
 -  My infra is BullMQ queues and Next.js is on Render
 
+## Dev browser authentication
+-  For local browser testing, open `/login?autoLogin=1&callbackUrl=<path>` (for example `/login?autoLogin=1&callbackUrl=%2Fagents`).
+-  If it does not log in, make sure the dev server was started with `CMDCLAW_DEV_AUTO_LOGIN=1`.
+
 ## Pitfalls
 -  Do not add unnecessary environment variables to control behavior; ask the user if you want to add a variable to be sure it is really needed.
 
