@@ -1,8 +1,4 @@
-import accessoriesSvg from "./svg/accessories.svg?raw";
-import bodySvg from "./svg/body.svg?raw";
-import facesSvg from "./svg/faces.svg?raw";
-import holesSvg from "./svg/holes.svg?raw";
-import textureSvg from "./svg/texture.svg?raw";
+import { accessoriesSvg, bodySvg, facesSvg, holesSvg, textureSvg } from "./svg/sources";
 
 export type BrickAvatarOptions = {
   seed: string;
