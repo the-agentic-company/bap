@@ -84,6 +84,14 @@ _Avoid_: logs, telemetry
 One agent execution lifecycle for a conversation turn, including preparation, model streaming, tool use, interruption handling, and terminal completion or failure.
 _Avoid_: run, request
 
+**Coworker**:
+A user-configured agent that can start a **Generation** from a manual, scheduled, email, or webhook trigger.
+_Avoid_: bot, automation, worker
+
+**Coworker Avatar**:
+The visual identity shown for a **Coworker** in CmdClaw surfaces.
+_Avoid_: agent avatar, profile picture, icon
+
 **Start Message**:
 A free-text message a **User** provides before a **Coworker** starts a **Generation** so the **Generation** has the task-specific context it needs before work begins.
 _Avoid_: launch payload, run prompt, parameter form, initial message
