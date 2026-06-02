@@ -331,6 +331,21 @@ export type CoworkerCreateResult = {
   status: string;
 };
 
+export type CoworkerDocumentUploadInput = {
+  coworkerId: string;
+  filename: string;
+  mimeType: string;
+  content: string;
+  description?: string;
+};
+
+export type CoworkerDocumentUploadResult = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+};
+
 export type CoworkerFolder = {
   id: string;
   workspaceId: string;
@@ -475,6 +490,7 @@ export interface CmdclawApiClient {
     list(): Promise<CoworkerSummary[]>;
     get(input: { id: string }): Promise<CoworkerDetails>;
     create(input: CoworkerCreateInput): Promise<CoworkerCreateResult>;
+    uploadDocument(input: CoworkerDocumentUploadInput): Promise<CoworkerDocumentUploadResult>;
     getOrCreateBuilderConversation(input: { id: string }): Promise<{ conversationId: string }>;
     trigger(input: {
       id: string;

@@ -8,6 +8,7 @@ import {
   handleCoworkerLogs,
   handleCoworkerRun,
   handleCoworkerRuns,
+  handleCoworkerUploadDocument,
 } from "./handlers";
 
 describe("MCP handlers", () => {
@@ -103,6 +104,7 @@ describe("MCP handlers", () => {
       autoApprove: false,
       model: DEFAULT_CONNECTED_CHATGPT_MODEL,
       authSource: "shared",
+      toolAccessMode: "selected",
       allowedIntegrations: ["gmail", "slack"],
     });
     expect(result).toMatchObject({
@@ -138,6 +140,7 @@ describe("MCP handlers", () => {
       autoApprove: undefined,
       model: DEFAULT_CONNECTED_CHATGPT_MODEL,
       authSource: undefined,
+      toolAccessMode: undefined,
       allowedIntegrations: undefined,
     });
   });
@@ -168,6 +171,7 @@ describe("MCP handlers", () => {
       autoApprove: undefined,
       model: DEFAULT_CONNECTED_CHATGPT_MODEL,
       authSource: undefined,
+      toolAccessMode: undefined,
       allowedIntegrations: undefined,
     });
   });
@@ -206,6 +210,56 @@ describe("MCP handlers", () => {
       folderId: "folder-1",
     });
     expect(result.folder).toMatchObject({ id: "folder-1" });
+  });
+
+  it("uploads initial files after creating a coworker", async () => {
+    const client = {
+      coworker: {
+        create: vi.fn().mockResolvedValue({
+          id: "cw-1",
+          name: "Output HTML Copier",
+          username: null,
+          status: "on",
+        }),
+        uploadDocument: vi.fn().mockResolvedValue({
+          id: "doc-1",
+          filename: "output.html",
+          mimeType: "text/html",
+          sizeBytes: 42,
+        }),
+      },
+    };
+
+    const result = await handleCoworkerCreate({
+      client: client as never,
+      name: "Output HTML Copier",
+      trigger: "manual",
+      prompt: "Copy the provided HTML into app/output.html.",
+      files: [
+        {
+          filename: "output.html",
+          mimeType: "text/html",
+          contentBase64: "PGh0bWw+PC9odG1sPg==",
+          description: "Reference HTML",
+        },
+      ],
+    });
+
+    expect(client.coworker.uploadDocument).toHaveBeenCalledWith({
+      coworkerId: "cw-1",
+      filename: "output.html",
+      mimeType: "text/html",
+      content: "PGh0bWw+PC9odG1sPg==",
+      description: "Reference HTML",
+    });
+    expect(result.documents).toEqual([
+      {
+        id: "doc-1",
+        filename: "output.html",
+        mimeType: "text/html",
+        sizeBytes: 42,
+      },
+    ]);
   });
 
   it("triggers a coworker run", async () => {
@@ -250,6 +304,45 @@ describe("MCP handlers", () => {
       debugRunDeadlineMs: undefined,
     });
     expect(result.run).toMatchObject({ runId: "run-1" });
+  });
+
+  it("uploads documents to an existing coworker by username reference", async () => {
+    const client = {
+      coworker: {
+        list: vi.fn().mockResolvedValue([{ id: "cw-1", name: "Daily", username: "daily" }]),
+        uploadDocument: vi.fn().mockResolvedValue({
+          id: "doc-1",
+          filename: "brief.txt",
+          mimeType: "text/plain",
+          sizeBytes: 5,
+        }),
+      },
+    };
+
+    const result = await handleCoworkerUploadDocument({
+      client: client as never,
+      reference: "@daily",
+      files: [
+        {
+          filename: "brief.txt",
+          mimeType: "text/plain",
+          contentBase64: "aGVsbG8=",
+        },
+      ],
+    });
+
+    expect(client.coworker.uploadDocument).toHaveBeenCalledWith({
+      coworkerId: "cw-1",
+      filename: "brief.txt",
+      mimeType: "text/plain",
+      content: "aGVsbG8=",
+      description: undefined,
+    });
+    expect(result).toMatchObject({
+      status: "completed",
+      coworkerId: "cw-1",
+      documents: [{ id: "doc-1", filename: "brief.txt" }],
+    });
   });
 
   it("returns coworker logs", async () => {

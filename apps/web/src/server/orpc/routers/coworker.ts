@@ -54,6 +54,7 @@ import {
   coworkerRunEvent,
   coworkerTag,
   coworkerTagAssignment,
+  workspaceMcpServer,
 } from "@cmdclaw/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
@@ -79,6 +80,7 @@ const integrationTypeSchema = z.enum([
   "google_sheets",
   "google_drive",
   "notion",
+  "linear",
   "github",
   "airtable",
   "slack",
@@ -192,6 +194,59 @@ type HistoryEventRow = {
   payload: unknown;
   createdAt: Date;
 };
+
+type WorkspaceMcpLookupDatabase = {
+  query: {
+    workspaceMcpServer: {
+      findMany: (args: unknown) => Promise<
+        Array<{
+          id: string;
+          namespace: string;
+          createdAt: Date;
+        }>
+      >;
+    };
+  };
+};
+
+async function resolveSelectedWorkspaceMcpServerIds(input: {
+  database: WorkspaceMcpLookupDatabase;
+  workspaceId: string;
+  toolAccessMode: CoworkerToolAccessMode;
+  allowedIntegrations: string[];
+  allowedWorkspaceMcpServerIds?: string[];
+}): Promise<string[]> {
+  const explicitWorkspaceMcpServerIds = input.allowedWorkspaceMcpServerIds ?? [];
+  if (input.toolAccessMode !== "selected" || explicitWorkspaceMcpServerIds.length > 0) {
+    return explicitWorkspaceMcpServerIds;
+  }
+
+  const allowedNamespaces = Array.from(new Set(input.allowedIntegrations));
+  if (allowedNamespaces.length === 0) {
+    return [];
+  }
+
+  const sources = await input.database.query.workspaceMcpServer.findMany({
+    where: and(
+      eq(workspaceMcpServer.workspaceId, input.workspaceId),
+      eq(workspaceMcpServer.enabled, true),
+      inArray(workspaceMcpServer.namespace, allowedNamespaces),
+    ),
+    columns: {
+      id: true,
+      namespace: true,
+      createdAt: true,
+    },
+  });
+
+  return sources
+    .toSorted(
+      (left, right) =>
+        left.namespace.localeCompare(right.namespace) ||
+        left.createdAt.getTime() - right.createdAt.getTime(),
+    )
+    .map((source) => source.id);
+}
 
 const historyCursorSchema = z.object({
   startedAt: z.coerce.date(),
@@ -1111,6 +1166,13 @@ const create = protectedProcedure
       username: input.username,
     });
     assertNewTriggerTypeAllowed(input.triggerType);
+    const allowedWorkspaceMcpServerIds = await resolveSelectedWorkspaceMcpServerIds({
+      database: context.db as WorkspaceMcpLookupDatabase,
+      workspaceId,
+      toolAccessMode: input.toolAccessMode,
+      allowedIntegrations: input.allowedIntegrations,
+      allowedWorkspaceMcpServerIds: input.allowedWorkspaceMcpServerIds,
+    });
 
     const [created] = await context.db
       .insert(coworker)
@@ -1131,7 +1193,7 @@ const create = protectedProcedure
         autoApprove: input.autoApprove ?? true,
         allowedIntegrations: input.allowedIntegrations,
         allowedCustomIntegrations: input.allowedCustomIntegrations,
-        allowedWorkspaceMcpServerIds: input.allowedWorkspaceMcpServerIds,
+        allowedWorkspaceMcpServerIds,
         toolAccessMode: input.toolAccessMode,
         allowedSkillSlugs: normalizeCoworkerAllowedSkillSlugs(input.allowedSkillSlugs),
         schedule: input.schedule ?? null,

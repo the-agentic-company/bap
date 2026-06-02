@@ -15,6 +15,17 @@ export const schema = {
   model: z.string().optional().describe("Model reference"),
   authSource: z.enum(["user", "shared"]).optional().describe("Model auth source"),
   integrations: z.array(z.string()).optional().describe("Allowed integrations"),
+  files: z
+    .array(
+      z.object({
+        filename: z.string().min(1).max(256).describe("Document filename"),
+        mimeType: z.string().min(1).describe("Document MIME type"),
+        contentBase64: z.string().min(1).describe("Base64-encoded document content"),
+        description: z.string().max(1024).optional().describe("Optional document description"),
+      }),
+    )
+    .optional()
+    .describe("Documents to attach to the coworker after creation"),
   serverUrl: z.string().url().optional().describe("Override the CmdClaw server URL"),
 };
 
@@ -48,6 +59,7 @@ export default async function coworkerCreate(
     model: params.model,
     authSource: params.authSource,
     integrations: params.integrations,
+    files: params.files,
   });
   return toMcpToolResult(result);
 }

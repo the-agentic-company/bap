@@ -9,6 +9,7 @@ export type IntegrationType =
   | "google_sheets"
   | "google_drive"
   | "notion"
+  | "linear"
   | "github"
   | "airtable"
   | "slack"
@@ -61,7 +62,7 @@ function parseJwtClaims(token: string): JwtClaims | null {
 
 const getAppUrl = () => env.APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
-const configs: Record<IntegrationType, () => OAuthConfig> = {
+const configs: Partial<Record<IntegrationType, () => OAuthConfig>> = {
   google_gmail: () => ({
     clientId: env.GOOGLE_CLIENT_ID ?? "",
     clientSecret: env.GOOGLE_CLIENT_SECRET ?? "",

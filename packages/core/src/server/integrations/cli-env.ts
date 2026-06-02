@@ -17,7 +17,9 @@ import {
 import { backfillConnectedIdentities } from "./backfill-connected-identities";
 
 // Token-based integrations map to their access token env var
-const TOKEN_ENV_VAR_MAP: Record<Exclude<IntegrationType, "linkedin">, string> = {
+type TokenEnvIntegrationType = Exclude<IntegrationType, "linkedin" | "linear">;
+
+const TOKEN_ENV_VAR_MAP: Record<TokenEnvIntegrationType, string> = {
   google_gmail: "GMAIL_ACCESS_TOKEN",
   outlook: "OUTLOOK_ACCESS_TOKEN",
   outlook_calendar: "OUTLOOK_CALENDAR_ACCESS_TOKEN",
@@ -35,6 +37,10 @@ const TOKEN_ENV_VAR_MAP: Record<Exclude<IntegrationType, "linkedin">, string> = 
   reddit: "REDDIT_ACCESS_TOKEN",
   twitter: "TWITTER_ACCESS_TOKEN",
 };
+
+function isTokenEnvIntegrationType(type: string): type is TokenEnvIntegrationType {
+  return type in TOKEN_ENV_VAR_MAP;
+}
 
 const CLI_ENV_INTEGRATION_MAP: Record<string, IntegrationType> = {
   ...Object.fromEntries(
@@ -76,7 +82,10 @@ export async function getCliEnvForUser(userId: string): Promise<Record<string, s
   const tokens = await getValidTokensForUser(userId);
 
   for (const [type, accessToken] of tokens) {
-    const envVar = TOKEN_ENV_VAR_MAP[type as Exclude<IntegrationType, "linkedin">];
+    if (!isTokenEnvIntegrationType(type)) {
+      continue;
+    }
+    const envVar = TOKEN_ENV_VAR_MAP[type];
     if (envVar) {
       cliEnv[envVar] = accessToken;
     }
@@ -666,7 +675,7 @@ export async function getTokensForIntegrations(
 
   const tokens: Record<string, string> = {};
   const requestedTokenIntegrations = integrationTypes.filter(
-    (type): type is Exclude<IntegrationType, "linkedin"> => type in TOKEN_ENV_VAR_MAP,
+    (type): type is TokenEnvIntegrationType => isTokenEnvIntegrationType(type),
   );
 
   // Get valid tokens only for requested token-based integrations
@@ -674,7 +683,10 @@ export async function getTokensForIntegrations(
 
   for (const [type, accessToken] of allTokens) {
     if (integrationTypes.includes(type)) {
-      const envVar = TOKEN_ENV_VAR_MAP[type as Exclude<IntegrationType, "linkedin">];
+      if (!isTokenEnvIntegrationType(type)) {
+        continue;
+      }
+      const envVar = TOKEN_ENV_VAR_MAP[type];
       if (envVar) {
         tokens[envVar] = accessToken;
       }

@@ -58,8 +58,16 @@ export async function handleCoworkerCreate(params: {
   authSource?: "user" | "shared";
   integrations?: string[];
   folderPath?: string;
+  files?: Array<{
+    filename: string;
+    mimeType: string;
+    contentBase64: string;
+    description?: string;
+  }>;
 }) {
   const runner = createCoworkerRunner(params.client);
+  const allowedIntegrations =
+    params.integrations && params.integrations.length > 0 ? params.integrations : undefined;
   const created = await runner.create({
     name: params.name,
     triggerType: params.trigger ?? "manual",
@@ -69,7 +77,8 @@ export async function handleCoworkerCreate(params: {
     autoApprove: params.autoApprove,
     model: params.model ?? DEFAULT_CONNECTED_CHATGPT_MODEL,
     authSource: params.authSource,
-    allowedIntegrations: params.integrations,
+    toolAccessMode: allowedIntegrations ? "selected" : undefined,
+    allowedIntegrations,
   });
 
   const trimmedFolderPath = params.folderPath?.trim();
@@ -83,10 +92,25 @@ export async function handleCoworkerCreate(params: {
     });
   }
 
+  const documents = params.files?.length
+    ? await Promise.all(
+        params.files.map((file) =>
+          params.client.coworker.uploadDocument({
+            coworkerId: created.id,
+            filename: file.filename,
+            mimeType: file.mimeType,
+            content: file.contentBase64,
+            description: file.description,
+          }),
+        ),
+      )
+    : [];
+
   return {
     status: "completed" as const,
     coworker: created,
     folder: folder ?? undefined,
+    documents,
   };
 }
 
@@ -104,6 +128,37 @@ export async function handleCoworkerRun(params: {
       trustedUserInput:
         trustedUserInput && trustedUserInput.length > 0 ? trustedUserInput : undefined,
     }),
+  };
+}
+
+export async function handleCoworkerUploadDocument(params: {
+  client: CmdclawApiClient;
+  reference: string;
+  files: Array<{
+    filename: string;
+    mimeType: string;
+    contentBase64: string;
+    description?: string;
+  }>;
+}) {
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  const documents = await Promise.all(
+    params.files.map((file) =>
+      params.client.coworker.uploadDocument({
+        coworkerId,
+        filename: file.filename,
+        mimeType: file.mimeType,
+        content: file.contentBase64,
+        description: file.description,
+      }),
+    ),
+  );
+
+  return {
+    status: "completed" as const,
+    coworkerId,
+    documents,
   };
 }
 

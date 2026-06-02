@@ -19,6 +19,7 @@ type CreateFlags = {
 
 export default async function (this: LocalContext, flags: CreateFlags): Promise<void> {
   const { client, runner } = await getCoworkerRunner({ server: flags.server });
+  const allowedIntegrations = splitCsv(flags.integrations);
   const created = await runner.create({
     name: flags.name,
     triggerType: flags.trigger,
@@ -28,7 +29,8 @@ export default async function (this: LocalContext, flags: CreateFlags): Promise<
     autoApprove: flags.autoApprove,
     model: flags.model ?? DEFAULT_CONNECTED_CHATGPT_MODEL,
     authSource: flags.authSource,
-    allowedIntegrations: splitCsv(flags.integrations),
+    toolAccessMode: allowedIntegrations.length > 0 ? "selected" : undefined,
+    allowedIntegrations: allowedIntegrations.length > 0 ? allowedIntegrations : undefined,
   });
 
   const trimmedFolderPath = flags.folder?.trim();

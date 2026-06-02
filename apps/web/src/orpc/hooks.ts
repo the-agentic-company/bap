@@ -1521,11 +1521,17 @@ export function useCoworkerRunImpersonationTarget(
   });
 }
 
-export function useCoworkerRuns(coworkerId: string | undefined, limit = 20) {
+export function useCoworkerRuns(
+  coworkerId: string | undefined,
+  limit = 20,
+  options?: {
+    enabled?: boolean;
+  },
+) {
   return useQuery({
     queryKey: ["coworker", "runs", coworkerId, limit],
     queryFn: () => client.coworker.listRuns({ coworkerId: coworkerId!, limit }),
-    enabled: !!coworkerId,
+    enabled: (options?.enabled ?? true) && !!coworkerId,
     refetchInterval: (query) =>
       (query.state.data ?? []).some((run) => isActiveCoworkerRunStatus(run.status)) ? 5_000 : false,
   });

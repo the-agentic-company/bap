@@ -183,6 +183,9 @@ function createContext() {
         user: {
           findFirst: vi.fn(),
         },
+        workspaceMcpServer: {
+          findMany: vi.fn(),
+        },
       },
       insert: insertMock,
       update: updateMock,
@@ -233,6 +236,7 @@ function createContext() {
     coworkerId: "wf-1",
   });
   context.db.query.coworkerDocument.findMany.mockResolvedValue([]);
+  context.db.query.workspaceMcpServer.findMany.mockResolvedValue([]);
 
   return context;
 }
@@ -304,6 +308,13 @@ describe("coworkerRouter", () => {
         triggerType: "schedule",
       },
     ]);
+    context.db.query.workspaceMcpServer.findMany.mockResolvedValue([
+      {
+        id: "linear-source-1",
+        namespace: "linear",
+        createdAt: new Date("2026-03-03T12:00:00.000Z"),
+      },
+    ]);
 
     const result = await coworkerRouterAny.create({
       input: {
@@ -311,7 +322,8 @@ describe("coworkerRouter", () => {
         prompt: "Daily task",
         model: DEFAULT_MODEL,
         autoApprove: true,
-        allowedIntegrations: ["slack"],
+        toolAccessMode: "selected",
+        allowedIntegrations: ["linear", "slack"],
         allowedCustomIntegrations: [],
         schedule: {
           type: "daily",
@@ -331,6 +343,12 @@ describe("coworkerRouter", () => {
     });
     expect(syncCoworkerScheduleJobMock).toHaveBeenCalledWith(
       expect.objectContaining({ id: "wf-1" }),
+    );
+    expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedIntegrations: ["linear", "slack"],
+        allowedWorkspaceMcpServerIds: ["linear-source-1"],
+      }),
     );
   });
 

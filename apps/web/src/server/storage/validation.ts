@@ -8,6 +8,7 @@ const ALLOWED_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/html",
   "text/plain",
   "text/csv",
   // Images
@@ -26,6 +27,10 @@ const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 // Maximum files per skill
 const MAX_DOCUMENTS_PER_SKILL = 20;
 
+function normalizeMimeType(mimeType: string): string {
+  return mimeType.toLowerCase().split(";")[0]?.trim() ?? "";
+}
+
 export function validateFileUpload(
   filename: string,
   mimeType: string,
@@ -40,7 +45,8 @@ export function validateFileUpload(
   }
 
   // Check MIME type
-  if (!ALLOWED_MIME_TYPES.includes(mimeType as AllowedMimeType)) {
+  const normalizedMimeType = normalizeMimeType(mimeType);
+  if (!ALLOWED_MIME_TYPES.includes(normalizedMimeType as AllowedMimeType)) {
     throw new ORPCError("BAD_REQUEST", {
       message: `File type "${mimeType}" is not allowed. Supported types: PDF, Word, Excel, images, and text files.`,
     });
