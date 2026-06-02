@@ -35,6 +35,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useIsAdmin } from "@/hooks/use-is-admin";
@@ -94,6 +95,8 @@ import { formatDuration } from "./chat-performance-metrics";
 import { useChatSkillStore } from "./chat-skill-store";
 import { MessageList, type Message, type MessagePart, type AttachmentData } from "./message-list";
 import { ModelSelector } from "./model-selector";
+import { OutputHtmlPreviewPanel } from "./output-html-preview-panel";
+import { findLatestOutputHtmlFile } from "./output-preview-selection";
 import { isQuestionApprovalRequest } from "./question-approval-utils";
 import { ToolApprovalCard } from "./tool-approval-card";
 import { VoiceIndicator } from "./voice-indicator";
@@ -120,6 +123,7 @@ type Props = {
   skillSelectionScopeKey?: string;
   initialPrefillText?: string | null;
   authCompletion?: { integration: string; interruptId: string } | null;
+  enableOutputPreview?: boolean;
 };
 
 type QueuedMessage = {
@@ -948,6 +952,7 @@ export function ChatArea({
   skillSelectionScopeKey: skillSelectionScopeKeyOverride,
   initialPrefillText,
   authCompletion,
+  enableOutputPreview = false,
 }: Props) {
   const { setHeaderActions } = useChatHeaderActions();
   const queryClient = useQueryClient();
@@ -1018,10 +1023,17 @@ export function ChatArea({
   const [draftConversationId, setDraftConversationId] = useState<string | undefined>(
     conversationId,
   );
+  const [isOutputPreviewCollapsed, setIsOutputPreviewCollapsed] = useState(false);
   const skillSelectionScopeKey = useMemo(
     () => skillSelectionScopeKeyOverride ?? draftConversationId ?? conversationId ?? "new-chat",
     [conversationId, draftConversationId, skillSelectionScopeKeyOverride],
   );
+  const outputPreviewStorageKey = useMemo(() => {
+    if (!enableOutputPreview) {
+      return null;
+    }
+    return `chat-output-preview:${draftConversationId ?? conversationId ?? "new-chat"}`;
+  }, [conversationId, draftConversationId, enableOutputPreview]);
   const selectedSkillSlugsByScope = useChatSkillStore((state) => state.selectedSkillSlugsByScope);
   const selectedSkillKeys =
     selectedSkillSlugsByScope[skillSelectionScopeKey] ?? EMPTY_SELECTED_SKILLS;
@@ -3823,6 +3835,33 @@ export function ChatArea({
 
     return nodes;
   }, [historicalActivityBlocks, messages]);
+  const latestOutputHtmlFile = useMemo(
+    () => (enableOutputPreview ? findLatestOutputHtmlFile(messages) : null),
+    [enableOutputPreview, messages],
+  );
+
+  useEffect(() => {
+    if (!outputPreviewStorageKey || !latestOutputHtmlFile || typeof window === "undefined") {
+      return;
+    }
+
+    setIsOutputPreviewCollapsed(
+      window.localStorage.getItem(outputPreviewStorageKey) === "collapsed",
+    );
+  }, [latestOutputHtmlFile, outputPreviewStorageKey]);
+
+  const handleOutputPreviewCollapsedChange = useCallback(
+    (collapsed: boolean) => {
+      setIsOutputPreviewCollapsed(collapsed);
+      if (outputPreviewStorageKey && typeof window !== "undefined") {
+        window.localStorage.setItem(outputPreviewStorageKey, collapsed ? "collapsed" : "open");
+      }
+    },
+    [outputPreviewStorageKey],
+  );
+  const handleCloseOutputPreview = useCallback(() => {
+    handleOutputPreviewCollapsedChange(true);
+  }, [handleOutputPreviewCollapsedChange]);
 
   // Voice recording: stop and transcribe
   const stopRecordingAndTranscribe = useCallback(async () => {
@@ -3918,6 +3957,362 @@ export function ChatArea({
     return () => document.removeEventListener("keyup", handleKeyUp);
   }, [stopRecordingAndTranscribe]);
 
+  const chatContent = useMemo(
+    () => (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="h-0 flex-1 overflow-y-auto p-4"
+        >
+          <div className="mx-auto max-w-3xl">
+            {showModelSwitchWarning && (
+              <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>Changing model mid-conversation can degrade performance.</span>
+              </div>
+            )}
+            {streamError && (
+              <div className="border-destructive/30 bg-destructive/10 text-destructive mb-4 flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4" />
+                <span>{streamError}</span>
+              </div>
+            )}
+            {transcriptNodes.length > 0 && transcriptNodes}
+
+            {isEmptyChat ? null : (
+              <>
+                {(isStreaming || displaySegments.length > 0) && (
+                  <div className="space-y-4 py-4">
+                    {isStreaming && displaySegments.length === 0 && (
+                      <div className="border-border/50 bg-muted/30 rounded-lg border">
+                        <div className="flex items-center gap-2 px-3 py-2">
+                          <Activity className="text-muted-foreground h-4 w-4" />
+                          <span className="text-muted-foreground text-sm">
+                            {getAgentInitLabel(agentInitStatus)}
+                          </span>
+                          <div className="flex-1" />
+                          {initElapsedLabel && (
+                            <div className="text-muted-foreground/70 inline-flex items-center gap-1 text-xs">
+                              <Timer className="h-3 w-3" />
+                              <span>{initElapsedLabel}</span>
+                            </div>
+                          )}
+                          <div className="flex gap-1">
+                            <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
+                            <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
+                            <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {(() => {
+                      const renderedSegments = [];
+
+                      for (let index = 0; index < displaySegments.length; index += 1) {
+                        const segment = displaySegments[index];
+                        const visibleSegmentItems =
+                          visibleActivityItemsBySegmentId.get(segment.id) ?? EMPTY_ACTIVITY_ITEMS;
+
+                        const segmentIntegrations = Array.from(
+                          new Set(
+                            visibleSegmentItems
+                              .filter((item) => item.integration)
+                              .map((item) => item.integration as DisplayIntegrationType),
+                          ),
+                        );
+
+                        renderedSegments.push(
+                          <div key={segment.id} className="space-y-4">
+                            {visibleSegmentItems.length > 0 && (
+                              <ActivityFeed
+                                items={visibleSegmentItems}
+                                isStreaming={
+                                  isStreaming &&
+                                  index === displaySegments.length - 1 &&
+                                  !segment.approval &&
+                                  !segment.auth
+                                }
+                                isExpanded={segment.isExpanded}
+                                onToggleExpand={segmentToggleHandlers.get(segment.id)!}
+                                integrationsUsed={segmentIntegrations}
+                                elapsedMs={streamElapsedMs ?? undefined}
+                              />
+                            )}
+
+                            {segment.auth && segment.auth.status !== "pending" && (
+                              <AuthRequestCard
+                                integrations={segment.auth.integrations}
+                                connectedIntegrations={segment.auth.connectedIntegrations}
+                                reason={segment.auth.reason}
+                                status={segment.auth.status}
+                                isLoading={isSubmittingAuth}
+                                onConnect={handleAuthConnect}
+                                onCancel={handleAuthCancel}
+                              />
+                            )}
+                            {segment.approval && segment.approval.status !== "pending" && (
+                              <ToolApprovalCard
+                                toolUseId={segment.approval.toolUseId}
+                                toolName={segment.approval.toolName}
+                                toolInput={segment.approval.toolInput}
+                                integration={segment.approval.integration}
+                                operation={segment.approval.operation}
+                                command={segment.approval.command}
+                                status={segment.approval.status}
+                                questionAnswers={segment.approval.questionAnswers}
+                                onApprove={
+                                  segmentApproveHandlers.get(segment.id) ??
+                                  NOOP_APPROVAL_WITH_ANSWERS
+                                }
+                                onDeny={segmentDenyHandlers.get(segment.id) ?? NOOP_APPROVAL}
+                                readonly
+                              />
+                            )}
+                          </div>,
+                        );
+                      }
+
+                      return renderedSegments;
+                    })()}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        <div className="bg-background mt-auto shrink-0 p-4">
+          <div className="mx-auto w-full max-w-4xl space-y-2">
+            {isEmptyChat && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {CHAT_QUICK_STARTERS.map((starter, i) => (
+                    <motion.div
+                      key={starter.label}
+                      custom={i}
+                      variants={CHAT_STARTER_VARIANTS}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        data-prompt={starter.prompt}
+                        onClick={handleStarterButtonClick}
+                      >
+                        {starter.label}
+                      </Button>
+                    </motion.div>
+                  ))}
+                  <motion.div
+                    custom={CHAT_QUICK_STARTERS.length}
+                    variants={CHAT_STARTER_VARIANTS}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <Button
+                      type="button"
+                      variant={isDiscoverOpen ? "outline" : "secondary"}
+                      size="sm"
+                      className="gap-1.5 rounded-full"
+                      onClick={handleToggleDiscover}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Discover
+                    </Button>
+                  </motion.div>
+                </div>
+
+                <AnimatePresence>
+                  {isDiscoverOpen && (
+                    <motion.div
+                      variants={CHAT_DISCOVER_PANEL_VARIANTS}
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-2xl border bg-stone-50/60 p-3">
+                        <div className="mb-2.5 flex items-center justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground -mr-1 h-7 rounded-full px-2 text-xs"
+                            onClick={handleCloseDiscover}
+                          >
+                            Close
+                          </Button>
+                        </div>
+
+                        <div className="grid gap-2.5 sm:grid-cols-2">
+                          {CHAT_DISCOVER_SECTIONS.map((section, sectionIdx) => (
+                            <div key={section.title}>
+                              <p className="mb-1.5 text-xs font-medium tracking-wide text-stone-500 uppercase">
+                                {section.title}
+                              </p>
+                              <div className="flex flex-col gap-1">
+                                {section.items.map((item, itemIdx) => (
+                                  <motion.button
+                                    key={item.label}
+                                    type="button"
+                                    custom={sectionIdx * 2 + itemIdx}
+                                    variants={CHAT_DISCOVER_ITEM_VARIANTS}
+                                    initial="hidden"
+                                    animate="visible"
+                                    className="hover:bg-background group rounded-xl px-2.5 py-2 text-left transition-colors"
+                                    data-prompt={item.prompt}
+                                    onClick={handleStarterButtonClick}
+                                  >
+                                    <span className="block text-sm font-medium">{item.label}</span>
+                                    <span className="text-muted-foreground mt-0.5 line-clamp-1 block text-xs leading-relaxed">
+                                      {item.prompt}
+                                    </span>
+                                  </motion.button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {(isRecording || isProcessingVoice || voiceError) && (
+              <VoiceIndicator
+                isRecording={isRecording}
+                isProcessing={isProcessingVoice}
+                error={voiceError}
+              />
+            )}
+            {normalizedQueuedMessages.length > 0 && (
+              <div className="from-muted/75 to-background rounded-3xl border bg-gradient-to-b px-4 py-3 shadow-[0_1px_0_0_hsl(var(--background))_inset,0_12px_24px_-22px_hsl(var(--foreground)/0.5)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="bg-background/80 border-border/70 inline-flex size-7 items-center justify-center rounded-full border">
+                      <ListTree className="text-muted-foreground h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm leading-none font-medium">
+                        {normalizedQueuedMessages.length} queued message
+                        {normalizedQueuedMessages.length === 1 ? "" : "s"}
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {queueingEnabled
+                          ? "They run in order as soon as the current response finishes."
+                          : "Queueing is off for new messages."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-1">
+                  {normalizedQueuedMessages.map((queuedMessage, index) => (
+                    <QueuedMessageRow
+                      key={queuedMessage.id}
+                      queuedMessage={queuedMessage}
+                      index={index}
+                      onSend={handleSendQueuedNow}
+                      onClear={handleClearQueued}
+                      onEdit={handleEditQueuedMessage}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <BottomActionBar
+              segments={displaySegments}
+              segmentApproveHandlers={segmentApproveHandlers}
+              segmentDenyHandlers={segmentDenyHandlers}
+              isApproving={isApproving}
+              handleAuthConnect={handleAuthConnect}
+              handleAuthCancel={handleAuthCancel}
+              isSubmittingAuth={isSubmittingAuth}
+              onSubmit={handleSend}
+              onStop={handleStop}
+              disabled={isRecording || isProcessingVoice}
+              isStreaming={isStreaming}
+              isRecording={isRecording}
+              onStartRecording={handleStartRecording}
+              onStopRecording={stopRecordingAndTranscribe}
+              prefillRequest={inputPrefillRequest}
+              conversationId={draftConversationId}
+              placeholder="Send a message..."
+              animatedPlaceholders={CHAT_PLACEHOLDER_PROMPTS}
+              shouldAnimatePlaceholder={isEmptyChat}
+              renderSkills={skillsMenuNode}
+              renderModelSelector={modelSelectorNode}
+              renderAutoApproval={autoApprovalNode}
+            />
+          </div>
+        </div>
+      </div>
+    ),
+    [
+      agentInitStatus,
+      autoApprovalNode,
+      displaySegments,
+      draftConversationId,
+      handleAuthCancel,
+      handleAuthConnect,
+      handleClearQueued,
+      handleCloseDiscover,
+      handleEditQueuedMessage,
+      handleScroll,
+      handleSend,
+      handleSendQueuedNow,
+      handleStartRecording,
+      handleStarterButtonClick,
+      handleStop,
+      handleToggleDiscover,
+      initElapsedLabel,
+      inputPrefillRequest,
+      isApproving,
+      isDiscoverOpen,
+      isEmptyChat,
+      isProcessingVoice,
+      isRecording,
+      isStreaming,
+      isSubmittingAuth,
+      modelSelectorNode,
+      normalizedQueuedMessages,
+      queueingEnabled,
+      scrollContainerRef,
+      segmentApproveHandlers,
+      segmentDenyHandlers,
+      segmentToggleHandlers,
+      showModelSwitchWarning,
+      skillsMenuNode,
+      stopRecordingAndTranscribe,
+      streamElapsedMs,
+      streamError,
+      transcriptNodes,
+      visibleActivityItemsBySegmentId,
+      voiceError,
+    ],
+  );
+  const outputPreviewPanel = useMemo(() => {
+    if (!latestOutputHtmlFile) {
+      return null;
+    }
+
+    return (
+      <OutputHtmlPreviewPanel
+        outputFile={latestOutputHtmlFile}
+        onClose={handleCloseOutputPreview}
+      />
+    );
+  }, [handleCloseOutputPreview, latestOutputHtmlFile]);
+
   if (conversationId && isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -3926,302 +4321,29 @@ export function ChatArea({
     );
   }
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="h-0 flex-1 overflow-y-auto p-4"
-      >
-        <div className="mx-auto max-w-3xl">
-          {showModelSwitchWarning && (
-            <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Changing model mid-conversation can degrade performance.</span>
-            </div>
-          )}
-          {streamError && (
-            <div className="border-destructive/30 bg-destructive/10 text-destructive mb-4 flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
-              <AlertCircle className="mt-0.5 h-4 w-4" />
-              <span>{streamError}</span>
-            </div>
-          )}
-          {transcriptNodes.length > 0 && transcriptNodes}
+  if (enableOutputPreview && latestOutputHtmlFile && outputPreviewPanel) {
+    return (
+      <DualPanelWorkspace
+        storageKey="chat-output-preview-panels-v1"
+        defaultRightWidth={42}
+        minRightWidth={34}
+        collapsible
+        collapsedSidebar
+        showExpandedCollapseButton={false}
+        showTitles={false}
+        rightCollapsed={isOutputPreviewCollapsed}
+        onRightCollapsedChange={handleOutputPreviewCollapsedChange}
+        leftTitle="Chat"
+        rightTitle="output.html"
+        leftPanelClassName="border-0 rounded-none"
+        separatorClassName="bg-muted/30"
+        rightPanelClassName="border-0 rounded-none bg-muted/30 md:min-w-[28rem]"
+        left={chatContent}
+        right={outputPreviewPanel}
+        hideMobileToggle
+      />
+    );
+  }
 
-          {isEmptyChat ? null : (
-            <>
-              {(isStreaming || displaySegments.length > 0) && (
-                <div className="space-y-4 py-4">
-                  {isStreaming && displaySegments.length === 0 && (
-                    <div className="border-border/50 bg-muted/30 rounded-lg border">
-                      <div className="flex items-center gap-2 px-3 py-2">
-                        <Activity className="text-muted-foreground h-4 w-4" />
-                        <span className="text-muted-foreground text-sm">
-                          {getAgentInitLabel(agentInitStatus)}
-                        </span>
-                        <div className="flex-1" />
-                        {initElapsedLabel && (
-                          <div className="text-muted-foreground/70 inline-flex items-center gap-1 text-xs">
-                            <Timer className="h-3 w-3" />
-                            <span>{initElapsedLabel}</span>
-                          </div>
-                        )}
-                        <div className="flex gap-1">
-                          <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
-                          <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
-                          <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {(() => {
-                    const renderedSegments = [];
-
-                    for (let index = 0; index < displaySegments.length; index += 1) {
-                      const segment = displaySegments[index];
-                      const visibleSegmentItems =
-                        visibleActivityItemsBySegmentId.get(segment.id) ?? EMPTY_ACTIVITY_ITEMS;
-
-                      const segmentIntegrations = Array.from(
-                        new Set(
-                          visibleSegmentItems
-                            .filter((item) => item.integration)
-                            .map((item) => item.integration as DisplayIntegrationType),
-                        ),
-                      );
-
-                      renderedSegments.push(
-                        <div key={segment.id} className="space-y-4">
-                          {visibleSegmentItems.length > 0 && (
-                            <ActivityFeed
-                              items={visibleSegmentItems}
-                              isStreaming={
-                                isStreaming &&
-                                index === displaySegments.length - 1 &&
-                                !segment.approval &&
-                                !segment.auth
-                              }
-                              isExpanded={segment.isExpanded}
-                              onToggleExpand={segmentToggleHandlers.get(segment.id)!}
-                              integrationsUsed={segmentIntegrations}
-                              elapsedMs={streamElapsedMs ?? undefined}
-                            />
-                          )}
-
-                          {segment.auth && segment.auth.status !== "pending" && (
-                            <AuthRequestCard
-                              integrations={segment.auth.integrations}
-                              connectedIntegrations={segment.auth.connectedIntegrations}
-                              reason={segment.auth.reason}
-                              status={segment.auth.status}
-                              isLoading={isSubmittingAuth}
-                              onConnect={handleAuthConnect}
-                              onCancel={handleAuthCancel}
-                            />
-                          )}
-                          {segment.approval && segment.approval.status !== "pending" && (
-                            <ToolApprovalCard
-                              toolUseId={segment.approval.toolUseId}
-                              toolName={segment.approval.toolName}
-                              toolInput={segment.approval.toolInput}
-                              integration={segment.approval.integration}
-                              operation={segment.approval.operation}
-                              command={segment.approval.command}
-                              status={segment.approval.status}
-                              questionAnswers={segment.approval.questionAnswers}
-                              onApprove={
-                                segmentApproveHandlers.get(segment.id) ?? NOOP_APPROVAL_WITH_ANSWERS
-                              }
-                              onDeny={segmentDenyHandlers.get(segment.id) ?? NOOP_APPROVAL}
-                              readonly
-                            />
-                          )}
-                        </div>,
-                      );
-                    }
-
-                    return renderedSegments;
-                  })()}
-                </div>
-              )}
-            </>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      <div className="bg-background mt-auto shrink-0 p-4">
-        <div className="mx-auto w-full max-w-4xl space-y-2">
-          {isEmptyChat && (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {CHAT_QUICK_STARTERS.map((starter, i) => (
-                  <motion.div
-                    key={starter.label}
-                    custom={i}
-                    variants={CHAT_STARTER_VARIANTS}
-                    initial="hidden"
-                    animate="visible"
-                  >
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full"
-                      data-prompt={starter.prompt}
-                      onClick={handleStarterButtonClick}
-                    >
-                      {starter.label}
-                    </Button>
-                  </motion.div>
-                ))}
-                <motion.div
-                  custom={CHAT_QUICK_STARTERS.length}
-                  variants={CHAT_STARTER_VARIANTS}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  <Button
-                    type="button"
-                    variant={isDiscoverOpen ? "outline" : "secondary"}
-                    size="sm"
-                    className="gap-1.5 rounded-full"
-                    onClick={handleToggleDiscover}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Discover
-                  </Button>
-                </motion.div>
-              </div>
-
-              <AnimatePresence>
-                {isDiscoverOpen && (
-                  <motion.div
-                    variants={CHAT_DISCOVER_PANEL_VARIANTS}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    className="overflow-hidden"
-                  >
-                    <div className="rounded-2xl border bg-stone-50/60 p-3">
-                      <div className="mb-2.5 flex items-center justify-end">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-foreground -mr-1 h-7 rounded-full px-2 text-xs"
-                          onClick={handleCloseDiscover}
-                        >
-                          Close
-                        </Button>
-                      </div>
-
-                      <div className="grid gap-2.5 sm:grid-cols-2">
-                        {CHAT_DISCOVER_SECTIONS.map((section, sectionIdx) => (
-                          <div key={section.title}>
-                            <p className="mb-1.5 text-xs font-medium tracking-wide text-stone-500 uppercase">
-                              {section.title}
-                            </p>
-                            <div className="flex flex-col gap-1">
-                              {section.items.map((item, itemIdx) => (
-                                <motion.button
-                                  key={item.label}
-                                  type="button"
-                                  custom={sectionIdx * 2 + itemIdx}
-                                  variants={CHAT_DISCOVER_ITEM_VARIANTS}
-                                  initial="hidden"
-                                  animate="visible"
-                                  className="hover:bg-background group rounded-xl px-2.5 py-2 text-left transition-colors"
-                                  data-prompt={item.prompt}
-                                  onClick={handleStarterButtonClick}
-                                >
-                                  <span className="block text-sm font-medium">{item.label}</span>
-                                  <span className="text-muted-foreground mt-0.5 line-clamp-1 block text-xs leading-relaxed">
-                                    {item.prompt}
-                                  </span>
-                                </motion.button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {(isRecording || isProcessingVoice || voiceError) && (
-            <VoiceIndicator
-              isRecording={isRecording}
-              isProcessing={isProcessingVoice}
-              error={voiceError}
-            />
-          )}
-          {normalizedQueuedMessages.length > 0 && (
-            <div className="from-muted/75 to-background rounded-3xl border bg-gradient-to-b px-4 py-3 shadow-[0_1px_0_0_hsl(var(--background))_inset,0_12px_24px_-22px_hsl(var(--foreground)/0.5)]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="bg-background/80 border-border/70 inline-flex size-7 items-center justify-center rounded-full border">
-                    <ListTree className="text-muted-foreground h-3.5 w-3.5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm leading-none font-medium">
-                      {normalizedQueuedMessages.length} queued message
-                      {normalizedQueuedMessages.length === 1 ? "" : "s"}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-xs">
-                      {queueingEnabled
-                        ? "They run in order as soon as the current response finishes."
-                        : "Queueing is off for new messages."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 space-y-1">
-                {normalizedQueuedMessages.map((queuedMessage, index) => (
-                  <QueuedMessageRow
-                    key={queuedMessage.id}
-                    queuedMessage={queuedMessage}
-                    index={index}
-                    onSend={handleSendQueuedNow}
-                    onClear={handleClearQueued}
-                    onEdit={handleEditQueuedMessage}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <BottomActionBar
-            segments={displaySegments}
-            segmentApproveHandlers={segmentApproveHandlers}
-            segmentDenyHandlers={segmentDenyHandlers}
-            isApproving={isApproving}
-            handleAuthConnect={handleAuthConnect}
-            handleAuthCancel={handleAuthCancel}
-            isSubmittingAuth={isSubmittingAuth}
-            onSubmit={handleSend}
-            onStop={handleStop}
-            disabled={isRecording || isProcessingVoice}
-            isStreaming={isStreaming}
-            isRecording={isRecording}
-            onStartRecording={handleStartRecording}
-            onStopRecording={stopRecordingAndTranscribe}
-            prefillRequest={inputPrefillRequest}
-            conversationId={draftConversationId}
-            placeholder="Send a message..."
-            animatedPlaceholders={CHAT_PLACEHOLDER_PROMPTS}
-            shouldAnimatePlaceholder={isEmptyChat}
-            renderSkills={skillsMenuNode}
-            renderModelSelector={modelSelectorNode}
-            renderAutoApproval={autoApprovalNode}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  return chatContent;
 }

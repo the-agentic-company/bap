@@ -3758,6 +3758,78 @@ describe("generationManager transitions", () => {
     expect(ctx.uploadedSandboxFileIds?.size).toBe(0);
   });
 
+  it("auto-collects output.html even when the final answer does not mention it", async () => {
+    insertReturningMock.mockResolvedValueOnce([{ id: "msg-assistant-output-html" }]);
+    vi.mocked(collectNewSandboxFiles).mockResolvedValue([
+      { path: "/app/report.json", content: Buffer.from("{}") },
+      { path: "/app/output.html", content: Buffer.from("<!doctype html><p>Preview</p>") },
+    ]);
+    vi.mocked(uploadSandboxFile).mockResolvedValue({
+      id: "sandbox-file-output-html",
+      filename: "output.html",
+      mimeType: "text/html",
+      sizeBytes: 29,
+      path: "/app/output.html",
+      storageKey: "k/output.html",
+    });
+
+    const ctx = createCtx({
+      assistantContent: "Traitement terminé.",
+      contentParts: [{ type: "text", text: "Traitement terminé." }],
+      generationMarkerTime: Date.now() - 1_000,
+      sandbox: {} as unknown,
+      uploadedSandboxFileIds: new Set(),
+    });
+
+    const mgr = asTestManager();
+    await mgr.finishGeneration(ctx, "completed");
+
+    expect(vi.mocked(uploadSandboxFile)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(uploadSandboxFile)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "/app/output.html",
+        content: Buffer.from("<!doctype html><p>Preview</p>"),
+      }),
+    );
+    expect(ctx.uploadedSandboxFileIds?.has("sandbox-file-output-html")).toBe(true);
+    expect(ctx.sentFilePaths?.has("/app/output.html")).toBe(true);
+  });
+
+  it("prefers root /app/output.html when multiple output.html files are discovered", async () => {
+    insertReturningMock.mockResolvedValueOnce([{ id: "msg-assistant-output-html-root" }]);
+    vi.mocked(collectNewSandboxFiles).mockResolvedValue([
+      { path: "/app/dist/output.html", content: Buffer.from("dist") },
+      { path: "/app/output.html", content: Buffer.from("root") },
+    ]);
+    vi.mocked(uploadSandboxFile).mockResolvedValue({
+      id: "sandbox-file-output-html-root",
+      filename: "output.html",
+      mimeType: "text/html",
+      sizeBytes: 4,
+      path: "/app/output.html",
+      storageKey: "k/output.html",
+    });
+
+    const ctx = createCtx({
+      assistantContent: "Done.",
+      contentParts: [{ type: "text", text: "Done." }],
+      generationMarkerTime: Date.now() - 1_000,
+      sandbox: {} as unknown,
+      uploadedSandboxFileIds: new Set(),
+    });
+
+    const mgr = asTestManager();
+    await mgr.finishGeneration(ctx, "completed");
+
+    expect(vi.mocked(uploadSandboxFile)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(uploadSandboxFile)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "/app/output.html",
+        content: Buffer.from("root"),
+      }),
+    );
+  });
+
   it("finishes cancelled generation with interruption marker and emits cancelled", async () => {
     insertReturningMock.mockResolvedValueOnce([{ id: "msg-assistant-2" }]);
 

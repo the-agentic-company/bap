@@ -8,6 +8,7 @@ import { z } from "zod";
 import { requireAppAdminActor } from "../app-admin-access";
 import { protectedProcedure } from "../middleware";
 import { requireActiveWorkspaceAccess, requireActiveWorkspaceAdmin } from "../workspace-access";
+import { loadOutputHtmlPreview, OutputHtmlPreviewError } from "../../services/output-html-preview";
 
 const conversationListCursorSchema = z.object({
   updatedAt: z.coerce.date(),
@@ -670,6 +671,37 @@ const downloadSandboxFile = protectedProcedure
     };
   });
 
+const previewSandboxOutputHtml = protectedProcedure
+  .input(z.object({ fileId: z.string() }))
+  .handler(async ({ input, context }) => {
+    const {
+      workspace: { id: workspaceId },
+    } = await requireActiveWorkspaceAccess(context.user.id);
+
+    const file = await context.db.query.sandboxFile.findFirst({
+      where: eq(sandboxFile.id, input.fileId),
+      with: {
+        conversation: true,
+      },
+    });
+
+    try {
+      return await loadOutputHtmlPreview({
+        file,
+        userId: context.user.id,
+        workspaceId,
+      });
+    } catch (error) {
+      if (error instanceof OutputHtmlPreviewError) {
+        if (error.code === "not_found" || error.code === "missing_storage") {
+          throw new ORPCError("NOT_FOUND", { message: error.message });
+        }
+        throw new ORPCError("BAD_REQUEST", { message: error.message });
+      }
+      throw error;
+    }
+  });
+
 // Get sandbox files for a conversation
 const getSandboxFiles = protectedProcedure
   .input(z.object({ conversationId: z.string() }))
@@ -784,6 +816,7 @@ export const conversationRouter = {
   delete: del,
   downloadAttachment,
   downloadSandboxFile,
+  previewSandboxOutputHtml,
   getSandboxFiles,
   adminGetWorkspaceConversation,
 };

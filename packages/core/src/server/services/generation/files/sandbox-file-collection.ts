@@ -61,6 +61,45 @@ function filterAutoCollectedFilesMentionedInAnswer(
   });
 }
 
+function isOutputHtmlPath(filePath: string): boolean {
+  return path.basename(filePath) === "output.html";
+}
+
+function compareOutputHtmlCandidates(
+  left: AutoCollectedSandboxFile,
+  right: AutoCollectedSandboxFile,
+): number {
+  if (left.path === "/app/output.html") {
+    return -1;
+  }
+  if (right.path === "/app/output.html") {
+    return 1;
+  }
+  return left.path.localeCompare(right.path);
+}
+
+export function selectAutoCollectedFilesForExposure(input: {
+  files: AutoCollectedSandboxFile[];
+  finalAnswerText: string;
+}): AutoCollectedSandboxFile[] {
+  const selected = new Map<string, AutoCollectedSandboxFile>();
+
+  for (const file of filterAutoCollectedFilesMentionedInAnswer(
+    input.files,
+    input.finalAnswerText,
+  )) {
+    selected.set(file.path, file);
+  }
+
+  const outputHtml = input.files.filter((file) => isOutputHtmlPath(file.path));
+  const preferredOutputHtml = outputHtml.sort(compareOutputHtmlCandidates)[0];
+  if (preferredOutputHtml) {
+    selected.set(preferredOutputHtml.path, preferredOutputHtml);
+  }
+
+  return Array.from(selected.values());
+}
+
 export async function collectMentionedSandboxFiles(input: {
   sandbox: SandboxBackend;
   markerTime: number;
@@ -73,10 +112,10 @@ export async function collectMentionedSandboxFiles(input: {
   onUploadError?: (filePath: string, error: unknown) => void;
 }): Promise<MentionedSandboxFileCollectionResult> {
   const newFiles = await collectNewSandboxFiles(input.sandbox, input.markerTime, input.excludePaths);
-  const filesToUpload = filterAutoCollectedFilesMentionedInAnswer(
-    newFiles,
-    extractFinalAnswerTextForFileHeuristic(input),
-  );
+  const filesToUpload = selectAutoCollectedFilesForExposure({
+    files: newFiles,
+    finalAnswerText: extractFinalAnswerTextForFileHeuristic(input),
+  });
 
   input.onCollectionSummary?.({
     discoveredCount: newFiles.length,

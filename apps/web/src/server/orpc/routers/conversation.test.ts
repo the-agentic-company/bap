@@ -12,31 +12,44 @@ function createProcedureStub() {
   return stub;
 }
 
-const { conversationFindFirstMock, conversationFindManyMock, userFindFirstMock, dbMock } =
-  vi.hoisted(() => {
-    const conversationFindFirstMock = vi.fn();
-    const conversationFindManyMock = vi.fn();
-    const userFindFirstMock = vi.fn();
+const {
+  conversationFindFirstMock,
+  conversationFindManyMock,
+  sandboxFileFindFirstMock,
+  userFindFirstMock,
+  downloadFromS3Mock,
+  dbMock,
+} = vi.hoisted(() => {
+  const conversationFindFirstMock = vi.fn();
+  const conversationFindManyMock = vi.fn();
+  const sandboxFileFindFirstMock = vi.fn();
+  const userFindFirstMock = vi.fn();
+  const downloadFromS3Mock = vi.fn();
 
-    const dbMock = {
-      query: {
-        conversation: {
-          findFirst: conversationFindFirstMock,
-          findMany: conversationFindManyMock,
-        },
-        user: {
-          findFirst: userFindFirstMock,
-        },
+  const dbMock = {
+    query: {
+      conversation: {
+        findFirst: conversationFindFirstMock,
+        findMany: conversationFindManyMock,
       },
-    };
+      sandboxFile: {
+        findFirst: sandboxFileFindFirstMock,
+      },
+      user: {
+        findFirst: userFindFirstMock,
+      },
+    },
+  };
 
-    return {
-      conversationFindFirstMock,
-      conversationFindManyMock,
-      userFindFirstMock,
-      dbMock,
-    };
-  });
+  return {
+    conversationFindFirstMock,
+    conversationFindManyMock,
+    sandboxFileFindFirstMock,
+    userFindFirstMock,
+    downloadFromS3Mock,
+    dbMock,
+  };
+});
 
 vi.mock("../middleware", () => ({
   protectedProcedure: createProcedureStub(),
@@ -48,6 +61,10 @@ vi.mock("@cmdclaw/core/server/services/memory-service", () => ({
 
 vi.mock("@cmdclaw/core/server/services/opencode-session-snapshot-service", () => ({
   clearConversationSessionSnapshot: vi.fn(),
+}));
+
+vi.mock("@cmdclaw/core/server/storage/s3-client", () => ({
+  downloadFromS3: downloadFromS3Mock,
 }));
 
 vi.mock("../workspace-access", () => ({
@@ -270,5 +287,102 @@ describe("conversationRouter.list", () => {
       new ORPCError("BAD_REQUEST", { message: "Invalid conversation list cursor" }),
     );
     expect(conversationFindManyMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("conversationRouter.previewSandboxOutputHtml", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    downloadFromS3Mock.mockResolvedValue(Buffer.from("<!doctype html><p>Preview</p>"));
+  });
+
+  it("returns preview HTML for an owned output.html sandbox file", async () => {
+    sandboxFileFindFirstMock.mockResolvedValue({
+      id: "file-1",
+      filename: "output.html",
+      storageKey: "sandbox-files/conv-1/output.html",
+      sizeBytes: 29,
+      conversation: {
+        userId: "user-1",
+        workspaceId: "ws-1",
+      },
+    });
+
+    const result = await conversationRouterAny.previewSandboxOutputHtml({
+      input: { fileId: "file-1" },
+      context,
+    });
+
+    expect(result).toEqual({
+      html: "<!doctype html><p>Preview</p>",
+      filename: "output.html",
+      sizeBytes: 29,
+    });
+    expect(downloadFromS3Mock).toHaveBeenCalledWith("sandbox-files/conv-1/output.html");
+  });
+
+  it("rejects sandbox files outside the active workspace", async () => {
+    sandboxFileFindFirstMock.mockResolvedValue({
+      id: "file-2",
+      filename: "output.html",
+      storageKey: "sandbox-files/conv-2/output.html",
+      sizeBytes: 29,
+      conversation: {
+        userId: "user-1",
+        workspaceId: "ws-2",
+      },
+    });
+
+    await expect(
+      conversationRouterAny.previewSandboxOutputHtml({
+        input: { fileId: "file-2" },
+        context,
+      }),
+    ).rejects.toMatchObject(new ORPCError("NOT_FOUND", { message: "File not found" }));
+    expect(downloadFromS3Mock).not.toHaveBeenCalled();
+  });
+
+  it("rejects sandbox files not named exactly output.html", async () => {
+    sandboxFileFindFirstMock.mockResolvedValue({
+      id: "file-3",
+      filename: "output.HTML",
+      storageKey: "sandbox-files/conv-1/output.HTML",
+      sizeBytes: 29,
+      conversation: {
+        userId: "user-1",
+        workspaceId: "ws-1",
+      },
+    });
+
+    await expect(
+      conversationRouterAny.previewSandboxOutputHtml({
+        input: { fileId: "file-3" },
+        context,
+      }),
+    ).rejects.toMatchObject(new ORPCError("BAD_REQUEST", { message: "File is not previewable" }));
+    expect(downloadFromS3Mock).not.toHaveBeenCalled();
+  });
+
+  it("rejects output.html files over the preview size cap before downloading", async () => {
+    sandboxFileFindFirstMock.mockResolvedValue({
+      id: "file-4",
+      filename: "output.html",
+      storageKey: "sandbox-files/conv-1/output.html",
+      sizeBytes: 2 * 1024 * 1024 + 1,
+      conversation: {
+        userId: "user-1",
+        workspaceId: "ws-1",
+      },
+    });
+
+    await expect(
+      conversationRouterAny.previewSandboxOutputHtml({
+        input: { fileId: "file-4" },
+        context,
+      }),
+    ).rejects.toMatchObject(
+      new ORPCError("BAD_REQUEST", { message: "File is too large to preview" }),
+    );
+    expect(downloadFromS3Mock).not.toHaveBeenCalled();
   });
 });

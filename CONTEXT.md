@@ -128,6 +128,10 @@ _Avoid_: no progress, run deadline, timeout
 A non-terminal condition surfaced to the **User** when a **Generation** can continue but an expected runtime capability is degraded or unavailable. A **Runtime Warning** is visible product state, not only an **Operational Log**.
 _Avoid_: soft error, hidden warning, console warning
 
+**Generation Output Preview**:
+A user-facing preview of a file produced by a **Generation**, shown inside the chat surface so the **User** can inspect the result without leaving the conversation.
+_Avoid_: canvas, artifact viewer, file preview
+
 **Runtime Diagnostic Snapshot**:
 A privileged operational artifact captured when a **Generation** fails in the runtime boundary and ordinary telemetry is insufficient to explain the failure. A **Runtime Diagnostic Snapshot** contains bounded runtime probe values, counters, event types, and pointers needed for debugging. Unlike **Operational Logs** and **Canonical Service Events**, it may include raw runtime message fields, provider errors, and log snippets because it is stored behind sensitive debug access rather than emitted into the general observability stream.
 _Avoid_: dump, logs, trace

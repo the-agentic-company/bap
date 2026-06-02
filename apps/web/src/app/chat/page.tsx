@@ -7,5 +7,5 @@ export default function NewChatPage() {
   const searchParams = useSearchParams();
   const initialPrefillText = searchParams?.get("prefill") ?? null;
 
-  return <ChatArea initialPrefillText={initialPrefillText} />;
+  return <ChatArea initialPrefillText={initialPrefillText} enableOutputPreview />;
 }

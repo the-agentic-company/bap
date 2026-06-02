@@ -69,5 +69,7 @@ export default function ConversationPage({ params }: Props) {
     return <div className="text-muted-foreground p-6 text-sm">Conversation not found.</div>;
   }
 
-  return <ChatArea conversationId={conversationId} authCompletion={authCompletion} />;
+  return (
+    <ChatArea conversationId={conversationId} authCompletion={authCompletion} enableOutputPreview />
+  );
 }

@@ -1246,6 +1246,7 @@ export function useCreateCoworker() {
         | "google_sheets"
         | "google_drive"
         | "notion"
+        | "linear"
         | "github"
         | "airtable"
         | "slack"
@@ -1299,6 +1300,7 @@ export function useUpdateCoworker() {
         | "google_sheets"
         | "google_drive"
         | "notion"
+        | "linear"
         | "github"
         | "airtable"
         | "slack"
@@ -2615,6 +2617,14 @@ export function useDownloadAttachment() {
 export function useDownloadSandboxFile() {
   return useMutation({
     mutationFn: (fileId: string) => client.conversation.downloadSandboxFile({ fileId }),
+  });
+}
+
+export function useOutputHtmlPreview(fileId: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["conversation", "output-html-preview", fileId],
+    queryFn: () => client.conversation.previewSandboxOutputHtml({ fileId: fileId! }),
+    enabled: enabled && !!fileId,
   });
 }
 
