@@ -39,4 +39,32 @@ describe("findLatestOutputHtmlFile", () => {
 
     expect(findLatestOutputHtmlFile([message])).toEqual(message.sandboxFiles?.[2]);
   });
+
+  it("prefers a newer persisted sandbox file over older message files", () => {
+    const message = assistantMessage("msg-1", ["output.html"]);
+    const persisted = assistantMessage("persisted", ["output.html"]).sandboxFiles?.[0];
+
+    expect(
+      findLatestOutputHtmlFile({
+        messages: [message],
+        persistedSandboxFiles: persisted ? [persisted] : [],
+      }),
+    ).toEqual(persisted);
+  });
+
+  it("prefers a done artifact output.html over persisted and message files", () => {
+    const message = assistantMessage("msg-1", ["output.html"]);
+    const persisted = assistantMessage("persisted", ["output.html"]).sandboxFiles?.[0];
+    const doneArtifact = assistantMessage("done", ["output.html"]).sandboxFiles?.[0];
+
+    expect(
+      findLatestOutputHtmlFile({
+        messages: [message],
+        persistedSandboxFiles: persisted ? [persisted] : [],
+        doneArtifacts: {
+          sandboxFiles: doneArtifact ? [doneArtifact] : [],
+        },
+      }),
+    ).toEqual(doneArtifact);
+  });
 });

@@ -16,10 +16,12 @@ const {
   mockInvalidateQueries,
   mockRefetchQueries,
   mockSetQueryData,
+  mockSetSelection,
   mockUseHotkeys,
   mockEnqueueConversationMessageMutateAsync,
   mockUpdateConversationQueuedMessageMutateAsync,
   mockConversationQueuedMessagesState,
+  mockConversationState,
   mockAdminState,
   mockActiveGenerationState,
   mockCancelGenerationMutateAsync,
@@ -33,6 +35,7 @@ const {
   mockInvalidateQueries: vi.fn(),
   mockRefetchQueries: vi.fn(),
   mockSetQueryData: vi.fn(),
+  mockSetSelection: vi.fn(),
   mockUseHotkeys: vi.fn(),
   mockEnqueueConversationMessageMutateAsync: vi.fn(),
   mockUpdateConversationQueuedMessageMutateAsync: vi.fn(),
@@ -47,6 +50,27 @@ const {
           createdAt: string;
         }>
       | undefined,
+  },
+  mockConversationState: {
+    data: null as {
+      model?: string;
+      authSource?: "user" | "shared" | null;
+      autoApprove?: boolean;
+      type?: "chat" | "coworker";
+      messages?: Array<{
+        id: string;
+        role: string;
+        content: string;
+        sandboxFiles?: Array<{
+          fileId: string;
+          path: string;
+          filename: string;
+          mimeType: string;
+          sizeBytes?: number | null;
+        }>;
+      }>;
+    } | null,
+    isLoading: false,
   },
   mockSubmitApprovalMutateAsync: vi.fn(),
   mockSubmitAuthResultMutateAsync: vi.fn(),
@@ -299,7 +323,7 @@ vi.mock("@/orpc/client", () => ({
 }));
 
 vi.mock("@/orpc/hooks", () => ({
-  useConversation: () => ({ data: null, isLoading: false }),
+  useConversation: () => mockConversationState,
   useGeneration: () => ({
     startGeneration: mockStartGeneration,
     subscribeToGeneration: mockSubscribeToGeneration,
@@ -434,7 +458,7 @@ vi.mock("./chat-model-store", () => ({
     selector({
       selectedModel: "anthropic/claude-sonnet-4-6",
       selectedAuthSource: null,
-      setSelection: vi.fn(),
+      setSelection: mockSetSelection,
     }),
 }));
 
@@ -455,6 +479,10 @@ vi.mock("./message-list", () => ({
       ))}
     </div>
   ),
+}));
+
+vi.mock("./output-html-preview-panel", () => ({
+  OutputHtmlPreviewPanel: () => <div>Output Preview Panel</div>,
 }));
 
 vi.mock("./model-selector", () => ({
@@ -551,18 +579,30 @@ describe("ChatArea generation errors", () => {
     mockAbort.mockReset();
     mockInvalidateQueries.mockReset();
     mockSetQueryData.mockReset();
+    mockSetSelection.mockReset();
     mockPosthogCapture.mockReset();
     mockUseHotkeys.mockReset();
     mockCancelGenerationMutateAsync.mockReset();
     mockEnqueueConversationMessageMutateAsync.mockReset();
     mockUpdateConversationQueuedMessageMutateAsync.mockReset();
     mockConversationQueuedMessagesState.data = undefined;
+    mockConversationState.data = null;
+    mockConversationState.isLoading = false;
     mockAdminState.isAdmin = false;
     mockAdminState.isLoading = false;
     mockActiveGenerationState.data = null;
     Object.defineProperty(Element.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
+    });
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
+      },
     });
   });
 
@@ -801,6 +841,35 @@ describe("ChatArea generation errors", () => {
     render(<ChatArea conversationId="conv-1" />);
 
     expect(screen.queryByRole("button", { name: /debug/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps chat reachable on mobile when output preview is enabled", async () => {
+    mockConversationState.data = {
+      type: "chat",
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant",
+          content: "Done",
+          sandboxFiles: [
+            {
+              fileId: "file-1",
+              path: "/app/output.html",
+              filename: "output.html",
+              mimeType: "text/html",
+              sizeBytes: 42,
+            },
+          ],
+        },
+      ],
+    };
+
+    render(<ChatArea conversationId="conv-1" enableOutputPreview />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Chat" })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "output.html" })).toBeInTheDocument();
   });
 
   it("arms the approval recovery preset and forwards the approval park override", async () => {

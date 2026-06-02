@@ -4340,7 +4340,6 @@ export function ChatArea({
         rightPanelClassName="border-0 rounded-none bg-muted/30 md:min-w-[28rem]"
         left={chatContent}
         right={outputPreviewPanel}
-        hideMobileToggle
       />
     );
   }

@@ -11,6 +11,32 @@ type Props = {
   onClose: () => void;
 };
 
+function getPreviewErrorCopy(error: unknown): { title: string; description: string } {
+  const record =
+    error && typeof error === "object" ? (error as { code?: unknown; message?: unknown }) : null;
+  const code = typeof record?.code === "string" ? record.code : "";
+  const message = typeof record?.message === "string" ? record.message.toLowerCase() : "";
+
+  if (message.includes("too large")) {
+    return {
+      title: "output.html is too large to preview",
+      description: "Download output.html to inspect the generated file.",
+    };
+  }
+
+  if (code === "NOT_FOUND" || message.includes("not found") || message.includes("not uploaded")) {
+    return {
+      title: "output.html is no longer available",
+      description: "The generated file could not be loaded from storage.",
+    };
+  }
+
+  return {
+    title: "Preview unavailable",
+    description: "Download output.html to inspect the generated file.",
+  };
+}
+
 export function OutputHtmlPreviewPanel({ outputFile, onClose }: Props) {
   const preview = useOutputHtmlPreview(outputFile.fileId);
   const { mutateAsync: downloadSandboxFile, isPending: isDownloading } = useDownloadSandboxFile();
@@ -85,10 +111,15 @@ export function OutputHtmlPreviewPanel({ outputFile, onClose }: Props) {
         ) : preview.isError ? (
           <div className="flex h-full items-center justify-center p-6 text-center">
             <div className="max-w-sm space-y-2">
-              <p className="text-sm font-medium">Preview unavailable</p>
-              <p className="text-muted-foreground text-xs">
-                Download output.html to inspect the generated file.
-              </p>
+              {(() => {
+                const copy = getPreviewErrorCopy(preview.error);
+                return (
+                  <>
+                    <p className="text-sm font-medium">{copy.title}</p>
+                    <p className="text-muted-foreground text-xs">{copy.description}</p>
+                  </>
+                );
+              })()}
             </div>
           </div>
         ) : (

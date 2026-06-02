@@ -6,6 +6,7 @@ export const OUTPUT_HTML_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
 export type OutputHtmlPreviewErrorCode =
   | "not_found"
   | "invalid_filename"
+  | "invalid_mime"
   | "missing_storage"
   | "too_large";
 
@@ -21,6 +22,7 @@ export class OutputHtmlPreviewError extends Error {
 
 type SandboxFileForPreview = {
   filename: string;
+  mimeType: string | null;
   storageKey: string | null;
   sizeBytes: number | null;
   conversation: {
@@ -51,6 +53,10 @@ export async function loadOutputHtmlPreview(params: {
     throw new OutputHtmlPreviewError("invalid_filename", "File is not previewable");
   }
 
+  if (!isPreviewableHtmlMimeType(file.mimeType)) {
+    throw new OutputHtmlPreviewError("invalid_mime", "File is not a previewable HTML document");
+  }
+
   if (!file.storageKey) {
     throw new OutputHtmlPreviewError("missing_storage", "File not uploaded");
   }
@@ -69,4 +75,12 @@ export async function loadOutputHtmlPreview(params: {
     filename: OUTPUT_HTML_PREVIEW_FILENAME,
     sizeBytes: file.sizeBytes,
   };
+}
+
+function isPreviewableHtmlMimeType(mimeType: string | null): boolean {
+  if (!mimeType) {
+    return false;
+  }
+  const normalized = mimeType.toLowerCase().split(";")[0]?.trim();
+  return normalized === "text/html" || normalized === "application/xhtml+xml";
 }

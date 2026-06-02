@@ -300,6 +300,7 @@ describe("conversationRouter.previewSandboxOutputHtml", () => {
     sandboxFileFindFirstMock.mockResolvedValue({
       id: "file-1",
       filename: "output.html",
+      mimeType: "text/html",
       storageKey: "sandbox-files/conv-1/output.html",
       sizeBytes: 29,
       conversation: {
@@ -325,6 +326,7 @@ describe("conversationRouter.previewSandboxOutputHtml", () => {
     sandboxFileFindFirstMock.mockResolvedValue({
       id: "file-2",
       filename: "output.html",
+      mimeType: "text/html",
       storageKey: "sandbox-files/conv-2/output.html",
       sizeBytes: 29,
       conversation: {
@@ -346,6 +348,7 @@ describe("conversationRouter.previewSandboxOutputHtml", () => {
     sandboxFileFindFirstMock.mockResolvedValue({
       id: "file-3",
       filename: "output.HTML",
+      mimeType: "text/html",
       storageKey: "sandbox-files/conv-1/output.HTML",
       sizeBytes: 29,
       conversation: {
@@ -367,6 +370,7 @@ describe("conversationRouter.previewSandboxOutputHtml", () => {
     sandboxFileFindFirstMock.mockResolvedValue({
       id: "file-4",
       filename: "output.html",
+      mimeType: "text/html",
       storageKey: "sandbox-files/conv-1/output.html",
       sizeBytes: 2 * 1024 * 1024 + 1,
       conversation: {
@@ -382,6 +386,30 @@ describe("conversationRouter.previewSandboxOutputHtml", () => {
       }),
     ).rejects.toMatchObject(
       new ORPCError("BAD_REQUEST", { message: "File is too large to preview" }),
+    );
+    expect(downloadFromS3Mock).not.toHaveBeenCalled();
+  });
+
+  it("rejects output.html files that are not stored as HTML", async () => {
+    sandboxFileFindFirstMock.mockResolvedValue({
+      id: "file-5",
+      filename: "output.html",
+      mimeType: "application/json",
+      storageKey: "sandbox-files/conv-1/output.html",
+      sizeBytes: 29,
+      conversation: {
+        userId: "user-1",
+        workspaceId: "ws-1",
+      },
+    });
+
+    await expect(
+      conversationRouterAny.previewSandboxOutputHtml({
+        input: { fileId: "file-5" },
+        context,
+      }),
+    ).rejects.toMatchObject(
+      new ORPCError("BAD_REQUEST", { message: "File is not a previewable HTML document" }),
     );
     expect(downloadFromS3Mock).not.toHaveBeenCalled();
   });
