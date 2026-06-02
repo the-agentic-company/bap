@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g id="holes-classic">
+    <ellipse cx="89" cy="64" rx="18" ry="9" fill="#2a1712" opacity="0.44"/><ellipse cx="86" cy="61" rx="13" ry="6" fill="#120c0a" opacity="0.36"/>
+    <ellipse cx="128" cy="62" rx="18" ry="9" fill="#2a1712" opacity="0.44"/><ellipse cx="125" cy="59" rx="13" ry="6" fill="#120c0a" opacity="0.36"/>
+    <ellipse cx="167" cy="64" rx="18" ry="9" fill="#2a1712" opacity="0.44"/><ellipse cx="164" cy="61" rx="13" ry="6" fill="#120c0a" opacity="0.36"/>
+  </g>
+  <g id="holes-offset">
+    <ellipse cx="95" cy="66" rx="17" ry="8" fill="#2a1712" opacity="0.44"/><ellipse cx="92" cy="63" rx="12" ry="5" fill="#120c0a" opacity="0.36"/>
+    <ellipse cx="136" cy="60" rx="18" ry="9" fill="#2a1712" opacity="0.44"/><ellipse cx="133" cy="57" rx="13" ry="6" fill="#120c0a" opacity="0.36"/>
+    <ellipse cx="176" cy="66" rx="16" ry="7" fill="#2a1712" opacity="0.44"/><ellipse cx="173" cy="63" rx="11" ry="5" fill="#120c0a" opacity="0.36"/>
+  </g>
+  <g id="holes-stacked">
+    <ellipse cx="90" cy="64" rx="17" ry="8" fill="#2a1712" opacity="0.44"/><ellipse cx="87" cy="61" rx="12" ry="5" fill="#120c0a" opacity="0.36"/>
+    <ellipse cx="128" cy="62" rx="17" ry="8" fill="#2a1712" opacity="0.44"/><ellipse cx="125" cy="59" rx="12" ry="5" fill="#120c0a" opacity="0.36"/>
+    <ellipse cx="166" cy="64" rx="17" ry="8" fill="#2a1712" opacity="0.44"/><ellipse cx="163" cy="61" rx="12" ry="5" fill="#120c0a" opacity="0.36"/>
+  </g>
+  <g id="holes-single">
+    <ellipse cx="128" cy="62" rx="21" ry="11" fill="#2a1712" opacity="0.44"/><ellipse cx="125" cy="59" rx="16" ry="7" fill="#120c0a" opacity="0.36"/>
+  </g>
+  <g id="holes-none"/>
+</svg>

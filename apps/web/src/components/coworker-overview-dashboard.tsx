@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getCoworkerRouteSlug } from "@/lib/coworker-routes";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -271,7 +272,7 @@ function buildColumns(
       cell: ({ row }) =>
         coworkerLinkPrefix ? (
           <Link
-            href={`${coworkerLinkPrefix}${row.original.id}`}
+            href={`${coworkerLinkPrefix}${getCoworkerRouteSlug(row.original)}`}
             className="font-medium underline-offset-2 hover:underline"
           >
             {row.original.name}
@@ -654,7 +655,7 @@ export function CoworkerOverviewDashboard({
                 <StatusDot status="error" />
                 {coworkerLinkPrefix ? (
                   <Link
-                    href={`${coworkerLinkPrefix}${c.id}`}
+                    href={`${coworkerLinkPrefix}${getCoworkerRouteSlug(c)}`}
                     className="font-medium underline-offset-2 hover:underline"
                   >
                     {c.name}

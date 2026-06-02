@@ -1,3 +1,7 @@
 "use client";
 
-export { default } from "../coworker-editor-page";
+import CoworkerEditorPage from "../coworker-editor-page";
+
+export default function CoworkerRunsRoutePage() {
+  return <CoworkerEditorPage />;
+}

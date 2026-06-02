@@ -21,6 +21,12 @@ import {
   useRequestGoogleAccess,
 } from "@/orpc/hooks";
 
+type OAuthIntegrationType = Exclude<IntegrationIconType, "linear">;
+
+function isOAuthIntegrationType(type: string): type is OAuthIntegrationType {
+  return type !== "linear";
+}
+
 // ─── Integration config (shared with toolbox) ────────────────────────────────
 
 const integrationConfig: Record<string, { name: string; description: string; icon: string }> = {
@@ -168,11 +174,15 @@ export default function IntegrationDetailPage() {
     if (isWhatsApp) {
       return;
     }
+    if (!isOAuthIntegrationType(type)) {
+      setConnectError("This integration is connected through Workspace MCP settings.");
+      return;
+    }
     setIsConnecting(true);
     setConnectError(undefined);
     try {
       const result = await getAuthUrl.mutateAsync({
-        type: type as IntegrationIconType,
+        type,
         redirectUrl: window.location.href,
       });
       window.location.assign(result.authUrl);
@@ -193,11 +203,15 @@ export default function IntegrationDetailPage() {
     if (isWhatsApp) {
       return;
     }
+    if (!isOAuthIntegrationType(type)) {
+      setConnectError("This integration is connected through Workspace MCP settings.");
+      return;
+    }
     setIsConnecting(true);
     setConnectError(undefined);
     try {
       const result = await getAuthUrl.mutateAsync({
-        type: type as IntegrationIconType,
+        type,
         redirectUrl: window.location.href,
         mode: "connect",
       });

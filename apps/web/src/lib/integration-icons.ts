@@ -34,6 +34,7 @@ export type IntegrationType =
   | "google_sheets"
   | "google_drive"
   | "notion"
+  | "linear"
   | "github"
   | "airtable"
   | "slack"
@@ -44,7 +45,7 @@ export type IntegrationType =
   | "reddit"
   | "twitter";
 
-type ExecutorDisplayOnlyIntegrationType = "linear";
+type ExecutorDisplayOnlyIntegrationType = never;
 
 export type DisplayIntegrationType =
   | IntegrationType
@@ -61,6 +62,7 @@ export const ALL_INTEGRATION_TYPES: IntegrationType[] = [
   "google_sheets",
   "google_drive",
   "notion",
+  "linear",
   "github",
   "airtable",
   "slack",
@@ -94,6 +96,7 @@ const INTEGRATION_ICONS: Record<IntegrationType, LucideIcon> = {
   google_sheets: Table2,
   google_drive: HardDrive,
   notion: BookOpen,
+  linear: TicketCheck,
   github: Github,
   airtable: Grid3X3,
   slack: MessageSquare,
@@ -114,6 +117,7 @@ export const INTEGRATION_DISPLAY_NAMES: Record<IntegrationType, string> = {
   google_sheets: "Google Sheets",
   google_drive: "Google Drive",
   notion: "Notion",
+  linear: "Linear",
   github: "GitHub",
   airtable: "Airtable",
   slack: "Slack",
@@ -134,6 +138,7 @@ const INTEGRATION_COLORS: Record<IntegrationType, string> = {
   google_sheets: "text-green-500",
   google_drive: "text-yellow-500",
   notion: "text-gray-800 dark:text-gray-200",
+  linear: "text-[#5E6AD2]",
   github: "text-gray-900 dark:text-gray-100",
   airtable: "text-blue-400",
   slack: "text-[#4A154B]",
@@ -154,6 +159,7 @@ export const INTEGRATION_LOGOS: Record<IntegrationType, string> = {
   google_sheets: "/integrations/google-sheets.svg",
   google_drive: "/integrations/google-drive.svg",
   notion: "/integrations/notion.svg",
+  linear: "/integrations/linear.svg",
   github: "/integrations/github.svg",
   airtable: "/integrations/airtable.svg",
   slack: "/integrations/slack.svg",
@@ -167,6 +173,14 @@ export const INTEGRATION_LOGOS: Record<IntegrationType, string> = {
 
 // Human-readable descriptions for integration operations
 export const INTEGRATION_OPERATION_LABELS: Record<IntegrationType, Record<string, string>> = {
+  linear: {
+    list: "Listing issues",
+    get: "Getting issue",
+    teams: "Listing teams",
+    mine: "Getting my issues",
+    create: "Creating issue",
+    update: "Updating issue",
+  },
   slack: {
     channels: "Listing channels",
     history: "Reading messages",
@@ -377,21 +391,18 @@ export const INTEGRATION_OPERATION_LABELS: Record<IntegrationType, Record<string
 
 const DISPLAY_INTEGRATION_ICONS: Record<DisplayIntegrationType, LucideIcon> = {
   ...INTEGRATION_ICONS,
-  linear: TicketCheck,
   coworker: Bot,
   "agent-browser": Globe,
 };
 
 const DISPLAY_INTEGRATION_NAMES: Record<DisplayIntegrationType, string> = {
   ...INTEGRATION_DISPLAY_NAMES,
-  linear: "Linear",
   coworker: "Coworker",
   "agent-browser": "Browser",
 };
 
 const DISPLAY_INTEGRATION_LOGOS: Partial<Record<DisplayIntegrationType, string>> = {
   ...INTEGRATION_LOGOS,
-  linear: "/integrations/linear.svg",
   coworker: "/tools/lobster.svg",
   "agent-browser": "/tools/browser.svg",
 };
@@ -400,14 +411,6 @@ const DISPLAY_INTEGRATION_OPERATION_LABELS: Partial<
   Record<DisplayIntegrationType, Record<string, string>>
 > = {
   ...INTEGRATION_OPERATION_LABELS,
-  linear: {
-    list: "Listing issues",
-    get: "Getting issue",
-    teams: "Listing teams",
-    mine: "Getting my issues",
-    create: "Creating issue",
-    update: "Updating issue",
-  },
   coworker: {
     list: "Listing coworkers",
     invoke: "Invoking coworker",

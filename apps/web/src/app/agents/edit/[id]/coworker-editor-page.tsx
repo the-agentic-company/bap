@@ -86,6 +86,7 @@ import { AnimatedTabs, AnimatedTab } from "@/components/ui/tabs";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { normalizeChatModelSelection } from "@/lib/chat-model-selection";
+import { getCoworkerRouteSlug } from "@/lib/coworker-routes";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import {
@@ -107,6 +108,7 @@ import {
   useGetCoworkerDocumentUrl,
   useRotateCoworkerForwardingAlias,
   useCoworker,
+  useCoworkerList,
   useCoworkerImpersonationTarget,
   useCoworkerForwardingAlias,
   useUpdateCoworker,
@@ -299,6 +301,9 @@ function inferUploadMimeType(file: File): string {
   if (normalizedName.endsWith(".csv")) {
     return "text/csv";
   }
+  if (normalizedName.endsWith(".html") || normalizedName.endsWith(".htm")) {
+    return "text/html";
+  }
   if (normalizedName.endsWith(".txt") || normalizedName.endsWith(".md")) {
     return "text/plain";
   }
@@ -448,7 +453,23 @@ export default function CoworkerEditorPage({
   embedded = false,
 }: CoworkerEditorPageProps = {}) {
   const params = useParams<{ id: string }>();
-  const coworkerId = coworkerIdOverride ?? params?.id;
+  const routeCoworkerSlug = params?.id;
+  const coworkerList = useCoworkerList();
+  const coworkerListItem = useMemo(
+    () =>
+      coworkerIdOverride
+        ? null
+        : (coworkerList.data?.find(
+            (item) => item.username === routeCoworkerSlug || item.id === routeCoworkerSlug,
+          ) ?? null),
+    [coworkerIdOverride, coworkerList.data, routeCoworkerSlug],
+  );
+  const coworkerId = coworkerIdOverride ?? coworkerListItem?.id;
+  const coworkerRouteSlug = coworkerIdOverride
+    ? coworkerIdOverride
+    : coworkerListItem
+      ? getCoworkerRouteSlug(coworkerListItem)
+      : routeCoworkerSlug;
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -526,16 +547,17 @@ export default function CoworkerEditorPage({
       return null;
     }
 
-    const prefix = `/agents/edit/${coworkerId}/runs/`;
+    const prefix = `/agents/edit/${routeCoworkerSlug}/runs/`;
     if (!pathname.startsWith(prefix)) {
       return null;
     }
 
     const runId = pathname.slice(prefix.length);
     return runId.length > 0 ? runId : null;
-  }, [coworkerId, embedded, pathname]);
+  }, [coworkerId, embedded, pathname, routeCoworkerSlug]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(routeRunId);
-  const isRunsRoute = !embedded && (pathname?.startsWith(`/agents/edit/${coworkerId}/runs`) ?? false);
+  const isRunsRoute =
+    !embedded && (pathname?.startsWith(`/agents/edit/${routeCoworkerSlug}/runs`) ?? false);
   const baseTabParam = searchParams.get("tab");
   const routeBaseTab: CoworkerTab | null =
     baseTabParam === "chat" ||
@@ -550,8 +572,10 @@ export default function CoworkerEditorPage({
       return `/agents?agent=${encodeURIComponent(coworkerId)}`;
     }
     const query = searchParams.toString();
-    return query && pathname ? `${pathname}?${query}` : (pathname ?? `/agents/edit/${coworkerId}`);
-  }, [coworkerId, embedded, pathname, searchParams]);
+    return query && pathname
+      ? `${pathname}?${query}`
+      : (pathname ?? `/agents/edit/${coworkerRouteSlug}`);
+  }, [coworkerId, coworkerRouteSlug, embedded, pathname, searchParams]);
   const shouldLoadCoworkerImpersonationTarget = Boolean(
     coworkerId && !routeRunId && !isLoading && !coworker,
   );
@@ -1642,12 +1666,12 @@ export default function CoworkerEditorPage({
       }
 
       if (!tab || tab === "instruction") {
-        return `/agents/edit/${coworkerId}`;
+        return `/agents/edit/${coworkerRouteSlug}`;
       }
 
-      return `/agents/edit/${coworkerId}?tab=${tab}`;
+      return `/agents/edit/${coworkerRouteSlug}?tab=${tab}`;
     },
-    [coworkerId, embedded],
+    [coworkerId, coworkerRouteSlug, embedded],
   );
 
   const buildCoworkerPanelHref = useCallback(
@@ -1665,12 +1689,12 @@ export default function CoworkerEditorPage({
       }
 
       if (options?.runId) {
-        return `/agents/edit/${coworkerId}/runs/${options.runId}`;
+        return `/agents/edit/${coworkerRouteSlug}/runs/${options.runId}`;
       }
 
-      return `/agents/edit/${coworkerId}/runs`;
+      return `/agents/edit/${coworkerRouteSlug}/runs`;
     },
-    [coworkerId, embedded],
+    [coworkerId, coworkerRouteSlug, embedded],
   );
 
   const handleRunClick = useCallback(
@@ -1888,6 +1912,7 @@ export default function CoworkerEditorPage({
     () => (
       <CoworkerSettingsPanel
         coworkerId={coworkerId}
+        coworkerRouteSlug={coworkerRouteSlug}
         name={name}
         description={description}
         username={username}
@@ -2065,11 +2090,13 @@ export default function CoworkerEditorPage({
       deleteCoworker.isPending,
       isAdmin,
       adminPanel,
+      coworkerRouteSlug,
     ],
   );
 
   if (
     isLoading ||
+    (!coworkerId && coworkerList.isLoading) ||
     (shouldLoadCoworkerImpersonationTarget && isCoworkerImpersonationTargetLoading) ||
     (shouldLoadRunImpersonationTarget && isRunImpersonationTargetLoading)
   ) {
@@ -2154,6 +2181,8 @@ export default function CoworkerEditorPage({
             chatPanel
           ) : (
             <CoworkerSettingsPanel
+              coworkerId={coworkerId}
+              coworkerRouteSlug={coworkerRouteSlug}
               name={name}
               description={description}
               username={username}
@@ -2338,10 +2367,12 @@ export default function CoworkerEditorPage({
 function InlineRunViewer({
   runId,
   coworkerId,
+  coworkerRouteSlug,
   onBack,
 }: {
   runId: string;
   coworkerId?: string;
+  coworkerRouteSlug?: string;
   onBack: () => void;
 }) {
   const { data: run, isLoading } = useCoworkerRun(runId);
@@ -2365,7 +2396,9 @@ function InlineRunViewer({
         <ImpersonationRequiredPage
           target={impersonationTarget}
           redirectPath={
-            coworkerId ? `/agents/edit/${coworkerId}/runs/${runId}` : `/agents/runs/${runId}`
+            coworkerRouteSlug
+              ? `/agents/edit/${coworkerRouteSlug}/runs/${runId}`
+              : `/agents/runs/${runId}`
           }
           onBack={onBack}
         />
@@ -2694,6 +2727,7 @@ function RemoteIntegrationAdminPanel({
 
 type CoworkerSettingsPanelProps = {
   coworkerId?: string;
+  coworkerRouteSlug?: string;
   name: string;
   description: string;
   username: string;
@@ -2808,6 +2842,7 @@ type CoworkerSettingsPanelProps = {
 
 function CoworkerSettingsPanel({
   coworkerId,
+  coworkerRouteSlug,
   name,
   description,
   username,
@@ -3647,6 +3682,7 @@ function CoworkerSettingsPanel({
                 <InlineRunViewer
                   runId={selectedRunId}
                   coworkerId={coworkerId}
+                  coworkerRouteSlug={coworkerRouteSlug}
                   onBack={onBackToRuns}
                 />
               </motion.div>

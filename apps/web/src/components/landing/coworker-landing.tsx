@@ -33,6 +33,7 @@ import {
 } from "@/components/landing/pending-coworker-prompt";
 import { TeamShowcaseSection } from "@/components/landing/team-showcase";
 import { TemplatePreviewModal } from "@/components/template-preview-modal";
+import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { Button } from "@/components/ui/button";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -468,7 +469,7 @@ export function CoworkerLanding({
           }
         }
 
-        window.location.href = `/agents/edit/${result.id}`;
+        window.location.href = getCoworkerEditHref(result);
       } catch {
         return false;
       }

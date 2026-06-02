@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import {
   COWORKER_AVAILABLE_INTEGRATION_TYPES,
@@ -112,6 +113,11 @@ function getRunStatusColor(status: string) {
     return "text-red-500";
   }
   return "text-muted-foreground";
+}
+
+function getCoworkerInfoPath(coworker: Pick<InteractiveCoworkerCardData, "id" | "username">) {
+  const slug = coworker.username?.trim() || coworker.id;
+  return `/agents/info/${encodeURIComponent(slug)}`;
 }
 
 function buildToolSummary(
@@ -225,9 +231,9 @@ export function InteractiveCoworkerCard({
     if (onClick) {
       onClick();
     } else {
-      router.push(`/agents/edit/${coworker.id}`);
+      router.push(getCoworkerInfoPath(coworker));
     }
-  }, [onClick, router, coworker.id]);
+  }, [onClick, router, coworker]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -599,7 +605,7 @@ export function InteractiveCoworkerCard({
       </span>
       <div className="flex items-center gap-0.5">
         <Link
-          href={`/agents/edit/${coworker.id}`}
+          href={getCoworkerEditHref(coworker)}
           onClick={handleStopPropagation}
           className="text-muted-foreground/30 hover:text-foreground group-hover:text-muted-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors"
           title="Edit coworker"

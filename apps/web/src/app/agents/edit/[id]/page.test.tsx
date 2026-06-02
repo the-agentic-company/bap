@@ -351,6 +351,10 @@ vi.mock("@/orpc/hooks", () => ({
     isLoading: false,
     refetch: mockCoworkerRefetch,
   }),
+  useCoworkerList: () => ({
+    data: [mockCoworkerData.current],
+    isLoading: false,
+  }),
   useCoworkerImpersonationTarget: () => ({ data: null, isLoading: false }),
   useCoworkerForwardingAlias: () => ({ data: null }),
   useUpdateCoworker: () => ({ mutateAsync: mockUpdateCoworkerMutateAsync }),
@@ -534,7 +538,7 @@ describe("CoworkerEditorPage", () => {
     expect(replaceStateSpy).toHaveBeenCalledWith(
       window.history.state,
       "",
-      "/agents/edit/cw-1/runs/run-1",
+      "/agents/edit/existing-user/runs/run-1",
     );
   });
 
@@ -555,7 +559,11 @@ describe("CoworkerEditorPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /completed/i }));
 
     expect(mockRouterPush).not.toHaveBeenCalled();
-    expect(pushStateSpy).toHaveBeenCalledWith(window.history.state, "", "/agents/edit/cw-1/runs/run-1");
+    expect(pushStateSpy).toHaveBeenCalledWith(
+      window.history.state,
+      "",
+      "/agents/edit/existing-user/runs/run-1",
+    );
     expect(screen.getByText("Run not found.")).toBeInTheDocument();
   });
 
@@ -872,7 +880,11 @@ describe("CoworkerEditorPage", () => {
 
     expect(mockRouterPush).not.toHaveBeenCalled();
     expect(mockRouterReplace).not.toHaveBeenCalled();
-    expect(replaceStateSpy).toHaveBeenCalledWith(window.history.state, "", "/agents/edit/cw-1?tab=docs");
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      window.history.state,
+      "",
+      "/agents/edit/existing-user?tab=docs",
+    );
     expect(screen.getByText("Chat")).toBeInTheDocument();
   });
 

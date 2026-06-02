@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useIsAdmin } from "@/hooks/use-is-admin";
+import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { useCoworkerRun } from "@/orpc/hooks";
 
 export default function CoworkerRunLayout({ children }: { children: React.ReactNode }) {
@@ -68,7 +69,10 @@ export default function CoworkerRunLayout({ children }: { children: React.ReactN
           </DropdownMenu>
           {run?.coworkerId && (
             <Link
-              href={`/agents/edit/${run.coworkerId}`}
+              href={getCoworkerEditHref({
+                id: run.coworkerId,
+                username: run.coworkerUsername,
+              })}
               className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors"
               title="Open in Builder"
             >

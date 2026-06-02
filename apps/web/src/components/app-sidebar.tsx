@@ -17,6 +17,7 @@ import {
   Settings,
   Shield,
   Toolbox,
+  User,
   UserCog,
   WandSparkles,
 } from "lucide-react";
@@ -41,6 +42,8 @@ import { openNewChat } from "@/lib/open-new-chat";
 import { cn } from "@/lib/utils";
 
 type SessionData = Awaited<ReturnType<typeof authClient.getSession>>["data"];
+type SidebarMode = "user" | "admin";
+const SIDEBAR_MODE_STORAGE_KEY = "cmdclaw.sidebarMode";
 
 type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
@@ -130,10 +133,86 @@ function NavDivider() {
   return <div className="bg-sidebar-border my-1 h-px w-8" />;
 }
 
+function SidebarModeToggle({
+  mode,
+  onModeChange,
+}: {
+  mode: SidebarMode;
+  onModeChange: (mode: SidebarMode) => void;
+}) {
+  return (
+    <div
+      className="border-sidebar-border bg-sidebar-accent/55 flex flex-col gap-1 rounded-xl border p-1"
+      role="group"
+      aria-label="Sidebar view"
+    >
+      <SidebarModeToggleButton
+        currentMode={mode}
+        icon={User}
+        label="User view"
+        mode="user"
+        onModeChange={onModeChange}
+      />
+      <SidebarModeToggleButton
+        currentMode={mode}
+        icon={Shield}
+        label="Admin view"
+        mode="admin"
+        onModeChange={onModeChange}
+      />
+    </div>
+  );
+}
+
+function SidebarModeToggleButton({
+  currentMode,
+  icon: Icon,
+  label,
+  mode,
+  onModeChange,
+}: {
+  currentMode: SidebarMode;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  mode: SidebarMode;
+  onModeChange: (mode: SidebarMode) => void;
+}) {
+  const active = currentMode === mode;
+  const handleClick = useCallback(() => {
+    onModeChange(mode);
+  }, [mode, onModeChange]);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-label={label}
+          aria-pressed={active}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+            "focus-visible:ring-sidebar-ring/45 focus-visible:ring-3 focus-visible:outline-none",
+            active
+              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+              : "text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right" sideOffset={10}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [session, setSession] = useState<SessionData>(null);
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("admin");
   const [reportOpen, setReportOpen] = useState(false);
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
 
@@ -158,6 +237,17 @@ export function AppSidebar() {
     };
   }, []);
 
+  useEffect(() => {
+    try {
+      const savedMode = window.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY);
+      if (savedMode === "user" || savedMode === "admin") {
+        setSidebarMode(savedMode);
+      }
+    } catch {
+      setSidebarMode("admin");
+    }
+  }, []);
+
   const handleSignOut = useCallback(async () => {
     const { error } = await authClient.signOut();
     if (!error) {
@@ -178,17 +268,44 @@ export function AppSidebar() {
     }
   }, []);
 
-  const openReportDialog = useCallback(() => {
-    setReportOpen(true);
+  const enterAdminMode = useCallback(() => {
+    setSidebarMode("admin");
+    try {
+      window.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, "admin");
+    } catch {
+      // Ignore storage failures; the in-memory view mode still updates.
+    }
   }, []);
 
-  const enterAdminMode = useCallback(() => {
+  const openAdminRoute = useCallback(() => {
     router.push("/admin");
   }, [router]);
 
-  const exitAdminMode = useCallback(() => {
-    router.push("/");
+  const enterUserMode = useCallback(() => {
+    setSidebarMode("user");
+    try {
+      window.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, "user");
+    } catch {
+      // Ignore storage failures; the in-memory view mode still updates.
+    }
+    router.push("/inbox");
   }, [router]);
+
+  const handleSidebarModeChange = useCallback(
+    (mode: SidebarMode) => {
+      if (mode === "admin") {
+        enterAdminMode();
+        return;
+      }
+
+      enterUserMode();
+    },
+    [enterAdminMode, enterUserMode],
+  );
+
+  const openReportDialog = useCallback(() => {
+    setReportOpen(true);
+  }, []);
 
   const handleChatNavClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -212,6 +329,7 @@ export function AppSidebar() {
   const avatarInitial = userEmail ? userEmail.charAt(0).toUpperCase() : "";
   const isAdmin = session?.user?.role === "admin";
   const isAdminRoute = pathname?.startsWith("/admin") || pathname?.startsWith("/instance");
+  const activeSidebarMode: SidebarMode = !isAdmin || isAdminRoute ? "admin" : sidebarMode;
   const impersonatedBy = (
     session as (SessionData & { session?: { impersonatedBy?: string | null } }) | null
   )?.session?.impersonatedBy;
@@ -222,12 +340,19 @@ export function AppSidebar() {
     { icon: LayoutTemplate, label: "Templates", href: "/templates" },
   ];
 
-  const coworkerNavItems: NavItem[] = [
+  const appNavItems: NavItem[] = [
     ...(isAdmin ? [{ icon: Inbox, label: "Inbox", href: "/inbox" }] : []),
     { icon: MessageSquare, label: "Chat", href: "/chat", onClick: handleChatNavClick },
     { icon: BrickIcon, label: "Agents", href: "/agents" },
     { icon: Toolbox, label: "Toolbox", href: "/toolbox" },
   ];
+
+  const userNavItems: NavItem[] = isAdmin
+    ? [
+        { icon: Inbox, label: "Inbox", href: "/inbox" },
+        { icon: BrickIcon, label: "Agents", href: "/agents" },
+      ]
+    : [];
 
   const adminUsersItems: NavItem[] = [
     { icon: UserCog, label: "User", href: "/admin" },
@@ -281,7 +406,15 @@ export function AppSidebar() {
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 pb-4">
-          {!isAdminRoute ? (
+          {activeSidebarMode === "user" ? (
+            <>
+              <NavGroup>
+                {userNavItems.map((item) => (
+                  <NavLink key={item.href} item={item} active={isActive(item.href)} />
+                ))}
+              </NavGroup>
+            </>
+          ) : !isAdminRoute ? (
             <>
               <NavGroup>
                 {mainNavItems.map((item) => (
@@ -290,7 +423,7 @@ export function AppSidebar() {
               </NavGroup>
               <NavDivider />
               <NavGroup>
-                {coworkerNavItems.map((item) => (
+                {appNavItems.map((item) => (
                   <NavLink key={item.href} item={item} active={isActive(item.href)} />
                 ))}
               </NavGroup>
@@ -298,7 +431,7 @@ export function AppSidebar() {
               <NavGroup>
                 <NavButton icon={Bug} label="Bug report" onClick={openReportDialog} />
                 {isAdmin ? (
-                  <NavButton icon={Shield} label="Admin" onClick={enterAdminMode} />
+                  <NavButton icon={Shield} label="Admin" onClick={openAdminRoute} />
                 ) : null}
               </NavGroup>
             </>
@@ -329,7 +462,7 @@ export function AppSidebar() {
               </NavGroup>
               <NavDivider />
               <NavGroup>
-                <NavButton icon={ArrowLeft} label="Exit Admin" onClick={exitAdminMode} />
+                <NavButton icon={ArrowLeft} label="Exit Admin" onClick={enterUserMode} />
               </NavGroup>
             </>
           ) : (
@@ -343,30 +476,33 @@ export function AppSidebar() {
               ) : null}
               <NavDivider />
               <NavGroup>
-                <NavButton icon={ArrowLeft} label="Exit Admin" onClick={exitAdminMode} />
+                <NavButton icon={ArrowLeft} label="Exit Admin" onClick={enterUserMode} />
               </NavGroup>
             </>
           )}
         </nav>
 
-        <div className="flex items-center justify-center px-2 pb-3">
+        <div className="flex flex-col items-center gap-2 px-2 pb-3">
+          {isAdmin ? (
+            <SidebarModeToggle mode={activeSidebarMode} onModeChange={handleSidebarModeChange} />
+          ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="border-sidebar-border bg-sidebar-accent/80 hover:bg-sidebar-accent focus-visible:ring-sidebar-ring/45 flex h-10 w-10 items-center justify-center rounded-lg border text-[13px] transition-colors focus-visible:ring-3 focus-visible:outline-none"
+                className="border-sidebar-border bg-sidebar-accent/80 hover:bg-sidebar-accent focus-visible:ring-sidebar-ring/45 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border text-[13px] transition-colors focus-visible:ring-3 focus-visible:outline-none"
                 title={userEmail || "Account"}
               >
                 {session?.user?.image ? (
                   <Image
                     src={session.user.image}
                     alt=""
-                    width={22}
-                    height={22}
-                    className="h-[22px] w-[22px] shrink-0 rounded-full object-cover"
+                    width={40}
+                    height={40}
+                    className="h-full w-full shrink-0 rounded-[inherit] object-cover"
                   />
                 ) : (
-                  <span className="bg-sidebar-primary text-sidebar-primary-foreground flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[11px] font-semibold">
+                  <span className="bg-sidebar-primary text-sidebar-primary-foreground flex h-full w-full shrink-0 items-center justify-center rounded-[inherit] text-base font-semibold">
                     {avatarInitial}
                   </span>
                 )}

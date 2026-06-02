@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g id="texture-none"/>
+  <g id="texture-subtle" opacity="0.12">
+    <path d="M59 116l16 -5M184 122l14 -8M75 144l20 -7M142 162l22 -7" stroke="#19212b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M98 102l7 1M164 101l8 1M117 176l6 1M124 141l6 1" stroke="#fff8ef" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g id="texture-weathered" opacity="0.22">
+    <path d="M59 116l16 -5M184 122l14 -8M75 144l20 -7M142 162l22 -7M60 151l28 -10M178 170l31 -12" stroke="#19212b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M98 102l7 1M164 101l8 1M117 176l6 1M124 141l6 1M73 126l8 1" stroke="#fff8ef" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g id="texture-rough" opacity="0.34">
+    <path d="M59 116l16 -5M184 122l14 -8M75 144l20 -7M142 162l22 -7M60 151l28 -10M178 170l31 -12M87 97l22 -7M133 111l24 -8" stroke="#19212b" stroke-width="4" stroke-linecap="round"/>
+    <path d="M98 102l7 1M164 101l8 1M117 176l6 1M124 141l6 1M73 126l8 1M161 145l10 1" stroke="#fff8ef" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

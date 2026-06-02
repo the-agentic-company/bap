@@ -82,7 +82,7 @@ type FilterTab = "all" | "active" | "needs_setup";
 
 type IntegrationType = IntegrationIconType | "whatsapp";
 
-type OAuthIntegrationType = IntegrationIconType;
+type OAuthIntegrationType = Exclude<IntegrationIconType, "linear">;
 
 type GoogleIntegrationType =
   | "google_gmail"

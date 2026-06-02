@@ -33,6 +33,7 @@ import type { IntegrationType } from "@/lib/integration-icons";
 import { ModelSelector } from "@/components/chat/model-selector";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { getCoworkerDisplayName } from "@/components/coworkers/coworker-card-content";
+import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { InteractiveCoworkerCard } from "@/components/coworkers/interactive-coworker-card";
 import { ViewTabs } from "@/components/coworkers/view-tabs";
 // Commented out — prompt bar removed from coworkers page
@@ -500,7 +501,7 @@ export default function CoworkersPage() {
       try {
         const created = await importSharedCoworker.mutateAsync(sourceCoworkerId);
         toast.success("Coworker imported.");
-        router.push(`/agents/edit/${created.id}`);
+        router.push(getCoworkerEditHref(created));
       } catch (error) {
         console.error("Failed to import coworker:", error);
         toast.error("Failed to import coworker.");
@@ -533,7 +534,7 @@ export default function CoworkersPage() {
         const definitionJson = await file.text();
         const created = await importCoworkerDefinition.mutateAsync(definitionJson);
         toast.success("Coworker imported in the off state.");
-        router.push(`/agents/edit/${created.id}`);
+        router.push(getCoworkerEditHref(created));
       } catch (error) {
         console.error("Failed to import coworker definition:", error);
         toast.error("Failed to import coworker.");
@@ -681,7 +682,7 @@ export default function CoworkersPage() {
         }
       }
 
-      window.location.assign(`/agents/edit/${result.id}`);
+      window.location.assign(getCoworkerEditHref(result));
     },
     [createCoworker, model, modelAuthSource],
   );

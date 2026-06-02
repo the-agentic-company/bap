@@ -13,9 +13,30 @@ const nextBuildCpus = Math.min(
   ),
 );
 
+type WebpackRule = {
+  resourceQuery?: unknown;
+  test?: {
+    test?: (value: string) => boolean;
+  };
+};
+
 const nextConfig: NextConfig = {
   /* config options here */
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  webpack(config) {
+    const rules = config.module.rules as WebpackRule[];
+    const svgAssetRule = rules.find((rule) => rule.test?.test?.(".svg"));
+    if (svgAssetRule) {
+      svgAssetRule.resourceQuery = { not: [/raw/] };
+    }
+
+    config.module.rules.unshift({
+      test: /\.svg$/i,
+      resourceQuery: /raw/,
+      type: "asset/source",
+    });
+    return config;
+  },
   reactCompiler: true,
   experimental: {
     // Render builders can expose a large CPU count, which makes Next fan out enough

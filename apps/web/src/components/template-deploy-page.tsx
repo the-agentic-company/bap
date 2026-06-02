@@ -4,6 +4,7 @@ import type { TemplateCatalogTemplate } from "@cmdclaw/db/template-catalog";
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@cmdclaw/core/lib/chat-model-defaults";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@/lib/integration-icons";
 import { buildTemplateDeployPayload } from "@/lib/template-deploy";
@@ -67,7 +68,7 @@ export function TemplateDeployPage({ template }: { template: TemplateCatalogTemp
           return;
         }
 
-        window.location.assign(`/agents/edit/${result.id}`);
+        window.location.assign(getCoworkerEditHref(result));
       } catch (deployError) {
         console.error("Failed to deploy coworker from template:", deployError);
         if (cancelled) {

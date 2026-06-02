@@ -9,6 +9,7 @@ import { useCoworkerList } from "@/orpc/hooks";
 type CoworkerItem = {
   id: string;
   name?: string | null;
+  username?: string | null;
   status: "on" | "off";
   triggerType: string;
   recentRuns?: {
@@ -61,13 +62,18 @@ function getCoworkerDisplayName(name?: string | null) {
   return trimmed && trimmed.length > 0 ? trimmed : "New Coworker";
 }
 
+function getCoworkerInfoPath(coworker: Pick<CoworkerItem, "id" | "username">) {
+  const slug = coworker.username?.trim() || coworker.id;
+  return `/agents/info/${encodeURIComponent(slug)}`;
+}
+
 function CoworkerCard({ coworker }: { coworker: CoworkerItem }) {
   const isOn = coworker.status === "on";
   const recentRun = Array.isArray(coworker.recentRuns) ? coworker.recentRuns[0] : null;
 
   return (
     <Link
-      href={`/agents/edit/${coworker.id}`}
+      href={getCoworkerInfoPath(coworker)}
       className="border-border/40 bg-card hover:border-border hover:bg-muted/30 group flex flex-col gap-3 rounded-xl border p-4 shadow-sm transition-all duration-150"
     >
       <div className="flex items-start justify-between gap-2">

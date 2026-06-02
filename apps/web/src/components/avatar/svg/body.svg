@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <g id="body-classic">
+    <path d="M57 88C97 57 185 62 232 79C240 85 239 98 214 108C178 86 97 83 57 88Z" fill="var(--brick-top, #ff7c5e)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M214 107C238 98 238 99 237 117L234 184C233 195 216 201 185 196C199 189 215 180 216 165Z" fill="var(--brick-side, #c5341e)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M54 87C57 78 67 73 81 74C115 66 173 69 199 78C211 81 219 92 219 107L217 180C213 194 202 199 186 198L72 198C56 198 48 188 49 172L49 111C48 100 49 92 54 87Z" fill="var(--brick-front, #f05a3c)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M65 99C103 82 178 82 205 94" fill="none" stroke="var(--brick-highlight, #fff8ef)" stroke-width="9" stroke-linecap="round" opacity="0.18"/>
+    <path d="M65 173C105 190 158 189 203 171" fill="none" stroke="var(--brick-side, #c5341e)" stroke-width="10" stroke-linecap="round" opacity="0.2"/>
+  </g>
+  <g id="body-wide">
+    <path d="M42 94C89 62 196 65 238 84C248 90 247 104 222 113C178 91 89 88 42 94Z" fill="var(--brick-top, #ff7c5e)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M222 112C247 103 247 104 246 121L243 178C242 190 224 197 191 192C207 185 222 176 224 162Z" fill="var(--brick-side, #c5341e)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M39 94C44 82 56 77 73 79C115 70 188 73 207 83C219 88 227 98 227 112L225 172C222 187 209 193 190 192L58 192C43 192 34 182 35 167L35 119C34 108 34 100 39 94Z" fill="var(--brick-front, #f05a3c)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M54 107C100 89 188 90 211 100" fill="none" stroke="var(--brick-highlight, #fff8ef)" stroke-width="9" stroke-linecap="round" opacity="0.18"/>
+    <path d="M56 166C104 181 165 181 209 164" fill="none" stroke="var(--brick-side, #c5341e)" stroke-width="10" stroke-linecap="round" opacity="0.2"/>
+  </g>
+  <g id="body-tall">
+    <path d="M66 77C103 48 177 52 225 70C232 76 231 90 206 100C171 79 104 75 66 77Z" fill="var(--brick-top, #ff7c5e)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M206 99C231 89 231 91 230 110L226 197C225 209 207 215 179 209C194 201 207 191 208 176Z" fill="var(--brick-side, #c5341e)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M63 77C66 67 77 62 91 64C124 56 163 58 191 68C203 72 211 84 211 99L209 193C205 207 194 213 178 212L82 212C66 212 57 202 58 185L58 100C57 90 58 82 63 77Z" fill="var(--brick-front, #f05a3c)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M75 90C106 74 164 75 195 85" fill="none" stroke="var(--brick-highlight, #fff8ef)" stroke-width="9" stroke-linecap="round" opacity="0.18"/>
+    <path d="M76 184C108 199 151 200 194 181" fill="none" stroke="var(--brick-side, #c5341e)" stroke-width="10" stroke-linecap="round" opacity="0.2"/>
+  </g>
+  <g id="body-rounded">
+    <path d="M58 90C100 60 183 63 229 79C238 85 238 97 214 107C180 88 98 84 58 90Z" fill="var(--brick-top, #ff7c5e)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M214 106C238 96 238 98 237 117L234 183C233 194 217 201 185 196C201 188 214 179 216 164Z" fill="var(--brick-side, #c5341e)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M55 90C61 78 72 75 85 76C119 68 174 70 199 78C213 83 220 94 220 109L218 177C217 193 204 200 186 199L73 199C55 199 48 189 49 171L49 114C49 101 50 94 55 90Z" fill="var(--brick-front, #f05a3c)" stroke="var(--brick-stroke, #27303a)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M66 101C103 84 177 84 204 95" fill="none" stroke="var(--brick-highlight, #fff8ef)" stroke-width="9" stroke-linecap="round" opacity="0.18"/>
+    <path d="M66 173C105 190 158 190 202 172" fill="none" stroke="var(--brick-side, #c5341e)" stroke-width="10" stroke-linecap="round" opacity="0.2"/>
+  </g>
+</svg>

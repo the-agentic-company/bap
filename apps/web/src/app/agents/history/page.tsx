@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { INTEGRATION_DISPLAY_NAMES, INTEGRATION_LOGOS } from "@/lib/integration-icons";
 import { cn } from "@/lib/utils";
 import { type CoworkerHistoryEntry, useCoworkerHistory } from "@/orpc/hooks";
@@ -190,7 +191,7 @@ function HistoryCard({ entry, isLast }: { entry: CoworkerHistoryEntry; isLast: b
         <div className="flex flex-wrap items-center gap-2">
           <CoworkerAvatar username={entry.coworker.username} size={24} className="rounded-md" />
           <Link
-            href={`/agents/edit/${entry.coworker.id}`}
+            href={getCoworkerEditHref(entry.coworker)}
             className="group/name flex items-center gap-1 text-sm font-medium hover:underline"
           >
             {entry.coworker.name}
@@ -201,7 +202,7 @@ function HistoryCard({ entry, isLast }: { entry: CoworkerHistoryEntry; isLast: b
           </span>
           <div className="ml-auto flex items-center gap-2">
             <Link
-              href={`/agents/edit/${entry.coworker.id}`}
+              href={getCoworkerEditHref(entry.coworker)}
               className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px] font-medium transition-colors"
             >
               View in editor

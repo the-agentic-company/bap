@@ -9,6 +9,7 @@ import {
   getPendingCoworkerGenerationContent,
   readPendingCoworkerPrompt,
 } from "@/components/landing/pending-coworker-prompt";
+import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@/lib/integration-icons";
 import { client } from "@/orpc/client";
@@ -68,7 +69,7 @@ export default function NewCoworkerPage() {
         }
 
         clearPendingCoworkerPrompt();
-        window.location.assign(`/agents/edit/${result.id}`);
+        window.location.assign(getCoworkerEditHref(result));
       } catch (error) {
         console.error("Failed to resume coworker builder creation:", error);
         clearPendingCoworkerPrompt();

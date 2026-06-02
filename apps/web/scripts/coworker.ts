@@ -313,6 +313,9 @@ function inferMimeType(filePath: string): string {
       return "application/pdf";
     case ".json":
       return "application/json";
+    case ".html":
+    case ".htm":
+      return "text/html";
     case ".csv":
       return "text/csv";
     case ".txt":

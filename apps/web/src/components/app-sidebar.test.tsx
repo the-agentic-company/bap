@@ -1,0 +1,168 @@
+// @vitest-environment jsdom
+
+import * as jestDomVitest from "@testing-library/jest-dom/vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type React from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppSidebar } from "./app-sidebar";
+
+void jestDomVitest;
+
+const mocks = vi.hoisted(() => ({
+  pathname: "/inbox",
+  push: vi.fn(),
+  getSession: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => mocks.pathname,
+  useRouter: () => ({
+    push: mocks.push,
+  }),
+}));
+
+vi.mock("next/image", () => ({
+  default: ({
+    alt,
+    fill: _fill,
+    src,
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; src: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img alt={alt} src={src} {...props} />
+  ),
+}));
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    getSession: mocks.getSession,
+    signOut: vi.fn(),
+    admin: {
+      stopImpersonating: vi.fn(),
+    },
+  },
+}));
+
+vi.mock("@/lib/edition", () => ({
+  clientEditionCapabilities: {
+    hasBilling: true,
+    hasInstanceAdmin: true,
+    hasSupportAdmin: true,
+  },
+}));
+
+function installLocalStorageStub() {
+  const store = new Map<string, string>();
+
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      clear: () => store.clear(),
+      getItem: (key: string) => store.get(key) ?? null,
+      removeItem: (key: string) => store.delete(key),
+      setItem: (key: string, value: string) => store.set(key, value),
+    },
+  });
+}
+
+function mockAdminSession() {
+  mocks.getSession.mockResolvedValue({
+    data: {
+      session: {},
+      user: {
+        email: "admin@example.com",
+        role: "admin",
+      },
+    },
+  });
+}
+
+describe("AppSidebar", () => {
+  beforeEach(() => {
+    installLocalStorageStub();
+    mocks.pathname = "/inbox";
+    mocks.push.mockReset();
+    mocks.getSession.mockReset();
+    window.localStorage.clear();
+    mockAdminSession();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows user navigation in user view", async () => {
+    window.localStorage.setItem("cmdclaw.sidebarMode", "user");
+
+    render(<AppSidebar />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "User view" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      ),
+    );
+
+    expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agents" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Coworkers" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Templates" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Chat" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Toolbox" })).not.toBeInTheDocument();
+  });
+
+  it("shows the full app navigation in admin view", async () => {
+    render(<AppSidebar />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Admin view" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      ),
+    );
+
+    expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Templates" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Chat" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agents" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Toolbox" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bug report" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Admin" })).toBeInTheDocument();
+  });
+
+  it("routes between sidebar views from the toggle", async () => {
+    render(<AppSidebar />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "User view" }));
+    expect(mocks.push).toHaveBeenCalledWith("/inbox");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "User view" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Admin view" }));
+    expect(mocks.push).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Admin view" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("keeps admin route navigation on admin routes", async () => {
+    mocks.pathname = "/admin";
+
+    render(<AppSidebar />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Admin view" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      ),
+    );
+
+    expect(screen.getByRole("link", { name: "Workspaces" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inbox" })).not.toBeInTheDocument();
+  });
+});
