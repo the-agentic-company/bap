@@ -38,7 +38,7 @@ export default function AdminCoworkerOverviewPage() {
       workspaces={workspaces}
       workspaceId={workspaceId}
       onWorkspaceChange={handleWorkspaceChange}
-      coworkerLinkPrefix="/coworkers/"
+      coworkerLinkPrefix="/agents/"
     />
   );
 }

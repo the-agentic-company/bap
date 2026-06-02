@@ -155,7 +155,7 @@ function RunsList({ runs }: { runs: RunEntry[] }) {
         {runs.map((run) => (
           <Link
             key={run.id}
-            href={`/coworkers/runs/${run.id}`}
+            href={`/agents/runs/${run.id}`}
             className="hover:bg-muted/50 flex items-center gap-2.5 px-3 py-2 transition-colors"
           >
             <Circle
@@ -225,7 +225,7 @@ export function InteractiveCoworkerCard({
     if (onClick) {
       onClick();
     } else {
-      router.push(`/coworkers/${coworker.id}`);
+      router.push(`/agents/${coworker.id}`);
     }
   }, [onClick, router, coworker.id]);
 
@@ -248,7 +248,7 @@ export function InteractiveCoworkerCard({
       try {
         const result = await triggerCoworker.mutateAsync({ id: coworker.id, payload: {} });
         toast.success(result.generationId ? "Run started." : "Needs your input.");
-        router.push(result?.runId ? `/coworkers/runs/${result.runId}` : "/coworkers/runs");
+        router.push(result?.runId ? `/agents/runs/${result.runId}` : "/agents/runs");
       } catch {
         toast.error("Failed to start run.");
       } finally {
@@ -599,7 +599,7 @@ export function InteractiveCoworkerCard({
       </span>
       <div className="flex items-center gap-0.5">
         <Link
-          href={`/coworkers/${coworker.id}`}
+          href={`/agents/${coworker.id}`}
           onClick={handleStopPropagation}
           className="text-muted-foreground/30 hover:text-foreground group-hover:text-muted-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors"
           title="Edit coworker"

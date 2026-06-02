@@ -84,14 +84,14 @@ describe("ImpersonationRequiredPage", () => {
   });
 
   it("stops an existing impersonation before switching to the target owner", async () => {
-    render(<ImpersonationRequiredPage target={target} redirectPath="/coworkers/runs/run-1" />);
+    render(<ImpersonationRequiredPage target={target} redirectPath="/agents/runs/run-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: /impersonate and continue/i }));
 
     await waitFor(() => {
       expect(stopImpersonatingMock).toHaveBeenCalledTimes(1);
       expect(impersonateUserMock).toHaveBeenCalledWith({ userId: "user-2" });
-      expect(assignMock).toHaveBeenCalledWith("/coworkers/runs/run-1");
+      expect(assignMock).toHaveBeenCalledWith("/agents/runs/run-1");
     });
   });
 });

@@ -108,7 +108,7 @@ If no contact is found, skip Gmail draft and still create the HubSpot task with 
         authSource: "shared",
         autoApprove: true,
       });
-      expect(assignMock).toHaveBeenCalledWith("/coworkers/cw-1");
+      expect(assignMock).toHaveBeenCalledWith("/agents/cw-1");
     });
   });
 

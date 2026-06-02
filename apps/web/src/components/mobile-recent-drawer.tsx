@@ -477,7 +477,7 @@ export function MobileRecentDrawer({ open, onOpenChange, mode }: MobileRecentDra
               <p className="text-muted-foreground px-4 py-6 text-center text-xs">No runs yet</p>
             ) : (
               recentCoworkerRuns.map((run) => {
-                const runPath = `/coworkers/runs/${run.id}`;
+                const runPath = `/agents/runs/${run.id}`;
 
                 return (
                   <Link

@@ -90,7 +90,7 @@ export type CoworkerOverviewData = {
 export type CoworkerOverviewDashboardProps = {
   data: CoworkerOverviewData | undefined;
   isLoading: boolean;
-  /** Base path for coworker links, e.g. "/coworkers/" */
+  /** Base path for coworker links, e.g. "/agents/" */
   coworkerLinkPrefix?: string;
   /** When provided, renders a workspace dropdown (admin mode). */
   workspaces?: Array<{ id: string; name: string }>;
@@ -401,7 +401,7 @@ function buildColumns(
 export function CoworkerOverviewDashboard({
   data,
   isLoading,
-  coworkerLinkPrefix = "/coworkers/",
+  coworkerLinkPrefix = "/agents/",
   workspaces,
   workspaceId,
   onWorkspaceChange,

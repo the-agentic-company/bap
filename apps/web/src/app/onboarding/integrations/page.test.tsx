@@ -72,7 +72,7 @@ describe("OnboardingIntegrationsPage", () => {
     await waitFor(() => {
       expect(mocks.completeOnboardingMutateAsync).toHaveBeenCalledTimes(1);
     });
-    expect(mocks.routerPush).toHaveBeenCalledWith("/coworkers");
+    expect(mocks.routerPush).toHaveBeenCalledWith("/agents");
   }, 15_000);
 
   it("redirects to coworkers after skipping onboarding", async () => {
@@ -83,6 +83,6 @@ describe("OnboardingIntegrationsPage", () => {
     await waitFor(() => {
       expect(mocks.completeOnboardingMutateAsync).toHaveBeenCalledTimes(1);
     });
-    expect(mocks.routerPush).toHaveBeenCalledWith("/coworkers");
+    expect(mocks.routerPush).toHaveBeenCalledWith("/agents");
   }, 15_000);
 });

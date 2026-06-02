@@ -253,7 +253,7 @@ describe("InboxPage", () => {
       });
     });
 
-    expect(mockRouterPush).toHaveBeenCalledWith("/coworkers/runs/run-paused");
+    expect(mockRouterPush).toHaveBeenCalledWith("/agents/runs/run-paused");
   });
 
   it("wires approve and edit-before-approval actions to real mutations", async () => {

@@ -468,7 +468,7 @@ export function CoworkerLanding({
           }
         }
 
-        window.location.href = `/coworkers/${result.id}`;
+        window.location.href = `/agents/${result.id}`;
       } catch {
         return false;
       }
@@ -610,7 +610,7 @@ export function CoworkerLanding({
     }
 
     resumePendingPromptRef.current = true;
-    window.location.replace("/coworkers/new");
+    window.location.replace("/agents/new");
   }, [isAnonymous, isCreating]);
 
   useEffect(() => {

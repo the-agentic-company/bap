@@ -1026,7 +1026,7 @@ export default function AdminSandboxesPage() {
                           <span className="text-muted-foreground text-xs">coworker</span>
                           {(s.coworkerUsername || s.coworkerName) && s.coworkerId ? (
                             <a
-                              href={`${getEnvBaseUrl(s.environment)}/coworkers/${s.coworkerId}`}
+                              href={`${getEnvBaseUrl(s.environment)}/agents/${s.coworkerId}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 hover:opacity-70"

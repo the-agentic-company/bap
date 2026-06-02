@@ -103,7 +103,7 @@ export function TemplateDetailContent({ template }: { template: TemplateCatalogT
 
           <div className="mt-8">
             <Button asChild className="gap-1.5 rounded-lg px-5">
-              <Link href={`/coworkers/deploy/${template.id}`}>
+              <Link href={`/agents/deploy/${template.id}`}>
                 <Play className="size-3.5 fill-current" />
                 {template.heroCta}
               </Link>
@@ -294,7 +294,7 @@ export function TemplateDetailContent({ template }: { template: TemplateCatalogT
         {/* ── Deploy CTA ── */}
         <section className="flex justify-center pt-2 pb-4">
           <Button asChild className="gap-1.5 rounded-lg px-8">
-            <Link href={`/coworkers/deploy/${template.id}`}>
+            <Link href={`/agents/deploy/${template.id}`}>
               Deploy the coworker
               <ArrowRight className="size-3.5" />
             </Link>

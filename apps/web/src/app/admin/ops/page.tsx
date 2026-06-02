@@ -326,7 +326,7 @@ export default function AdminOpsPage() {
                         <div className="text-muted-foreground text-xs">@{row.username}</div>
                       ) : null}
                       <Link
-                        href={`/coworkers/${row.id}`}
+                        href={`/agents/${row.id}`}
                         className="inline-flex text-xs underline underline-offset-2"
                       >
                         Open builder
@@ -352,7 +352,7 @@ export default function AdminOpsPage() {
                             {formatRelativeTime(row.latestRun.startedAt)}
                           </div>
                           <Link
-                            href={`/coworkers/runs/${row.latestRun.id}`}
+                            href={`/agents/runs/${row.latestRun.id}`}
                             className="text-xs underline underline-offset-2"
                           >
                             Open run

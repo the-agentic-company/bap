@@ -291,7 +291,7 @@ function InboxPageContent() {
         });
 
         router.push(
-          item.kind === "chat" ? `/chat/${conversationId}` : `/coworkers/runs/${item.runId}`,
+          item.kind === "chat" ? `/chat/${conversationId}` : `/agents/runs/${item.runId}`,
         );
       });
     },
@@ -403,7 +403,7 @@ function InboxPageContent() {
           replaceExisting: false,
         });
         router.push(
-          item.kind === "chat" ? `/chat/${conversationId}` : `/coworkers/runs/${item.runId}`,
+          item.kind === "chat" ? `/chat/${conversationId}` : `/agents/runs/${item.runId}`,
         );
       });
     },
@@ -417,7 +417,7 @@ function InboxPageContent() {
         return;
       }
 
-      router.push(`/coworkers/runs/${item.runId}`);
+      router.push(`/agents/runs/${item.runId}`);
     },
     [router],
   );
@@ -426,7 +426,7 @@ function InboxPageContent() {
     async (item: InboxCoworkerItem) => {
       await runItemAction(item.id, async () => {
         await getOrCreateBuilderConversation.mutateAsync(item.coworkerId);
-        router.push(`/coworkers/${item.coworkerId}`);
+        router.push(`/agents/${item.coworkerId}`);
       });
     },
     [getOrCreateBuilderConversation, router, runItemAction],

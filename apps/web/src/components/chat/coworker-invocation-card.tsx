@@ -87,7 +87,7 @@ export function CoworkerInvocationCard(props: CoworkerInvocationCardProps) {
   const effectiveStatus =
     (data?.status as CoworkerInvocationCardProps["status"] | undefined) ?? props.status;
   const runHref = useMemo(
-    () => `/coworkers/runs/${props.runId}?coworkerId=${props.coworkerId}`,
+    () => `/agents/runs/${props.runId}?coworkerId=${props.coworkerId}`,
     [props.coworkerId, props.runId],
   );
 
