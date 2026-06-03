@@ -4,7 +4,7 @@ type VitestProcedure = Extract<
   NonNullable<Parameters<typeof vi.fn>[0]>,
   (...args: never[]) => unknown
 >;
-import { hashMagicLinkToken } from "@/lib/magic-link-request";
+import { hashMagicLinkToken } from "./magic-link-token-hash";
 
 const {
   deleteWhereMock,

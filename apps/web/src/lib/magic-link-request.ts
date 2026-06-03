@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 export const MAGIC_LINK_TTL_SECONDS = 60 * 60;
 export const MAGIC_LINK_TTL_MS = MAGIC_LINK_TTL_SECONDS * 1000;
 export const MAGIC_LINK_STATE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -40,8 +38,4 @@ export function buildSignInMagicLinkUrl({
 
 export function buildSignInMagicLinkPath(token: string): string {
   return `/sign-in/${encodeURIComponent(token)}`;
-}
-
-export function hashMagicLinkToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
 }

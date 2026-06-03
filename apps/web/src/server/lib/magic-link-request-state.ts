@@ -3,10 +3,10 @@ import { magicLinkRequestState } from "@cmdclaw/db/schema";
 import { and, eq, lt } from "drizzle-orm";
 import {
   extractMagicLinkRedirectState,
-  hashMagicLinkToken,
   MAGIC_LINK_STATE_RETENTION_MS,
   MAGIC_LINK_TTL_MS,
 } from "@/lib/magic-link-request";
+import { hashMagicLinkToken } from "./magic-link-token-hash";
 
 export const MAGIC_LINK_REQUEST_TTL_MS = MAGIC_LINK_TTL_MS;
 export const MAGIC_LINK_REQUEST_STATE_RETENTION_MS = MAGIC_LINK_STATE_RETENTION_MS;
