@@ -8,7 +8,7 @@
         "apps/web",
         "vitest",
         "run",
-        "src/app/chat/chat.cli.live.test.ts"
+        "tests/e2e-cli/chat.cli.live.test.ts"
       ]
     },
     {
@@ -19,7 +19,7 @@
         "apps/web",
         "vitest",
         "run",
-        "src/app/agents/coworker-builder.cli.live.test.ts"
+        "tests/e2e-cli/coworker-builder.cli.live.test.ts"
       ]
     }
   ]

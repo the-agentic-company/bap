@@ -38,7 +38,7 @@ export default defineConfig({
   webServer: skipWebServer
     ? undefined
     : {
-        command: `bun run build && bun run start -- --port ${port}`,
+        command: `bun run build && PORT=${port} bun run start`,
         url: baseURL,
         reuseExistingServer,
         timeout: 240_000,
