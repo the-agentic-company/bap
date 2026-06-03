@@ -8,7 +8,7 @@ void jestDomVitest;
 
 const mocks = vi.hoisted(() => ({
   pathname: "/settings",
-  useIsAdmin: vi.fn(),
+  useIsAdmin: vi.fn<(...args: unknown[]) => unknown>(),
 }));
 
 // Replace the TanStack location hook (the migrated layout derives the active tab from the
@@ -32,7 +32,7 @@ vi.mock("@/hooks/use-is-admin", () => ({
 // The guard module imports server-only auth (which reads server env); stub it so the
 // layout component can be imported in the jsdom client environment.
 vi.mock("@/lib/route-guards", () => ({
-  requireSession: vi.fn(),
+  requireSession: vi.fn<(...args: unknown[]) => unknown>(),
 }));
 
 // Force billing capability on so the admin/non-admin tab gating is the only variable.
