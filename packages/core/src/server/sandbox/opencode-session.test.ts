@@ -1,9 +1,11 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getOrCreateSandboxForCloudProvider } from "./opencode-session";
 
-const conversationRuntimeFindFirstMock = vi.fn();
-const dbUpdateMock = vi.fn();
-const daytonaGetMock = vi.fn();
-let getOrCreateSandboxForCloudProvider: typeof import("./opencode-session").getOrCreateSandboxForCloudProvider;
+const { conversationRuntimeFindFirstMock, dbUpdateMock, daytonaGetMock } = vi.hoisted(() => ({
+  conversationRuntimeFindFirstMock: vi.fn(),
+  dbUpdateMock: vi.fn(),
+  daytonaGetMock: vi.fn(),
+}));
 
 vi.mock("@cmdclaw/db/client", () => ({
   db: {
@@ -30,10 +32,6 @@ vi.mock("./runtime/factory", () => ({
 }));
 
 describe("getOrCreateSandboxForCloudProvider", () => {
-  beforeAll(async () => {
-    ({ getOrCreateSandboxForCloudProvider } = await import("./opencode-session"));
-  });
-
   beforeEach(() => {
     conversationRuntimeFindFirstMock.mockReset();
     dbUpdateMock.mockReset();
