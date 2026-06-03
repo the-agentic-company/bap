@@ -51,7 +51,7 @@ describe("connectHandler (GET /api/control-plane/integrations/connect)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
     requireCloudSessionMock.mockResolvedValue({ user: { id: "user-1" } });
     getOAuthConfigMock.mockReturnValue({
       clientId: "client-id",

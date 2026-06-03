@@ -7,14 +7,14 @@ import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env";
 import { ORPCProvider } from "@/orpc/provider";
 
-const isSelfHostedEdition = env.NEXT_PUBLIC_CMDCLAW_EDITION === "selfhost";
+const isSelfHostedEdition = env.VITE_CMDCLAW_EDITION === "selfhost";
 
 function BillingProviderWrapper({ children }: { children: React.ReactNode }) {
   if (isSelfHostedEdition) {
     return children;
   }
 
-  return <AutumnProvider betterAuthUrl={env.NEXT_PUBLIC_APP_URL ?? ""}>{children}</AutumnProvider>;
+  return <AutumnProvider betterAuthUrl={env.VITE_APP_URL ?? ""}>{children}</AutumnProvider>;
 }
 
 export function AppRootShell({

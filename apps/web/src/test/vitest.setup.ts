@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 import { mswServer } from "@/test/msw/server";
 
 for (const envFile of [".env.test.local", ".env.test", "../../.env"]) {
@@ -42,6 +42,43 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
     }),
   });
 }
+
+function createMemoryStorage(): Storage {
+  const values = new Map<string, string>();
+
+  return {
+    get length() {
+      return values.size;
+    },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => Array.from(values.keys())[index] ?? null,
+    removeItem: (key) => values.delete(key),
+    setItem: (key, value) => values.set(key, String(value)),
+  };
+}
+
+function ensureUsableLocalStorage() {
+  if (typeof window === "undefined" || typeof globalThis.localStorage?.clear === "function") {
+    return;
+  }
+
+  const storage = createMemoryStorage();
+  Object.defineProperty(globalThis, "localStorage", {
+    writable: true,
+    configurable: true,
+    value: storage,
+  });
+  Object.defineProperty(window, "localStorage", {
+    writable: true,
+    configurable: true,
+    value: storage,
+  });
+}
+
+beforeEach(() => {
+  ensureUsableLocalStorage();
+});
 
 if (typeof globalThis.ResizeObserver === "undefined") {
   class ResizeObserverStub {

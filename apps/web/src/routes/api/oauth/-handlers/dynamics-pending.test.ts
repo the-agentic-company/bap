@@ -57,7 +57,7 @@ describe("Dynamics pending selection handlers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
     getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
     findFirstMock.mockResolvedValue({
       id: "integration-1",

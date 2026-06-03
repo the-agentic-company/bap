@@ -165,7 +165,7 @@ export async function startHandler(request: Request): Promise<Response> {
       requestedIntegrationType: body.requestedIntegrationType ?? null,
     });
 
-    const appUrl = env.APP_URL ?? env.NEXT_PUBLIC_APP_URL;
+    const appUrl = env.APP_URL ?? env.VITE_APP_URL;
     if (!appUrl) {
       return Response.json({ message: "APP_URL is not configured" }, { status: 500 });
     }

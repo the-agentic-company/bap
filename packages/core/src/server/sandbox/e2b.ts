@@ -31,7 +31,7 @@ function resolveSandboxAppUrl(): string {
   return resolvePublicCallbackBaseUrl({
     callbackBaseUrl: env.E2B_CALLBACK_BASE_URL,
     appUrl: env.APP_URL,
-    nextPublicAppUrl: env.NEXT_PUBLIC_APP_URL,
+    viteAppUrl: env.VITE_APP_URL,
     nodeEnv: process.env.NODE_ENV,
   });
 }

@@ -80,7 +80,7 @@ function isLoopbackHostname(hostname: string): boolean {
 function resolveCmdClawLogoUrl(redirectUrl: string): string {
   const baseUrlCandidates = [
     process.env.APP_URL?.trim(),
-    process.env.NEXT_PUBLIC_APP_URL?.trim(),
+    process.env.VITE_APP_URL?.trim(),
     redirectUrl,
   ];
 

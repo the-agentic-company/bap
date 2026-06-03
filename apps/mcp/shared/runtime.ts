@@ -2,7 +2,7 @@ export function resolveCmdclawAppUrl(): string {
   const appUrl =
     process.env.CMDCLAW_SERVER_URL?.trim() ||
     process.env.APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_APP_URL?.trim();
+    process.env.VITE_APP_URL?.trim();
   if (!appUrl) {
     throw new Error("CMDCLAW_SERVER_URL or APP_URL must be configured for apps/mcp.");
   }

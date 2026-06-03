@@ -4,7 +4,7 @@ import { buildRequestAwareUrl, getRequestAwareOrigin } from "./request-aware-url
 describe("request-aware-url", () => {
   beforeEach(() => {
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
   });
 
   it("preserves the request origin for public hosts", () => {

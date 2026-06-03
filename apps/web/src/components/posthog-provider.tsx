@@ -7,8 +7,8 @@ import { usePathname, useSearchParams } from "@/components/next-navigation-compa
 import { env } from "@/env";
 import { authClient } from "@/lib/auth-client";
 
-const posthogKey = env.NEXT_PUBLIC_POSTHOG_KEY;
-const posthogProxyPath = env.NEXT_PUBLIC_POSTHOG_HOST;
+const posthogKey = env.VITE_POSTHOG_KEY;
+const posthogProxyPath = env.VITE_POSTHOG_HOST;
 const isPosthogEnabled = Boolean(posthogKey);
 let posthogInitialized = false;
 

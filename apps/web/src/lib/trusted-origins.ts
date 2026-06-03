@@ -7,7 +7,7 @@ export function getTrustedOrigins(): string[] {
     new Set(
       [
         env.APP_URL,
-        env.NEXT_PUBLIC_APP_URL,
+        env.VITE_APP_URL,
         "https://appleid.apple.com",
         "https://cmdclaw.ai",
         "https://www.cmdclaw.ai",

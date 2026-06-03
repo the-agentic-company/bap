@@ -12,7 +12,7 @@ function isLoopbackHostname(hostname: string): boolean {
 }
 
 function getPasswordResetLogoUrl(): string {
-  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const configuredAppUrl = process.env.VITE_APP_URL?.trim();
   if (configuredAppUrl) {
     try {
       const parsedConfiguredAppUrl = new URL(configuredAppUrl);

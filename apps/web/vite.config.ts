@@ -20,11 +20,10 @@ const devPort = process.env.CMDCLAW_EDITION === "selfhost" ? SELF_HOST_PORT : DE
 
 export default defineConfig({
   /**
-   * Only expose client env vars under the `VITE_*` and `NEXT_PUBLIC_*` prefixes.
-   * `NEXT_PUBLIC_*` is preserved for v1 of the migration; unprefixed server env vars
+   * Only expose client env vars under Vite's `VITE_*` prefix. Unprefixed server env vars
    * (DATABASE_URL, secrets, OAuth credentials, etc.) are never bundled to the client.
    */
-  envPrefix: ["VITE_", "NEXT_PUBLIC_"],
+  envPrefix: "VITE_",
   resolve: {
     alias: {
       "@": srcDir,

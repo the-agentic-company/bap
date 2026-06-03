@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/env", () => ({
   env: {
     APP_URL: "https://cmdclaw.ai",
-    NEXT_PUBLIC_APP_URL: "https://cmdclaw.ai",
+    VITE_APP_URL: "https://cmdclaw.ai",
   },
 }));
 
@@ -55,10 +55,7 @@ describe("withHostedMcpOauthCors", () => {
   });
 
   it("falls back to the configured app origin when there is no origin header", () => {
-    const response = withHostedMcpOauthCors(
-      makeRequest(null),
-      new Response(null, { status: 200 }),
-    );
+    const response = withHostedMcpOauthCors(makeRequest(null), new Response(null, { status: 200 }));
 
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("https://cmdclaw.ai");
   });

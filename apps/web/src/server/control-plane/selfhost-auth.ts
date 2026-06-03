@@ -28,7 +28,7 @@ function normalizeCookieValue(value: string) {
 }
 
 function getSessionCookieName(requestUrl: string) {
-  const appUrl = env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? requestUrl;
+  const appUrl = env.APP_URL ?? env.VITE_APP_URL ?? requestUrl;
   return new URL(appUrl).protocol === "https:"
     ? "__Secure-better-auth.session_token"
     : "better-auth.session_token";

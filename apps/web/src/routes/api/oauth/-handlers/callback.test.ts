@@ -154,7 +154,7 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
     getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
     fetchDynamicsInstancesMock.mockResolvedValue([
       {
@@ -528,9 +528,7 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
       ),
     );
 
-    const request = new Request(
-      `https://0.0.0.0:8080/api/oauth/callback?code=abc&state=${state}`,
-    );
+    const request = new Request(`https://0.0.0.0:8080/api/oauth/callback?code=abc&state=${state}`);
 
     const response = await handleOAuthCallback(request);
 
@@ -657,9 +655,7 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
       redirectUrl: "/integrations",
     });
 
-    const request = new Request(
-      `https://0.0.0.0:8080/api/oauth/callback?code=abc&state=${state}`,
-    );
+    const request = new Request(`https://0.0.0.0:8080/api/oauth/callback?code=abc&state=${state}`);
 
     const response = await handleOAuthCallback(request);
 

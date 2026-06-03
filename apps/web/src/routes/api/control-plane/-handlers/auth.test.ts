@@ -80,7 +80,7 @@ describe("authorizeHandler (GET /api/control-plane/auth/authorize)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
     getValidAuthRequestMock.mockResolvedValue({
       code: "code-1",
       localState: "state-1",
@@ -135,7 +135,7 @@ describe("callbackHandler (GET /api/control-plane/auth/callback)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
     isControlPlaneEnabledMock.mockReturnValue(true);
     consumeControlPlaneAuthStateMock.mockResolvedValue({
       state: "state-1",
