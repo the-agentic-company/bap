@@ -6,8 +6,8 @@ import { autumn } from "autumn-js/better-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware, APIError } from "better-auth/api";
-import { nextCookies } from "better-auth/next-js";
 import { admin, bearer, lastLoginMethod, magicLink } from "better-auth/plugins";
+import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 import { env } from "@/env";
@@ -114,7 +114,6 @@ export const auth = betterAuth({
   // Don't forget to regenerate the schema if you add a new plugin
   // Run "bun auth:generate" to regenerate the schema
   plugins: [
-    nextCookies(),
     bearer(),
     admin({
       defaultRole: "user",
@@ -157,6 +156,9 @@ export const auth = betterAuth({
         }
       },
     }),
+    // TanStack Start cookie integration. MUST be the final plugin so it can set cookies on
+    // responses after every other plugin has run (replaces the previous nextCookies()).
+    tanstackStartCookies(),
   ],
   databaseHooks: {
     user: {

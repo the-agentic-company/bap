@@ -1,22 +1,10 @@
 {
   "extends": "../../packages/config/tsconfig.base.json",
   "compilerOptions": {
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.mts"],
   "exclude": ["node_modules"]
 }

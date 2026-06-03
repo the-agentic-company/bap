@@ -1,7 +1,14 @@
-import { createEnv } from "@t3-oss/env-nextjs";
+import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
 export const env = createEnv({
+  /**
+   * Client-exposed environment variables keep the `NEXT_PUBLIC_` prefix in v1 of the
+   * TanStack Start migration. Vite is configured to expose only `VITE_*` and
+   * `NEXT_PUBLIC_*` prefixes to the client bundle (see apps/web/vite.config.ts), so this
+   * prefix stays valid without renaming public env vars.
+   */
+  clientPrefix: "NEXT_PUBLIC_",
   /**
    * Specify your server-side environment variables schema here. This way you can ensure the app
    * isn't built with invalid env vars.

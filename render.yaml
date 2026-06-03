@@ -343,11 +343,13 @@ projects:
             numInstances: 1
             dockerContext: .
             dockerfilePath: docker/images/web/Dockerfile
-            dockerCommand: node ./node_modules/next/dist/bin/next start -H 0.0.0.0 -p 10000
+            dockerCommand: node server-node.mjs
             healthCheckPath: /api/health
             envVars:
               - key: PORT
                 value: "10000"
+              - key: HOST
+                value: 0.0.0.0
               - fromGroup: staging
               - key: DATABASE_URL
                 fromDatabase:
@@ -773,11 +775,13 @@ projects:
             numInstances: 1
             dockerContext: .
             dockerfilePath: docker/images/web/Dockerfile
-            dockerCommand: node ./node_modules/next/dist/bin/next start -H 0.0.0.0 -p 10000
+            dockerCommand: node server-node.mjs
             healthCheckPath: /api/health
             envVars:
               - key: PORT
                 value: "10000"
+              - key: HOST
+                value: 0.0.0.0
               - fromGroup: prod
               - key: DATABASE_URL
                 fromDatabase:

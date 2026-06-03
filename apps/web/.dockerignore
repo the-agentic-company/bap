@@ -1,5 +1,7 @@
 node_modules
-.next
+.tanstack
+.output
+.nitro
 .turbo
 out
 build

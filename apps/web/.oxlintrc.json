@@ -7,8 +7,7 @@
     "react_perf",
     "jsx-a11y",
     "import",
-    "vitest",
-    "nextjs"
+    "vitest"
   ],
   "categories": {
     "correctness": "error",
@@ -30,9 +29,11 @@
     "react/react-in-jsx-scope": "off"
   },
   "ignorePatterns": [
-    ".next/**",
+    "dist/**",
+    ".tanstack/**",
+    ".output/**",
     "out/**",
     "build/**",
-    "next-env.d.ts"
+    "src/routeTree.gen.ts"
   ]
 }

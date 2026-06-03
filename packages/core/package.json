@@ -39,7 +39,7 @@
     "@opentelemetry/sdk-trace-node": "^2.2.0",
     "@opentelemetry/semantic-conventions": "^1.37.0",
     "@orpc/server": "^1.13.2",
-    "@t3-oss/env-nextjs": "^0.13.8",
+    "@t3-oss/env-core": "^0.13.10",
     "autumn-js": "^0.1.74",
     "bullmq": "^5.65.0",
     "date-fns": "^4.1.0",
