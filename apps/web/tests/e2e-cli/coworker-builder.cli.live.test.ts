@@ -30,6 +30,7 @@ const buildMessage = "create a coworker that says hi";
 const coworkerBuildDriver = String.raw`
 import os
 import pty
+import json
 import select
 import subprocess
 import sys
@@ -68,6 +69,9 @@ if os.environ.get("COWORKER_CHAOS_APPROVAL_PARK_AFTER"):
 
 if os.environ.get("COWORKER_CHAOS_RUN_DEADLINE"):
     command.extend(["--chaosRunDeadline", os.environ["COWORKER_CHAOS_RUN_DEADLINE"]])
+
+for answer in json.loads(os.environ.get("COWORKER_QUESTION_ANSWERS") or "[]"):
+    command.extend(["--question-answer", answer])
 
 env = dict(os.environ)
 env["CMDCLAW_SERVER_URL"] = os.environ["COWORKER_SERVER_URL"]
@@ -144,6 +148,7 @@ function runInteractiveCoworkerBuild(args: {
   chaosApprovalParkAfter?: string;
   chaosRunDeadline?: string;
   message?: string;
+  questionAnswers?: readonly string[];
   timeoutMs: number;
 }): Promise<InteractiveCommandResult> {
   return new Promise((resolveDone) => {
@@ -158,6 +163,7 @@ function runInteractiveCoworkerBuild(args: {
         COWORKER_CHAOS_RUN_DEADLINE: args.chaosRunDeadline ?? "",
         COWORKER_CWD: process.cwd(),
         COWORKER_MODEL: liveModel,
+        COWORKER_QUESTION_ANSWERS: JSON.stringify(args.questionAnswers ?? []),
         COWORKER_SANDBOX_PROVIDER: liveSandboxProvider,
         COWORKER_SERVER_URL: defaultServerUrl,
       },
@@ -313,6 +319,7 @@ describe.runIf(liveEnabled)("@live CLI coworker builder", () => {
 
       const resumed = await runInteractiveCoworkerBuild({
         attach: conversationId,
+        questionAnswers: ["Manual", "No integrations", "Keep current model (Recommended)"],
         timeoutMs: Math.max(responseTimeoutMs, 240_000),
       });
 

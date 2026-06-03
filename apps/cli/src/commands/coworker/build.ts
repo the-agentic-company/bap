@@ -17,6 +17,7 @@ type BuildFlags = {
   autoApprove?: boolean;
   open?: boolean;
   file?: readonly string[];
+  questionAnswer?: readonly string[];
   validate: boolean;
   sandbox?: "e2b" | "daytona" | "docker";
   chaosRunDeadline?: string;
@@ -39,7 +40,7 @@ export default async function (this: LocalContext, flags: BuildFlags): Promise<v
       chaosApprovalParkAfter: flags.chaosApprovalParkAfter,
       validate: flags.validate,
       file: flags.file ?? [],
-      questionAnswer: [],
+      questionAnswer: flags.questionAnswer ?? [],
       perfettoTrace: false,
       timing: false,
     });
@@ -99,7 +100,7 @@ export default async function (this: LocalContext, flags: BuildFlags): Promise<v
     chaosApprovalParkAfter: flags.chaosApprovalParkAfter,
     validate: flags.validate,
     file: flags.file ?? [],
-    questionAnswer: [],
+    questionAnswer: flags.questionAnswer ?? [],
     perfettoTrace: false,
     timing: false,
   });

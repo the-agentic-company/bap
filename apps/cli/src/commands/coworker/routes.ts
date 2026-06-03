@@ -205,6 +205,13 @@ export const coworkerBuildCommand = buildCommand({
         variadic: true,
         brief: "Attach a file to the initial builder message",
       },
+      questionAnswer: {
+        kind: "parsed",
+        parse: (input: string) => input,
+        optional: true,
+        variadic: true,
+        brief: "Pre-answer builder question prompts",
+      },
       validate: {
         kind: "boolean",
         default: true,
@@ -243,6 +250,7 @@ export const coworkerBuildCommand = buildCommand({
       t: "trigger",
       M: "model",
       f: "file",
+      q: "questionAnswer",
     },
     positional: {
       kind: "tuple",
