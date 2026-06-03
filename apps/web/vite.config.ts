@@ -1,4 +1,6 @@
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { devtools } from "@tanstack/devtools-vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { fileURLToPath } from "node:url";
@@ -54,6 +56,7 @@ export default defineConfig({
     external: ["dockerode", "docker-modem", "ssh2", "cpu-features"],
   },
   plugins: [
+    devtools(),
     // Nitro owns the production Node server output (`.output/server/index.mjs`), matching
     // the current TanStack Start starter shape.
     nitro({
@@ -61,6 +64,7 @@ export default defineConfig({
         external: [/^dockerode$/, /^docker-modem$/, /^ssh2($|\/)/, /^cpu-features($|\/)/],
       },
     }),
+    tailwindcss(),
     // TanStack Start: file-based routing (generates src/routeTree.gen.ts) and the SSR
     // server build consumed by Nitro.
     tanstackStart(),

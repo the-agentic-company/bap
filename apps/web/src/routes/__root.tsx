@@ -100,9 +100,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <body className="antialiased" data-edition={edition}>
         <SessionPrincipalCacheGuard />
         {children}
-        {import.meta.env.DEV ? (
-          <TanStackDevtools config={TANSTACK_DEVTOOLS_CONFIG} plugins={TANSTACK_DEVTOOLS_PLUGINS} />
-        ) : null}
+        <TanStackDevtools config={TANSTACK_DEVTOOLS_CONFIG} plugins={TANSTACK_DEVTOOLS_PLUGINS} />
         <Scripts />
       </body>
     </html>
