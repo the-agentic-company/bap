@@ -16,16 +16,25 @@ const SECURITY_HEADERS: ReadonlyArray<readonly [string, string]> = [
   ["X-DNS-Prefetch-Control", "off"],
 ];
 
+export function withSecurityHeaders(source: Response): Response {
+  const response = new Response(source.body, source);
+
+  for (const [header, value] of SECURITY_HEADERS) {
+    if (!response.headers.has(header)) {
+      response.headers.set(header, value);
+    }
+  }
+
+  return response;
+}
+
 export const securityHeadersMiddleware = createMiddleware({ type: "request" }).server(
   async ({ next }) => {
     const result = await next();
 
-    for (const [header, value] of SECURITY_HEADERS) {
-      if (!result.response.headers.has(header)) {
-        result.response.headers.set(header, value);
-      }
-    }
-
-    return result;
+    return {
+      ...result,
+      response: withSecurityHeaders(result.response),
+    };
   },
 );
