@@ -81,7 +81,7 @@ vi.mock("ioredis", () => ({
   },
 }));
 
-import { handleClientObservations } from "./client-observations";
+let handleClientObservations: typeof import("./client-observations").handleClientObservations;
 
 function request(body: unknown): Request {
   return new Request("https://app.example.com/api/observability/client-observations", {
@@ -92,7 +92,31 @@ function request(body: unknown): Request {
 }
 
 describe("client observation intake", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules();
+    const redisState = globalThis as typeof globalThis & {
+      cmdclawClientObservationRedis?: unknown;
+      cmdclawClientObservationRedisFactory?: () => unknown;
+    };
+    delete redisState.cmdclawClientObservationRedis;
+    redisState.cmdclawClientObservationRedisFactory = () => ({
+      pexpire: redisPexpireMock,
+      set: redisSetMock,
+      multi: () => {
+        const chain = {
+          incrby: (...args: unknown[]) => {
+            redisIncrbyMock(...args);
+            return chain;
+          },
+          pttl: (...args: unknown[]) => {
+            redisPttlMock(...args);
+            return chain;
+          },
+          exec: redisExecMock,
+        };
+        return chain;
+      },
+    });
     vi.clearAllMocks();
     getSessionMock.mockResolvedValue({
       user: { id: "user-1" },
@@ -113,6 +137,7 @@ describe("client observation intake", () => {
       [null, 1],
     ]);
     redisSetMock.mockResolvedValue("OK");
+    ({ handleClientObservations } = await import("./client-observations"));
   });
 
   it("requires authentication", async () => {

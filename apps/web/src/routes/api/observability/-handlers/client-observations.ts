@@ -28,11 +28,17 @@ const RATE_LIMIT_MAX_EVENTS = 120;
 const DEDUPE_WINDOW_MS = 10 * 60 * 1000;
 const LOW_VALUE_SUCCESS_SAMPLE_RATE = 0.25;
 
+type ClientObservationRedis = Pick<IORedis, "multi" | "pexpire" | "set">;
+
 const redisState = globalThis as typeof globalThis & {
-  cmdclawClientObservationRedis?: IORedis;
+  cmdclawClientObservationRedis?: ClientObservationRedis;
+  cmdclawClientObservationRedisFactory?: () => ClientObservationRedis;
 };
 
-function getClientObservationRedis(): IORedis {
+function getClientObservationRedis(): ClientObservationRedis {
+  if (redisState.cmdclawClientObservationRedisFactory) {
+    return redisState.cmdclawClientObservationRedisFactory();
+  }
   redisState.cmdclawClientObservationRedis ??= new IORedis(
     buildRedisOptions(process.env.REDIS_URL ?? "redis://localhost:6379", {
       maxRetriesPerRequest: 1,

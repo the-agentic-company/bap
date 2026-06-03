@@ -6,6 +6,25 @@ for (const envFile of [".env.test.local", ".env.test", "../../.env"]) {
   config({ path: envFile, override: false });
 }
 
+const testEnvDefaults = {
+  BETTER_AUTH_SECRET: "test-better-auth-secret",
+  DATABASE_URL: "https://db.test.local",
+  REDIS_URL: "https://redis.test.local",
+  OPENAI_API_KEY: "test-openai-key",
+  ANTHROPIC_API_KEY: "test-anthropic-key",
+  SANDBOX_DEFAULT: "e2b",
+  ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  CMDCLAW_SERVER_SECRET: "test-server-secret",
+  AWS_ENDPOINT_URL: "https://s3.test.local",
+  AWS_ACCESS_KEY_ID: "test-access-key",
+  AWS_SECRET_ACCESS_KEY: "test-secret-key",
+  NODE_ENV: "test",
+} satisfies Record<string, string>;
+
+for (const [key, value] of Object.entries(testEnvDefaults)) {
+  process.env[key] ??= value;
+}
+
 const isLiveE2E = process.env.E2E_LIVE === "1";
 
 if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
