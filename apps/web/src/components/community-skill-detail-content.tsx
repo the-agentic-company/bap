@@ -8,7 +8,7 @@ import {
   Lightbulb,
   ExternalLink,
 } from "lucide-react";
-import Image from "next/image";
+import { AppImage } from "@/components/app-image";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 
@@ -323,7 +323,7 @@ export function CommunitySkillDetailContent({
             }
           >
             {skill.logoUrl ? (
-              <Image
+              <AppImage
                 src={skill.logoUrl}
                 alt={skill.title}
                 width={28}

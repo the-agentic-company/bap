@@ -1,10 +1,10 @@
 "use client";
 
 import { BarChart3, Bug, Settings, Shield, Toolbox } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppImage } from "@/components/app-image";
+import { AppLink } from "@/components/app-link";
+import { useRouter } from "@/components/next-navigation-compat";
 import { authClient } from "@/lib/auth-client";
 import { clientEditionCapabilities } from "@/lib/edition";
 import { cn } from "@/lib/utils";
@@ -36,9 +36,9 @@ function MenuItem({ icon: Icon, label, href, onClick, destructive, badge }: Menu
 
   if (href) {
     return (
-      <Link href={href} prefetch={false} className={classes} onClick={onClick}>
+      <AppLink href={href} className={classes} onClick={onClick}>
         {content}
-      </Link>
+      </AppLink>
     );
   }
 
@@ -124,7 +124,7 @@ export function MobileMenuPanel({ open, onOpenChange }: MobileMenuPanelProps) {
         <div className="flex items-center justify-between border-b px-4 pt-5 pb-4">
           <div className="flex items-center gap-3">
             {session?.user?.image ? (
-              <Image
+              <AppImage
                 src={session.user.image}
                 alt=""
                 width={32}
@@ -150,14 +150,13 @@ export function MobileMenuPanel({ open, onOpenChange }: MobileMenuPanelProps) {
               Log Out
             </button>
           ) : (
-            <Link
+            <AppLink
               href="/login"
-              prefetch={false}
               className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
               onClick={handleItemClick}
             >
               Log In
-            </Link>
+            </AppLink>
           )}
         </div>
 

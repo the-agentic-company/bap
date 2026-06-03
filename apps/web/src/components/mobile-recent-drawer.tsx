@@ -11,12 +11,12 @@ import {
   Trash2,
   Check,
 } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent } from "@/components/animate-ui/components/radix/sheet";
+import { AppLink } from "@/components/app-link";
 import { useChatDraftStore } from "@/components/chat/chat-draft-store";
 import { ConversationUsageDialog } from "@/components/conversation-usage-dialog";
+import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -387,9 +387,8 @@ export function MobileRecentDrawer({ open, onOpenChange, mode }: MobileRecentDra
                         key={conversation.id}
                         className={cn("group relative flex items-center px-2")}
                       >
-                        <Link
+                        <AppLink
                           href={`/chat/${conversation.id}`}
-                          prefetch={false}
                           onClick={handleClose}
                           className={cn(
                             "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors",
@@ -411,7 +410,7 @@ export function MobileRecentDrawer({ open, onOpenChange, mode }: MobileRecentDra
                           <span className="text-muted-foreground shrink-0 text-[11px] group-hover:hidden">
                             {formatRelativeShort(new Date(conversation.updatedAt))}
                           </span>
-                        </Link>
+                        </AppLink>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
@@ -480,10 +479,9 @@ export function MobileRecentDrawer({ open, onOpenChange, mode }: MobileRecentDra
                 const runPath = `/agents/runs/${run.id}`;
 
                 return (
-                  <Link
+                  <AppLink
                     key={run.id}
                     href={runPath}
-                    prefetch={false}
                     onClick={handleClose}
                     className={cn(
                       "mx-2 flex flex-col gap-1 rounded-md px-2 py-2 text-sm transition-colors",
@@ -501,7 +499,7 @@ export function MobileRecentDrawer({ open, onOpenChange, mode }: MobileRecentDra
                     <span className="text-muted-foreground text-[11px]">
                       {getCoworkerRunStatusLabel(run.status)}
                     </span>
-                  </Link>
+                  </AppLink>
                 );
               })
             )}

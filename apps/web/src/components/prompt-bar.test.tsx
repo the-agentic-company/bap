@@ -17,8 +17,8 @@ const heroRichAnimatedPlaceholders: PromptSegment[][] = [
   ],
 ];
 
-vi.mock("next/image", () => ({
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+vi.mock("@/components/app-image", () => ({
+  AppImage: (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
     <span data-next-image={props.alt ?? ""} />
   ),
 }));

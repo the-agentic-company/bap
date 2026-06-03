@@ -21,11 +21,11 @@ import {
   UserCog,
   WandSparkles,
 } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { AppImage } from "@/components/app-image";
+import { AppLink } from "@/components/app-link";
 import { BugReportDialog } from "@/components/bug-report-dialog";
+import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import { BrickIcon } from "@/components/icons/brick-icon";
 import {
   DropdownMenu,
@@ -55,12 +55,12 @@ type NavItem = {
 function McpLogoIcon({ className }: { className?: string }) {
   return (
     <span className={cn("relative block", className)}>
-      <Image
+      <AppImage
         src="/integrations/mcp.svg"
         alt=""
-        fill
-        sizes="18px"
-        className="object-contain dark:invert"
+        width={18}
+        height={18}
+        className="absolute inset-0 h-full w-full object-contain dark:invert"
       />
     </span>
   );
@@ -70,9 +70,8 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Link
+        <AppLink
           href={item.href}
-          prefetch={false}
           onClick={item.onClick}
           aria-label={item.label}
           className={cn(
@@ -84,7 +83,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
           )}
         >
           <item.icon className="h-[18px] w-[18px] shrink-0" />
-        </Link>
+        </AppLink>
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={10}>
         {item.label}
@@ -390,14 +389,19 @@ export function AppSidebar() {
         <div className="flex h-14 items-center justify-center">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link
+              <AppLink
                 href="/"
-                prefetch={false}
                 aria-label="CmdClaw home"
                 className="hover:bg-sidebar-accent focus-visible:ring-sidebar-ring/45 flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus-visible:ring-3 focus-visible:outline-none"
               >
-                <Image src="/logo.png" alt="" width={24} height={24} className="object-contain" />
-              </Link>
+                <AppImage
+                  src="/logo.png"
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="object-contain"
+                />
+              </AppLink>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={10}>
               CmdClaw
@@ -494,7 +498,7 @@ export function AppSidebar() {
                 title={userEmail || "Account"}
               >
                 {session?.user?.image ? (
-                  <Image
+                  <AppImage
                     src={session.user.image}
                     alt=""
                     width={40}
@@ -518,17 +522,17 @@ export function AppSidebar() {
                 </>
               )}
               <DropdownMenuItem asChild>
-                <Link href="/settings" prefetch={false} className="flex items-center gap-2">
+                <AppLink href="/settings" className="flex items-center gap-2">
                   <Settings className="h-4 w-4" />
                   <span>Settings</span>
-                </Link>
+                </AppLink>
               </DropdownMenuItem>
               {clientEditionCapabilities.hasBilling ? (
                 <DropdownMenuItem asChild>
-                  <Link href="/settings/usage" prefetch={false} className="flex items-center gap-2">
+                  <AppLink href="/settings/usage" className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4" />
                     <span>Usage</span>
-                  </Link>
+                  </AppLink>
                 </DropdownMenuItem>
               ) : null}
               {clientEditionCapabilities.hasSupportAdmin && isImpersonating ? (
@@ -552,10 +556,10 @@ export function AppSidebar() {
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem asChild>
-                  <Link href="/login" prefetch={false} className="flex items-center gap-2">
+                  <AppLink href="/login" className="flex items-center gap-2">
                     <LogOut className="h-4 w-4" />
                     <span>Log in</span>
-                  </Link>
+                  </AppLink>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

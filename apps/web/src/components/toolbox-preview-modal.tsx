@@ -1,9 +1,8 @@
 "use client";
 
 import { Maximize2, X } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
+import { AppLink } from "@/components/app-link";
 import {
   CommunitySkillDetailContent,
   COMMUNITY_SKILLS_DATA,
@@ -12,6 +11,7 @@ import {
   IntegrationDetailContent,
   type IntegrationDetailProps,
 } from "@/components/integration-detail-content";
+import { useRouter } from "@/components/next-navigation-compat";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -96,7 +96,7 @@ export function ToolboxPreviewModal({
   const target = parsePreviewId(previewId);
 
   const close = useCallback(() => {
-    router.push("/toolbox", { scroll: false });
+    router.push("/toolbox");
   }, [router]);
 
   const handleOpenChange = useCallback(
@@ -162,9 +162,9 @@ export function ToolboxPreviewModal({
                 size="icon-sm"
                 className="text-muted-foreground hover:text-foreground"
               >
-                <Link href={maximizeHref} aria-label="Open full page">
+                <AppLink href={maximizeHref} aria-label="Open full page">
                   <Maximize2 className="size-4" />
-                </Link>
+                </AppLink>
               </Button>
             )}
             <DialogClose asChild>

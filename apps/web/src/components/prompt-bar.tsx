@@ -1,9 +1,9 @@
 "use client";
 
 import { ArrowUp, Loader2, Mic, Paperclip, Plus, Square, X } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PromptSegment } from "@/lib/prompt-segments";
+import { AppImage } from "@/components/app-image";
 import { getChatDraftKey, useChatDraftStore } from "@/components/chat/chat-draft-store";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -96,7 +96,7 @@ function RichPlaceholderOverlay({
             key={i}
             className="mx-0.5 inline-flex animate-[badge-in_150ms_ease-out] items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 align-middle text-xs font-medium text-slate-600"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* oxlint-disable-next-line nextjs/no-img-element */}
             <img src={seg.icon} alt="" className="size-3.5 shrink-0 rounded-sm object-contain" />
             {seg.name}
           </span>,
@@ -509,12 +509,11 @@ export function PromptBar({
                 className="group border-border/50 relative flex items-center gap-1.5 rounded-lg border bg-white px-2.5 py-1.5 text-xs shadow-sm"
               >
                 {a.mimeType.startsWith("image/") ? (
-                  <Image
+                  <AppImage
                     src={a.dataUrl}
                     alt={a.name}
                     width={28}
                     height={28}
-                    unoptimized
                     className="h-7 w-7 rounded object-cover"
                   />
                 ) : (

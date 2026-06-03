@@ -11,9 +11,16 @@ const mocks = vi.hoisted(() => ({
   pathname: "/chat",
 }));
 
-vi.mock("next/navigation", () => ({
-  usePathname: () => mocks.pathname,
-}));
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...actual,
+    useLocation: (options?: { select?: (location: { pathname: string }) => unknown }) => {
+      const location = { pathname: mocks.pathname };
+      return options?.select ? options.select(location) : location;
+    },
+  };
+});
 
 vi.mock("@/components/app-sidebar", () => ({
   AppSidebar: () => <div data-testid="app-sidebar" />,

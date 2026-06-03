@@ -4,7 +4,6 @@
 
 import { Activity, Check, Loader2, Timer, Shield, Users, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import {
@@ -85,11 +84,13 @@ function DemoActivityItem({ item, isLatest }: { item: DemoItem; isLatest: boolea
       transition={{ duration: 0.2 }}
       className="flex items-center gap-2 py-1 text-xs"
     >
-      <Image
+      <img
         src={INTEGRATION_LOGOS[item.integration]}
         alt=""
         width={16}
         height={16}
+        loading="lazy"
+        decoding="async"
         className="size-4 shrink-0"
       />
       <span className="text-foreground/90 font-mono text-[13px]">{item.label}</span>
@@ -211,12 +212,14 @@ function LiveDemoCard() {
           </div>
           <div className="border-border/30 flex items-center gap-2 border-t px-4 py-2">
             {COWORKER_INTEGRATIONS.map((key) => (
-              <Image
+              <img
                 key={key}
                 src={INTEGRATION_LOGOS[key]}
                 alt=""
                 width={16}
                 height={16}
+                loading="lazy"
+                decoding="async"
                 className="size-4"
               />
             ))}
@@ -284,11 +287,13 @@ function IntegrationsCard() {
               whileHover={{ scale: 1.08, y: -3 }}
               className="border-border/50 bg-muted/30 hover:border-border flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border transition-shadow duration-200 hover:shadow-[0_4px_16px_rgb(0,0,0,0.06)]"
             >
-              <Image
+              <img
                 src={INTEGRATION_LOGOS[key]}
                 alt={INTEGRATION_DISPLAY_NAMES[key]}
                 width={24}
                 height={24}
+                loading="lazy"
+                decoding="async"
                 className="size-6"
               />
               <span className="text-muted-foreground text-[9px] leading-none font-medium">

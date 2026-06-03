@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { AppImage } from "@/components/chat/app-image";
 import {
   getIntegrationLogo,
   getIntegrationIcon,
@@ -59,7 +59,7 @@ function IntegrationBadge({
       title={name}
     >
       {logo ? (
-        <Image src={logo} alt={name} width={iconPixels} height={iconPixels} className={iconSize} />
+        <AppImage src={logo} alt={name} width={iconPixels} height={iconPixels} className={iconSize} />
       ) : Icon ? (
         <Icon className={cn(size === "sm" ? "h-3 w-3" : "h-4 w-4", "text-blue-500")} />
       ) : null}

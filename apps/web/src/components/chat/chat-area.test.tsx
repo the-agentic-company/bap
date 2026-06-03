@@ -4,7 +4,7 @@ import * as jestDomVitest from "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ChatHeaderActionsProvider } from "@/app/chat/chat-header-actions-context";
+import { ChatHeaderActionsProvider } from "@/components/chat/chat-header-actions-context";
 
 void jestDomVitest;
 

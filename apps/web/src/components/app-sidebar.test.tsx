@@ -14,21 +14,32 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/components/next-navigation-compat", () => ({
   usePathname: () => mocks.pathname,
   useRouter: () => ({
     push: mocks.push,
   }),
 }));
 
-vi.mock("next/image", () => ({
-  default: ({
+vi.mock("@/components/app-link", () => ({
+  AppLink: ({
+    href,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock("@/components/app-image", () => ({
+  AppImage: ({
     alt,
-    fill: _fill,
     src,
     ...props
-  }: React.ImgHTMLAttributes<HTMLImageElement> & { fill?: boolean; src: string }) => (
-    // eslint-disable-next-line @next/next/no-img-element
+  }: React.ImgHTMLAttributes<HTMLImageElement> & { src: string; alt: string }) => (
+    // oxlint-disable-next-line nextjs/no-img-element
     <img alt={alt} src={src} {...props} />
   ),
 }));

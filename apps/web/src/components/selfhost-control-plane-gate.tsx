@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { AppLink } from "@/components/app-link";
+import { usePathname } from "@/components/next-navigation-compat";
 import { clientEditionCapabilities } from "@/lib/edition";
 
 type HealthPayload = {
@@ -82,12 +82,12 @@ export function SelfhostControlPlaneGate() {
         </p>
         <p className="text-muted-foreground mt-3 text-sm">{detail}</p>
         <div className="mt-4 flex gap-3">
-          <Link
+          <AppLink
             href="/instance"
             className="inline-flex h-9 items-center justify-center rounded-md border px-4 text-sm font-medium"
           >
             Open instance status
-          </Link>
+          </AppLink>
           <button
             type="button"
             onClick={handleRetry}

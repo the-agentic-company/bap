@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   } as MockCurrentUserState,
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/components/next-navigation-compat", () => ({
   usePathname: () => mocks.pathname,
   useRouter: () => ({ replace: mocks.replace }),
 }));

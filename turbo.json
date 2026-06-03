@@ -14,8 +14,9 @@
         "^build"
       ],
       "outputs": [
-        ".next/**",
         "dist/**",
+        ".tanstack/**",
+        ".output/**",
         "build/**",
         "coverage/**",
         "app-bundle/**"

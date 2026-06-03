@@ -1,10 +1,22 @@
 "use client";
 
+import { Link } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import Link from "next/link";
+import type { AnchorHTMLAttributes, FC, ReactNode } from "react";
 import * as React from "react";
 import { useId, useRef } from "react";
 import { cn } from "@/lib/utils";
+
+/**
+ * Raw-href link view, replacing `next/link`. Tabs build string hrefs rather than
+ * TanStack's typed `to`, so this wraps TanStack `Link`'s `href` escape hatch while
+ * keeping client-side navigation. The cast is contained to this primitive.
+ */
+type HrefLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
+  href: string;
+  children: ReactNode;
+};
+const HrefLink = Link as unknown as FC<HrefLinkProps>;
 
 const ACTIVE_TAB_PILL_TRANSITION = { type: "spring", stiffness: 400, damping: 30 } as const;
 
@@ -88,9 +100,9 @@ function AnimatedTab({
 
   if (href) {
     return (
-      <Link href={href} prefetch={false} role="tab" aria-selected={_active} className={sharedClass}>
+      <HrefLink href={href} role="tab" aria-selected={_active} className={sharedClass}>
         {inner}
-      </Link>
+      </HrefLink>
     );
   }
 

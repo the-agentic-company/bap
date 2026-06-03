@@ -5,7 +5,6 @@ import { db } from "@cmdclaw/db/client";
 import { cloudAccountLink, session, user } from "@cmdclaw/db/schema";
 import { serializeSignedCookie } from "better-call";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
 import { randomBytes, randomUUID } from "node:crypto";
 import { env } from "@/env";
 import { INVITE_ONLY_LOGIN_ERROR, shouldGrantAdminRole } from "@/lib/admin-emails";
@@ -155,12 +154,51 @@ export async function resolveOrCreateLocalUserFromCloudIdentity(
   return userId;
 }
 
+/**
+ * Serializes a `Set-Cookie` header value. Implemented inline (rather than via
+ * `better-call`'s serializeCookie) to preserve the previous `NextResponse.cookies`
+ * behavior, which does not cap `expires` at 400 days and URL-encodes the cookie value.
+ */
+function serializeSetCookie(
+  name: string,
+  value: string,
+  options: {
+    path?: string;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: "lax" | "strict" | "none";
+    expires?: Date;
+    maxAge?: number;
+  },
+): string {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  if (options.path) {
+    parts.push(`Path=${options.path}`);
+  }
+  if (options.expires) {
+    parts.push(`Expires=${options.expires.toUTCString()}`);
+  }
+  if (typeof options.maxAge === "number") {
+    parts.push(`Max-Age=${Math.floor(options.maxAge)}`);
+  }
+  if (options.httpOnly) {
+    parts.push("HttpOnly");
+  }
+  if (options.secure) {
+    parts.push("Secure");
+  }
+  if (options.sameSite) {
+    const sameSite = options.sameSite;
+    parts.push(`SameSite=${sameSite.charAt(0).toUpperCase()}${sameSite.slice(1)}`);
+  }
+  return parts.join("; ");
+}
+
 export async function createLocalSessionRedirectResponse(args: {
   userId: string;
   redirectUrl: URL;
   requestUrl: string;
-}) {
-  const response = NextResponse.redirect(args.redirectUrl);
+}): Promise<Response> {
   const { token, expiresAt } = await createLocalSession(args.userId);
   const signedToken = (await serializeSignedCookie("", token, env.BETTER_AUTH_SECRET)).replace(
     "=",
@@ -168,19 +206,33 @@ export async function createLocalSessionRedirectResponse(args: {
   );
 
   const cookieName = getSessionCookieName(args.requestUrl);
-  response.cookies.set(cookieName, normalizeCookieValue(signedToken), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: cookieName.startsWith("__Secure-"),
-    expires: expiresAt,
-    path: "/",
-  });
-
   const otherCookieName =
     cookieName === "better-auth.session_token"
       ? "__Secure-better-auth.session_token"
       : "better-auth.session_token";
-  response.cookies.delete(otherCookieName);
 
-  return response;
+  const headers = new Headers();
+  headers.set("location", args.redirectUrl.toString());
+
+  headers.append(
+    "set-cookie",
+    serializeSetCookie(cookieName, normalizeCookieValue(signedToken), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: cookieName.startsWith("__Secure-"),
+      expires: expiresAt,
+      path: "/",
+    }),
+  );
+
+  // Clear the cookie for the protocol we are not using (matches NextResponse.cookies.delete).
+  headers.append(
+    "set-cookie",
+    serializeSetCookie(otherCookieName, "", {
+      path: "/",
+      maxAge: 0,
+    }),
+  );
+
+  return new Response(null, { status: 307, headers });
 }

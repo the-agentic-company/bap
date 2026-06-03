@@ -2,9 +2,9 @@
 
 import type React from "react";
 import { Check, ExternalLink, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AppImage } from "@/components/app-image";
+import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { getIntegrationActions } from "@/lib/integration-icons";
@@ -83,7 +83,7 @@ export function IntegrationDetailContent({
         <div className="flex flex-col">
           {/* Integration icon */}
           <div className="mb-5 inline-flex size-14 items-center justify-center rounded-xl border bg-white p-2.5 shadow-sm dark:bg-gray-800">
-            <Image
+            <AppImage
               src={config.icon}
               alt={config.name}
               width={28}
@@ -173,10 +173,10 @@ export function IntegrationDetailContent({
               </>
             ) : isWhatsApp ? (
               <Button className="gap-1.5 rounded-lg px-5" asChild>
-                <Link href="/integrations/whatsapp">
+                <AppLink href="/integrations/whatsapp">
                   Setup
                   <ExternalLink className="size-3.5" />
-                </Link>
+                </AppLink>
               </Button>
             ) : showGoogleRequest ? (
               <Button

@@ -2,16 +2,12 @@
 
 import * as jestDomVitest from "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { DisplayIntegrationType } from "@/lib/integration-icons";
 import { IntegrationBadges } from "./integration-badges";
 
 void jestDomVitest;
 const COWORKER_BADGES: DisplayIntegrationType[] = ["coworker"];
-
-vi.mock("next/image", () => ({
-  default: ({ alt }: { alt: string }) => <span data-testid="mock-image" aria-label={alt} />,
-}));
 
 afterEach(cleanup);
 
@@ -20,6 +16,6 @@ describe("IntegrationBadges", () => {
     render(<IntegrationBadges integrations={COWORKER_BADGES} />);
 
     expect(screen.getByText("Coworker")).toBeInTheDocument();
-    expect(screen.getByLabelText("Coworker")).toBeInTheDocument();
+    expect(screen.getByAltText("Coworker")).toBeInTheDocument();
   });
 });

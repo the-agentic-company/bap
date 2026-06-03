@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomBar } from "@/components/mobile-bottom-bar";
@@ -23,10 +23,10 @@ export function AppShell({
   sidebarVisibility = "always",
   initialHasSession = false,
 }: AppShellProps) {
-  const pathname = usePathname();
+  const pathname = useLocation({ select: (location) => location.pathname });
   const [showAuthenticatedSidebar, setShowAuthenticatedSidebar] = useState(initialHasSession);
   const isChatRoute =
-    pathname === "/chat" || pathname?.startsWith("/chat/") || pathname?.startsWith("/agents/runs/");
+    pathname === "/chat" || pathname.startsWith("/chat/") || pathname.startsWith("/agents/runs/");
 
   useEffect(() => {
     if (sidebarVisibility === "always") {

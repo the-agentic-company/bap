@@ -3,7 +3,6 @@
 /* oxlint-disable react-perf/jsx-no-new-object-as-prop -- motion props are declarative animation config */
 
 import { motion, useInView } from "motion/react";
-import Image from "next/image";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { INTEGRATION_LOGOS, type IntegrationType } from "@/lib/integration-icons";
@@ -214,12 +213,14 @@ function MiniCard({ agent, isHighlighted }: { agent: MockAgent; isHighlighted: b
         </span>
         <div className="ml-auto flex items-center gap-1">
           {agent.integrations.map((key) => (
-            <Image
+            <img
               key={key}
               src={INTEGRATION_LOGOS[key]}
               alt=""
               width={12}
               height={12}
+              loading="lazy"
+              decoding="async"
               className="size-3"
             />
           ))}

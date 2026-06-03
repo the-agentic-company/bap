@@ -1,17 +1,11 @@
 // @vitest-environment jsdom
 
-import type { ComponentProps } from "react";
 import * as jestDomVitest from "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ToolApprovalCard } from "./tool-approval-card";
 
 void jestDomVitest;
-
-vi.mock("next/image", () => ({
-  // oxlint-disable-next-line eslint-plugin-next/no-img-element
-  default: (props: ComponentProps<"img">) => <img {...props} alt={props.alt} />,
-}));
 
 const QUESTION_TOOL_INPUT = {
   questions: [

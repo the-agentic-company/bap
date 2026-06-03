@@ -4,7 +4,6 @@
 
 import { Check, Loader2, ShieldCheck, KeyRound, Inbox } from "lucide-react";
 import { motion, AnimatePresence, useInView } from "motion/react";
-import Image from "next/image";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { INTEGRATION_LOGOS, type IntegrationType } from "@/lib/integration-icons";
@@ -231,12 +230,14 @@ function AgentMiniCard({ agent, isPulsing }: { agent: ShowcaseAgent; isPulsing: 
             </span>
             <div className="ml-auto flex items-center gap-0.5">
               {agent.integrations.map((key) => (
-                <Image
+                <img
                   key={key}
                   src={INTEGRATION_LOGOS[key]}
                   alt=""
                   width={11}
                   height={11}
+                  loading="lazy"
+                  decoding="async"
                   className="size-[11px]"
                 />
               ))}
@@ -352,11 +353,13 @@ function InboxRow({
             {item.title}
           </span>
           <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[9px]">
-            <Image
+            <img
               src={INTEGRATION_LOGOS[item.integration]}
               alt=""
               width={10}
               height={10}
+              loading="lazy"
+              decoding="async"
               className="size-2.5"
             />
             <span>@{item.agentUsername}</span>

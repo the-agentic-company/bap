@@ -3,8 +3,8 @@
 /* oxlint-disable react-perf/jsx-no-new-object-as-prop -- motion props are declarative animation config */
 
 import type React from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,7 +120,7 @@ export function CloudLoginClient({
   initialError?: string | null;
   initialScreen?: InitialScreen;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [step, setStep] = useState<Step>("initial");
@@ -184,9 +184,10 @@ export function CloudLoginClient({
 
     if (signInError) {
       if (signInError.message === INVITE_ONLY_LOGIN_ERROR) {
-        router.push(
-          `/invite-only?source=magic-link&email=${encodeURIComponent(normalizeEmail(email))}`,
-        );
+        void navigate({
+          to: "/invite-only",
+          search: { source: "magic-link", email: normalizeEmail(email) },
+        });
         return;
       }
 
@@ -197,7 +198,7 @@ export function CloudLoginClient({
 
     setSubmitting(false);
     setStep("magic-link-sent");
-  }, [callbackUrl, email, router]);
+  }, [callbackUrl, email, navigate]);
 
   const signInWithPassword = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -213,9 +214,10 @@ export function CloudLoginClient({
 
       if (signInError) {
         if (signInError.message === INVITE_ONLY_LOGIN_ERROR) {
-          router.push(
-            `/invite-only?source=password&email=${encodeURIComponent(normalizeEmail(email))}`,
-          );
+          void navigate({
+            to: "/invite-only",
+            search: { source: "password", email: normalizeEmail(email) },
+          });
           return;
         }
 
@@ -224,9 +226,9 @@ export function CloudLoginClient({
         return;
       }
 
-      router.push(callbackUrl);
+      void navigate({ href: callbackUrl });
     },
-    [callbackUrl, email, password, router],
+    [callbackUrl, email, password, navigate],
   );
 
   const requestPasswordSetup = useCallback(
@@ -247,9 +249,10 @@ export function CloudLoginClient({
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as { code?: string } | null;
           if (body?.code === INVITE_ONLY_LOGIN_ERROR) {
-            router.push(
-              `/invite-only?source=password&email=${encodeURIComponent(normalizeEmail(email))}`,
-            );
+            void navigate({
+              to: "/invite-only",
+              search: { source: "password", email: normalizeEmail(email) },
+            });
             return;
           }
 
@@ -266,7 +269,7 @@ export function CloudLoginClient({
         setError("Unable to send a password email right now.");
       }
     },
-    [callbackUrl, email, router],
+    [callbackUrl, email, navigate],
   );
 
   const handleUsePassword = useCallback(async () => {
@@ -296,7 +299,10 @@ export function CloudLoginClient({
       }
 
       if (!body?.approved) {
-        router.push(`/invite-only?source=password&email=${encodeURIComponent(normalizedEmail)}`);
+        void navigate({
+          to: "/invite-only",
+          search: { source: "password", email: normalizedEmail },
+        });
         return;
       }
 
@@ -306,7 +312,7 @@ export function CloudLoginClient({
       setSubmitting(false);
       setError("Unable to start password login right now.");
     }
-  }, [email, router]);
+  }, [email, navigate]);
 
   const handleMagicLinkSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {

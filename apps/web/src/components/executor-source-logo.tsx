@@ -1,8 +1,8 @@
 "use client";
 
 import { Puzzle } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { AppImage } from "@/components/app-image";
 import { getBrandfetchLogoUrl } from "@/lib/brandfetch";
 import { cn } from "@/lib/utils";
 
@@ -37,13 +37,12 @@ export function WorkspaceMcpServerLogo({
       )}
     >
       {logoUrl && !logoFailed ? (
-        <Image
+        <AppImage
           src={logoUrl}
           alt=""
           width={80}
           height={80}
           className={cn("h-full w-full rounded-md object-contain", imgClassName)}
-          unoptimized
           onError={handleError}
         />
       ) : (

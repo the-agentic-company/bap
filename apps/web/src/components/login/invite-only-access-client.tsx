@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,11 +132,11 @@ export function InviteOnlyAccessClient({
 
         <div className="flex items-center justify-center gap-3">
           <Button asChild variant="ghost" size="sm">
-            <Link href="/login">Back to login</Link>
+            <Link to="/login">Back to login</Link>
           </Button>
           {status === "already-approved" ? (
             <Button asChild size="sm">
-              <Link href="/login">Log in</Link>
+              <Link to="/login">Log in</Link>
             </Button>
           ) : null}
         </div>

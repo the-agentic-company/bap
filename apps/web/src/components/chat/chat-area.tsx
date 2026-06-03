@@ -25,7 +25,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import type { StatusChangeMetadata } from "@/lib/generation-stream";
 import type { DisplayIntegrationType } from "@/lib/integration-icons";
-import { useChatHeaderActions } from "@/app/chat/chat-header-actions-context";
+import { useChatHeaderActions } from "@/components/chat/chat-header-actions-context";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

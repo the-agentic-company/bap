@@ -220,7 +220,6 @@ export function BrickAvatarPreview({
   const svg = renderBrickAvatarSvg(options);
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- generated SVG data URI, no optimization needed
     <img
       src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`}
       alt="Coworker brick avatar"

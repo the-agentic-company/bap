@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { AppImage } from "@/components/chat/app-image";
 import { getIntegrationLogo } from "@/lib/integration-icons";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +25,7 @@ export function IntegrationLogo({ integration, size = 16, className }: Integrati
   }
 
   return (
-    <Image
+    <AppImage
       src={logo}
       alt={integration}
       width={size}

@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useMemo } from "react";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { cn } from "@/lib/utils";
@@ -86,10 +86,8 @@ export function CoworkerInvocationCard(props: CoworkerInvocationCardProps) {
 
   const effectiveStatus =
     (data?.status as CoworkerInvocationCardProps["status"] | undefined) ?? props.status;
-  const runHref = useMemo(
-    () => `/agents/runs/${props.runId}?coworkerId=${props.coworkerId}`,
-    [props.coworkerId, props.runId],
-  );
+  const runParams = useMemo(() => ({ id: props.runId }), [props.runId]);
+  const runSearch = useMemo(() => ({ coworkerId: props.coworkerId }), [props.coworkerId]);
 
   return (
     <div className="border-border/60 bg-card rounded-xl border p-4 shadow-sm">
@@ -120,7 +118,9 @@ export function CoworkerInvocationCard(props: CoworkerInvocationCardProps) {
             {getStatusLabel(effectiveStatus)}
           </span>
           <Link
-            href={runHref}
+            to="/agents/runs/$id"
+            params={runParams}
+            search={runSearch}
             className="border-border/70 text-foreground hover:bg-muted inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors"
           >
             Open

@@ -1,8 +1,8 @@
 "use client";
 
 import { ChevronDown, ChevronUp } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useState } from "react";
+import { AppImage } from "@/components/app-image";
 
 export function MermaidDiagram({
   imageUrl,
@@ -26,13 +26,12 @@ export function MermaidDiagram({
               expanded ? "max-h-[800px] pb-2" : "max-h-[220px] pb-0"
             } overflow-hidden`}
           >
-            <Image
+            <AppImage
               src={imageUrl}
               alt="Coworker diagram"
               width={460}
               height={400}
               className="h-auto w-auto max-w-full object-contain"
-              unoptimized
             />
           </div>
 

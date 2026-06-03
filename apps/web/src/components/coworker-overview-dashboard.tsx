@@ -9,7 +9,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import {
   BarChart,
@@ -21,6 +20,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { AppLink } from "@/components/app-link";
 import {
   Select,
   SelectContent,
@@ -271,12 +271,12 @@ function buildColumns(
       enableSorting: false,
       cell: ({ row }) =>
         coworkerLinkPrefix ? (
-          <Link
+          <AppLink
             href={`${coworkerLinkPrefix}${getCoworkerRouteSlug(row.original)}`}
             className="font-medium underline-offset-2 hover:underline"
           >
             {row.original.name}
-          </Link>
+          </AppLink>
         ) : (
           <span className="font-medium">{row.original.name}</span>
         ),
@@ -654,12 +654,12 @@ export function CoworkerOverviewDashboard({
               >
                 <StatusDot status="error" />
                 {coworkerLinkPrefix ? (
-                  <Link
+                  <AppLink
                     href={`${coworkerLinkPrefix}${getCoworkerRouteSlug(c)}`}
                     className="font-medium underline-offset-2 hover:underline"
                   >
                     {c.name}
-                  </Link>
+                  </AppLink>
                 ) : (
                   <span className="font-medium">{c.name}</span>
                 )}

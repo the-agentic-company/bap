@@ -11,7 +11,6 @@ import {
   animate,
   AnimatePresence,
 } from "motion/react";
-import Image from "next/image";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { INTEGRATION_LOGOS, type IntegrationType } from "@/lib/integration-icons";
@@ -277,11 +276,13 @@ function BuildingAgent({ agent, started }: { agent: Example["agent"]; started: b
             }
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
-            <Image
+            <img
               src={INTEGRATION_LOGOS[key]}
               alt=""
               width={14}
               height={14}
+              loading="lazy"
+              decoding="async"
               className="h-3.5 w-auto"
             />
           </motion.div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, X } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,7 +139,19 @@ export function InboxEditForm({ toolApproval, onSave, onCancel }: Props) {
       {/* Header */}
       <div className="border-border/30 flex items-center gap-2 border-b px-3 py-2 text-sm">
         {logo && (
-          <Image src={logo} alt={displayName} width={16} height={16} className="h-4 w-auto" />
+          // Platform-native image is the intended TanStack Start replacement for next/image; the
+          // Next no-img-element rule is a false positive here and is dropped when the Next lint
+          // integration is removed in a later migration phase.
+          // oxlint-disable-next-line nextjs/no-img-element
+          <img
+            src={logo}
+            alt={displayName}
+            width={16}
+            height={16}
+            loading="lazy"
+            decoding="async"
+            className="h-4 w-auto"
+          />
         )}
         <span className="font-medium">Edit {displayName}</span>
         <span className="text-muted-foreground">action before approving</span>

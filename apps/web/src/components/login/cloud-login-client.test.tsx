@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 void jestDomVitest;
 
 const mocks = vi.hoisted(() => ({
-  routerPush: vi.fn(),
+  navigate: vi.fn(),
   signInMagicLink: vi.fn(),
   signInEmail: vi.fn(),
   signInSocial: vi.fn(),
@@ -15,8 +15,8 @@ const mocks = vi.hoisted(() => ({
   fetchMock: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mocks.routerPush }),
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mocks.navigate,
 }));
 
 vi.mock("@/lib/auth-client", () => ({
@@ -129,7 +129,7 @@ describe("CloudLoginClient", () => {
         callbackURL: "/chat",
       });
     });
-    expect(mocks.routerPush).toHaveBeenCalledWith("/chat");
+    expect(mocks.navigate).toHaveBeenCalledWith({ href: "/chat" });
   });
 
   it("shows sign up copy and creates a password when none exists yet", async () => {

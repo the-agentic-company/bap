@@ -18,7 +18,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AnimatePresence, motion, type Transition } from "motion/react";
-import Image from "next/image";
 import {
   useCallback,
   useMemo,
@@ -28,6 +27,7 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { AppImage } from "@/components/chat/app-image";
 import type { DisplayIntegrationType } from "@/lib/integration-icons";
 import { getBrandfetchLogoUrl } from "@/lib/brandfetch";
 import { type WorkspaceMcpServerLike, getExecutorDisplayMetadata } from "@/lib/executor-tool";
@@ -211,13 +211,12 @@ export function ActivityItem({ item, executorSources = [] }: Props) {
         : null;
       if (logoUrl) {
         return (
-          <Image
+          <AppImage
             src={logoUrl}
             alt={executorDisplay.source.name?.trim() || executorDisplay.source.namespace}
             width={14}
             height={14}
             className="h-3.5 w-auto flex-shrink-0 rounded-sm"
-            unoptimized
           />
         );
       }
@@ -230,7 +229,7 @@ export function ActivityItem({ item, executorSources = [] }: Props) {
       const logo = getIntegrationLogo(resolvedIntegration);
       if (logo) {
         return (
-          <Image
+          <AppImage
             src={logo}
             alt={getIntegrationDisplayName(resolvedIntegration)}
             width={14}

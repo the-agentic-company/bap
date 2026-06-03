@@ -11,11 +11,11 @@ import {
   PinOff,
   Trash2,
 } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppLink } from "@/components/app-link";
 import { useChatDraftStore } from "@/components/chat/chat-draft-store";
 import { ConversationUsageDialog } from "@/components/conversation-usage-dialog";
+import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -139,9 +139,8 @@ function ConversationRow({
 
   return (
     <div className="group relative flex items-center px-2">
-      <Link
+      <AppLink
         href={`/chat/${conversation.id}`}
-        prefetch={false}
         className={cn(
           "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
           active
@@ -160,7 +159,7 @@ function ConversationRow({
         <span className="text-sidebar-foreground/45 shrink-0 text-[11px] group-hover:hidden">
           {formatRelativeShort(new Date(conversation.updatedAt))}
         </span>
-      </Link>
+      </AppLink>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button

@@ -1,8 +1,8 @@
 "use client";
 
 import { Paperclip, Download, FileIcon, Eye } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
+import { AppImage } from "@/components/chat/app-image";
 import type { DisplayIntegrationType } from "@/lib/integration-icons";
 import { useDownloadAttachment, useDownloadSandboxFile } from "@/orpc/hooks";
 import type { ActivityItemData } from "./activity-item";
@@ -434,12 +434,11 @@ export function MessageItem({
             {attachments.map((a) =>
               a.mimeType.startsWith("image/") && a.dataUrl ? (
                 <div key={getAttachmentKey(a)} className="group relative">
-                  <Image
+                  <AppImage
                     src={a.dataUrl}
                     alt={a.name}
                     width={320}
                     height={192}
-                    unoptimized
                     className="max-h-48 max-w-xs rounded-lg border object-cover"
                   />
                   {(a.id || a.dataUrl) && (

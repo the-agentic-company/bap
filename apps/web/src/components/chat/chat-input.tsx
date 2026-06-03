@@ -1,8 +1,8 @@
 "use client";
 
 import { Send, Square, Mic, Paperclip, X, Clock3 } from "lucide-react";
-import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { AppImage } from "@/components/chat/app-image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getChatDraftKey, useChatDraftStore } from "./chat-draft-store";
@@ -282,12 +282,11 @@ export function ChatInput({
               className="group bg-background relative flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
             >
               {a.mimeType.startsWith("image/") ? (
-                <Image
+                <AppImage
                   src={a.dataUrl}
                   alt={a.name}
                   width={32}
                   height={32}
-                  unoptimized
                   className="h-8 w-8 rounded object-cover"
                 />
               ) : (

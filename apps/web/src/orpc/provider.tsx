@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { usePathname } from "next/navigation";
+import { useLocation } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 type ORPCProviderProps = {
@@ -10,7 +10,7 @@ type ORPCProviderProps = {
 };
 
 export function ORPCProvider({ children, syncSessionUser = true }: ORPCProviderProps) {
-  const pathname = usePathname();
+  const pathname = useLocation({ select: (location) => location.pathname });
   const [queryClient] = useState(
     () =>
       new QueryClient({

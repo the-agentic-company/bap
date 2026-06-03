@@ -5,9 +5,9 @@ import type {
   TemplateIntegrationType,
 } from "@cmdclaw/db/template-catalog";
 import { ArrowRight, Check, Link2, Play, Share2 } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AppImage } from "@/components/app-image";
+import { AppLink } from "@/components/app-link";
 import { MermaidDiagram } from "@/components/mermaid-diagram";
 import { Button } from "@/components/ui/button";
 import { INTEGRATION_LOGOS } from "@/lib/integration-icons";
@@ -78,7 +78,7 @@ export function TemplateDetailContent({ template }: { template: TemplateCatalogT
                 key={key}
                 className="bg-muted inline-flex size-9 items-center justify-center rounded-lg"
               >
-                <Image
+                <AppImage
                   src={TEMPLATE_INTEGRATION_LOGOS[key]}
                   alt={key}
                   width={16}
@@ -103,10 +103,10 @@ export function TemplateDetailContent({ template }: { template: TemplateCatalogT
 
           <div className="mt-8">
             <Button asChild className="gap-1.5 rounded-lg px-5">
-              <Link href={`/agents/deploy/${template.id}`}>
+              <AppLink href={`/agents/deploy/${template.id}`}>
                 <Play className="size-3.5 fill-current" />
                 {template.heroCta}
-              </Link>
+              </AppLink>
             </Button>
           </div>
 
@@ -178,7 +178,7 @@ export function TemplateDetailContent({ template }: { template: TemplateCatalogT
                         key={`${block.title}-${integration}`}
                         className="bg-muted inline-flex size-7 items-center justify-center rounded-lg"
                       >
-                        <Image
+                        <AppImage
                           src={TEMPLATE_INTEGRATION_LOGOS[integration]}
                           alt={integration}
                           width={14}
@@ -267,7 +267,7 @@ export function TemplateDetailContent({ template }: { template: TemplateCatalogT
                 <div className="flex items-center gap-3.5">
                   <span className="bg-muted inline-flex size-9 items-center justify-center rounded-lg">
                     {app.integration ? (
-                      <Image
+                      <AppImage
                         src={TEMPLATE_INTEGRATION_LOGOS[app.integration]}
                         alt={app.name}
                         width={16}
@@ -294,10 +294,10 @@ export function TemplateDetailContent({ template }: { template: TemplateCatalogT
         {/* ── Deploy CTA ── */}
         <section className="flex justify-center pt-2 pb-4">
           <Button asChild className="gap-1.5 rounded-lg px-8">
-            <Link href={`/agents/deploy/${template.id}`}>
+            <AppLink href={`/agents/deploy/${template.id}`}>
               Deploy the coworker
               <ArrowRight className="size-3.5" />
-            </Link>
+            </AppLink>
           </Button>
         </section>
       </div>

@@ -1,9 +1,9 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
 import posthogClientLib from "posthog-js";
 import { PostHogProvider, usePostHog } from "posthog-js/react";
 import { Suspense, useEffect } from "react";
+import { usePathname, useSearchParams } from "@/components/next-navigation-compat";
 import { env } from "@/env";
 import { authClient } from "@/lib/auth-client";
 

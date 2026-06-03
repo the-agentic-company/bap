@@ -6,12 +6,9 @@ import type {
   TemplateIntegrationType,
 } from "@cmdclaw/db/template-catalog";
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@cmdclaw/core/lib/chat-model-defaults";
+import { ClientOnly, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { ArrowUp } from "lucide-react";
-import dynamic from "next/dynamic";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { AttachmentData } from "@/components/prompt-bar";
 import type { PromptSegment } from "@/lib/prompt-segments";
@@ -222,12 +219,14 @@ function IntegrationLogos({ integrations }: { integrations: TemplateIntegrationT
           return null;
         }
         return (
-          <Image
+          <img
             key={key}
             src={logo}
             alt={key}
             width={16}
             height={16}
+            loading="lazy"
+            decoding="async"
             className="size-4 shrink-0"
           />
         );
@@ -245,8 +244,12 @@ function TemplateCard({
 }) {
   return (
     <Link
-      href={isMobile ? `/template/${template.id}` : `/?preview=${template.id}`}
-      scroll={false}
+      to={isMobile ? "/template/$templateId" : "/"}
+      // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- TanStack Router params require an inline object
+      params={isMobile ? { templateId: template.id } : {}}
+      // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- TanStack Router search requires an inline object
+      search={isMobile ? {} : { preview: template.id }}
+      resetScroll={false}
       className="group border-border/60 bg-card relative flex min-h-[170px] w-full flex-col gap-3 rounded-xl border p-5 text-left shadow-sm transition-all duration-150 hover:border-slate-300 hover:bg-slate-100"
     >
       <div className="flex items-start justify-between gap-2">
@@ -268,9 +271,9 @@ function TemplateCard({
 
 // Landing
 
-const PromptBar = dynamic(() => import("@/components/prompt-bar").then((mod) => mod.PromptBar), {
-  ssr: false,
-});
+const PromptBar = lazy(() =>
+  import("@/components/prompt-bar").then((mod) => ({ default: mod.PromptBar })),
+);
 
 // ─── Animated Department Heading ──────────────────────────────────────────────
 
@@ -346,8 +349,10 @@ export function CoworkerLanding({
   initialFirstName = null,
   featuredTemplates,
 }: CoworkerLandingProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const previewId = useLocation({
+    select: (location) => (location.search as { preview?: string }).preview ?? null,
+  });
   const isMobile = useIsMobile();
   const createCoworker = useCreateCoworker();
   const { data: providerAuthStatus } = useProviderAuthStatus();
@@ -372,7 +377,6 @@ export function CoworkerLanding({
   const isRecordingRef = useRef(false);
   const heroAnimatedPrompts = useMemo(() => HERO_PROMPT_EXAMPLES.map((item) => item.prompt), []);
   const heroRichSegments = useMemo(() => HERO_PROMPT_EXAMPLES.map((item) => item.segments), []);
-  const previewId = searchParams.get("preview");
   const providerAvailability = useMemo(
     () =>
       buildProviderAuthAvailabilityByProvider({
@@ -619,8 +623,13 @@ export function CoworkerLanding({
       return;
     }
 
-    router.replace(`/template/${previewId}`, { scroll: false });
-  }, [isMobile, previewId, router]);
+    void navigate({
+      to: "/template/$templateId",
+      params: { templateId: previewId },
+      replace: true,
+      resetScroll: false,
+    });
+  }, [isMobile, previewId, navigate]);
 
   const stopRecordingAndTranscribe = useCallback(async () => {
     if (!isRecordingRef.current) {
@@ -703,14 +712,17 @@ export function CoworkerLanding({
                 asChild
                 className="border-white/45 bg-white/80 hover:bg-white"
               >
-                <Link href="/login">Log in</Link>
+                <Link to="/login">Log in</Link>
               </Button>
               <Button
                 size="sm"
                 asChild
                 className="bg-slate-950 text-white shadow-[0_16px_32px_rgba(2,6,23,0.35)] hover:bg-slate-900"
               >
-                <Link href="/login?mode=getting-started">Get Started</Link>
+                {/* oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- TanStack Router search requires an inline object */}
+                <Link to="/login" search={{ mode: "getting-started" }}>
+                  Get Started
+                </Link>
               </Button>
             </div>
           ) : null}
@@ -736,23 +748,27 @@ export function CoworkerLanding({
               <p className="mx-auto mb-8 max-w-md text-center text-base text-white/70 md:text-lg">
                 Describe a task and we&apos;ll build it step by step
               </p>
-              <PromptBar
-                onSubmit={handlePromptComposerSubmit}
-                isSubmitting={isCreating}
-                disabled={isCreating || isRecording || isProcessingVoice}
-                variant="hero"
-                placeholder="e.g. Every morning, summarize my unread emails and send me a digest…"
-                animatedPlaceholders={heroAnimatedPrompts}
-                richAnimatedPlaceholders={heroRichSegments}
-                onAnimatedPlaceholderIndexChange={setActivePromptIndex}
-                isRecording={isRecording}
-                onStartRecording={handleStartRecording}
-                onStopRecording={stopRecordingAndTranscribe}
-                voiceInteractionMode="toggle"
-                prefillRequest={inputPrefillRequest}
-                renderModelSelector={!isAnonymous ? modelSelectorNode : undefined}
-                renderDebugControls={debugControlNode}
-              />
+              <ClientOnly>
+                <Suspense fallback={null}>
+                  <PromptBar
+                    onSubmit={handlePromptComposerSubmit}
+                    isSubmitting={isCreating}
+                    disabled={isCreating || isRecording || isProcessingVoice}
+                    variant="hero"
+                    placeholder="e.g. Every morning, summarize my unread emails and send me a digest…"
+                    animatedPlaceholders={heroAnimatedPrompts}
+                    richAnimatedPlaceholders={heroRichSegments}
+                    onAnimatedPlaceholderIndexChange={setActivePromptIndex}
+                    isRecording={isRecording}
+                    onStartRecording={handleStartRecording}
+                    onStopRecording={stopRecordingAndTranscribe}
+                    voiceInteractionMode="toggle"
+                    prefillRequest={inputPrefillRequest}
+                    renderModelSelector={!isAnonymous ? modelSelectorNode : undefined}
+                    renderDebugControls={debugControlNode}
+                  />
+                </Suspense>
+              </ClientOnly>
               {(isRecording || isProcessingVoice || voiceError) && (
                 <div className="mt-4">
                   <VoiceIndicator
@@ -780,7 +796,7 @@ export function CoworkerLanding({
                 asChild
                 className="gap-1.5 border-white/45 bg-white/80 hover:bg-white"
               >
-                <Link href="/templates">Browse all</Link>
+                <Link to="/templates">Browse all</Link>
               </Button>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -901,10 +917,10 @@ export function CoworkerLanding({
                     >
                       Docs
                     </a>
-                    <Link href="/pricing" className="hover:text-foreground transition-colors">
+                    <Link to="/pricing" className="hover:text-foreground transition-colors">
                       Pricing
                     </Link>
-                    <Link href="/templates" className="hover:text-foreground transition-colors">
+                    <Link to="/templates" className="hover:text-foreground transition-colors">
                       Templates
                     </Link>
                   </nav>
@@ -914,14 +930,14 @@ export function CoworkerLanding({
                     Company
                   </p>
                   <nav className="text-muted-foreground flex flex-col gap-2 text-xs">
-                    <Link href="/support" className="hover:text-foreground transition-colors">
+                    <Link to="/support" className="hover:text-foreground transition-colors">
                       Support
                     </Link>
-                    <Link href="/legal/terms" className="hover:text-foreground transition-colors">
+                    <Link to="/legal/terms" className="hover:text-foreground transition-colors">
                       Terms
                     </Link>
                     <Link
-                      href="/legal/privacy-policy"
+                      to="/legal/privacy-policy"
                       className="hover:text-foreground transition-colors"
                     >
                       Privacy

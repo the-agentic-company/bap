@@ -2,9 +2,9 @@
 
 import type { TemplateCatalogTemplate } from "@cmdclaw/db/template-catalog";
 import { Maximize2, X } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
+import { AppLink } from "@/components/app-link";
+import { useRouter } from "@/components/next-navigation-compat";
 import { TemplateDetailContent } from "@/components/template-detail-content";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,7 @@ export function TemplatePreviewModal({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => {
-    router.push(closeHref, { scroll: false });
+    router.push(closeHref);
   }, [closeHref, router]);
 
   const handleOpenChange = useCallback(
@@ -77,9 +77,9 @@ export function TemplatePreviewModal({
               size="icon-sm"
               className="text-muted-foreground hover:text-foreground"
             >
-              <Link href={`/template/${template.id}`} aria-label="Open full page">
+              <AppLink href={`/template/${template.id}`} aria-label="Open full page">
                 <Maximize2 className="size-4" />
-              </Link>
+              </AppLink>
             </Button>
             <DialogClose asChild>
               <button

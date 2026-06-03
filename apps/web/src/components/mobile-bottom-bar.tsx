@@ -1,11 +1,11 @@
 "use client";
 
 import { LayoutTemplate, Menu, MessageSquare, WandSparkles, X } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { AppLink } from "@/components/app-link";
 import { BrickIcon } from "@/components/icons/brick-icon";
 import { MobileMenuPanel } from "@/components/mobile-menu-sheet";
+import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import { openNewChat } from "@/lib/open-new-chat";
 import { cn } from "@/lib/utils";
 
@@ -88,10 +88,9 @@ export function MobileBottomBar() {
           {tabs.map((tab) => {
             const active = isActive(tab.href);
             return (
-              <Link
+              <AppLink
                 key={tab.href}
                 href={tab.href}
-                prefetch={false}
                 onClick={handleTabClick(tab.href)}
                 className={cn(
                   "flex flex-1 flex-col items-center gap-1 pt-3 pb-2 text-[11px] font-medium transition-colors",
@@ -100,7 +99,7 @@ export function MobileBottomBar() {
               >
                 <tab.icon className="h-6 w-6" />
                 <span>{tab.label}</span>
-              </Link>
+              </AppLink>
             );
           })}
         </nav>

@@ -1,8 +1,8 @@
 "use client";
 
 import { ChevronDown, ChevronRight, Check, X, Loader2, Link2 } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
+import { AppImage } from "@/components/chat/app-image";
 import { Button } from "@/components/ui/button";
 import { getIntegrationDisplayName, getIntegrationLogo } from "@/lib/integration-icons";
 import { cn } from "@/lib/utils";
@@ -78,7 +78,7 @@ export function AuthRequestCard({
           {integrations.slice(0, 3).map((integration) => {
             const logo = getIntegrationLogo(integration);
             return logo ? (
-              <Image
+              <AppImage
                 key={integration}
                 src={logo}
                 alt={getIntegrationDisplayName(integration)}
@@ -133,7 +133,7 @@ export function AuthRequestCard({
                 <div key={integration} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {logo && (
-                      <Image
+                      <AppImage
                         src={logo}
                         alt={displayName}
                         width={24}

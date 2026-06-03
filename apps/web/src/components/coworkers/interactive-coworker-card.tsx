@@ -13,9 +13,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent } from "@/components/animate-ui/components/radix/sheet";
@@ -161,7 +159,9 @@ function RunsList({ runs }: { runs: RunEntry[] }) {
         {runs.map((run) => (
           <Link
             key={run.id}
-            href={`/agents/runs/${run.id}`}
+            to="/agents/runs/$id"
+            // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- TanStack Router params require an inline object
+            params={{ id: run.id }}
             className="hover:bg-muted/50 flex items-center gap-2.5 px-3 py-2 transition-colors"
           >
             <Circle
@@ -196,7 +196,7 @@ export function InteractiveCoworkerCard({
   onClick?: () => void;
   nounLabel?: string;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { data: integrations } = useIntegrationList();
   const triggerCoworker = useTriggerCoworker();
@@ -231,9 +231,9 @@ export function InteractiveCoworkerCard({
     if (onClick) {
       onClick();
     } else {
-      router.push(getCoworkerInfoPath(coworker));
+      void navigate({ href: getCoworkerInfoPath(coworker) });
     }
-  }, [onClick, router, coworker]);
+  }, [onClick, navigate, coworker]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -254,14 +254,14 @@ export function InteractiveCoworkerCard({
       try {
         const result = await triggerCoworker.mutateAsync({ id: coworker.id, payload: {} });
         toast.success(result.generationId ? "Run started." : "Needs your input.");
-        router.push(result?.runId ? `/agents/runs/${result.runId}` : "/agents/runs");
+        void navigate({ href: result?.runId ? `/agents/runs/${result.runId}` : "/agents/runs" });
       } catch {
         toast.error("Failed to start run.");
       } finally {
         setIsRunning(false);
       }
     },
-    [triggerCoworker, coworker.id, router],
+    [triggerCoworker, coworker.id, navigate],
   );
 
   const handleToggleStatus = useCallback(
@@ -517,12 +517,14 @@ export function InteractiveCoworkerCard({
               return null;
             }
             return (
-              <Image
+              <img
                 key={key}
                 src={logo}
                 alt={INTEGRATION_DISPLAY_NAMES[key] ?? key}
                 width={14}
                 height={14}
+                loading="lazy"
+                decoding="async"
                 className="size-3.5 shrink-0"
                 title={INTEGRATION_DISPLAY_NAMES[key] ?? key}
               />
@@ -605,7 +607,7 @@ export function InteractiveCoworkerCard({
       </span>
       <div className="flex items-center gap-0.5">
         <Link
-          href={getCoworkerEditHref(coworker)}
+          to={getCoworkerEditHref(coworker)}
           onClick={handleStopPropagation}
           className="text-muted-foreground/30 hover:text-foreground group-hover:text-muted-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors"
           title="Edit coworker"

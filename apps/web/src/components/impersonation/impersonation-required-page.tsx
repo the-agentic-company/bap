@@ -2,7 +2,7 @@
 
 import { Loader2, LogIn, ShieldCheck } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { getImpersonationErrorMessage } from "@/app/admin/impersonation-errors";
+import { getImpersonationErrorMessage } from "@/routes/admin/-lib/impersonation-errors";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
@@ -90,7 +90,6 @@ export function ImpersonationRequiredPage({
         <div className="flex items-start gap-3">
           <div className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md">
             {target.owner.image ? (
-              // eslint-disable-next-line @next/next/no-img-element -- Auth avatars are remote user images with unknown hosts.
               <img
                 src={target.owner.image}
                 alt=""
