@@ -28,21 +28,20 @@ ENV SKIP_ENV_VALIDATION=${SKIP_ENV_VALIDATION}
 ENV BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET} \
     NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY} \
     NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
-# Build the TanStack Start app (Vite). Emits dist/server (fetch handler) + dist/client.
-RUN bun x vite build
+# Build the TanStack Start app (Vite). Emits Nitro's production Node server in .output.
+RUN NODE_OPTIONS=--max-old-space-size=8192 bun x vite build
 
 FROM node:24-bookworm-slim AS runner
 WORKDIR /app/apps/web
 ENV NODE_ENV=production
 COPY --from=builder /app/apps/web/package.json ./package.json
-COPY --from=builder /app/apps/web/server-node.mjs ./server-node.mjs
 COPY --from=builder /app/apps/web/src/env.js ./src/env.js
 COPY --from=builder /app/apps/sandbox /app/apps/sandbox
 COPY --from=builder /app/apps/web/public ./public
-COPY --from=builder /app/apps/web/dist ./dist
+COPY --from=builder /app/apps/web/.output ./.output
 COPY --from=builder /app/apps/web/node_modules ./node_modules
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/packages /app/packages
 EXPOSE 3000
-# Node host wraps the TanStack Start fetch handler and binds to PORT / HOST (set by Render).
-CMD ["node", "server-node.mjs"]
+# Nitro's Node server binds to PORT / HOST (set by Render).
+CMD ["node", ".output/server/index.mjs"]

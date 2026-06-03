@@ -1,5 +1,6 @@
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
+import { nitro } from "nitro/vite";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 // Validate environment variables at config load (mirrors the old next.config.ts side effect).
@@ -53,9 +54,15 @@ export default defineConfig({
     external: ["dockerode", "docker-modem", "ssh2", "cpu-features"],
   },
   plugins: [
+    // Nitro owns the production Node server output (`.output/server/index.mjs`), matching
+    // the current TanStack Start starter shape.
+    nitro({
+      rollupConfig: {
+        external: [/^dockerode$/, /^docker-modem$/, /^ssh2($|\/)/, /^cpu-features($|\/)/],
+      },
+    }),
     // TanStack Start: file-based routing (generates src/routeTree.gen.ts) and the SSR
-    // server build (dist/server/server.js fetch handler + dist/client assets). Render
-    // remains the host; server-node.mjs wraps the handler and binds to PORT at runtime.
+    // server build consumed by Nitro.
     tanstackStart(),
     // We own @vitejs/plugin-react (TanStack Start does not bundle it), which is where
     // React Fast Refresh AND the React Compiler run. React Compiler MUST stay enabled in

@@ -343,7 +343,7 @@ projects:
             numInstances: 1
             dockerContext: .
             dockerfilePath: docker/images/web/Dockerfile
-            dockerCommand: node server-node.mjs
+            dockerCommand: node .output/server/index.mjs
             healthCheckPath: /api/health
             envVars:
               - key: PORT
@@ -775,7 +775,7 @@ projects:
             numInstances: 1
             dockerContext: .
             dockerfilePath: docker/images/web/Dockerfile
-            dockerCommand: node server-node.mjs
+            dockerCommand: node .output/server/index.mjs
             healthCheckPath: /api/health
             envVars:
               - key: PORT
