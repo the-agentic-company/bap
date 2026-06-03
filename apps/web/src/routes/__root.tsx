@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { TanStackDevtoolsReactPlugin } from "@tanstack/react-devtools";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
@@ -29,7 +30,7 @@ import "@/styles/globals.css";
 const edition = env.NEXT_PUBLIC_CMDCLAW_EDITION ?? "cloud";
 const isSelfHost = edition === "selfhost";
 const TANSTACK_DEVTOOLS_CONFIG = { position: "bottom-right" } as const;
-const TANSTACK_DEVTOOLS_PLUGINS = [
+const TANSTACK_DEVTOOLS_PLUGINS: Array<TanStackDevtoolsReactPlugin> = [
   {
     name: "TanStack Router",
     render: <TanStackRouterDevtoolsPanel />,
