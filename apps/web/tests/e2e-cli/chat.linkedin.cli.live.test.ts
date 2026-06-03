@@ -14,6 +14,7 @@ import {
 } from "./live-fixtures";
 
 let liveModel = "";
+const linkedInLiveEnabled = liveEnabled && process.env.E2E_LINKEDIN_LIVE === "1";
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -27,7 +28,7 @@ function buildLinkedInReadPrompt(args: { marker: string }): string {
   ].join("\n");
 }
 
-describe.runIf(liveEnabled)("@live CLI chat linkedin", () => {
+describe.runIf(linkedInLiveEnabled)("@live CLI chat linkedin", () => {
   beforeAll(async () => {
     await ensureCliAuth();
     liveModel = await resolveLiveModel();

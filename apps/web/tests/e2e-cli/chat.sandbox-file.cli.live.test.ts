@@ -13,7 +13,11 @@ import {
 
 const sandboxFilePrompt =
   process.env.E2E_SANDBOX_FILE_PROMPT ??
-  "Create a file in the sandbox called 'hello.txt' with content 'hello'.";
+  [
+    "Create a file in the sandbox called 'hello.txt' with content 'hello'.",
+    "Expose it to the user as a downloadable artifact by calling send_file for /app/hello.txt.",
+    "In your final answer, mention hello.txt by filename.",
+  ].join(" ");
 
 let liveModel = "";
 
