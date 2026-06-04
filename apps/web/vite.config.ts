@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 // Validate environment variables at config load (mirrors the old next.config.ts side effect).
 import * as envConfig from "./src/env.js";
 
@@ -67,6 +67,31 @@ function getManualChunk(id: string): string | undefined {
 	return undefined;
 }
 
+type TransformablePlugin = Plugin & {
+	transformInclude?: (id: string) => boolean;
+	transform?: (this: Plugin, code: string, id: string, ...args: unknown[]) => unknown;
+};
+
+function appGtCompiler(): Plugin {
+	const plugin = gtCompiler() as TransformablePlugin;
+	const originalTransformInclude = plugin.transformInclude?.bind(plugin);
+	const originalTransform = plugin.transform?.bind(plugin);
+
+	return {
+		...plugin,
+		transformInclude(id: string) {
+			return !isNodeModulesPath(id) && (originalTransformInclude?.(id) ?? true);
+		},
+		transform(code, id, ...args) {
+			if (isNodeModulesPath(id)) {
+				return null;
+			}
+
+			return originalTransform?.(code, id, ...args) ?? null;
+		},
+	} as Plugin;
+}
+
 export default defineConfig(({ isSsrBuild }) => ({
 	/**
 	 * Only expose client env vars under the `VITE_*` and `NEXT_PUBLIC_*` prefixes.
@@ -114,7 +139,7 @@ export default defineConfig(({ isSsrBuild }) => ({
 		},
 	},
 	plugins: [
-		gtCompiler(),
+		appGtCompiler(),
 		devtools(),
 		// Nitro owns the production Node server output (`.output/server/index.mjs`), matching
 		// the current TanStack Start starter shape.
