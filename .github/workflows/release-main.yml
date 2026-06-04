@@ -165,6 +165,7 @@ jobs:
           format: compact
           fail-on-issues: true
           version: 2.88.3
+          changed-since: ${{ github.event_name == 'push' && github.event.before || format('{0}^', needs.resolve.outputs.commit_sha) }}
 
       - name: Check Render observability config
         run: bun scripts/check-render-observability-config.ts
