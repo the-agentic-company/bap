@@ -2,8 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useAppLocale } from "@/components/general-translation-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -20,6 +28,11 @@ export const Route = createFileRoute("/settings/")({
 const AccountContactFields = lazy(() => import("./-account-contact-fields"));
 
 type SessionData = Awaited<ReturnType<typeof authClient.getSession>>["data"];
+
+const SETTINGS_LOCALE_NAMES = {
+  en: "English",
+  fr: "Français",
+} as const;
 
 function getPhoneNumber(user: unknown): string {
   if (user && typeof user === "object" && "phoneNumber" in user) {
@@ -45,12 +58,12 @@ function AccountContactFieldsFallback() {
   return (
     <>
       <div>
-        <div className="mb-2 h-5 w-28 rounded bg-muted" />
-        <div className="h-9 rounded-md border bg-muted/30" />
+        <div className="bg-muted mb-2 h-5 w-28 rounded" />
+        <div className="bg-muted/30 h-9 rounded-md border" />
       </div>
       <div>
-        <div className="mb-2 h-5 w-20 rounded bg-muted" />
-        <div className="h-9 rounded-md border bg-muted/30" />
+        <div className="bg-muted mb-2 h-5 w-20 rounded" />
+        <div className="bg-muted/30 h-9 rounded-md border" />
       </div>
     </>
   );
@@ -71,6 +84,7 @@ function SettingsPage() {
   const { data: currentUser } = useCurrentUser();
   const setUserTimezone = useSetUserTimezone();
   const setTaskDonePushEnabled = useSetTaskDonePushEnabled();
+  const { locale, locales, setLocale } = useAppLocale();
   const browserTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "", []);
 
   useEffect(() => {
@@ -197,6 +211,14 @@ function SettingsPage() {
       });
   }, [browserTimezone, setUserTimezone]);
 
+  const handleLanguageChange = useCallback(
+    (nextLocale: string) => {
+      setLocale(nextLocale);
+      toast.success("Language updated");
+    },
+    [setLocale],
+  );
+
   const handleTaskDonePushToggle = useCallback(
     async (enabled: boolean) => {
       setIsUpdatingTaskDonePush(true);
@@ -302,14 +324,32 @@ function SettingsPage() {
             />
           </Suspense>
 
-          <div className="rounded-lg border p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <label className="block text-sm font-medium">Task completion notifications</label>
-                <p className="text-muted-foreground text-sm">
-                  Enable browser push notifications when a CmdClaw task finishes. Off by default.
-                </p>
-              </div>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center">
+            <div>
+              <label className="block text-sm font-medium">Language</label>
+            </div>
+            <Select value={locale} onValueChange={handleLanguageChange}>
+              <SelectTrigger aria-label="Language" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {locales.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {SETTINGS_LOCALE_NAMES[option as keyof typeof SETTINGS_LOCALE_NAMES] ?? option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center">
+            <div>
+              <label className="block text-sm font-medium">Task completion notifications</label>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Notify me when a CmdClaw task finishes.
+              </p>
+            </div>
+            <div className="flex justify-start sm:justify-end">
               <Switch
                 checked={taskDonePushEnabled}
                 onCheckedChange={handleTaskDonePushToggle}

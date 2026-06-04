@@ -7,7 +7,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@cmdclaw/core/lib/chat-model-defaults";
 import { ClientOnly, Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, ChevronDown, Globe2 } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { AttachmentData } from "@/components/prompt-bar";
@@ -381,7 +381,7 @@ function TemplateCard({
   );
 }
 
-function LandingLocaleSelector() {
+function LandingLocaleSelector({ placement = "hero" }: { placement?: "hero" | "footer" }) {
   const { locale, locales, setLocale } = useAppLocale();
   const selectRef = useRef<HTMLSelectElement>(null);
   const handleChange = useCallback(
@@ -390,6 +390,10 @@ function LandingLocaleSelector() {
     },
     [setLocale],
   );
+  const selectClassName =
+    placement === "hero"
+      ? "border-white/45 bg-white/80 text-slate-900 shadow-sm hover:bg-white"
+      : "border-border/70 bg-background/80 text-foreground shadow-xs hover:bg-muted/50";
 
   useEffect(() => {
     const select = selectRef.current;
@@ -399,24 +403,32 @@ function LandingLocaleSelector() {
 
     const handleNativeChange = () => setLocale(select.value);
     select.addEventListener("change", handleNativeChange);
-    return () => select.removeEventListener("change", handleNativeChange);
+    select.addEventListener("input", handleNativeChange);
+    return () => {
+      select.removeEventListener("change", handleNativeChange);
+      select.removeEventListener("input", handleNativeChange);
+    };
   }, [setLocale]);
 
   return (
-    <select
-      ref={selectRef}
-      aria-label="Language"
-      className="h-8 rounded-md border border-white/45 bg-white/80 px-2 text-xs font-medium text-slate-900 shadow-sm hover:bg-white"
-      value={locale}
-      onChange={handleChange}
-      onInput={handleChange}
-    >
-      {locales.map((option) => (
-        <option key={option} value={option}>
-          {LANDING_LOCALE_NAMES[option as keyof typeof LANDING_LOCALE_NAMES] ?? option}
-        </option>
-      ))}
-    </select>
+    <div className="relative inline-flex items-center">
+      <Globe2 className="text-muted-foreground pointer-events-none absolute left-2 size-3.5" />
+      <select
+        ref={selectRef}
+        aria-label="Language"
+        className={`focus-visible:border-ring focus-visible:ring-ring/50 h-8 min-w-[112px] appearance-none rounded-md border py-0 pr-7 pl-7 text-xs font-medium transition-[background-color,color,box-shadow] outline-none focus-visible:ring-[3px] ${selectClassName}`}
+        value={locale}
+        onChange={handleChange}
+        onInput={handleChange}
+      >
+        {locales.map((option) => (
+          <option key={option} value={option}>
+            {LANDING_LOCALE_NAMES[option as keyof typeof LANDING_LOCALE_NAMES] ?? option}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="text-muted-foreground pointer-events-none absolute right-2 size-3.5" />
+    </div>
   );
 }
 
@@ -864,7 +876,6 @@ export function CoworkerLanding({
           {/* ── Top bar ── */}
           {isAnonymous ? (
             <div className="flex items-center justify-end gap-2 pt-5">
-              <LandingLocaleSelector />
               <Button
                 variant="outline"
                 size="sm"
@@ -1117,8 +1128,16 @@ export function CoworkerLanding({
             </div>
 
             {/* Bottom line */}
-            <div className="border-border/40 text-muted-foreground/60 mt-10 border-t pt-6 text-xs">
-              &copy; {new Date().getFullYear()} <T>CmdClaw. All rights reserved.</T>
+            <div className="border-border/40 text-muted-foreground/60 mt-10 flex flex-col gap-4 border-t pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                &copy; {new Date().getFullYear()} <T>CmdClaw. All rights reserved.</T>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs font-medium">
+                  <T>Language</T>
+                </span>
+                <LandingLocaleSelector placement="footer" />
+              </div>
             </div>
           </div>
         </footer>
