@@ -1,15 +1,12 @@
 import { Maximize2, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef } from "react";
 import { AppLink } from "@/components/app-link";
-import {
-  CommunitySkillDetailContent,
-  COMMUNITY_SKILLS_DATA,
-} from "@/components/community-skill-detail-content";
+import { CommunitySkillDetailContent } from "@/components/community-skill-detail-content";
 import {
   IntegrationDetailContent,
   type IntegrationDetailProps,
 } from "@/components/integration-detail-content";
-import { useRouter } from "@/components/next-navigation-compat";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +15,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { COMMUNITY_SKILLS_DATA } from "@/lib/community-skills";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,14 +86,14 @@ export function ToolboxPreviewModal({
     onToggle: (slug: string, value: boolean) => void;
   };
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const target = parsePreviewId(previewId);
 
   const close = useCallback(() => {
-    router.push("/toolbox");
-  }, [router]);
+    void navigate({ to: "/toolbox" });
+  }, [navigate]);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {

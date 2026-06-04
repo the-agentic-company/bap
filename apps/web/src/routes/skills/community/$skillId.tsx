@@ -1,9 +1,14 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import {
-  CommunitySkillDetailContent,
-  COMMUNITY_SKILLS_DATA,
-} from "@/components/community-skill-detail-content";
+import { lazy, Suspense, type ReactNode } from "react";
+import { COMMUNITY_SKILL_METADATA } from "@/lib/community-skill-metadata";
+
+const CommunitySkillPage = lazy(() =>
+  import("./-community-skill-page").then((module) => ({
+    default: module.CommunitySkillPage,
+  })),
+);
+const communitySkillLoadingFallback = <CommunitySkillLoading />;
 
 /**
  * /skills/community/$skillId — community skill detail (was
@@ -17,7 +22,7 @@ import {
  */
 export const Route = createFileRoute("/skills/community/$skillId")({
   head: ({ params }) => {
-    const skill = COMMUNITY_SKILLS_DATA[params.skillId];
+    const skill = COMMUNITY_SKILL_METADATA[params.skillId];
     if (!skill) {
       return { meta: [{ title: "Skill not found | CmdClaw" }] };
     }
@@ -29,32 +34,40 @@ export const Route = createFileRoute("/skills/community/$skillId")({
     };
   },
   notFoundComponent: CommunitySkillNotFound,
-  component: CommunitySkillPage,
+  component: CommunitySkillRoute,
 });
 
 function CommunitySkillNotFound() {
   return (
-    <div className="mx-auto max-w-3xl pb-8">
-      <Link
-        to="/toolbox"
-        className="text-muted-foreground hover:text-foreground mb-8 inline-flex items-center gap-1.5 text-xs transition-colors"
-      >
-        <ArrowLeft className="size-3" />
-        Back to Toolbox
-      </Link>
+    <CommunitySkillPageFrame>
       <p className="text-muted-foreground text-sm">Skill not found.</p>
-    </div>
+    </CommunitySkillPageFrame>
   );
 }
 
-function CommunitySkillPage() {
+function CommunitySkillRoute() {
   const { skillId } = Route.useParams();
-  const skill = COMMUNITY_SKILLS_DATA[skillId];
 
-  if (!skill) {
-    throw notFound();
-  }
+  return (
+    <Suspense fallback={communitySkillLoadingFallback}>
+      <CommunitySkillPage skillId={skillId} />
+    </Suspense>
+  );
+}
 
+function CommunitySkillLoading() {
+  return (
+    <CommunitySkillPageFrame>
+      <div className="space-y-4" aria-busy="true" aria-label="Loading skill details">
+        <div className="bg-muted h-6 w-40 rounded" />
+        <div className="bg-muted h-4 w-full max-w-xl rounded" />
+        <div className="bg-muted h-4 w-2/3 rounded" />
+      </div>
+    </CommunitySkillPageFrame>
+  );
+}
+
+function CommunitySkillPageFrame({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto max-w-3xl pb-8">
       <Link
@@ -64,8 +77,7 @@ function CommunitySkillPage() {
         <ArrowLeft className="size-3" />
         Back to Toolbox
       </Link>
-
-      <CommunitySkillDetailContent skill={skill} />
+      {children}
     </div>
   );
 }
