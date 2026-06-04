@@ -24,6 +24,10 @@ vi.mock("@tanstack/react-router", async () => {
     await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
   return {
     ...actual,
+    createFileRoute: () => (options: Record<string, unknown>) => ({
+      options,
+      useRouteContext: () => ({ sessionContext: { principal: null } }),
+    }),
     useLocation: ({ select }: { select: (loc: { pathname: string }) => unknown }) =>
       select({ pathname: mocks.pathname }),
     Outlet: () => null,
@@ -32,6 +36,10 @@ vi.mock("@tanstack/react-router", async () => {
 
 vi.mock("@/hooks/use-is-admin", () => ({
   useIsAdmin: () => mocks.useIsAdmin(),
+}));
+
+vi.mock("@/components/authenticated-app-root-shell", () => ({
+  AuthenticatedAppRootShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 // The guard module imports server-only auth (which reads server env); stub it so the
