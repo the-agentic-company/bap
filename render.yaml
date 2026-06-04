@@ -344,7 +344,7 @@ projects:
             dockerContext: .
             dockerfilePath: docker/images/web/Dockerfile
             dockerCommand: node .output/server/index.mjs
-            healthCheckPath: /api/health
+            healthCheckPath: /api/live
             envVars:
               - key: PORT
                 value: "10000"
@@ -776,7 +776,7 @@ projects:
             dockerContext: .
             dockerfilePath: docker/images/web/Dockerfile
             dockerCommand: node .output/server/index.mjs
-            healthCheckPath: /api/health
+            healthCheckPath: /api/live
             envVars:
               - key: PORT
                 value: "10000"

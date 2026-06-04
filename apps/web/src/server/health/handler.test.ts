@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handleHealth, type HealthDeps } from "./handler";
+import { handleHealth, handleLiveness, type HealthDeps } from "./handler";
 
 function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
   return {
@@ -10,6 +10,13 @@ function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
 }
 
 describe("handleHealth", () => {
+  it("returns 200 with ok:true for the liveness probe without checking dependencies", async () => {
+    const res = handleLiveness();
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+  });
+
   it("returns 200 with ok:true and both checks passing", async () => {
     const res = await handleHealth(deps());
 

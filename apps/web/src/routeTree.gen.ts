@@ -53,6 +53,7 @@ import { Route as IntegrationsRedditRouteImport } from './routes/integrations/re
 import { Route as IntegrationsTypeRouteImport } from './routes/integrations/$type'
 import { Route as ApiReportRouteImport } from './routes/api/report'
 import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
+import { Route as ApiLiveRouteImport } from './routes/api/live'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AgentsUsageRouteImport } from './routes/agents/usage'
 import { Route as AgentsOverviewRouteImport } from './routes/agents/overview'
@@ -383,6 +384,11 @@ const ApiReportRoute = ApiReportRouteImport.update({
 const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
   id: '/api/openapi',
   path: '/api/openapi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLiveRoute = ApiLiveRouteImport.update({
+  id: '/api/live',
+  path: '/api/live',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -1042,6 +1048,7 @@ export interface FileRoutesByFullPath {
   '/agents/overview': typeof AgentsOverviewRoute
   '/agents/usage': typeof AgentsUsageRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/live': typeof ApiLiveRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/api/report': typeof ApiReportRoute
   '/integrations/$type': typeof IntegrationsTypeRoute
@@ -1191,6 +1198,7 @@ export interface FileRoutesByTo {
   '/agents/overview': typeof AgentsOverviewRoute
   '/agents/usage': typeof AgentsUsageRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/live': typeof ApiLiveRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/api/report': typeof ApiReportRoute
   '/integrations/$type': typeof IntegrationsTypeRoute
@@ -1349,6 +1357,7 @@ export interface FileRoutesById {
   '/agents/overview': typeof AgentsOverviewRoute
   '/agents/usage': typeof AgentsUsageRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/live': typeof ApiLiveRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/api/report': typeof ApiReportRoute
   '/integrations/$type': typeof IntegrationsTypeRoute
@@ -1509,6 +1518,7 @@ export interface FileRouteTypes {
     | '/agents/overview'
     | '/agents/usage'
     | '/api/health'
+    | '/api/live'
     | '/api/openapi'
     | '/api/report'
     | '/integrations/$type'
@@ -1658,6 +1668,7 @@ export interface FileRouteTypes {
     | '/agents/overview'
     | '/agents/usage'
     | '/api/health'
+    | '/api/live'
     | '/api/openapi'
     | '/api/report'
     | '/integrations/$type'
@@ -1815,6 +1826,7 @@ export interface FileRouteTypes {
     | '/agents/overview'
     | '/agents/usage'
     | '/api/health'
+    | '/api/live'
     | '/api/openapi'
     | '/api/report'
     | '/integrations/$type'
@@ -1947,6 +1959,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   TemplateRoute: typeof TemplateRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiLiveRoute: typeof ApiLiveRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   ApiReportRoute: typeof ApiReportRoute
   InternalPreviewsRoute: typeof InternalPreviewsRoute
@@ -2331,6 +2344,13 @@ declare module '@tanstack/react-router' {
       path: '/api/openapi'
       fullPath: '/api/openapi'
       preLoaderRoute: typeof ApiOpenapiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live': {
+      id: '/api/live'
+      path: '/api/live'
+      fullPath: '/api/live'
+      preLoaderRoute: typeof ApiLiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -3457,6 +3477,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   TemplateRoute: TemplateRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
+  ApiLiveRoute: ApiLiveRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   ApiReportRoute: ApiReportRoute,
   InternalPreviewsRoute: InternalPreviewsRoute,

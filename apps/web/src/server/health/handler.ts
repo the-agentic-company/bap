@@ -61,3 +61,7 @@ export async function handleHealth(deps: HealthDeps = defaultDeps): Promise<Resp
     return Response.json({ ok: false, checks, error: message }, { status: 503 });
   }
 }
+
+export function handleLiveness(): Response {
+  return Response.json({ ok: true });
+}
