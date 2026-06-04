@@ -1,7 +1,6 @@
 import { CheckIcon, ChevronsUpDown } from "lucide-react";
 import * as React from "react";
 import * as RPNInput from "react-phone-number-input";
-import flags from "react-phone-number-input/flags";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -20,6 +19,8 @@ type PhoneInputProps = Omit<React.ComponentProps<"input">, "onChange" | "value" 
   Omit<RPNInput.Props<typeof RPNInput.default>, "onChange"> & {
     onChange?: (value: RPNInput.Value) => void;
   };
+
+const defaultFlagUrl = "https://purecatamphetamine.github.io/country-flag-icons/3x2/{XX}.svg";
 
 const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> = React.forwardRef<
   React.ElementRef<typeof RPNInput.default>,
@@ -176,12 +177,19 @@ const CountrySelectOption = ({
   );
 };
 
-const FlagComponent = ({ country, countryName }: RPNInput.FlagProps) => {
-  const Flag = flags[country];
+const FlagComponent = ({ country, countryName, flagUrl = defaultFlagUrl }: RPNInput.FlagProps) => {
+  if (!country) {
+    return <span className="bg-foreground/20 flex h-4 w-6 overflow-hidden rounded-sm" />;
+  }
 
   return (
     <span className="bg-foreground/20 flex h-4 w-6 overflow-hidden rounded-sm [&_svg:not([class*='size-'])]:size-full">
-      {Flag && <Flag title={countryName} />}
+      <img
+        src={flagUrl.replace("{XX}", country).replace("{xx}", country.toLowerCase())}
+        alt={countryName}
+        className="size-full object-cover"
+        loading="lazy"
+      />
     </span>
   );
 };
