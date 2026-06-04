@@ -17,6 +17,11 @@ const srcDir = fileURLToPath(new URL("./src", import.meta.url));
 const SELF_HOST_PORT = 3001;
 const DEFAULT_PORT = 3000;
 const nodeModulesPathPattern = /(^|[/\\])node_modules([/\\]|$)/;
+const reactPackagePathPattern = /[/\\]node_modules[/\\](?:\.bun[/\\])?(?:react|react-dom|scheduler)@?[/\\]/;
+const radixPackagePathPattern = /[/\\]node_modules[/\\](?:\.bun[/\\])?(?:@radix-ui[+/\\]|radix-ui@?[/\\])/;
+const zodPackagePathPattern = /[/\\]node_modules[/\\](?:\.bun[/\\])?zod@?[/\\]/;
+const uiVendorPackagePathPattern =
+  /[/\\]node_modules[/\\](?:\.bun[/\\])?(?:sonner|tailwind-merge|lucide-react|@floating-ui[+/\\])@?[/\\]/;
 
 // Self-host dev runs on 3001 via `dev:selfhost`, everything else stays on 3000.
 const devPort = process.env.CMDCLAW_EDITION === "selfhost" ? SELF_HOST_PORT : DEFAULT_PORT;
@@ -33,7 +38,27 @@ function isNodeModulesUseClientWarning(log: { code?: string; id?: string; loc?: 
   );
 }
 
-export default defineConfig({
+function getManualChunk(id: string): string | undefined {
+  if (!isNodeModulesPath(id)) {
+    return undefined;
+  }
+
+  if (reactPackagePathPattern.test(id)) {
+    return "vendor-react";
+  }
+
+  if (zodPackagePathPattern.test(id)) {
+    return "vendor-zod";
+  }
+
+  if (radixPackagePathPattern.test(id) || uiVendorPackagePathPattern.test(id)) {
+    return "vendor-ui";
+  }
+
+  return undefined;
+}
+
+export default defineConfig(({ isSsrBuild }) => ({
   /**
    * Only expose client env vars under the `VITE_*` and `NEXT_PUBLIC_*` prefixes.
    * `NEXT_PUBLIC_*` is preserved for v1 of the migration; unprefixed server env vars
@@ -70,6 +95,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      output: isSsrBuild ? undefined : { manualChunks: getManualChunk },
       onLog(level, log, defaultHandler) {
         if (level === "warn" && isNodeModulesUseClientWarning(log)) {
           return;
@@ -100,4 +126,4 @@ export default defineConfig({
       },
     }),
   ],
-});
+}));
