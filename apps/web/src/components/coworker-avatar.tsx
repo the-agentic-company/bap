@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils";
 type CoworkerAvatarProps = {
   username?: string | null;
   size?: number;
+  scale?: number;
   className?: string;
 };
 
-export function CoworkerAvatar({ username, size = 32, className }: CoworkerAvatarProps) {
+export function CoworkerAvatar({ username, size = 32, scale, className }: CoworkerAvatarProps) {
   const dataUri = useMemo(
-    () => createAvatar(bigSmile, { seed: username ?? "default", size }).toDataUri(),
-    [username, size],
+    () => createAvatar(bigSmile, { seed: username ?? "default", scale, size }).toDataUri(),
+    [username, scale, size],
   );
 
   return (

@@ -600,22 +600,22 @@ export function MessageItem({
 
       {/* Show sandbox files as downloadable attachments */}
       {displaySandboxFiles && displaySandboxFiles.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 flex min-w-0 flex-wrap gap-2">
           {displaySandboxFiles.map((file) => (
             <button
               key={file.fileId}
               data-file-id={file.fileId}
               onClick={handleSandboxFileClick}
-              className="bg-muted hover:bg-muted/80 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors"
+              className="bg-muted hover:bg-muted/80 flex min-w-0 max-w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors"
             >
-              <FileIcon className="text-muted-foreground h-4 w-4" />
-              <span className="font-medium">{file.filename}</span>
+              <FileIcon className="text-muted-foreground h-4 w-4 shrink-0" />
+              <span className="min-w-0 truncate font-medium">{file.filename}</span>
               {file.sizeBytes && (
-                <span className="text-muted-foreground text-xs">
+                <span className="text-muted-foreground shrink-0 text-xs">
                   ({formatFileSize(file.sizeBytes)})
                 </span>
               )}
-              <Download className="text-muted-foreground ml-1 h-4 w-4" />
+              <Download className="text-muted-foreground ml-1 h-4 w-4 shrink-0" />
             </button>
           ))}
         </div>

@@ -6,7 +6,9 @@ import {
   FileCode2,
   FileText,
   History,
+  Info,
   Loader2,
+  Maximize2,
   MessageSquareText,
   Pencil,
   Play,
@@ -16,7 +18,7 @@ import {
 } from "lucide-react";
 import { AppLink as Link } from "../-lib/app-link";
 import { useRouter, useSearchParams } from "../-lib/next-navigation-compat";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ChatArea } from "@/components/chat/chat-area";
 import { MessageBubble } from "@/components/chat/message-bubble";
@@ -30,6 +32,7 @@ import {
   RemoteRunSourceBanner,
 } from "@/components/coworkers/remote-run-source-banner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
@@ -286,9 +289,16 @@ function EmptyPreview({ latestMessage }: { latestMessage?: string }) {
   );
 }
 
-function OutputHtmlFrame({ outputFile }: { outputFile: SandboxFileData }) {
+function OutputHtmlFrame({
+  outputFile,
+  showToolbar = true,
+}: {
+  outputFile: SandboxFileData;
+  showToolbar?: boolean;
+}) {
   const preview = useOutputHtmlPreview(outputFile.fileId);
   const { mutateAsync: downloadSandboxFile, isPending: isDownloading } = useDownloadSandboxFile();
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
   const handleRefresh = useCallback(() => {
     void preview.refetch();
@@ -304,44 +314,49 @@ function OutputHtmlFrame({ outputFile }: { outputFile: SandboxFileData }) {
     link.click();
     document.body.removeChild(link);
   }, [downloadSandboxFile, outputFile.fileId, outputFile.filename]);
+  const handleOpenFullscreen = useCallback(() => {
+    setFullscreenOpen(true);
+  }, []);
 
   return (
     <div className="bg-background flex h-full min-h-0 flex-col">
-      <div className="border-border/70 flex h-11 shrink-0 items-center gap-2 border-b px-3">
-        <FileCode2 className="text-muted-foreground h-4 w-4" />
-        <p className="min-w-0 flex-1 truncate text-sm font-medium">output.html</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleRefresh}
-          disabled={preview.isFetching}
-          aria-label="Refresh output preview"
-        >
-          {preview.isFetching ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleDownload}
-          disabled={isDownloading}
-          aria-label="Download output.html"
-        >
-          {isDownloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-      <div className="bg-muted/30 min-h-0 flex-1">
+      {showToolbar ? (
+        <div className="border-border/70 flex h-11 shrink-0 items-center gap-2 border-b px-3">
+          <FileCode2 className="text-muted-foreground h-4 w-4" />
+          <p className="min-w-0 flex-1 truncate text-sm font-medium">output.html</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleRefresh}
+            disabled={preview.isFetching}
+            aria-label="Refresh output preview"
+          >
+            {preview.isFetching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleDownload}
+            disabled={isDownloading}
+            aria-label="Download output.html"
+          >
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      ) : null}
+      <div className="bg-muted/30 relative min-h-0 flex-1">
         {preview.isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
@@ -351,19 +366,50 @@ function OutputHtmlFrame({ outputFile }: { outputFile: SandboxFileData }) {
             <div className="max-w-sm space-y-2">
               <p className="text-sm font-medium">Preview unavailable</p>
               <p className="text-muted-foreground text-xs">
-                Download output.html to inspect the generated file.
+                {showToolbar
+                  ? "Download output.html to inspect the generated file."
+                  : "The generated preview could not be loaded."}
               </p>
             </div>
           </div>
         ) : (
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="absolute top-3 right-3 z-10 h-8 w-8 border bg-background/90 shadow-sm"
+              onClick={handleOpenFullscreen}
+              aria-label="Open output preview fullscreen"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+            <iframe
+              title="output.html preview"
+              className="bg-background h-full w-full border-0"
+              sandbox="allow-scripts allow-forms"
+              srcDoc={preview.data?.html ?? ""}
+            />
+          </>
+        )}
+      </div>
+      <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
+        <DialogContent
+          className="h-[calc(100dvh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none gap-0 overflow-hidden p-0 sm:rounded-xl"
+          showCloseButton
+        >
+          <DialogTitle className="sr-only">output.html fullscreen preview</DialogTitle>
+          <DialogDescription className="sr-only">
+            Fullscreen preview of the generated output.html file.
+          </DialogDescription>
           <iframe
-            title="output.html preview"
+            title="output.html fullscreen preview"
             className="bg-background h-full w-full border-0"
             sandbox="allow-scripts allow-forms"
             srcDoc={preview.data?.html ?? ""}
           />
-        )}
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -493,12 +539,14 @@ function RunSummaryPanel({
 function OutputPanel({
   outputFile,
   latestCoworkerMessage,
+  showOutputToolbar = true,
 }: {
   outputFile?: SandboxFileData | null;
   latestCoworkerMessage?: string;
+  showOutputToolbar?: boolean;
 }) {
   return outputFile ? (
-    <OutputHtmlFrame outputFile={outputFile} />
+    <OutputHtmlFrame outputFile={outputFile} showToolbar={showOutputToolbar} />
   ) : (
     <EmptyPreview latestMessage={latestCoworkerMessage} />
   );
@@ -526,7 +574,7 @@ function RunDetailsPanel({
 }) {
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="border-border/80 flex min-h-12 shrink-0 flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-h-12 shrink-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
         <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange}>
           <AnimatedTab value="summary">Summary</AnimatedTab>
           <AnimatedTab value="chat">Chat</AnimatedTab>
@@ -552,7 +600,7 @@ function RunDetailsPanel({
           </div>
         ) : conversationId ? (
           <div className="flex h-full min-h-0 overflow-hidden">
-            <ChatArea conversationId={conversationId} />
+            <ChatArea conversationId={conversationId} compact />
           </div>
         ) : (
           <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">
@@ -591,6 +639,16 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   });
   const coworker = useCoworker(resolvedCoworkerId);
   const activeTab = getInfoTab(searchParams.get("tab"));
+  const [definitionOpen, setDefinitionOpen] = useState(false);
+  const handleDefinitionOpenChange = useCallback((open: boolean) => {
+    setDefinitionOpen(open);
+  }, []);
+  const handleOpenDefinition = useCallback(() => {
+    setDefinitionOpen(true);
+  }, []);
+  const handleToggleDefinition = useCallback(() => {
+    setDefinitionOpen((open) => !open);
+  }, []);
   const isRunLoading =
     coworkerList.isLoading || coworkerRuns.isLoading || Boolean(selectedRunId && run.isLoading);
   const conversationId = run.data?.conversationId ?? undefined;
@@ -621,7 +679,13 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     [run.data?.events, run.data?.finishedAt, run.data?.startedAt, run.data?.status],
   );
   const outputPanel = useMemo(
-    () => <OutputPanel outputFile={outputFile} latestCoworkerMessage={latestCoworkerMessage} />,
+    () => (
+      <OutputPanel
+        outputFile={outputFile}
+        latestCoworkerMessage={latestCoworkerMessage}
+        showOutputToolbar={false}
+      />
+    ),
     [latestCoworkerMessage, outputFile],
   );
 
@@ -722,100 +786,103 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     coworker.data?.name || coworkerListItem?.name || run.data?.coworkerName || "Coworker";
   const coworkerUsername =
     coworker.data?.username ?? coworkerListItem?.username ?? run.data?.coworkerUsername;
-  const runLabel = coworkerUsername ? `@${coworkerUsername}` : coworkerName;
-  const coworkerDescription =
+  const coworkerDefinition =
     coworker.data?.description?.trim() || coworkerListItem?.description?.trim();
   const status = run.data?.status ?? coworkerRuns.data?.[0]?.status;
   const startedAt = formatRunDate(run.data?.startedAt ?? coworkerRuns.data?.[0]?.startedAt);
 
   return (
     <main className="bg-background flex h-dvh min-h-0 flex-col overflow-hidden">
-      <section className="border-border/80 bg-background/95 z-10 shrink-0 border-b px-4 py-4 backdrop-blur-sm md:px-6">
-        <div className="mx-auto flex max-w-[92rem] flex-col gap-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              {status ? (
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
-                    getStatusClassName(status),
-                  )}
-                >
-                  {status}
-                </span>
-              ) : null}
-              <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
-                <Clock className="h-3.5 w-3.5" />
-                Launched {startedAt}
-              </span>
+      <section className="bg-background/95 z-10 shrink-0 px-4 py-3 backdrop-blur-sm md:px-6">
+        <div className="flex min-h-10 items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-visible">
+              <CoworkerAvatar
+                username={coworkerUsername}
+                size={44}
+                scale={82}
+                className="rounded-none"
+              />
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" asChild>
-                <Link
-                  href={getCoworkerEditHref({
-                    id: resolvedCoworkerId,
-                    username: coworkerUsername,
-                  })}
+            <h1 className="truncate text-base leading-tight font-semibold md:text-lg">
+              {coworkerName}
+            </h1>
+            <Popover open={definitionOpen} onOpenChange={handleDefinitionOpenChange}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground h-7 w-7 shrink-0"
+                  onMouseEnter={handleOpenDefinition}
+                  onClick={handleToggleDefinition}
+                  aria-label="Show coworker definition"
                 >
-                  <Pencil className="h-4 w-4" />
-                  Configure
-                </Link>
-              </Button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm">
-                    <History className="h-4 w-4" />
-                    History
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-72 p-2">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">Previous Generations</p>
-                    <p className="text-muted-foreground text-xs">
-                      Switch this page to an older Generation.
-                    </p>
-                  </div>
-                  <div className="mt-1 max-h-80 space-y-1 overflow-auto">
-                    {(coworkerRuns.data ?? []).map((historyRun) => (
-                      <HistoryRunButton
-                        key={historyRun.id}
-                        run={historyRun}
-                        selected={historyRun.id === selectedRunId}
-                        onSelect={handleHistorySelect}
-                      />
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+                  <Info className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80 p-3">
+                <p className="text-sm font-medium">Coworker definition</p>
+                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                  {coworkerDefinition || "No definition set."}
+                </p>
+              </PopoverContent>
+            </Popover>
           </div>
 
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex min-w-0 items-start gap-4">
-              <CoworkerAvatar username={coworkerUsername} size={56} className="rounded-xl" />
-              <div className="min-w-0">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <h1 className="truncate text-xl leading-tight font-semibold md:text-2xl">
-                    {coworkerName}
-                  </h1>
-                  {coworkerUsername ? (
-                    <span className="bg-muted/60 text-muted-foreground rounded-full px-2 py-0.5 font-mono text-[11px]">
-                      {runLabel}
-                    </span>
-                  ) : null}
-                </div>
-                {coworkerDescription ? (
-                  <p className="text-muted-foreground mt-2 max-w-3xl text-sm leading-relaxed">
-                    {coworkerDescription}
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground mt-2 max-w-3xl text-sm">
-                    No description set.
-                  </p>
+          <div className="flex shrink-0 items-center gap-2">
+            {status ? (
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+                  getStatusClassName(status),
                 )}
-              </div>
-            </div>
+              >
+                {status}
+              </span>
+            ) : null}
+            <span className="text-muted-foreground hidden items-center gap-1 text-xs sm:inline-flex">
+              <Clock className="h-3.5 w-3.5" />
+              Launched {startedAt}
+            </span>
 
+            <Button type="button" variant="ghost" size="sm" asChild>
+              <Link
+                href={getCoworkerEditHref({
+                  id: resolvedCoworkerId,
+                  username: coworkerUsername,
+                })}
+              >
+                <Pencil className="h-4 w-4" />
+                Configure
+              </Link>
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="ghost" size="sm">
+                  <History className="h-4 w-4" />
+                  History
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 p-2">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium">Previous Generations</p>
+                  <p className="text-muted-foreground text-xs">
+                    Switch this page to an older Generation.
+                  </p>
+                </div>
+                <div className="mt-1 max-h-80 space-y-1 overflow-auto">
+                  {(coworkerRuns.data ?? []).map((historyRun) => (
+                    <HistoryRunButton
+                      key={historyRun.id}
+                      run={historyRun}
+                      selected={historyRun.id === selectedRunId}
+                      onSelect={handleHistorySelect}
+                    />
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               type="button"
               variant="brand"
@@ -835,7 +902,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         </div>
       </section>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[92rem] flex-1 flex-col gap-4 overflow-hidden p-4 md:p-6">
+      <div className="flex min-h-0 w-full flex-1 flex-col gap-4 overflow-hidden px-4 pt-2 pb-4 md:px-6 md:pt-3 md:pb-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
 
         {(run.data?.status === "error" || run.data?.status === "cancelled") && (
@@ -853,27 +920,20 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         )}
 
         <DualPanelWorkspace
-          storageKey="agent-info-output-details-width-v1"
-          defaultRightWidth={32}
-          minLeftWidth={40}
-          minRightWidth={24}
+          storageKey="agent-info-details-output-width-v3"
+          defaultRightWidth={75}
+          minLeftWidth={25}
+          minRightWidth={40}
           showTitles={false}
-          leftTitle="Output"
-          rightTitle="Details"
-          leftPanelClassName="bg-card rounded-xl"
+          leftTitle="Details"
+          rightTitle="Output"
+          leftPanelClassName="border-0 bg-background rounded-none"
           rightPanelClassName="bg-card rounded-xl"
           separatorClassName="bg-muted/40"
-          left={outputPanel}
-          right={detailsPanel}
+          allowLeftPanelDragCollapse
+          left={detailsPanel}
+          right={outputPanel}
         />
-
-        {run.data ? (
-          <div className="shrink-0 self-end">
-            <Button type="button" variant="outline" size="sm" asChild>
-              <a href={`/agents/runs/${run.data.id}`}>Open current Generation</a>
-            </Button>
-          </div>
-        ) : null}
       </div>
     </main>
   );

@@ -45,6 +45,7 @@ import {
   resolveDefaultChatModelSelection,
 } from "@/lib/chat-model-selection";
 import { normalizeGenerationError, type NormalizedGenerationError } from "@/lib/generation-errors";
+import { cn } from "@/lib/utils";
 import {
   createGenerationRuntime,
   type GenerationRuntime,
@@ -124,6 +125,7 @@ type Props = {
   initialPrefillText?: string | null;
   authCompletion?: { integration: string; interruptId: string } | null;
   enableOutputPreview?: boolean;
+  compact?: boolean;
 };
 
 type QueuedMessage = {
@@ -953,6 +955,7 @@ export function ChatArea({
   initialPrefillText,
   authCompletion,
   enableOutputPreview = false,
+  compact = false,
 }: Props) {
   const { setHeaderActions } = useChatHeaderActions();
   const queryClient = useQueryClient();
@@ -3963,9 +3966,9 @@ export function ChatArea({
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="h-0 flex-1 overflow-y-auto p-4"
+          className={cn("h-0 flex-1 overflow-y-auto", compact ? "p-3" : "p-4")}
         >
-          <div className="mx-auto max-w-3xl">
+          <div className={cn("mx-auto min-w-0", compact ? "max-w-full" : "max-w-3xl")}>
             {showModelSwitchWarning && (
               <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -4084,8 +4087,10 @@ export function ChatArea({
           </div>
         </div>
 
-        <div className="bg-background mt-auto shrink-0 p-4">
-          <div className="mx-auto w-full max-w-4xl space-y-2">
+        <div className={cn("bg-background mt-auto shrink-0", compact ? "p-3" : "p-4")}>
+          <div
+            className={cn("mx-auto w-full min-w-0 space-y-2", compact ? "max-w-full" : "max-w-4xl")}
+          >
             {isEmptyChat && (
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -4260,6 +4265,7 @@ export function ChatArea({
     [
       agentInitStatus,
       autoApprovalNode,
+      compact,
       displaySegments,
       draftConversationId,
       handleAuthCancel,

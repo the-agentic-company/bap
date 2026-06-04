@@ -175,8 +175,8 @@ export function MessageBubble({ role, content, className, sandboxFiles, onFileCl
   if (isUser) {
     return (
       <div data-testid="chat-bubble-user" className={cn("flex justify-end", className)}>
-        <div className="bg-primary text-primary-foreground max-w-[80%] rounded-lg px-4 py-2">
-          <p className="text-sm whitespace-pre-wrap">{content}</p>
+        <div className="bg-primary text-primary-foreground min-w-0 max-w-[80%] rounded-lg px-4 py-2">
+          <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{content}</p>
         </div>
       </div>
     );
@@ -184,7 +184,7 @@ export function MessageBubble({ role, content, className, sandboxFiles, onFileCl
 
   return (
     <div data-testid="chat-bubble-assistant" className={className}>
-      <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 max-w-none">
+      <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-code:break-words max-w-none overflow-hidden break-words">
         <ReactMarkdown remarkPlugins={MARKDOWN_REMARK_PLUGINS} components={markdownComponents}>
           {content}
         </ReactMarkdown>

@@ -39,6 +39,8 @@ type DualPanelWorkspaceProps = {
   showExpandedCollapseButton?: boolean;
   /** Hide the built-in mobile toggle buttons (useful when the parent provides its own mobile layout). */
   hideMobileToggle?: boolean;
+  /** Allow dragging the separator past the left minimum to fully hide the left panel. */
+  allowLeftPanelDragCollapse?: boolean;
 };
 
 const DEFAULT_RIGHT_WIDTH = 48;
@@ -65,15 +67,16 @@ export function DualPanelWorkspace({
   showTitles = true,
   leftPanelClassName,
   rightPanelClassName,
-  separatorClassName,
   collapsedLabel,
   collapsedSidebar = false,
   showExpandedCollapseButton = true,
   hideMobileToggle = false,
+  allowLeftPanelDragCollapse = false,
 }: DualPanelWorkspaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mobilePanel, setMobilePanel] = useState<"left" | "right">("right");
   const [isDragging, setIsDragging] = useState(false);
+  const [isLeftPanelCollapsedByDrag, setIsLeftPanelCollapsedByDrag] = useState(false);
   const [uncontrolledIsCollapsed, setUncontrolledIsCollapsed] = useState(defaultRightCollapsed);
   const savedWidthRef = useRef<number | null>(null);
   const [rightWidth, setRightWidth] = useState(() => {
@@ -129,10 +132,15 @@ export function DualPanelWorkspace({
       const rect = containerRef.current.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const leftPct = (x / rect.width) * 100;
+      if (allowLeftPanelDragCollapse && leftPct < minLeftWidth) {
+        setIsLeftPanelCollapsedByDrag(true);
+        return;
+      }
+      setIsLeftPanelCollapsedByDrag(false);
       const nextRight = 100 - leftPct;
       setWidthWithinBounds(nextRight);
     },
-    [setWidthWithinBounds],
+    [allowLeftPanelDragCollapse, minLeftWidth, setWidthWithinBounds],
   );
 
   const stopDrag = useCallback(() => {
@@ -141,6 +149,7 @@ export function DualPanelWorkspace({
 
   const startDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     setIsDragging(true);
   }, []);
 
@@ -176,8 +185,10 @@ export function DualPanelWorkspace({
     }
   }, [defaultRightWidth, isCollapsed, rightWidth, setCollapsed, setWidthWithinBounds]);
 
-  const effectiveRightWidth = isCollapsed ? 0 : rightWidth;
-  const leftWidth = 100 - effectiveRightWidth;
+  const shouldMaskLeftPanel =
+    allowLeftPanelDragCollapse && isLeftPanelCollapsedByDrag && !isCollapsed;
+  const effectiveRightWidth = isCollapsed ? 0 : shouldMaskLeftPanel ? 100 : rightWidth;
+  const leftWidth = shouldMaskLeftPanel ? 0 : 100 - effectiveRightWidth;
   const switchToLeftPanel = useCallback(() => {
     setMobilePanel("left");
   }, []);
@@ -186,12 +197,14 @@ export function DualPanelWorkspace({
   }, []);
   const leftPanelStyle = useMemo(
     () =>
-      isCollapsed
-        ? collapsedSidebar
-          ? { width: `calc(100% - ${COLLAPSED_SIDEBAR_WIDTH_PX}px)` }
-          : { width: `calc(100% - ${COLLAPSED_SEPARATOR_WIDTH_REM}rem)` }
-        : { width: `${leftWidth}%` },
-    [isCollapsed, collapsedSidebar, leftWidth],
+      shouldMaskLeftPanel
+        ? { width: "0%", minWidth: 0 }
+        : isCollapsed
+          ? collapsedSidebar
+            ? { width: `calc(100% - ${COLLAPSED_SIDEBAR_WIDTH_PX}px)` }
+            : { width: `calc(100% - ${COLLAPSED_SEPARATOR_WIDTH_REM}rem)` }
+          : { width: `${leftWidth}%` },
+    [isCollapsed, shouldMaskLeftPanel, collapsedSidebar, leftWidth],
   );
   const rightPanelStyle = useMemo(
     () =>
@@ -200,15 +213,19 @@ export function DualPanelWorkspace({
             width: "0%",
             minWidth: 0,
           }
-        : { width: `${effectiveRightWidth}%` },
-    [effectiveRightWidth, isCollapsed],
+        : shouldMaskLeftPanel
+          ? { width: "100%" }
+          : { width: `${effectiveRightWidth}%` },
+    [effectiveRightWidth, isCollapsed, shouldMaskLeftPanel],
   );
   const handleSeparatorKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (event.key === "ArrowLeft") {
+        setIsLeftPanelCollapsedByDrag(false);
         setWidthWithinBounds(rightWidth + 2);
       }
       if (event.key === "ArrowRight") {
+        setIsLeftPanelCollapsedByDrag(false);
         setWidthWithinBounds(rightWidth - 2);
       }
     },
@@ -275,7 +292,8 @@ export function DualPanelWorkspace({
       <div ref={containerRef} className="hidden min-h-0 flex-1 md:flex">
         <section
           className={cn(
-            "bg-background flex min-h-0 flex-col overflow-hidden rounded-l-xl border transition-[width] duration-200 ease-out",
+            "bg-background flex min-h-0 flex-col overflow-hidden rounded-l-xl border",
+            isDragging ? "pointer-events-none" : "transition-[width] duration-200 ease-out",
             leftPanelClassName,
           )}
           style={leftPanelStyle}
@@ -298,20 +316,27 @@ export function DualPanelWorkspace({
             onPointerDown={isCollapsed ? undefined : startDrag}
             onKeyDown={isCollapsed ? undefined : handleSeparatorKeyDown}
             className={cn(
-              "relative shrink-0 transition-[width] duration-200 ease-out",
-              isCollapsed ? "w-8" : "w-3",
+              "group relative z-10 w-0 shrink-0 touch-none",
+              !isDragging && "transition-[width] duration-200 ease-out",
+              isCollapsed && "w-8",
               !isCollapsed && "cursor-col-resize",
             )}
           >
             {!isCollapsed && (
               <>
-                {separatorClassName ? (
-                  <div
-                    aria-hidden="true"
-                    className={cn("absolute inset-y-0 left-1/2 right-0", separatorClassName)}
-                  />
-                ) : null}
-                <div className="bg-border absolute inset-y-0 left-1/2 w-px -translate-x-1/2" />
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-y-0 left-1/2 w-4 -translate-x-1/2 cursor-col-resize"
+                />
+                <div
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute top-1/2 left-1/2 h-[92%] w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-500 shadow-[0_0_0_1px_oklch(0.78_0.12_230_/_0.8),0_0_18px_oklch(0.72_0.16_235_/_0.65)] [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)] transition-opacity duration-150",
+                    isDragging
+                      ? "opacity-100 delay-0"
+                      : "opacity-0 delay-500 group-hover:opacity-100",
+                  )}
+                />
               </>
             )}
             {collapsible &&
@@ -366,7 +391,8 @@ export function DualPanelWorkspace({
         {!(collapsedSidebar && isCollapsed) && (
           <section
             className={cn(
-              "bg-background flex min-h-0 flex-col overflow-hidden rounded-r-xl border transition-[width] duration-200 ease-out",
+              "bg-background flex min-h-0 flex-col overflow-hidden rounded-r-xl border",
+              isDragging ? "pointer-events-none" : "transition-[width] duration-200 ease-out",
               isCollapsed && "border-0",
               rightPanelClassName,
             )}
