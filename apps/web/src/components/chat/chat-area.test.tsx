@@ -329,8 +329,12 @@ vi.mock("@/orpc/client", () => ({
   },
 }));
 
-vi.mock("@/orpc/hooks", () => ({
+vi.mock("@/orpc/hooks/conversation", () => ({
   useConversation: () => mockConversationState,
+  useUpdateAutoApprove: () => ({ mutateAsync: vi.fn<VitestProcedure>() }),
+}));
+
+vi.mock("@/orpc/hooks/generation", () => ({
   useGeneration: () => ({
     startGeneration: mockStartGeneration,
     subscribeToGeneration: mockSubscribeToGeneration,
@@ -348,11 +352,23 @@ vi.mock("@/orpc/hooks", () => ({
   useUpdateConversationQueuedMessage: () => ({
     mutateAsync: mockUpdateConversationQueuedMessageMutateAsync,
   }),
-  usePlatformSkillList: () => ({ data: [], isLoading: false }),
-  useSkillList: () => ({ data: [], isLoading: false }),
-  useUpdateAutoApprove: () => ({ mutateAsync: vi.fn<VitestProcedure>() }),
+}));
+
+vi.mock("@/orpc/hooks/integrations", () => ({
+  useGetAuthUrl: () => ({ mutateAsync: vi.fn<VitestProcedure>() }),
+}));
+
+vi.mock("@/orpc/hooks/provider-auth", () => ({
   useProviderAuthStatus: () => ({ data: { connected: {}, shared: {} } }),
   useOpencodeFreeModels: () => ({ data: { models: [] } }),
+}));
+
+vi.mock("@/orpc/hooks/skills", () => ({
+  usePlatformSkillList: () => ({ data: [], isLoading: false }),
+  useSkillList: () => ({ data: [], isLoading: false }),
+}));
+
+vi.mock("@/orpc/hooks/voice", () => ({
   useTranscribe: () => ({ mutateAsync: vi.fn<VitestProcedure>() }),
 }));
 

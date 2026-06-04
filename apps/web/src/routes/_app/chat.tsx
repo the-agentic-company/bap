@@ -6,7 +6,7 @@ import { ChatCopyButton } from "@/components/chat/chat-copy-button";
 import { ChatShareControls } from "@/components/chat/chat-share-controls";
 import { MobileRecentDrawer } from "@/components/mobile-recent-drawer";
 import { RecentChatsSidebar } from "@/components/recent-chats-sidebar";
-import { useCurrentUser, useSetUserTimezone } from "@/orpc/hooks";
+import { useCurrentUser, useSetUserTimezone } from "@/orpc/hooks/user";
 
 const CHAT_CONVERSATION_ID_SYNC_EVENT = "chat:conversation-id-sync";
 

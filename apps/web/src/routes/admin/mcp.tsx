@@ -19,12 +19,12 @@ import {
   useAdminRemoveGalienAccess,
   useAdminRemoveModulrAccess,
   useAdminUpdateGalienAccessTargetEnv,
-  useAdminWorkspaces,
   useConnectModulr,
   useDisconnectModulr,
   useModulrStatus,
   useTestModulrConnection,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/integrations";
+import { useAdminWorkspaces } from "@/orpc/hooks/workspace";
 import { AppImage } from "./-lib/app-image";
 
 export const Route = createFileRoute("/admin/mcp")({

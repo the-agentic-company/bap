@@ -15,18 +15,19 @@ import { InboxList } from "@/components/inbox/inbox-list";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { client } from "@/orpc/client";
+import { useCoworkerList, useGetOrCreateBuilderConversation } from "@/orpc/hooks/coworkers";
 import {
   useCancelGeneration,
-  useCoworkerList,
   useEnqueueConversationMessage,
-  useGetAuthUrl,
-  useGetOrCreateBuilderConversation,
+  useSubmitApproval,
+  useSubmitAuthResult,
+} from "@/orpc/hooks/generation";
+import {
   useInboxEditApprovalAndResend,
   useInfiniteInboxItems,
   useInboxMarkAsRead,
-  useSubmitApproval,
-  useSubmitAuthResult,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/inbox";
+import { useGetAuthUrl } from "@/orpc/hooks/integrations";
 
 type InboxSearch = {
   auth_complete?: string;

@@ -35,7 +35,7 @@ import {
   useAdminKillSandbox,
   useAdminListSandboxes,
   useAdminSandboxUsageHistory,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/admin";
 
 export const Route = createFileRoute("/admin/sandboxes")({
   head: () => ({ meta: [{ title: "Sandboxes - CmdClaw" }] }),

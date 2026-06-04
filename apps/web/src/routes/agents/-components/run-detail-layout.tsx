@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
-import { useCoworkerRun } from "@/orpc/hooks";
+import { useCoworkerRun } from "@/orpc/hooks/coworkers";
 
 export default function CoworkerRunLayout() {
   const { isAdmin } = useIsAdmin();

@@ -6,7 +6,7 @@ import {
   type InteractiveCoworkerCardData,
 } from "@/components/coworkers/interactive-coworker-card";
 import { cn } from "@/lib/utils";
-import { useDeleteOrgChartNode } from "@/orpc/hooks";
+import { useDeleteOrgChartNode } from "@/orpc/hooks/org-chart";
 
 export type CoworkerNodeData = InteractiveCoworkerCardData & {
   coworkerId: string;

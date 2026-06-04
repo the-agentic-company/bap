@@ -21,7 +21,7 @@ import {
   useCreateOrgChartNode,
   useDeleteOrgChartNode,
   useUpdateOrgChartNodePosition,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/org-chart";
 import { CoworkerNode, type CoworkerNodeData } from "./coworker-node";
 import { LabelNode, type LabelNodeData } from "./label-node";
 import { UnassignedSidebarContent } from "./unassigned-sidebar";

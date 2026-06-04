@@ -9,7 +9,7 @@ import {
   useCreateCoworkerTag,
   useAssignCoworkerTag,
   useUnassignCoworkerTag,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/coworkers";
 
 const PRESET_COLORS = [
   "#ef4444",

@@ -48,12 +48,12 @@ import { cn } from "@/lib/utils";
 import {
   useDeleteCoworker,
   useExportCoworkerDefinition,
-  useIntegrationList,
   useShareCoworker,
   useTriggerCoworker,
   useUnshareCoworker,
   useUpdateCoworker,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/coworkers";
+import { useIntegrationList } from "@/orpc/hooks/integrations";
 import {
   CoworkerCardContent,
   getCoworkerDisplayName,

@@ -10,7 +10,7 @@ import {
   useConnectProvider,
   useDisconnectProvider,
   usePollProviderConnection,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/provider-auth";
 
 type SubscriptionsSearch = {
   provider_connected?: string;
@@ -27,8 +27,7 @@ export const Route = createFileRoute("/settings/subscriptions")({
   validateSearch: (search: Record<string, unknown>): SubscriptionsSearch => ({
     provider_connected:
       typeof search.provider_connected === "string" ? search.provider_connected : undefined,
-    provider_error:
-      typeof search.provider_error === "string" ? search.provider_error : undefined,
+    provider_error: typeof search.provider_error === "string" ? search.provider_error : undefined,
   }),
   head: () => ({ meta: [{ title: "Connected AI Account - CmdClaw" }] }),
   component: SubscriptionsPage,

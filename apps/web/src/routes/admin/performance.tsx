@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import { usePerformanceDashboard } from "@/orpc/hooks";
+import { usePerformanceDashboard } from "@/orpc/hooks/admin";
 
 export const Route = createFileRoute("/admin/performance")({
   head: () => ({ meta: [{ title: "Performance - CmdClaw" }] }),
@@ -1443,10 +1443,7 @@ function PerformanceDashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link
-          to="/admin"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
+        <Link to="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="size-5" />
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Performance</h1>

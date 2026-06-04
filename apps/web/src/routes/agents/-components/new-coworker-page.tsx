@@ -11,7 +11,7 @@ import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@/lib/integration-icons";
 import { client } from "@/orpc/client";
-import { useCreateCoworker } from "@/orpc/hooks";
+import { useCreateCoworker } from "@/orpc/hooks/coworkers";
 
 const DEFAULT_COWORKER_BUILDER_MODEL = DEFAULT_CONNECTED_CHATGPT_MODEL;
 

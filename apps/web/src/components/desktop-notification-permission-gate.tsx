@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { setupBrowserPushNotifications } from "@/lib/browser-push";
-import { useCurrentUser } from "@/orpc/hooks";
+import { useCurrentUser } from "@/orpc/hooks/user";
 
 export function DesktopNotificationPermissionGate({ enabled = true }: { enabled?: boolean }) {
   const { data: currentUser } = useCurrentUser({ enabled });

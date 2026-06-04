@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useProviderAuthStatus, useConnectProvider, usePollProviderConnection } from "@/orpc/hooks";
+import {
+  useProviderAuthStatus,
+  useConnectProvider,
+  usePollProviderConnection,
+} from "@/orpc/hooks/provider-auth";
 
 export const Route = createFileRoute("/onboarding/subscriptions")({
   head: () => ({

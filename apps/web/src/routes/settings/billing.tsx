@@ -18,7 +18,7 @@ import {
   useCancelBillingPlan,
   useManualBillingTopUp,
   useOpenBillingPortal,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/billing";
 
 const TOP_UP_PRESETS = [10, 25, 50, 100];
 const EMPTY_WORKSPACE_OPTIONS: Array<{ id: string; name: string }> = [];

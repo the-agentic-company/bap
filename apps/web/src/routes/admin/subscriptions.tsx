@@ -10,7 +10,7 @@ import {
   useDisconnectAdminSharedProvider,
   usePollAdminSharedProviderConnection,
   useSetAdminSharedProviderApiKey,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/provider-auth";
 import { AppImage } from "./-lib/app-image";
 
 export const Route = createFileRoute("/admin/subscriptions")({

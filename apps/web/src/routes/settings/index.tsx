@@ -13,7 +13,7 @@ import {
   setupBrowserPushNotifications,
   unregisterBrowserPushSubscription,
 } from "@/lib/browser-push";
-import { useCurrentUser, useSetTaskDonePushEnabled, useSetUserTimezone } from "@/orpc/hooks";
+import { useCurrentUser, useSetTaskDonePushEnabled, useSetUserTimezone } from "@/orpc/hooks/user";
 
 export const Route = createFileRoute("/settings/")({
   head: () => ({ meta: [{ title: "General Settings - CmdClaw" }] }),

@@ -28,14 +28,16 @@ import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
 import {
   useConversation,
+  useDownloadSandboxFile,
+  useOutputHtmlPreview,
+} from "@/orpc/hooks/conversation";
+import {
   useCoworker,
   useCoworkerList,
   useCoworkerRun,
   useCoworkerRuns,
-  useDownloadSandboxFile,
-  useOutputHtmlPreview,
   useTriggerCoworker,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/coworkers";
 import type { SandboxFileData } from "@/components/chat/message-list";
 import { AppLink as Link } from "../../../-lib/app-link";
 import { useRouter, useSearchParams } from "../../../-lib/next-navigation-compat";

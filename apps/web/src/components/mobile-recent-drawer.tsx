@@ -41,8 +41,8 @@ import {
   useMarkAllConversationsSeen,
   useUpdateConversationPinned,
   useUpdateConversationTitle,
-  useCoworkerList,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/conversation";
+import { useCoworkerList } from "@/orpc/hooks/coworkers";
 
 const RUNNING_CONVERSATION_STATUSES = new Set(["generating"]);
 const HUMAN_INPUT_CONVERSATION_STATUSES = new Set(["awaiting_approval", "awaiting_auth", "paused"]);

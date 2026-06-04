@@ -58,13 +58,11 @@ import {
 } from "@/lib/integration-errors";
 import { buildProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
 import { client } from "@/orpc/client";
+import { useConversation, useUpdateAutoApprove } from "@/orpc/hooks/conversation";
 import {
-  useConversation,
-  useTranscribe,
   useGeneration,
   useSubmitApproval,
   useSubmitAuthResult,
-  useGetAuthUrl,
   useActiveGeneration,
   useCancelGeneration,
   useDetectUserMessageLanguage,
@@ -72,13 +70,11 @@ import {
   useEnqueueConversationMessage,
   useRemoveConversationQueuedMessage,
   useUpdateConversationQueuedMessage,
-  usePlatformSkillList,
-  useSkillList,
-  useUpdateAutoApprove,
-  useProviderAuthStatus,
-  useOpencodeFreeModels,
-  type SandboxFileData,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/generation";
+import { useGetAuthUrl } from "@/orpc/hooks/integrations";
+import { useProviderAuthStatus, useOpencodeFreeModels } from "@/orpc/hooks/provider-auth";
+import { usePlatformSkillList, useSkillList } from "@/orpc/hooks/skills";
+import { useTranscribe } from "@/orpc/hooks/voice";
 import { ActivityFeed, type ActivityItemData } from "./activity-feed";
 import { AuthRequestCard } from "./auth-request-card";
 import { BottomActionBar } from "./bottom-action-bar";
@@ -91,7 +87,13 @@ import { mergePersistedConversationMessages } from "./chat-message-sync";
 import { useChatModelStore } from "./chat-model-store";
 import { formatDuration } from "./chat-performance-metrics";
 import { useChatSkillStore } from "./chat-skill-store";
-import { MessageList, type Message, type MessagePart, type AttachmentData } from "./message-list";
+import {
+  MessageList,
+  type Message,
+  type MessagePart,
+  type AttachmentData,
+  type SandboxFileData,
+} from "./message-list";
 import { ModelSelector } from "./model-selector";
 import { OutputHtmlPreviewPanel } from "./output-html-preview-panel";
 import { findLatestOutputHtmlFile } from "./output-preview-selection";

@@ -1,7 +1,8 @@
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import { useCoworkerList, useCreateOrgChartNode, useOrgChartNodes } from "@/orpc/hooks";
+import { useCoworkerList } from "@/orpc/hooks/coworkers";
+import { useCreateOrgChartNode, useOrgChartNodes } from "@/orpc/hooks/org-chart";
 import { OrgChartCanvas } from "./org-chart/org-chart-canvas";
 import { UnassignedSidebar } from "./org-chart/unassigned-sidebar";
 

@@ -50,7 +50,7 @@ import {
   useDeleteSkillDocument,
   useGetDocumentUrl,
   useSaveSharedSkill,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/skills";
 
 /**
  * /skills/$id — user skill editor (was src/app/skills/[id]/page.tsx).

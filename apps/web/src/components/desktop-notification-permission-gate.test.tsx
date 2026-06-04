@@ -12,7 +12,7 @@ const { useCurrentUserMock } = vi.hoisted(() => ({
   useCurrentUserMock: vi.fn<VitestProcedure>(),
 }));
 
-vi.mock("@/orpc/hooks", () => ({
+vi.mock("@/orpc/hooks/user", () => ({
   useCurrentUser: useCurrentUserMock,
 }));
 

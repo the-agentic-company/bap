@@ -2,7 +2,7 @@ import { BarChart3, Loader2 } from "lucide-react";
 import { AppLink as Link } from "../-lib/app-link";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import { cn } from "@/lib/utils";
-import { useCoworkerList } from "@/orpc/hooks";
+import { useCoworkerList } from "@/orpc/hooks/coworkers";
 
 type CoworkerItem = {
   id: string;

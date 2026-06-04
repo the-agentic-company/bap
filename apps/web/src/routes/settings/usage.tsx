@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clientEditionCapabilities } from "@/lib/edition";
 import { fetchSessionContext } from "@/lib/route-guards";
-import { useBillingOverview, useManualBillingTopUp } from "@/orpc/hooks";
+import { useBillingOverview, useManualBillingTopUp } from "@/orpc/hooks/billing";
 
 /**
  * Billing-admin gate. The `/settings` layout already requires a session; this guard moves

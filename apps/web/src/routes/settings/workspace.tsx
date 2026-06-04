@@ -6,13 +6,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clientEditionCapabilities } from "@/lib/edition";
+import { useBillingOverview, useSwitchWorkspace } from "@/orpc/hooks/billing";
 import {
-  useBillingOverview,
   useInviteWorkspaceMembers,
   useRenameWorkspace,
-  useSwitchWorkspace,
   useWorkspaceMembers,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/workspace";
 
 export const Route = createFileRoute("/settings/workspace")({
   head: () => ({ meta: [{ title: "Workspace Settings - CmdClaw" }] }),

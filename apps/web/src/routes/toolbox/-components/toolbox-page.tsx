@@ -54,16 +54,18 @@ import {
   useDisconnectIntegration,
   useRenameAccountLabel,
   useLinkLinkedIn,
+  useRequestGoogleAccess,
+} from "@/orpc/hooks/integrations";
+import {
   useSkillList,
   useCreateSkill,
   useImportSkill,
   useDeleteSkill,
   useSaveSharedSkill,
-  useRequestGoogleAccess,
   useShareSkill,
   useUnshareSkill,
-  useWorkspaceMcpServerList,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/skills";
+import { useWorkspaceMcpServerList } from "@/orpc/hooks/workspace-mcp-servers";
 import { AppImage } from "../-lib/app-image";
 import { AppLink } from "../-lib/app-link";
 import { useRouter, useSearchParams } from "../-lib/next-navigation-compat";

@@ -16,7 +16,7 @@ import {
   useAdminImportTemplateCatalog,
   useAdminSetTemplateCatalogFeatured,
   useAdminTemplateCatalogList,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/admin";
 import { AppImage } from "./-lib/app-image";
 
 export const Route = createFileRoute("/admin/templates")({

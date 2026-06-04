@@ -4,7 +4,7 @@ import { type NodeProps, type Node } from "@xyflow/react";
 import { X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { useDeleteOrgChartNode, useUpdateOrgChartLabel } from "@/orpc/hooks";
+import { useDeleteOrgChartNode, useUpdateOrgChartLabel } from "@/orpc/hooks/org-chart";
 
 export type LabelNodeData = {
   label: string;

@@ -27,7 +27,7 @@ vi.mock("./client", () => ({
   },
 }));
 
-import { useDeleteConversation } from "./hooks";
+import { useDeleteConversation } from "./hooks/conversation";
 
 type ConversationListPage = {
   conversations: Array<{ id: string }>;

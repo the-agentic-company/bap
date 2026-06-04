@@ -16,7 +16,7 @@ import {
   useCreateWorkspaceMcpServer,
   useStartWorkspaceMcpServerOAuth,
   useSetWorkspaceMcpServerCredential,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/workspace-mcp-servers";
 import { AppLink } from "../-lib/app-link";
 import { useRouter } from "../-lib/next-navigation-compat";
 

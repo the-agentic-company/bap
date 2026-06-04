@@ -40,7 +40,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   };
 });
 
-import { useGeneration } from "./hooks";
+import { useGeneration } from "./hooks/generation";
 
 function HookHarness() {
   const { startGeneration } = useGeneration();

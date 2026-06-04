@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { AppLink as Link } from "../-lib/app-link";
 import { CoworkerOverviewDashboard } from "@/components/coworker-overview-dashboard";
-import { useCoworkerOverview } from "@/orpc/hooks";
+import { useCoworkerOverview } from "@/orpc/hooks/coworkers";
 
 export default function CoworkerOverviewPage() {
   const { data, isLoading } = useCoworkerOverview();

@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { AppLink as Link } from "../-lib/app-link";
 import { UsageDashboard } from "@/components/usage-dashboard";
-import { useWorkspaceUsageDashboard } from "@/orpc/hooks";
+import { useWorkspaceUsageDashboard } from "@/orpc/hooks/coworkers";
 
 export default function CoworkerUsagePage() {
   const usageQuery = useWorkspaceUsageDashboard();

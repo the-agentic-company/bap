@@ -1,7 +1,7 @@
 import { Download, Loader2, RefreshCw, X } from "lucide-react";
 import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { useDownloadSandboxFile, useOutputHtmlPreview } from "@/orpc/hooks";
+import { useDownloadSandboxFile, useOutputHtmlPreview } from "@/orpc/hooks/conversation";
 import type { SandboxFileData } from "./message-list";
 
 type Props = {

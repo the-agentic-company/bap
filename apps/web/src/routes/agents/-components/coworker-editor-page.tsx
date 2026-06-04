@@ -116,18 +116,17 @@ import {
   useCoworkerRun,
   useCoworkerRunImpersonationTarget,
   useCoworkerRuns,
-  useEnqueueConversationMessage,
-  useWorkspaceMcpServerList,
   useTriggerCoworker,
   useGetOrCreateBuilderConversation,
-  usePlatformSkillList,
-  useProviderAuthStatus,
   useRemoteIntegrationTargets,
   useSearchRemoteIntegrationUsers,
-  useSkillList,
   useUploadCoworkerDocument,
   type CoworkerSchedule,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/coworkers";
+import { useEnqueueConversationMessage } from "@/orpc/hooks/generation";
+import { useProviderAuthStatus } from "@/orpc/hooks/provider-auth";
+import { usePlatformSkillList, useSkillList } from "@/orpc/hooks/skills";
+import { useWorkspaceMcpServerList } from "@/orpc/hooks/workspace-mcp-servers";
 
 const BASE_TRIGGERS = [
   { value: "manual", label: "Manual only" },

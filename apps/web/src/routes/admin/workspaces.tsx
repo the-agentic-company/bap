@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useBillingOverview } from "@/orpc/hooks/billing";
 import {
   useAdminAddWorkspaceMembers,
   useAdminCreateWorkspace,
@@ -26,8 +27,7 @@ import {
   useAdminRemoveWorkspaceMember,
   useAdminRenameWorkspace,
   useAdminWorkspaces,
-  useBillingOverview,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/workspace";
 
 export const Route = createFileRoute("/admin/workspaces")({
   head: () => ({ meta: [{ title: "Workspaces - CmdClaw" }] }),

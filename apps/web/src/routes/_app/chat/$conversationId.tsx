@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { ChatArea } from "@/components/chat/chat-area";
 import { ImpersonationRequiredPage } from "@/components/impersonation/impersonation-required-page";
 import { client } from "@/orpc/client";
-import { useConversation, useConversationImpersonationTarget } from "@/orpc/hooks";
+import { useConversation, useConversationImpersonationTarget } from "@/orpc/hooks/conversation";
 
 type ConversationSearch = {
   auth_complete?: string;

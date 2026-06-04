@@ -34,7 +34,7 @@ import {
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { INTEGRATION_DISPLAY_NAMES, INTEGRATION_LOGOS } from "@/lib/integration-icons";
 import { cn } from "@/lib/utils";
-import { type CoworkerHistoryEntry, useCoworkerHistory } from "@/orpc/hooks";
+import { type CoworkerHistoryEntry, useCoworkerHistory } from "@/orpc/hooks/coworkers";
 
 type HistoryEntryStatus = CoworkerHistoryEntry["status"];
 

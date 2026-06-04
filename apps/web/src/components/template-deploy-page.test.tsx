@@ -27,7 +27,7 @@ const {
   assignMock: vi.fn<VitestProcedure>(),
 }));
 
-vi.mock("@/orpc/hooks", () => ({
+vi.mock("@/orpc/hooks/coworkers", () => ({
   useCreateCoworker: () => ({ mutateAsync: mockCreateCoworkerMutateAsync }),
 }));
 

@@ -2,7 +2,7 @@ import { Paperclip, Download, FileIcon, Eye } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { AppImage } from "@/components/chat/app-image";
 import type { DisplayIntegrationType } from "@/lib/integration-icons";
-import { useDownloadAttachment, useDownloadSandboxFile } from "@/orpc/hooks";
+import { useDownloadAttachment, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import type { ActivityItemData } from "./activity-item";
 import type { MessageTiming } from "./chat-performance-metrics";
 import type { MessagePart, AttachmentData, SandboxFileData } from "./message-list";

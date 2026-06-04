@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { UsageDashboard } from "@/components/usage-dashboard";
-import { useAdminUsageDashboard, useAdminWorkspaces } from "@/orpc/hooks";
+import { useAdminUsageDashboard } from "@/orpc/hooks/admin";
+import { useAdminWorkspaces } from "@/orpc/hooks/workspace";
 
 export const Route = createFileRoute("/admin/usage")({
   head: () => ({ meta: [{ title: "Usage - CmdClaw" }] }),

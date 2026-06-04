@@ -8,7 +8,7 @@ import {
 } from "@/components/coworkers/remote-run-source-banner";
 import { RunDebugDetails } from "@/components/coworkers/run-debug-details";
 import { ImpersonationRequiredPage } from "@/components/impersonation/impersonation-required-page";
-import { useCoworkerRun, useCoworkerRunImpersonationTarget } from "@/orpc/hooks";
+import { useCoworkerRun, useCoworkerRunImpersonationTarget } from "@/orpc/hooks/coworkers";
 
 export default function CoworkerRunPage() {
   const params = useParams<{ id: string }>();

@@ -79,11 +79,11 @@ import {
   useDeleteCoworker,
   useImportCoworkerDefinition,
   useImportSharedCoworker,
-  useIntegrationList,
-  useProviderAuthStatus,
   useSharedCoworkerList,
-  useTranscribe,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/coworkers";
+import { useIntegrationList } from "@/orpc/hooks/integrations";
+import { useProviderAuthStatus } from "@/orpc/hooks/provider-auth";
+import { useTranscribe } from "@/orpc/hooks/voice";
 
 type CoworkerItem = {
   id: string;

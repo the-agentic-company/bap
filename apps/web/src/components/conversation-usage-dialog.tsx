@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useConversationUsage } from "@/orpc/hooks";
+import { useConversationUsage } from "@/orpc/hooks/conversation";
 
 type ConversationUsageDialogProps = {
   open: boolean;

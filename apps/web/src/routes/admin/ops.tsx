@@ -9,8 +9,8 @@ import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import {
   useAdminOpsScheduledCoworkers,
   useEnqueueAdminScheduledCoworkersNow,
-  useResetOnboarding,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/admin";
+import { useResetOnboarding } from "@/orpc/hooks/user";
 
 export const Route = createFileRoute("/admin/ops")({
   head: () => ({ meta: [{ title: "Ops - CmdClaw" }] }),

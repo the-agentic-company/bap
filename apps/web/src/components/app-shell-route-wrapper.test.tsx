@@ -38,7 +38,7 @@ vi.mock("@/components/app-shell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/orpc/hooks", () => ({
+vi.mock("@/orpc/hooks/user", () => ({
   useCurrentUser: () => mocks.currentUser,
 }));
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { formatOAuthConnectionError } from "@/lib/oauth-error-message";
+import { useGalienStatus, useConnectGalien, useDisconnectGalien } from "@/orpc/hooks/integrations";
 import {
   useWorkspaceMcpServerList,
   useDeleteWorkspaceMcpServer,
@@ -15,10 +16,7 @@ import {
   useUpdateWorkspaceMcpServer,
   useSetWorkspaceMcpServerCredential,
   useDisconnectWorkspaceMcpServerCredential,
-  useGalienStatus,
-  useConnectGalien,
-  useDisconnectGalien,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/workspace-mcp-servers";
 import { AppLink } from "../-lib/app-link";
 import { useParams, useRouter, useSearchParams } from "../-lib/next-navigation-compat";
 

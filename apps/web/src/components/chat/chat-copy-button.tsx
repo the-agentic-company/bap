@@ -1,6 +1,6 @@
 import { Check, Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useConversation } from "@/orpc/hooks";
+import { useConversation } from "@/orpc/hooks/conversation";
 import type { MessageTiming } from "./chat-performance-metrics";
 import { formatPersistedChatTranscript } from "./chat-transcript";
 

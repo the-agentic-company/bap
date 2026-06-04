@@ -14,7 +14,7 @@ import {
   useCreateCoworkerView,
   useUpdateCoworkerView,
   useDeleteCoworkerView,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/coworkers";
 
 type ViewFilters = {
   tagIds?: string[];

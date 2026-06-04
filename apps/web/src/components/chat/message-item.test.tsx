@@ -13,7 +13,7 @@ import { MessageItem } from "./message-item";
 
 void jestDomVitest;
 
-vi.mock("@/orpc/hooks", () => ({
+vi.mock("@/orpc/hooks/conversation", () => ({
   useDownloadAttachment: () => ({ mutateAsync: vi.fn<VitestProcedure>() }),
   useDownloadSandboxFile: () => ({ mutateAsync: vi.fn<VitestProcedure>() }),
 }));

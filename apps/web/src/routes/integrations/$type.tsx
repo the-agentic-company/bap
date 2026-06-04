@@ -16,7 +16,7 @@ import {
   useDisconnectIntegration,
   useRenameAccountLabel,
   useRequestGoogleAccess,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/integrations";
 
 type OAuthIntegrationType = Exclude<IntegrationIconType, "linear">;
 

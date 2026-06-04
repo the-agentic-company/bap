@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import { useAdminBillingUserOverview, useAdminManualBillingTopUp } from "@/orpc/hooks";
+import { useAdminBillingUserOverview, useAdminManualBillingTopUp } from "@/orpc/hooks/billing";
 
 export const Route = createFileRoute("/admin/credits")({
   head: () => ({ meta: [{ title: "Credits - CmdClaw" }] }),

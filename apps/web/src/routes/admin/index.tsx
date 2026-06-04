@@ -11,15 +11,15 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import { useSetUserAdminRole } from "@/orpc/hooks/admin";
 import {
   useAddApprovedLoginEmailAllowlistEntry,
   useAddGoogleAccessAllowlistEntry,
-  useSetUserAdminRole,
   useApprovedLoginEmailAllowlist,
   useGoogleAccessAllowlist,
   useRemoveApprovedLoginEmailAllowlistEntry,
   useRemoveGoogleAccessAllowlistEntry,
-} from "@/orpc/hooks";
+} from "@/orpc/hooks/integrations";
 import { getImpersonationErrorMessage } from "./-lib/impersonation-errors";
 
 export const Route = createFileRoute("/admin/")({

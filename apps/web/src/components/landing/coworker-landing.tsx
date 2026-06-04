@@ -39,7 +39,9 @@ import { normalizeGenerationError } from "@/lib/generation-errors";
 import { INTEGRATION_LOGOS, COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@/lib/integration-icons";
 import { buildProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
 import { client } from "@/orpc/client";
-import { useCreateCoworker, useProviderAuthStatus, useTranscribe } from "@/orpc/hooks";
+import { useCreateCoworker } from "@/orpc/hooks/coworkers";
+import { useProviderAuthStatus } from "@/orpc/hooks/provider-auth";
+import { useTranscribe } from "@/orpc/hooks/voice";
 
 type HeroPromptExample = {
   department: string;

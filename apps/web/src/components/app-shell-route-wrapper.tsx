@@ -2,7 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import { AppShell, type SidebarVisibility } from "@/components/app-shell";
-import { useCurrentUser } from "@/orpc/hooks";
+import { useCurrentUser } from "@/orpc/hooks/user";
 
 type AppShellRouteWrapperProps = {
   children: React.ReactNode;

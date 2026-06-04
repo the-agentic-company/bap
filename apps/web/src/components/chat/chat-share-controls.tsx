@@ -2,7 +2,11 @@ import { Check, Globe2, Link2, Lock, Share2, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useConversation, useShareConversation, useUnshareConversation } from "@/orpc/hooks";
+import {
+  useConversation,
+  useShareConversation,
+  useUnshareConversation,
+} from "@/orpc/hooks/conversation";
 
 type ConversationShape = {
   isShared?: boolean;

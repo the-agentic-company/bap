@@ -7,12 +7,8 @@ import {
   UNIPILE_MISSING_CREDENTIALS_MESSAGE,
 } from "@/lib/integration-errors";
 import { cn } from "@/lib/utils";
-import {
-  useIntegrationList,
-  useGetAuthUrl,
-  useCompleteOnboarding,
-  useLinkLinkedIn,
-} from "@/orpc/hooks";
+import { useIntegrationList, useGetAuthUrl, useLinkLinkedIn } from "@/orpc/hooks/integrations";
+import { useCompleteOnboarding } from "@/orpc/hooks/user";
 
 /**
  * Search params that drive behavior on the onboarding integrations step. These are returned

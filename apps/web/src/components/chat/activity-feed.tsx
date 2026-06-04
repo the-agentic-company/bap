@@ -4,7 +4,7 @@ import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import type { DisplayIntegrationType } from "@/lib/integration-icons";
 import { getExecutorDisplayMetadata } from "@/lib/executor-tool";
 import { cn } from "@/lib/utils";
-import { useWorkspaceMcpServerList } from "@/orpc/hooks";
+import { useWorkspaceMcpServerList } from "@/orpc/hooks/workspace-mcp-servers";
 import { ActivityItem, type ActivityItemData } from "./activity-item";
 import { formatDuration } from "./chat-performance-metrics";
 import { IntegrationBadges } from "./integration-badges";
