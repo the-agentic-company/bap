@@ -19,7 +19,7 @@ vi.mock("./telemetry-slack", () => ({
   postMessageToOpsTelemetryChannel: vi.fn(),
 }));
 
-vi.mock("../queues", () => ({
+vi.mock("../queues/queue-client", () => ({
   DAILY_TELEMETRY_DIGEST_JOB_NAME: "daily-telemetry-digest",
   getQueue: vi.fn(),
 }));

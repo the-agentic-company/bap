@@ -7,7 +7,7 @@ import {
   CHAT_GENERATION_JOB_NAME,
   COWORKER_GENERATION_JOB_NAME,
   getQueue,
-} from "../../../queues";
+} from "../../../queues/queue-client";
 import { logger } from "../../../utils/observability";
 import { generationLifecyclePolicy } from "../../lifecycle-policy";
 import { GenerationLeaseStore } from "../core/generation-lease";

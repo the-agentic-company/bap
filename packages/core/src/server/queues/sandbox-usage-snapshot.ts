@@ -1,7 +1,12 @@
-import { Queue, QueueEvents, Worker, type ConnectionOptions } from "bullmq";
-import { buildRedisOptions } from "../redis/connection-options";
+import { QueueEvents, Worker } from "bullmq";
 import {
-  attachTraceContext,
+  closeSandboxUsageSnapshotQueue,
+  createSandboxUsageSnapshotRedisConnectionOptions,
+  sandboxUsageSnapshotQueueName,
+  sandboxUsageSnapshotRedisUrl,
+  SANDBOX_USAGE_SNAPSHOT_JOB_NAME,
+} from "./sandbox-usage-snapshot-client";
+import {
   extractTraceContextFromPayload,
   recordCounter,
   recordHistogram,
@@ -9,49 +14,10 @@ import {
   withExtractedTraceContext,
 } from "../utils/observability";
 
-const rawBaseQueueName = process.env.BULLMQ_QUEUE_NAME ?? "cmdclaw-default";
-const sandboxUsageSnapshotQueueName = `${rawBaseQueueName.replaceAll(":", "-")}-sandbox-usage-snapshot`;
-const sandboxUsageSnapshotRedisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
-
-const redisOptions = {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-} as const;
-
-export const SANDBOX_USAGE_SNAPSHOT_JOB_NAME = "sandbox:usage-snapshot";
+export { SANDBOX_USAGE_SNAPSHOT_JOB_NAME };
+export { getSandboxUsageSnapshotQueue } from "./sandbox-usage-snapshot-client";
 
 type SnapshotJobPayload = Record<string, unknown>;
-
-let queue: Queue<SnapshotJobPayload, unknown, string> | null = null;
-
-function createRedisConnectionOptions(): ConnectionOptions {
-  return buildRedisOptions(sandboxUsageSnapshotRedisUrl, redisOptions) as ConnectionOptions;
-}
-
-export function getSandboxUsageSnapshotQueue(): Queue<SnapshotJobPayload, unknown, string> {
-  if (!queue) {
-    queue = new Queue<SnapshotJobPayload, unknown, string>(sandboxUsageSnapshotQueueName, {
-      connection: createRedisConnectionOptions(),
-    });
-    patchQueueAdd(queue);
-  }
-
-  return queue;
-}
-
-function patchQueueAdd(targetQueue: Queue<SnapshotJobPayload, unknown, string>): void {
-  const queueWithPatchFlag = targetQueue as Queue<SnapshotJobPayload, unknown, string> & {
-    __cmdclawTracedAddPatched?: boolean;
-  };
-  if (queueWithPatchFlag.__cmdclawTracedAddPatched) {
-    return;
-  }
-
-  const originalAdd = targetQueue.add.bind(targetQueue);
-  targetQueue.add = ((name, data, opts) =>
-    originalAdd(name, attachTraceContext(data), opts)) as typeof targetQueue.add;
-  queueWithPatchFlag.__cmdclawTracedAddPatched = true;
-}
 
 export function startSandboxUsageSnapshotQueue() {
   const worker = new Worker<SnapshotJobPayload, unknown, string>(
@@ -106,13 +72,13 @@ export function startSandboxUsageSnapshotQueue() {
       );
     },
     {
-      connection: createRedisConnectionOptions(),
+      connection: createSandboxUsageSnapshotRedisConnectionOptions(),
       concurrency: 1,
     },
   );
 
   const queueEvents = new QueueEvents(sandboxUsageSnapshotQueueName, {
-    connection: createRedisConnectionOptions(),
+    connection: createSandboxUsageSnapshotRedisConnectionOptions(),
   });
 
   queueEvents.on("failed", ({ jobId, failedReason }) => {
@@ -144,10 +110,10 @@ export async function stopSandboxUsageSnapshotQueue(
   worker: Worker,
   queueEvents: QueueEvents,
 ): Promise<void> {
-  const closers: Promise<unknown>[] = [worker.close(), queueEvents.close()];
-  if (queue) {
-    closers.push(queue.close());
-    queue = null;
-  }
+  const closers: Promise<unknown>[] = [
+    worker.close(),
+    queueEvents.close(),
+    closeSandboxUsageSnapshotQueue(),
+  ];
   await Promise.allSettled(closers);
 }

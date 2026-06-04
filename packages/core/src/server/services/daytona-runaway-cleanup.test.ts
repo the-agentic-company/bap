@@ -90,7 +90,7 @@ vi.mock("./generation-interrupt-service", () => ({
   },
 }));
 
-vi.mock("../queues/daytona-runaway-cleanup", () => ({
+vi.mock("../queues/daytona-runaway-cleanup-client", () => ({
   DAYTONA_RUNAWAY_CLEANUP_JOB_NAME: "daytona:runaway-cleanup",
   getDaytonaRunawayCleanupQueue: getDaytonaRunawayCleanupQueueMock,
 }));

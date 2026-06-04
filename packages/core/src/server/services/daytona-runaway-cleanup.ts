@@ -12,7 +12,7 @@ import { getDaytonaClientConfig } from "../sandbox/daytona";
 import {
   DAYTONA_RUNAWAY_CLEANUP_JOB_NAME,
   getDaytonaRunawayCleanupQueue,
-} from "../queues/daytona-runaway-cleanup";
+} from "../queues/daytona-runaway-cleanup-client";
 import { generationInterruptService } from "./generation-interrupt-service";
 
 const DAYTONA_RUNAWAY_MAX_IDLE_MS = 25 * 60 * 1000;

@@ -11,7 +11,7 @@ import {
   GENERATION_AUTH_TIMEOUT_JOB_NAME,
   GENERATION_PREPARING_STUCK_CHECK_JOB_NAME,
   getQueue,
-} from "../../queues";
+} from "../../queues/queue-client";
 import { getLatestGenerationStreamEnvelope } from "../../redis/generation-event-bus";
 import { logger } from "../../utils/observability";
 import {

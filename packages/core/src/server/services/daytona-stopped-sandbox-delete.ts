@@ -9,7 +9,7 @@ import {
 import {
   DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME,
   getDaytonaRunawayCleanupQueue,
-} from "../queues/daytona-runaway-cleanup";
+} from "../queues/daytona-runaway-cleanup-client";
 
 const DAYTONA_STOPPED_SANDBOX_DELETE_SCHEDULE = "*/5 * * * *";
 

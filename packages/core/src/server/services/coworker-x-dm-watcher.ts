@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@cmdclaw/db/client";
 import { integration, integrationToken, coworker, coworkerRun } from "@cmdclaw/db/schema";
 import { getValidAccessToken } from "../integrations/token-refresh";
-import { buildQueueJobId, X_DM_COWORKER_JOB_NAME, getQueue } from "../queues";
+import { buildQueueJobId, X_DM_COWORKER_JOB_NAME, getQueue } from "../queues/queue-client";
 
 const X_DM_TRIGGER_TYPE = "twitter.new_dm";
 const X_DM_EVENT_TYPE = "MessageCreate";

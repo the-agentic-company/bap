@@ -1,7 +1,7 @@
 import { db } from "@cmdclaw/db/client";
 import { conversation, coworkerRun, generation, message } from "@cmdclaw/db/schema";
 import { desc, eq, inArray } from "drizzle-orm";
-import { CONVERSATION_LOADING_CLEANUP_JOB_NAME, getQueue } from "../queues";
+import { CONVERSATION_LOADING_CLEANUP_JOB_NAME, getQueue } from "../queues/queue-client";
 import { generationInterruptService } from "./generation-interrupt-service";
 import { generationLifecyclePolicy } from "./lifecycle-policy";
 

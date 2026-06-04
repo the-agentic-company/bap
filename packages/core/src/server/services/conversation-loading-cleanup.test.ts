@@ -64,7 +64,7 @@ vi.mock("./generation-interrupt-service", () => ({
   },
 }));
 
-vi.mock("../queues", () => ({
+vi.mock("../queues/queue-client", () => ({
   CONVERSATION_LOADING_CLEANUP_JOB_NAME: "conversation:loading-cleanup",
   getQueue: getQueueMock,
 }));

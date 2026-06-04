@@ -463,7 +463,7 @@ vi.mock("./generation/core/canonical-generation-events", () => ({
   emitGenerationTerminalCanonicalEvent: vi.fn(),
 }));
 
-vi.mock("../queues", () => ({
+vi.mock("../queues/queue-client", () => ({
   buildQueueJobId: (parts: Array<string | number | null | undefined>) =>
     parts
       .map((part) => String(part ?? "").trim())

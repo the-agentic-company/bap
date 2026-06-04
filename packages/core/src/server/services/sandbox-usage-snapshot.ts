@@ -5,7 +5,7 @@ import { isDaytonaConfigured, listAllDaytonaSandboxes } from "../sandbox/daytona
 import {
   SANDBOX_USAGE_SNAPSHOT_JOB_NAME,
   getSandboxUsageSnapshotQueue,
-} from "../queues/sandbox-usage-snapshot";
+} from "../queues/sandbox-usage-snapshot-client";
 
 const SANDBOX_USAGE_SNAPSHOT_SCHEDULE = "*/5 * * * *";
 const SANDBOX_USAGE_SNAPSHOT_SCHEDULER_ID = "sandbox:usage-snapshot";

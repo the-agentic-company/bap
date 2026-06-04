@@ -1,7 +1,7 @@
 import { and, asc, count, eq, gte, lt } from "drizzle-orm";
 import { db } from "@cmdclaw/db/client";
 import { user, userDailyActivity } from "@cmdclaw/db/schema";
-import { DAILY_TELEMETRY_DIGEST_JOB_NAME, getQueue } from "../queues";
+import { DAILY_TELEMETRY_DIGEST_JOB_NAME, getQueue } from "../queues/queue-client";
 import { postMessageToOpsTelemetryChannel } from "./telemetry-slack";
 
 const OPS_DAILY_DIGEST_TIME = "09:00";

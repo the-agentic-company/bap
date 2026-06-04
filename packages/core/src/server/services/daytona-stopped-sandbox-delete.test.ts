@@ -87,7 +87,7 @@ vi.mock("../sandbox/daytona", () => ({
   }),
 }));
 
-vi.mock("../queues/daytona-runaway-cleanup", () => ({
+vi.mock("../queues/daytona-runaway-cleanup-client", () => ({
   DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME: "daytona:stopped-sandbox-delete",
   getDaytonaRunawayCleanupQueue: getDaytonaRunawayCleanupQueueMock,
 }));

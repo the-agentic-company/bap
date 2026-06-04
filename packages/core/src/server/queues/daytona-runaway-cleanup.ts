@@ -1,7 +1,13 @@
-import { Queue, QueueEvents, Worker, type ConnectionOptions } from "bullmq";
-import { buildRedisOptions } from "../redis/connection-options";
+import { QueueEvents, Worker } from "bullmq";
 import {
-  attachTraceContext,
+  closeDaytonaRunawayCleanupQueue,
+  createDaytonaRunawayCleanupRedisConnectionOptions,
+  daytonaRunawayCleanupQueueName,
+  daytonaRunawayCleanupRedisUrl,
+  DAYTONA_RUNAWAY_CLEANUP_JOB_NAME,
+  DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME,
+} from "./daytona-runaway-cleanup-client";
+import {
   extractTraceContextFromPayload,
   recordCounter,
   recordHistogram,
@@ -9,54 +15,13 @@ import {
   withExtractedTraceContext,
 } from "../utils/observability";
 
-const rawBaseQueueName = process.env.BULLMQ_QUEUE_NAME ?? "cmdclaw-default";
-const daytonaRunawayCleanupQueueName = `${rawBaseQueueName.replaceAll(":", "-")}-daytona-runaway-cleanup`;
-const daytonaRunawayCleanupRedisUrl =
-  process.env.REDIS_URL ?? "redis://localhost:6379";
-
-const redisOptions = {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-} as const;
-
-export const DAYTONA_RUNAWAY_CLEANUP_JOB_NAME = "daytona:runaway-cleanup";
-export const DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME = "daytona:stopped-sandbox-delete";
+export {
+  DAYTONA_RUNAWAY_CLEANUP_JOB_NAME,
+  DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME,
+};
+export { getDaytonaRunawayCleanupQueue } from "./daytona-runaway-cleanup-client";
 
 type CleanupJobPayload = Record<string, unknown>;
-
-let queue: Queue<CleanupJobPayload, unknown, string> | null = null;
-
-function createRedisConnectionOptions(): ConnectionOptions {
-  return buildRedisOptions(daytonaRunawayCleanupRedisUrl, redisOptions) as ConnectionOptions;
-}
-
-export function getDaytonaRunawayCleanupQueue(): Queue<CleanupJobPayload, unknown, string> {
-  if (!queue) {
-    queue = new Queue<CleanupJobPayload, unknown, string>(daytonaRunawayCleanupQueueName, {
-      connection: createRedisConnectionOptions(),
-    });
-    patchQueueAdd(queue);
-  }
-
-  return queue;
-}
-
-function patchQueueAdd(targetQueue: Queue<CleanupJobPayload, unknown, string>): void {
-  const queueWithPatchFlag = targetQueue as Queue<CleanupJobPayload, unknown, string> & {
-    __cmdclawTracedAddPatched?: boolean;
-  };
-  if (queueWithPatchFlag.__cmdclawTracedAddPatched) {
-    return;
-  }
-
-  const originalAdd = targetQueue.add.bind(targetQueue);
-  targetQueue.add = ((
-    name,
-    data,
-    opts,
-  ) => originalAdd(name, attachTraceContext(data), opts)) as typeof targetQueue.add;
-  queueWithPatchFlag.__cmdclawTracedAddPatched = true;
-}
 
 export function startDaytonaRunawayCleanupQueue() {
   const worker = new Worker<CleanupJobPayload, unknown, string>(
@@ -124,13 +89,13 @@ export function startDaytonaRunawayCleanupQueue() {
       );
     },
     {
-      connection: createRedisConnectionOptions(),
+      connection: createDaytonaRunawayCleanupRedisConnectionOptions(),
       concurrency: 1,
     },
   );
 
   const queueEvents = new QueueEvents(daytonaRunawayCleanupQueueName, {
-    connection: createRedisConnectionOptions(),
+    connection: createDaytonaRunawayCleanupRedisConnectionOptions(),
   });
 
   queueEvents.on("failed", ({ jobId, failedReason }) => {
@@ -162,10 +127,10 @@ export async function stopDaytonaRunawayCleanupQueue(
   worker: Worker,
   queueEvents: QueueEvents,
 ): Promise<void> {
-  const closers: Promise<unknown>[] = [worker.close(), queueEvents.close()];
-  if (queue) {
-    closers.push(queue.close());
-    queue = null;
-  }
+  const closers: Promise<unknown>[] = [
+    worker.close(),
+    queueEvents.close(),
+    closeDaytonaRunawayCleanupQueue(),
+  ];
   await Promise.allSettled(closers);
 }

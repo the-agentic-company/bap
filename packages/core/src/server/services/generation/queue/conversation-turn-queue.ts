@@ -10,7 +10,7 @@ import {
   buildQueueJobId,
   CONVERSATION_QUEUED_MESSAGE_PROCESS_JOB_NAME,
   getQueue,
-} from "../../../queues";
+} from "../../../queues/queue-client";
 
 const QUEUEABLE_CONVERSATION_TYPES = ["chat", "coworker"] as const;
 
