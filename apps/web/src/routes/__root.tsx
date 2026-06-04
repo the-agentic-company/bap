@@ -38,6 +38,10 @@ const TANSTACK_DEVTOOLS_PLUGINS: Array<TanStackDevtoolsReactPlugin> = [
 ];
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
+  loader: async () => {
+    const context = await fetchSessionContext();
+    return { hasSession: Boolean(context.principal) };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -58,6 +62,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
+  component: RootComponent,
   errorComponent: ({ error }) => (
     <RootDocument>
       <RootErrorBoundary error={error} />
@@ -68,11 +73,6 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       <RootNotFound />
     </RootDocument>
   ),
-  loader: async () => {
-    const context = await fetchSessionContext();
-    return { hasSession: Boolean(context.principal) };
-  },
-  component: RootComponent,
 });
 
 function RootComponent() {
