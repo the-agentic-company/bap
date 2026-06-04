@@ -16,9 +16,22 @@ const srcDir = fileURLToPath(new URL("./src", import.meta.url));
 
 const SELF_HOST_PORT = 3001;
 const DEFAULT_PORT = 3000;
+const nodeModulesPathPattern = /(^|[/\\])node_modules([/\\]|$)/;
 
 // Self-host dev runs on 3001 via `dev:selfhost`, everything else stays on 3000.
 const devPort = process.env.CMDCLAW_EDITION === "selfhost" ? SELF_HOST_PORT : DEFAULT_PORT;
+
+function isNodeModulesPath(value: string | undefined): boolean {
+  return value !== undefined && nodeModulesPathPattern.test(value);
+}
+
+function isNodeModulesUseClientWarning(log: { code?: string; id?: string; loc?: { file?: string }; message: string }): boolean {
+  return (
+    log.code === "MODULE_LEVEL_DIRECTIVE" &&
+    log.message.includes('"use client"') &&
+    (isNodeModulesPath(log.id) || isNodeModulesPath(log.loc?.file))
+  );
+}
 
 export default defineConfig({
   /**
@@ -54,6 +67,16 @@ export default defineConfig({
   },
   ssr: {
     external: ["dockerode", "docker-modem", "ssh2", "cpu-features"],
+  },
+  build: {
+    rollupOptions: {
+      onLog(level, log, defaultHandler) {
+        if (level === "warn" && isNodeModulesUseClientWarning(log)) {
+          return;
+        }
+        defaultHandler(level, log);
+      },
+    },
   },
   plugins: [
     devtools(),
