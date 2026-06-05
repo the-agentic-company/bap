@@ -1,7 +1,6 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import type { SessionPrincipal } from "@/lib/route-guards";
 import { AppShellRouteWrapper } from "@/components/app-shell-route-wrapper";
-import { DesktopNotificationPermissionGate } from "@/components/desktop-notification-permission-gate";
 import { PostHogClientProvider } from "@/components/posthog-provider";
 import { SessionPrincipalCacheGuard } from "@/components/session-principal-cache-guard";
 import { Toaster } from "@/components/ui/sonner";
@@ -72,7 +71,6 @@ export function AppRootShell({
       <ORPCProvider>
         <BillingProviderWrapper>
           <SessionPrincipalCacheGuard />
-          <DesktopNotificationPermissionGate enabled={hasSession} />
           <AppShellRouteWrapper initialHasSession={hasSession} initialPrincipal={initialPrincipal}>
             {children}
           </AppShellRouteWrapper>

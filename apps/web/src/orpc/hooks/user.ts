@@ -50,17 +50,3 @@ export function useSetUserTimezone() {
     },
   });
 }
-
-export function useSetTaskDonePushEnabled() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (enabled: boolean) => client.user.setTaskDonePushEnabled({ enabled }),
-    onSuccess: async (_result, enabled) => {
-      queryClient.setQueryData<CurrentUser>(["user", "me"], (currentUser) =>
-        currentUser ? { ...currentUser, taskDonePushEnabled: enabled } : currentUser,
-      );
-      await queryClient.invalidateQueries({ queryKey: ["user", "me"] });
-    },
-  });
-}

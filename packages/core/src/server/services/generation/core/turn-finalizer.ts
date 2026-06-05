@@ -3,7 +3,6 @@ import { message, type MessageTiming } from "@cmdclaw/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "../../../utils/observability";
 import { getSandboxSlotManager } from "../../sandbox-slot-manager";
-import { sendTaskDonePush } from "../../web-push-service";
 import { collectMentionedSandboxFiles } from "../files/sandbox-file-collection";
 import type { GenerationContext, GenerationEvent } from "../types";
 import type { GenerationLifecycleStore } from "./lifecycle-store";
@@ -419,7 +418,6 @@ export class GenerationTurnFinalizer {
       });
       ctx.contentParts = finishResult.contentParts;
       const messageId = finishResult.messageId;
-      const completedAssistantContent = finishResult.assistantContent;
 
       if (status === "completed") {
         await this.deps.saveSessionSnapshotIfPossible(ctx, `finish:${status}`);
@@ -437,22 +435,6 @@ export class GenerationTurnFinalizer {
           usage: ctx.usage,
           artifacts,
         });
-
-        try {
-          await sendTaskDonePush({
-            userId: ctx.userId,
-            conversationId: ctx.conversationId,
-            messageId,
-            content: completedAssistantContent,
-          });
-        } catch (error) {
-          console.error("[GenerationManager] Failed to send task completion push", {
-            generationId: ctx.id,
-            conversationId: ctx.conversationId,
-            userId: ctx.userId,
-            error,
-          });
-        }
       } else if (status === "cancelled") {
         this.deps.broadcast(ctx, {
           type: "cancelled",

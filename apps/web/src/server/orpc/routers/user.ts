@@ -33,7 +33,6 @@ const me = protectedProcedure.handler(async ({ context }) => {
     role: dbUser?.role ?? "user",
     onboardedAt: dbUser?.onboardedAt ?? null,
     timezone: dbUser?.timezone ?? null,
-    taskDonePushEnabled: dbUser?.taskDonePushEnabled ?? false,
     activeWorkspaceId: workspace.id,
     billingPlanId: workspace.billingPlanId,
   };
@@ -153,21 +152,6 @@ const setTimezone = protectedProcedure
     return { success: true, timezone: input.timezone };
   });
 
-const setTaskDonePushEnabled = protectedProcedure
-  .input(
-    z.object({
-      enabled: z.boolean(),
-    }),
-  )
-  .handler(async ({ input, context }) => {
-    await context.db
-      .update(user)
-      .set({ taskDonePushEnabled: input.enabled })
-      .where(eq(user.id, context.user.id));
-
-    return { success: true, taskDonePushEnabled: input.enabled };
-  });
-
 export const userRouter = {
   me,
   completeOnboarding,
@@ -175,5 +159,4 @@ export const userRouter = {
   forwarding,
   setDefaultForwardedCoworker,
   setTimezone,
-  setTaskDonePushEnabled,
 };
