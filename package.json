@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "cat": "bun scripts/cat.ts",
+    "decrypt": "bun --env-file=.env scripts/decrypt-files.ts",
     "cli": "bun run --cwd apps/cli start",
     "cmdclaw": "bun run --cwd apps/cli start",
     "env": "infisical export --output-file=.env",
