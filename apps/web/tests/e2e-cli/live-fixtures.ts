@@ -32,6 +32,15 @@ export const slackPostVerifyTimeoutMs = Number(
 export const gmailPollIntervalMs = Number(process.env.E2E_GMAIL_POLL_INTERVAL_MS ?? "2500");
 export const transientRetryCount = Number(process.env.E2E_TRANSIENT_RETRY_COUNT ?? "1");
 export const transientRetryDelayMs = Number(process.env.E2E_TRANSIENT_RETRY_DELAY_MS ?? "2000");
+export const productionLiveTarget = (() => {
+  try {
+    return new URL(defaultServerUrl).hostname === "cmdclaw.ai";
+  } catch {
+    return false;
+  }
+})();
+export const optionalProdFixtureTestsEnabled =
+  process.env.E2E_ENABLE_PROD_OPTIONAL_FIXTURES === "1";
 
 export const expectedUserEmail =
   process.env.E2E_TEST_EMAIL?.trim() ||

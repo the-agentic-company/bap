@@ -8,6 +8,8 @@ import {
   expectedUserEmail,
   getGmailAccessTokenForExpectedUser,
   liveEnabled,
+  optionalProdFixtureTestsEnabled,
+  productionLiveTarget,
   readLatestInboxMessage,
   responseTimeoutMs,
   resolveLiveModel,
@@ -42,7 +44,7 @@ describe.runIf(liveEnabled)("@live CLI chat gmail", () => {
     await closeDbPool();
   });
 
-  test(
+  test.skipIf(productionLiveTarget && !optionalProdFixtureTestsEnabled)(
     "reads inbox and verifies subject against Gmail API",
     { timeout: Math.max(responseTimeoutMs + 90_000, 300_000) },
     async () => {
