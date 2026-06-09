@@ -30,7 +30,7 @@ vi.mock("../lib/modulr-auth", () => ({
   createManagedModulrClient: mocks.createManagedModulrClientMock,
 }));
 
-import downloadDocument from "./modulr.download_document";
+import downloadDocument from "../tools/modulr.download_document";
 
 describe("modulr.download_document", () => {
   beforeEach(() => {
