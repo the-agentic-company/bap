@@ -12,11 +12,10 @@ Options:
 }
 
 function parseArgs(argv: string[]): Args {
-  for (const arg of argv) {
-    if (arg === "-h" || arg === "--help") {
-      console.log(usage());
-      process.exit(0);
-    }
+  const helpArg = argv.find((arg) => arg === "-h" || arg === "--help");
+  if (helpArg) {
+    console.log(usage());
+    process.exit(0);
   }
 
   if (argv.length > 1) {
