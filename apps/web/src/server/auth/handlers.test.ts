@@ -13,6 +13,8 @@ const {
   isApprovedLoginEmailMock,
   normalizeApprovedLoginEmailMock,
   resolveOrCreateAuthUserByEmailMock,
+  resolveMagicLinkPageStateMock,
+  markMagicLinkRequestConsumedMock,
   consumePendingMock,
   storeProviderTokensMock,
   isOAuthProviderConfigMock,
@@ -26,6 +28,8 @@ const {
     email.trim().toLowerCase(),
   ),
   resolveOrCreateAuthUserByEmailMock: vi.fn<VitestProcedure>(),
+  resolveMagicLinkPageStateMock: vi.fn<VitestProcedure>(),
+  markMagicLinkRequestConsumedMock: vi.fn<VitestProcedure>(),
   consumePendingMock: vi.fn<VitestProcedure>(),
   storeProviderTokensMock: vi.fn<VitestProcedure>(),
   isOAuthProviderConfigMock: vi.fn<VitestProcedure>(),
@@ -55,6 +59,11 @@ vi.mock("@/lib/trusted-origins", () => ({
 vi.mock("@/server/lib/credential-accounts", () => ({
   hasCredentialPasswordByEmail: hasCredentialPasswordByEmailMock,
   resolveOrCreateAuthUserByEmail: resolveOrCreateAuthUserByEmailMock,
+}));
+
+vi.mock("@/server/lib/magic-link-request-state", () => ({
+  resolveMagicLinkPageState: resolveMagicLinkPageStateMock,
+  markMagicLinkRequestConsumed: markMagicLinkRequestConsumedMock,
 }));
 
 vi.mock("@/server/lib/approved-login-emails", () => ({
@@ -87,6 +96,8 @@ import {
   handleBetterAuth,
   handleBetterAuthOptions,
   handleCheckEmail,
+  handleMagicLinkConfirm,
+  handleMagicLinkResend,
   handleNativeCallback,
   handlePasswordStart,
   handleProviderCallback,
@@ -196,6 +207,128 @@ describe("handleBetterAuthOptions (CORS preflight)", () => {
     expect(response.headers.get("access-control-allow-methods")).toBe(
       "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     );
+  });
+});
+
+describe("handleMagicLinkConfirm (POST /sign-in/:token/confirm)", () => {
+  beforeEach(() => {
+    resolveMagicLinkPageStateMock.mockResolvedValue({
+      status: "pending",
+      email: "pilot@cmdclaw.ai",
+      callbackUrl: "/chat",
+      newUserCallbackUrl: "/onboarding",
+      errorCallbackUrl: "/login?error=magic-link",
+    });
+    markMagicLinkRequestConsumedMock.mockResolvedValue(undefined);
+  });
+
+  it("delegates pending tokens to Better Auth verification and marks them consumed", async () => {
+    authHandlerMock.mockResolvedValue(Response.redirect("https://cmdclaw.ai/chat", 302));
+
+    const response = await handleMagicLinkConfirm(
+      new Request("https://cmdclaw.ai/sign-in/abc123/confirm", {
+        method: "POST",
+        headers: { cookie: "csrf=token" },
+      }),
+      "abc123",
+    );
+
+    expect(response.status).toBe(302);
+    expect(getLocation(response)).toBe("https://cmdclaw.ai/chat");
+    expect(authHandlerMock).toHaveBeenCalledTimes(1);
+    const delegatedRequest = authHandlerMock.mock.calls[0]?.[0] as Request;
+    const delegatedUrl = new URL(delegatedRequest.url);
+    expect(delegatedUrl.pathname).toBe("/api/auth/magic-link/verify");
+    expect(delegatedUrl.searchParams.get("token")).toBe("abc123");
+    expect(delegatedUrl.searchParams.get("callbackURL")).toBe("/chat");
+    expect(delegatedUrl.searchParams.get("newUserCallbackURL")).toBe("/onboarding");
+    expect(delegatedUrl.searchParams.get("errorCallbackURL")).toBe("/login?error=magic-link");
+    expect(delegatedRequest.headers.get("cookie")).toBe("csrf=token");
+    expect(markMagicLinkRequestConsumedMock).toHaveBeenCalledWith("abc123");
+  });
+
+  it("does not mark the page state consumed when Better Auth rejects the token", async () => {
+    authHandlerMock.mockResolvedValue(
+      Response.redirect("https://cmdclaw.ai/login?error=magic-link?error=INVALID_TOKEN", 302),
+    );
+
+    await handleMagicLinkConfirm(
+      new Request("https://cmdclaw.ai/sign-in/abc123/confirm", { method: "POST" }),
+      "abc123",
+    );
+
+    expect(markMagicLinkRequestConsumedMock).not.toHaveBeenCalled();
+  });
+
+  it("redirects non-pending tokens back to the sign-in page", async () => {
+    resolveMagicLinkPageStateMock.mockResolvedValueOnce({
+      status: "expired",
+      email: "pilot@cmdclaw.ai",
+      callbackUrl: "/chat",
+      newUserCallbackUrl: "/chat",
+      errorCallbackUrl: "/login?error=magic-link",
+    });
+
+    const response = await handleMagicLinkConfirm(
+      new Request("https://cmdclaw.ai/sign-in/abc123/confirm", { method: "POST" }),
+      "abc123",
+    );
+
+    expect(response.status).toBe(303);
+    expect(getLocation(response)).toBe("https://cmdclaw.ai/sign-in/abc123?error=expired");
+    expect(authHandlerMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleMagicLinkResend (POST /sign-in/:token/resend)", () => {
+  beforeEach(() => {
+    resolveMagicLinkPageStateMock.mockResolvedValue({
+      status: "expired",
+      email: "pilot@cmdclaw.ai",
+      callbackUrl: "/chat",
+      newUserCallbackUrl: "/onboarding",
+      errorCallbackUrl: "/login?error=magic-link",
+    });
+  });
+
+  it("requests a replacement magic link and redirects back with a resent flag", async () => {
+    authHandlerMock.mockResolvedValue(Response.json({ status: true }));
+
+    const response = await handleMagicLinkResend(
+      new Request("https://cmdclaw.ai/sign-in/abc123/resend", { method: "POST" }),
+      "abc123",
+    );
+
+    expect(response.status).toBe(303);
+    expect(getLocation(response)).toBe("https://cmdclaw.ai/sign-in/abc123?resent=1");
+    const delegatedRequest = authHandlerMock.mock.calls[0]?.[0] as Request;
+    expect(delegatedRequest.method).toBe("POST");
+    expect(new URL(delegatedRequest.url).pathname).toBe("/api/auth/sign-in/magic-link");
+    await expect(delegatedRequest.json()).resolves.toEqual({
+      email: "pilot@cmdclaw.ai",
+      callbackURL: "/chat",
+      newUserCallbackURL: "/onboarding",
+      errorCallbackURL: "/login?error=magic-link",
+    });
+  });
+
+  it("redirects invalid tokens back with an error", async () => {
+    resolveMagicLinkPageStateMock.mockResolvedValueOnce({
+      status: "invalid",
+      email: null,
+      callbackUrl: null,
+      newUserCallbackUrl: null,
+      errorCallbackUrl: null,
+    });
+
+    const response = await handleMagicLinkResend(
+      new Request("https://cmdclaw.ai/sign-in/abc123/resend", { method: "POST" }),
+      "abc123",
+    );
+
+    expect(response.status).toBe(303);
+    expect(getLocation(response)).toBe("https://cmdclaw.ai/sign-in/abc123?error=invalid");
+    expect(authHandlerMock).not.toHaveBeenCalled();
   });
 });
 

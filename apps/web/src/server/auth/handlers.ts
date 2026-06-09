@@ -18,6 +18,10 @@ import {
   hasCredentialPasswordByEmail,
   resolveOrCreateAuthUserByEmail,
 } from "@/server/lib/credential-accounts";
+import {
+  markMagicLinkRequestConsumed,
+  resolveMagicLinkPageState,
+} from "@/server/lib/magic-link-request-state";
 import { storeProviderTokens } from "@/server/orpc/routers/provider-auth";
 import { getTrustedOrigins } from "@/lib/trusted-origins";
 
@@ -144,6 +148,126 @@ export function handleBetterAuthOptions(request: Request): Response {
     status: 204,
     headers: getCorsHeaders(origin),
   });
+}
+
+function buildSignInTokenRedirect(request: Request, token: string): URL {
+  return buildRequestAwareUrl(`/sign-in/${encodeURIComponent(token)}`, request);
+}
+
+const BETTER_AUTH_MAGIC_LINK_ERRORS = new Set([
+  "INVALID_TOKEN",
+  "EXPIRED_TOKEN",
+  "failed_to_create_user",
+  "new_user_signup_disabled",
+  "failed_to_create_session",
+]);
+
+function isSuccessfulMagicLinkVerifyResponse(response: Response): boolean {
+  const location = response.headers.get("location");
+  if (!location) {
+    return response.ok;
+  }
+
+  const decodedLocation = decodeURIComponent(location);
+  for (const error of BETTER_AUTH_MAGIC_LINK_ERRORS) {
+    if (decodedLocation.includes(`error=${error}`)) {
+      return false;
+    }
+  }
+
+  try {
+    const redirectUrl = new URL(location);
+    const error = redirectUrl.searchParams.get("error");
+    return !error || !BETTER_AUTH_MAGIC_LINK_ERRORS.has(error);
+  } catch {
+    return !location.includes("error=");
+  }
+}
+
+function withMagicLinkRedirectParams(
+  url: URL,
+  state: Extract<Awaited<ReturnType<typeof resolveMagicLinkPageState>>, { email: string }>,
+) {
+  url.searchParams.set("callbackURL", state.callbackUrl ?? "/");
+  if (state.newUserCallbackUrl) {
+    url.searchParams.set("newUserCallbackURL", state.newUserCallbackUrl);
+  }
+  if (state.errorCallbackUrl) {
+    url.searchParams.set("errorCallbackURL", state.errorCallbackUrl);
+  }
+}
+
+/**
+ * POST `/sign-in/:token/confirm` — explicit confirmation step for CmdClaw magic links.
+ *
+ * The public email link lands on a first-party confirmation page. This handler delegates
+ * verification/session-cookie work to Better Auth's existing magic-link endpoint, then marks
+ * CmdClaw's page-state row consumed only after Better Auth accepts the token.
+ */
+export async function handleMagicLinkConfirm(request: Request, token: string): Promise<Response> {
+  const state = await resolveMagicLinkPageState(token);
+  const signInUrl = buildSignInTokenRedirect(request, token);
+
+  if (state.status !== "pending") {
+    signInUrl.searchParams.set("error", state.status);
+    return Response.redirect(signInUrl, 303);
+  }
+
+  const verifyUrl = buildRequestAwareUrl("/api/auth/magic-link/verify", request);
+  verifyUrl.searchParams.set("token", token);
+  withMagicLinkRedirectParams(verifyUrl, state);
+
+  const response = await handleBetterAuth(
+    new Request(verifyUrl, {
+      method: "GET",
+      headers: request.headers,
+    }),
+  );
+
+  if (isSuccessfulMagicLinkVerifyResponse(response)) {
+    await markMagicLinkRequestConsumed(token);
+  }
+
+  return response;
+}
+
+/**
+ * POST `/sign-in/:token/resend` — request a replacement magic link for expired/used links.
+ */
+export async function handleMagicLinkResend(request: Request, token: string): Promise<Response> {
+  const state = await resolveMagicLinkPageState(token);
+  const signInUrl = buildSignInTokenRedirect(request, token);
+
+  if (state.status === "invalid") {
+    signInUrl.searchParams.set("error", "invalid");
+    return Response.redirect(signInUrl, 303);
+  }
+
+  const headers = new Headers(request.headers);
+  headers.set("content-type", "application/json");
+  headers.delete("content-length");
+
+  const signInRequestUrl = buildRequestAwareUrl("/api/auth/sign-in/magic-link", request);
+  const response = await handleBetterAuth(
+    new Request(signInRequestUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        email: state.email,
+        callbackURL: state.callbackUrl ?? "/",
+        ...(state.newUserCallbackUrl ? { newUserCallbackURL: state.newUserCallbackUrl } : {}),
+        ...(state.errorCallbackUrl ? { errorCallbackURL: state.errorCallbackUrl } : {}),
+      }),
+    }),
+  );
+
+  if (!response.ok) {
+    signInUrl.searchParams.set("error", "resend_failed");
+    return Response.redirect(signInUrl, 303);
+  }
+
+  signInUrl.searchParams.set("resent", "1");
+  return Response.redirect(signInUrl, 303);
 }
 
 const checkEmailSchema = z.object({
