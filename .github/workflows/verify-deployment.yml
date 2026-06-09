@@ -80,4 +80,13 @@ jobs:
           CMDCLAW_SERVER_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
           RELEASE_REPLAY_FILE: ${{ secrets.RELEASE_REPLAY_FILE }}
-        run: bun run --cwd apps/web test:replay:release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RELEASE_REPLAY_FILE}" ]; then
+            echo "RELEASE_REPLAY_FILE is not configured; skipping replay gate."
+            exit 0
+          fi
+
+          bun run --cwd apps/web test:replay:release
