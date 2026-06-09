@@ -32,6 +32,7 @@ export const image = Image.debianSlim()
   .runCommands("apt-get update")
   .runCommands("apt-get install -y curl git ripgrep ca-certificates gnupg unzip")
   .runCommands("apt-get install -y python3 python3-venv python3-pip python-is-python3")
+  .runCommands("python -m pip install --break-system-packages reportlab matplotlib Pillow")
   .runCommands("curl -fsSL https://deb.nodesource.com/setup_22.x | bash -")
   .runCommands("apt-get install -y nodejs")
   .runCommands(
