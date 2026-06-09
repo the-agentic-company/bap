@@ -72,7 +72,7 @@ E2E_LIVE=1 bun run test:e2e:live
 Optional environment variables:
 
 - `E2E_AUTH_STATE_PATH` (default: `playwright/.auth/user.json`)
-- `E2E_TEST_EMAIL` (default: `CMDCLAW_DEFAULT_USER_EMAIL`, then `playwright@example.com`)
+- `E2E_TEST_EMAIL` (default: `CMDCLAW_DEFAULT_USER_EMAIL`, then `cmdclaw@example.com`)
 - `E2E_TEST_NAME` (default: `Playwright E2E`)
 - `E2E_SESSION_TTL_HOURS` (default: `24`)
 - `E2E_CHAT_MODEL` (model id, default: `kimi-k2.5-free`, e.g. `claude-sonnet-4-6`)

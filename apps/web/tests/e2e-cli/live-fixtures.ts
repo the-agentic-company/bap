@@ -36,7 +36,7 @@ export const transientRetryDelayMs = Number(process.env.E2E_TRANSIENT_RETRY_DELA
 export const expectedUserEmail =
   process.env.E2E_TEST_EMAIL?.trim() ||
   process.env.CMDCLAW_DEFAULT_USER_EMAIL?.trim() ||
-  "playwright@example.com";
+  "cmdclaw@example.com";
 export const expectedGmailAccountLabel = process.env.E2E_GMAIL_ACCOUNT_LABEL ?? "baptiste";
 export const sourceChannelName = "experiment-cmdclaw-testing";
 export const targetChannelName = process.env.E2E_SLACK_TARGET_CHANNEL ?? "ops-e2e-slack-testing";
