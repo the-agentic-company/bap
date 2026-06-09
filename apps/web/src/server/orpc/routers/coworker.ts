@@ -42,7 +42,7 @@ import {
   triggerCoworkerRun,
 } from "@cmdclaw/core/server/services/coworker-service";
 import { generationLifecyclePolicy } from "@cmdclaw/core/server/services/lifecycle-policy";
-import { downloadFromS3 } from "@cmdclaw/core/server/storage/s3-client";
+import { downloadFromS3, ensureBucket, uploadToS3 } from "@cmdclaw/core/server/storage/s3-client";
 import {
   conversation,
   generation,
@@ -54,6 +54,7 @@ import {
   coworkerRunEvent,
   coworkerTag,
   coworkerTagAssignment,
+  sandboxFile,
   workspaceMcpServer,
 } from "@cmdclaw/db/schema";
 import { ORPCError } from "@orpc/server";
@@ -680,6 +681,100 @@ async function copyCoworkerDocuments(params: {
   );
 }
 
+function generateImportedArtifactStorageKey(params: {
+  conversationId: string;
+  filename: string;
+}): string {
+  const timestamp = Date.now();
+  const sanitizedFilename = params.filename.replace(/[^a-zA-Z0-9.-]/g, "_");
+  return `sandbox-files/${params.conversationId}/${timestamp}-${sanitizedFilename}`;
+}
+
+async function createBuilderConversationForImportedArtifacts(params: {
+  context: {
+    user: { id: string };
+    db: typeof import("@cmdclaw/db/client").db;
+  };
+  workspaceId: string;
+  coworkerId: string;
+  coworkerName: string;
+  model: string;
+  authSource: ProviderAuthSource | null;
+}): Promise<string> {
+  const [createdConversation] = await params.context.db
+    .insert(conversation)
+    .values({
+      userId: params.context.user.id,
+      workspaceId: params.workspaceId,
+      type: "coworker",
+      title: `${params.coworkerName || "Coworker"} – Chat`,
+      model: params.model,
+      authSource: params.authSource,
+      autoApprove: false,
+    })
+    .returning({ id: conversation.id });
+
+  if (!createdConversation) {
+    throw new ORPCError("INTERNAL_SERVER_ERROR", {
+      message: "Failed to create artifact conversation",
+    });
+  }
+
+  await params.context.db
+    .update(coworker)
+    .set({ builderConversationId: createdConversation.id })
+    .where(eq(coworker.id, params.coworkerId));
+
+  return createdConversation.id;
+}
+
+async function importCoworkerArtifacts(params: {
+  context: {
+    user: { id: string };
+    db: typeof import("@cmdclaw/db/client").db;
+  };
+  workspaceId: string;
+  coworkerId: string;
+  coworkerName: string;
+  model: string;
+  authSource: ProviderAuthSource | null;
+  artifacts: z.infer<typeof coworkerDefinitionArtifactSchema>[];
+}) {
+  if (params.artifacts.length === 0) {
+    return;
+  }
+
+  const conversationId = await createBuilderConversationForImportedArtifacts({
+    context: params.context,
+    workspaceId: params.workspaceId,
+    coworkerId: params.coworkerId,
+    coworkerName: params.coworkerName,
+    model: params.model,
+    authSource: params.authSource,
+  });
+
+  await ensureBucket();
+  await Promise.all(
+    params.artifacts.map(async (artifact) => {
+      const fileBuffer = Buffer.from(artifact.contentBase64, "base64");
+      const storageKey = generateImportedArtifactStorageKey({
+        conversationId,
+        filename: artifact.filename,
+      });
+
+      await uploadToS3(storageKey, fileBuffer, artifact.mimeType);
+      await params.context.db.insert(sandboxFile).values({
+        conversationId,
+        path: artifact.path,
+        filename: artifact.filename,
+        mimeType: artifact.mimeType,
+        sizeBytes: artifact.sizeBytes ?? fileBuffer.length,
+        storageKey,
+      });
+    }),
+  );
+}
+
 // Schedule configuration schema
 const scheduleSchema = z.discriminatedUnion("type", [
   z.object({
@@ -712,8 +807,16 @@ const coworkerDefinitionDocumentSchema = z.object({
   contentBase64: z.string().min(1),
 });
 
+const coworkerDefinitionArtifactSchema = z.object({
+  path: z.string().min(1).max(2000),
+  filename: z.string().min(1).max(512),
+  mimeType: z.string().min(1).max(255),
+  sizeBytes: z.number().int().nonnegative().nullable().optional(),
+  contentBase64: z.string().min(1),
+});
+
 const coworkerDefinitionSchema = z.object({
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   exportedAt: z.string().datetime(),
   coworker: z.object({
     name: z.string().max(128),
@@ -737,6 +840,7 @@ const coworkerDefinitionSchema = z.object({
     userInputPrompt: userInputPromptSchema,
   }),
   documents: z.array(coworkerDefinitionDocumentSchema).default([]),
+  artifacts: z.array(coworkerDefinitionArtifactSchema).default([]),
 });
 
 function getResolvedCoworkerToolPolicy(wf: {
@@ -2476,9 +2580,30 @@ const exportDefinition = protectedProcedure
       where: eq(coworkerDocument.coworkerId, wf.id),
       orderBy: (document, { asc }) => [asc(document.createdAt)],
     });
+    const latestRun = await context.db.query.coworkerRun.findFirst({
+      where: eq(coworkerRun.coworkerId, wf.id),
+      orderBy: (run, { desc }) => [desc(run.startedAt)],
+      columns: {
+        conversationId: true,
+      },
+    });
+    const artifactConversationIds = [
+      wf.builderConversationId,
+      latestRun?.conversationId ?? null,
+    ].filter((conversationId): conversationId is string => Boolean(conversationId));
+    const artifactFiles =
+      artifactConversationIds.length > 0
+        ? await context.db.query.sandboxFile.findMany({
+            where: inArray(sandboxFile.conversationId, artifactConversationIds),
+            orderBy: (file, { asc }) => [asc(file.createdAt)],
+          })
+        : [];
+    const uniqueArtifactFiles = Array.from(
+      new Map(artifactFiles.map((file) => [file.id, file])).values(),
+    ).filter((file) => Boolean(file.storageKey));
 
     return {
-      version: 1 as const,
+      version: 2 as const,
       exportedAt: new Date().toISOString(),
       coworker: {
         name: wf.name ?? "",
@@ -2507,6 +2632,15 @@ const exportDefinition = protectedProcedure
           mimeType: document.mimeType,
           description: document.description,
           contentBase64: (await downloadFromS3(document.storageKey)).toString("base64"),
+        })),
+      ),
+      artifacts: await Promise.all(
+        uniqueArtifactFiles.map(async (file) => ({
+          path: file.path,
+          filename: file.filename,
+          mimeType: file.mimeType,
+          sizeBytes: file.sizeBytes,
+          contentBase64: (await downloadFromS3(file.storageKey as string)).toString("base64"),
         })),
       ),
     };
@@ -2694,6 +2828,16 @@ const importDefinition = protectedProcedure
         }),
       ),
     );
+
+    await importCoworkerArtifacts({
+      context,
+      workspaceId,
+      coworkerId,
+      coworkerName: definition.coworker.name.trim(),
+      model: definition.coworker.model,
+      authSource: resolvedAuthSource,
+      artifacts: definition.artifacts,
+    });
 
     return created;
   });

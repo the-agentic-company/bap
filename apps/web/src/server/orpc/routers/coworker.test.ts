@@ -29,7 +29,9 @@ const {
   uploadCoworkerDocumentMock,
   deleteCoworkerDocumentMock,
   downloadFromS3Mock,
+  ensureBucketMock,
   getPresignedDownloadUrlMock,
+  uploadToS3Mock,
   listConfiguredRemoteIntegrationTargetsMock,
   searchRemoteIntegrationUsersMock,
 } = vi.hoisted(() => ({
@@ -44,7 +46,9 @@ const {
   uploadCoworkerDocumentMock: vi.fn<VitestProcedure>(),
   deleteCoworkerDocumentMock: vi.fn<VitestProcedure>(),
   downloadFromS3Mock: vi.fn<VitestProcedure>(),
+  ensureBucketMock: vi.fn<VitestProcedure>(),
   getPresignedDownloadUrlMock: vi.fn<VitestProcedure>(),
+  uploadToS3Mock: vi.fn<VitestProcedure>(),
   listConfiguredRemoteIntegrationTargetsMock: vi.fn<VitestProcedure>(),
   searchRemoteIntegrationUsersMock: vi.fn<VitestProcedure>(),
 }));
@@ -86,7 +90,9 @@ vi.mock("@/server/services/coworker-document", () => ({
 
 vi.mock("@cmdclaw/core/server/storage/s3-client", () => ({
   downloadFromS3: downloadFromS3Mock,
+  ensureBucket: ensureBucketMock,
   getPresignedDownloadUrl: getPresignedDownloadUrlMock,
+  uploadToS3: uploadToS3Mock,
 }));
 
 vi.mock("@cmdclaw/core/server/integrations/remote-integrations", () => {
@@ -179,6 +185,9 @@ function createContext() {
         coworkerRunEvent: {
           findMany: vi.fn<VitestProcedure>(),
         },
+        sandboxFile: {
+          findMany: vi.fn<VitestProcedure>(),
+        },
         generation: {
           findFirst: vi.fn<VitestProcedure>(),
         },
@@ -241,6 +250,7 @@ function createContext() {
     coworkerId: "wf-1",
   });
   context.db.query.coworkerDocument.findMany.mockResolvedValue([]);
+  context.db.query.sandboxFile.findMany.mockResolvedValue([]);
   context.db.query.workspaceMcpServer.findMany.mockResolvedValue([]);
 
   return context;
@@ -258,6 +268,8 @@ describe("coworkerRouter", () => {
     );
     syncCoworkerScheduleJobMock.mockResolvedValue(undefined);
     removeCoworkerScheduleJobMock.mockResolvedValue(undefined);
+    ensureBucketMock.mockResolvedValue(undefined);
+    uploadToS3Mock.mockResolvedValue(undefined);
     reconcileStaleCoworkerRunsForCoworkerMock.mockResolvedValue(undefined);
     reconcileStaleCoworkerRunsForCoworkersMock.mockResolvedValue(undefined);
     triggerCoworkerRunMock.mockResolvedValue({
@@ -2042,8 +2054,11 @@ describe("coworkerRouter", () => {
       allowedCustomIntegrations: ["custom-1"],
       allowedSkillSlugs: ["skill-a"],
       schedule: null,
-      builderConversationId: null,
+      builderConversationId: "conv-builder-1",
       sharedAt: null,
+    });
+    context.db.query.coworkerRun.findFirst.mockResolvedValue({
+      conversationId: "conv-run-1",
     });
     context.db.query.coworkerDocument.findMany.mockResolvedValue([
       {
@@ -2056,6 +2071,25 @@ describe("coworkerRouter", () => {
         createdAt,
       },
     ]);
+    context.db.query.sandboxFile.findMany.mockResolvedValue([
+      {
+        id: "file-1",
+        conversationId: "conv-builder-1",
+        messageId: "msg-1",
+        path: "/app/output.html",
+        filename: "output.html",
+        mimeType: "text/html",
+        sizeBytes: 29,
+        storageKey: "s3/output-html",
+        createdAt,
+      },
+    ]);
+    downloadFromS3Mock.mockImplementation(async (storageKey: string) => {
+      if (storageKey === "s3/output-html") {
+        return Buffer.from("<!doctype html><p>Preview</p>");
+      }
+      return Buffer.from("hello world");
+    });
 
     const result = await coworkerRouterAny.exportDefinition({
       input: { id: "wf-1" },
@@ -2063,8 +2097,9 @@ describe("coworkerRouter", () => {
     });
 
     expect(downloadFromS3Mock).toHaveBeenCalledWith("s3/doc-1");
+    expect(downloadFromS3Mock).toHaveBeenCalledWith("s3/output-html");
     expect(result).toMatchObject({
-      version: 1,
+      version: 2,
       coworker: {
         name: "Inbox triage",
         username: "inbox-triage",
@@ -2079,6 +2114,15 @@ describe("coworkerRouter", () => {
           mimeType: "text/plain",
           description: "Brief",
           contentBase64: Buffer.from("hello world").toString("base64"),
+        },
+      ],
+      artifacts: [
+        {
+          path: "/app/output.html",
+          filename: "output.html",
+          mimeType: "text/html",
+          sizeBytes: 29,
+          contentBase64: Buffer.from("<!doctype html><p>Preview</p>").toString("base64"),
         },
       ],
     });
@@ -2165,6 +2209,97 @@ describe("coworkerRouter", () => {
       }),
     );
     expect(syncCoworkerScheduleJobMock).not.toHaveBeenCalled();
+  });
+
+  it("imports v2 artifacts as builder conversation sandbox files", async () => {
+    const context = createContext();
+    context.mocks.insertReturningMock
+      .mockResolvedValueOnce([
+        {
+          id: "wf-imported",
+          name: "Imported coworker",
+          description: "Imported description",
+          username: "imported-coworker",
+          status: "off",
+        },
+      ])
+      .mockResolvedValueOnce([{ id: "conv-imported-builder" }]);
+
+    const artifactContent = "<!doctype html><p>Imported preview</p>";
+    const result = await coworkerRouterAny.importDefinition({
+      input: {
+        definitionJson: JSON.stringify({
+          version: 2,
+          exportedAt: "2026-03-26T10:00:00.000Z",
+          coworker: {
+            name: "Imported coworker",
+            description: "Imported description",
+            username: "imported-coworker",
+            status: "on",
+            triggerType: "manual",
+            prompt: "Run on demand",
+            model: DEFAULT_MODEL,
+            authSource: "shared",
+            promptDo: null,
+            promptDont: null,
+            autoApprove: true,
+            toolAccessMode: "selected",
+            allowedIntegrations: [],
+            allowedCustomIntegrations: [],
+            allowedWorkspaceMcpServerIds: [],
+            allowedSkillSlugs: [],
+            schedule: null,
+          },
+          documents: [],
+          artifacts: [
+            {
+              path: "/app/output.html",
+              filename: "output.html",
+              mimeType: "text/html",
+              sizeBytes: artifactContent.length,
+              contentBase64: Buffer.from(artifactContent).toString("base64"),
+            },
+          ],
+        }),
+      },
+      context,
+    });
+
+    expect(result).toEqual({
+      id: "wf-imported",
+      name: "Imported coworker",
+      description: "Imported description",
+      username: "imported-coworker",
+      status: "off",
+    });
+    expect(ensureBucketMock).toHaveBeenCalled();
+    expect(uploadToS3Mock).toHaveBeenCalledWith(
+      expect.stringMatching(/^sandbox-files\/conv-imported-builder\/\d+-output\.html$/),
+      Buffer.from(artifactContent),
+      "text/html",
+    );
+    expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "coworker",
+        title: "Imported coworker – Chat",
+        autoApprove: false,
+      }),
+    );
+    expect(context.mocks.updateSetMock).toHaveBeenCalledWith({
+      builderConversationId: "conv-imported-builder",
+    });
+    expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: "conv-imported-builder",
+        path: "/app/output.html",
+        filename: "output.html",
+        mimeType: "text/html",
+        sizeBytes: artifactContent.length,
+        storageKey: expect.stringMatching(
+          /^sandbox-files\/conv-imported-builder\/\d+-output\.html$/,
+        ),
+      }),
+    );
   });
 
   it("returns INTERNAL_SERVER_ERROR when scheduler cleanup fails during delete", async () => {
