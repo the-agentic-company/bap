@@ -62,6 +62,19 @@ type Command = "previous-success" | "deploy" | "rollback" | "wait";
 const renderApiBaseUrl = "https://api.render.com/v1";
 const successStatuses = new Set(["live"]);
 const failedStatuses = new Set(["build_failed", "update_failed", "canceled", "deactivated"]);
+const transientRetryDelaysMs = [5_000, 15_000, 30_000];
+
+class RenderRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly method: string,
+    public readonly path: string,
+  ) {
+    super(message);
+    this.name = "RenderRequestError";
+  }
+}
 
 function fail(message: string): never {
   console.error(`[render-deploy] ${message}`);
@@ -103,7 +116,20 @@ function describeUnknownError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function isTransientRenderError(error: unknown): boolean {
+  if (error instanceof RenderRequestError) {
+    return error.status >= 500 || error.status === 429;
+  }
+
+  return error instanceof TypeError;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function renderRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = init.method ?? "GET";
   const response = await fetch(`${renderApiBaseUrl}${path}`, {
     ...init,
     headers: {
@@ -119,14 +145,38 @@ async function renderRequest<T>(path: string, init: RequestInit = {}): Promise<T
 
   if (!response.ok) {
     const error = body as RenderApiError | null;
-    throw new Error(
-      `Render API ${init.method ?? "GET"} ${path} failed with ${response.status}: ${
+    throw new RenderRequestError(
+      `Render API ${method} ${path} failed with ${response.status}: ${
         error?.message ?? error?.error ?? text
       }`,
+      response.status,
+      method,
+      path,
     );
   }
 
   return body as T;
+}
+
+async function renderRequestWithRetry<T>(path: string, init: RequestInit = {}): Promise<T> {
+  for (const [index, delayMs] of [...transientRetryDelaysMs, 0].entries()) {
+    try {
+      return await renderRequest<T>(path, init);
+    } catch (error) {
+      if (!isTransientRenderError(error) || index === transientRetryDelaysMs.length) {
+        throw error;
+      }
+
+      console.error(
+        `[render-deploy] ${describeUnknownError(error)}; retrying in ${
+          delayMs / 1000
+        }s.`,
+      );
+      await sleep(delayMs);
+    }
+  }
+
+  throw new Error("Render request retry loop exited unexpectedly");
 }
 
 async function renderFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -463,7 +513,7 @@ async function findPreviousSuccessfulDeploy(serviceId: string): Promise<RenderDe
 
 async function createDeploy(serviceId: string, commitId: string): Promise<RenderDeploy> {
   return unwrapDeploy(
-    await renderFetch(`/services/${serviceId}/deploys`, {
+    await renderRequestWithRetry(`/services/${serviceId}/deploys`, {
       method: "POST",
       body: JSON.stringify({ commitId, clearCache: "do_not_clear" }),
     }),
@@ -472,7 +522,7 @@ async function createDeploy(serviceId: string, commitId: string): Promise<Render
 
 async function rollbackDeploy(serviceId: string, deployId: string): Promise<RenderDeploy> {
   return unwrapDeploy(
-    await renderFetch(`/services/${serviceId}/rollback`, {
+    await renderRequestWithRetry(`/services/${serviceId}/rollback`, {
       method: "POST",
       body: JSON.stringify({ deployId }),
     }),
