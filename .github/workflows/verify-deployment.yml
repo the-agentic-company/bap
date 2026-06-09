@@ -19,6 +19,8 @@ on:
     secrets:
       CMDCLAW_SERVER_SECRET:
         required: true
+      CMDCLAW_DEFAULT_USER_EMAIL:
+        required: false
       DATABASE_URL_PROD:
         required: false
       DATABASE_URL_STAGING:
@@ -67,6 +69,7 @@ jobs:
 
       - name: Run CLI live checks
         env:
+          CMDCLAW_DEFAULT_USER_EMAIL: ${{ secrets.CMDCLAW_DEFAULT_USER_EMAIL }}
           CMDCLAW_SERVER_SECRET: ${{ secrets.CMDCLAW_SERVER_SECRET }}
           CMDCLAW_SERVER_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
@@ -76,6 +79,7 @@ jobs:
       - name: Run conversation and workflow replay
         if: ${{ inputs.run_replay }}
         env:
+          CMDCLAW_DEFAULT_USER_EMAIL: ${{ secrets.CMDCLAW_DEFAULT_USER_EMAIL }}
           CMDCLAW_SERVER_SECRET: ${{ secrets.CMDCLAW_SERVER_SECRET }}
           CMDCLAW_SERVER_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}

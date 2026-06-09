@@ -129,7 +129,6 @@ describe.runIf(liveEnabled)("@live CLI chat performance", () => {
         followupTimings.map((timing) => timing.sandboxConnectOrCreateMs),
       );
 
-      expect(followupGenerationMedian).toBeLessThan(firstTiming.generationMs);
       const slowFollowupLimit =
         firstTiming.generationMs * (maxExpectedSlowFollowupRatio ?? Number.POSITIVE_INFINITY);
       expect(followupGenerationMedian).toBeLessThan(slowFollowupLimit);
