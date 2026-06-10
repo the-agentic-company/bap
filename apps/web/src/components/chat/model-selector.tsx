@@ -78,6 +78,11 @@ function sortModels<T extends ModelOption>(models: T[]): T[] {
 const CMDCLAW_MODELS: ModelOption[] = [
   {
     authSource: "shared",
+    id: "openai/gpt-5.5",
+    name: "GPT-5.5",
+  },
+  {
+    authSource: "shared",
     id: "openai/gpt-5.4",
     name: "GPT-5.4",
   },
@@ -100,6 +105,11 @@ const CMDCLAW_MODELS: ModelOption[] = [
 ];
 
 const PERSONAL_CHATGPT_MODELS: ModelOption[] = [
+  {
+    authSource: "user",
+    id: "openai/gpt-5.5",
+    name: "GPT-5.5",
+  },
   {
     authSource: "user",
     id: "openai/gpt-5.4",

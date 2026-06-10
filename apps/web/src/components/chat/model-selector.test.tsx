@@ -77,7 +77,7 @@ const USER_ONLY_AUTH = {
 } as const;
 
 describe("ModelSelector", () => {
-  it("shows shared GPT-5.4 variants and hides Claude Sonnet 4.6 for non-admins", () => {
+  it("shows shared GPT-5 variants and hides Claude Sonnet 4.6 for non-admins", () => {
     const onSelectionChange = vi.fn<VitestProcedure>();
     mockIsAdmin.mockReturnValue(false);
 
@@ -91,6 +91,7 @@ describe("ModelSelector", () => {
     );
 
     expect(screen.getByText("CmdClaw Models")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-model-option-cmdclaw-openai/gpt-5.5")).toBeDisabled();
     expect(screen.getByTestId("chat-model-option-cmdclaw-openai/gpt-5.4")).toBeDisabled();
     expect(screen.getByTestId("chat-model-option-cmdclaw-openai/gpt-5.4-mini")).toBeDisabled();
     expect(
@@ -154,6 +155,27 @@ describe("ModelSelector", () => {
 
     expect(onSelectionChange).toHaveBeenCalledWith({
       model: "openai/gpt-5.4",
+      authSource: "shared",
+    });
+  });
+
+  it("selects shared GPT-5.5 when shared auth is available", () => {
+    const onSelectionChange = vi.fn<VitestProcedure>();
+    mockIsAdmin.mockReturnValue(false);
+
+    render(
+      <ModelSelector
+        selectedModel="openai/gpt-5.5"
+        selectedAuthSource="shared"
+        providerAvailability={SHARED_ONLY_AUTH}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("chat-model-option-cmdclaw-openai/gpt-5.5"));
+
+    expect(onSelectionChange).toHaveBeenCalledWith({
+      model: "openai/gpt-5.5",
       authSource: "shared",
     });
   });

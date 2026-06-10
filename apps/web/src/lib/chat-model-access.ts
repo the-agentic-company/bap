@@ -17,6 +17,7 @@ const PROVIDER_MODEL_IDS_FOR_NEW_CHAT = new Map<string, Set<string>>([
       "gpt-5.2",
       "gpt-5.2-codex",
       "gpt-5.1-codex",
+      "gpt-5.5",
       "gpt-5.4",
       "gpt-5.4-mini",
     ]),

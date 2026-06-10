@@ -975,6 +975,7 @@ async function printAvailableModels(
 
   stdout.write("CmdClaw Models:\n");
   stdout.write("- Claude Sonnet 4.6 (anthropic/claude-sonnet-4-6) [source=shared]\n");
+  stdout.write("- GPT-5.5 (openai/gpt-5.5) [source=shared]\n");
   stdout.write("- GPT-5.4 (openai/gpt-5.4) [source=shared]\n");
   stdout.write("- GPT-5.4 Mini (openai/gpt-5.4-mini) [source=shared]\n");
   stdout.write(
@@ -982,6 +983,7 @@ async function printAvailableModels(
   );
   stdout.write("\nYour AI Accounts:\n");
   if (userOpenAIAvailable) {
+    stdout.write("- GPT-5.5 (openai/gpt-5.5) [source=user]\n");
     stdout.write("- GPT-5.4 (openai/gpt-5.4) [source=user]\n");
     stdout.write("- GPT-5.4 Mini (openai/gpt-5.4-mini) [source=user]\n");
   } else {

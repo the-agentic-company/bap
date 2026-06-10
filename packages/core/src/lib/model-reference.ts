@@ -11,6 +11,7 @@ export type ModelProviderID = (typeof MODEL_PROVIDER_IDS)[number];
 const MODEL_PROVIDER_ID_SET = new Set<string>(MODEL_PROVIDER_IDS);
 const LEGACY_MODEL_PROVIDER_MAP = new Map<string, string>([
   ["claude-sonnet-4-6", "anthropic/claude-sonnet-4-6"],
+  ["gpt-5.5", "openai/gpt-5.5"],
   ["gpt-5.4", "openai/gpt-5.4"],
   ["gpt-5.4-mini", "openai/gpt-5.4-mini"],
   ["gpt-5.1-codex-max", "openai/gpt-5.1-codex-max"],

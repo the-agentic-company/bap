@@ -1112,6 +1112,9 @@ async function printAvailableModels(
     console.log("- Claude Sonnet 4.6 (anthropic/claude-sonnet-4-6) [source=shared]");
     const sharedOpenAIAvailable = (args.sharedConnectedProviderIds ?? []).includes("openai");
     console.log(
+      `- GPT-5.5 (openai/gpt-5.5) [source=shared]${sharedOpenAIAvailable ? "" : " [unavailable]"}`,
+    );
+    console.log(
       `- GPT-5.4 (openai/gpt-5.4) [source=shared]${sharedOpenAIAvailable ? "" : " [unavailable]"}`,
     );
     console.log(
@@ -1125,6 +1128,7 @@ async function printAvailableModels(
     const userOpenAIAvailable = (args.connectedProviderIds ?? []).includes("openai");
     console.log("\nYour AI Accounts:");
     if (userOpenAIAvailable) {
+      console.log("- GPT-5.5 (openai/gpt-5.5) [source=user]");
       console.log("- GPT-5.4 (openai/gpt-5.4) [source=user]");
       console.log("- GPT-5.4 Mini (openai/gpt-5.4-mini) [source=user]");
     } else {

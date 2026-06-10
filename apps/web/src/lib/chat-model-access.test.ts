@@ -51,7 +51,7 @@ describe("isModelAccessibleForNewChat", () => {
   it("returns true for openai models when the personal ChatGPT source is connected", () => {
     expect(
       isModelAccessibleForNewChat({
-        model: "openai/gpt-5.4",
+        model: "openai/gpt-5.5",
         authSource: "user",
         providerAvailabilityByProvider: {
           openai: { user: true, shared: false },

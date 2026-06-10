@@ -3,7 +3,7 @@ import {
   OPENCODE_FREE_MODEL_PREFERENCE_ORDER,
 } from "../config/opencode-free-model-preferences";
 
-export const DEFAULT_CONNECTED_CHATGPT_MODEL = "openai/gpt-5.4";
+export const DEFAULT_CONNECTED_CHATGPT_MODEL = "openai/gpt-5.5";
 export const LEGACY_DEFAULT_CHAT_MODEL = "opencode/glm-5-free";
 
 function normalizeModelIDs(modelIDs: readonly string[]): string[] {
