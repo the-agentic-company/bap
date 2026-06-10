@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { SANDBOX_COMMON_ROOT } from "@cmdclaw/sandbox/paths";
 import type { SandboxHandle } from "../core/types";
 import { resolvePreferredCommunitySkillsForUser } from "../../services/integration-skill-service";
 import { listAccessibleEnabledSkillsForUser } from "../../services/workspace-skill-service";
@@ -22,6 +25,63 @@ function toLegacySandbox(sandbox: SandboxHandle) {
       read: async (path: string) => sandbox.readFile(path),
     },
   };
+}
+
+async function listCommonLibFiles(dir: string): Promise<string[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map(async (entry) => {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        return listCommonLibFiles(fullPath);
+      }
+      if (!entry.isFile() || entry.name.endsWith(".test.ts")) {
+        return [];
+      }
+      return [fullPath];
+    }),
+  );
+
+  return files.flat();
+}
+
+export async function writeSandboxCommonLibToSandbox(sandbox: SandboxHandle): Promise<string[]> {
+  const sourceRoot = path.join(SANDBOX_COMMON_ROOT, "lib");
+  const files = await listCommonLibFiles(sourceRoot);
+  if (files.length === 0) {
+    return [];
+  }
+
+  const entries = await Promise.all(
+    files.map(async (filePath) => ({
+      path: path.relative(sourceRoot, filePath),
+      content: await fs.readFile(filePath, "utf8"),
+    })),
+  );
+  const payload = Buffer.from(JSON.stringify(entries), "utf8").toString("base64");
+  const command = [
+    "python3 - <<'PY'",
+    "import base64, json",
+    "from pathlib import Path",
+    `entries = json.loads(base64.b64decode(${JSON.stringify(payload)}).decode())`,
+    "for root in ('/app/.claude/lib', '/app/.agents/lib'):",
+    "  root_path = Path(root)",
+    "  root_path.mkdir(parents=True, exist_ok=True)",
+    "  for entry in entries:",
+    "    target = root_path / entry['path']",
+    "    target.parent.mkdir(parents=True, exist_ok=True)",
+    "    target.write_text(entry['content'], encoding='utf8')",
+    "PY",
+  ].join("\n");
+
+  const result = await sandbox.exec(command, { timeoutMs: 15_000 });
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `Sandbox common lib sync failed (exit=${result.exitCode}): ${result.stderr || result.stdout || "unknown error"}`,
+    );
+  }
+
+  return entries.map((entry) => entry.path).sort();
 }
 
 export async function writeSkillsToSandbox(
@@ -75,7 +135,10 @@ export async function writeSkillsToSandbox(
           const arrayBuffer = new Uint8Array(buffer).buffer;
           await legacySandbox.files.write(docPath, arrayBuffer);
         } catch (error) {
-          console.error(`[SkillsPrep] Failed to write document ${doc.path ?? doc.filename}:`, error);
+          console.error(
+            `[SkillsPrep] Failed to write document ${doc.path ?? doc.filename}:`,
+            error,
+          );
         }
       }),
     );

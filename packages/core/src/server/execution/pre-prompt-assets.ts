@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { logger } from "../utils/observability";
 import type { SandboxHandle } from "../sandbox/core/types";
 import {
+  writeSandboxCommonLibToSandbox,
   writeResolvedIntegrationSkillsToSandbox,
   writeSkillsToSandbox,
 } from "../sandbox/prep/skills-prep";
@@ -111,6 +112,12 @@ export async function stagePrePromptAssets(input: {
       }),
   );
 
+  await input.runStep(
+    "sandbox_common_lib_write",
+    "writeSandboxCommonLibMs",
+    async () => await writeSandboxCommonLibToSandbox(input.runtimeSandbox),
+  );
+
   if (input.agentSandboxMode === "reused") {
     try {
       const parsed = await input.runStep("cache_read", "readPrePromptCacheMs", async () => {
@@ -132,10 +139,8 @@ export async function stagePrePromptAssets(input: {
         logger.info({
           event: "PRE_PROMPT_CACHE_HIT",
           ...input.logContext(),
-          ...{
-            skillsCount: writtenSkills.length,
-            integrationSkillCount: writtenIntegrationSkills.length,
-          },
+          skillsCount: writtenSkills.length,
+          integrationSkillCount: writtenIntegrationSkills.length,
         });
       }
     } catch {
