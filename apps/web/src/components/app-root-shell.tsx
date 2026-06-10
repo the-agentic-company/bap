@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { SessionPrincipal } from "@/lib/route-guards";
 import { AppShellRouteWrapper } from "@/components/app-shell-route-wrapper";
 import { PostHogClientProvider } from "@/components/posthog-provider";
@@ -9,16 +9,17 @@ import { ORPCProvider } from "@/orpc/provider";
 
 const isSelfHostedEdition = env.NEXT_PUBLIC_CMDCLAW_EDITION === "selfhost";
 
-type AutumnProviderComponent = ComponentType<{
-  betterAuthUrl: string;
-  children: ReactNode;
-}>;
+type AutumnProviderComponent = (typeof import("autumn-js/react"))["AutumnProvider"];
 
 let autumnProviderPromise: Promise<AutumnProviderComponent> | undefined;
 
 function loadAutumnProvider(): Promise<AutumnProviderComponent> {
   autumnProviderPromise ??= import("autumn-js/react").then((module) => module.AutumnProvider);
   return autumnProviderPromise;
+}
+
+export function getAutumnBetterAuthUrl() {
+  return env.NEXT_PUBLIC_APP_URL ?? (typeof window === "undefined" ? "" : window.location.origin);
 }
 
 function BillingProviderWrapper({ children }: { children: ReactNode }) {
@@ -54,7 +55,7 @@ function BillingProviderWrapper({ children }: { children: ReactNode }) {
     return children;
   }
 
-  return <AutumnProvider betterAuthUrl={env.NEXT_PUBLIC_APP_URL ?? ""}>{children}</AutumnProvider>;
+  return <AutumnProvider betterAuthUrl={getAutumnBetterAuthUrl()}>{children}</AutumnProvider>;
 }
 
 export function AppRootShell({

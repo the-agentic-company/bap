@@ -106,6 +106,16 @@ export default defineConfig(({ isSsrBuild }) => ({
 	},
 	server: {
 		port: devPort,
+		watch: {
+			ignored: [
+				"**/.next/**",
+				"**/.output/**",
+				"**/.turbo/**",
+				"**/coverage/**",
+				"**/playwright-report/**",
+				"**/test-results/**",
+			],
+		},
 	},
 	// Dev only: Vite's esbuild dep pre-bundling crawls from routes into the @cmdclaw/core
 	// workspace source and hits server-only code that the production Rollup build externalizes

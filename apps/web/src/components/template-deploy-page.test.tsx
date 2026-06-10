@@ -96,7 +96,7 @@ If contact email exists, create a Gmail draft with friendly greeting, short summ
 Create a HubSpot task with subject 'Follow up on call with [Contact Name]', include summary + actions, and schedule for tomorrow at 9 AM.
 If contact exists, associate task to contact using HUBSPOT_DEFINED association type 204.
 If no contact is found, skip Gmail draft and still create the HubSpot task with the phone number in the body.`,
-        model: "openai/gpt-5.4",
+        model: "openai/gpt-5.5",
         authSource: "shared",
         allowedIntegrations: COWORKER_AVAILABLE_INTEGRATION_TYPES,
       });
@@ -109,7 +109,7 @@ If no contact is found, skip Gmail draft and still create the HubSpot task with 
         content: expect.stringContaining(
           "Create it with name Send polished follow-ups right after every call",
         ),
-        model: "openai/gpt-5.4",
+        model: "openai/gpt-5.5",
         authSource: "shared",
         autoApprove: true,
       });
