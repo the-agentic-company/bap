@@ -344,7 +344,9 @@ function renderInlineEmail(nodes: InlineNode[]): string {
         case "italic":
           return `<em>${renderInlineEmail(node.children)}</em>`;
         case "link":
-          return `${renderInlineEmail(node.children)} (${escapeHtml(node.url)})`;
+          return `<a href="${escapeHtml(sanitizeSlackUrl(node.url))}">${renderInlineEmail(
+            node.children,
+          )}</a>`;
         case "strikethrough":
           return `<s>${renderInlineEmail(node.children)}</s>`;
         case "text":

@@ -35,7 +35,17 @@ describe("message-format", () => {
         "| Feature | Expected |\n| --- | --- |\n| **Bold** | Works |\n| [Link](https://example.com) | Readable |",
       ),
     ).toBe(
-      '<table style="border-collapse:collapse;width:100%;margin:12px 0;"><tr><th style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;font-weight:bold;background:#f6f8fa;">Feature</th><th style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;font-weight:bold;background:#f6f8fa;">Expected</th></tr><tr><td style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;"><strong>Bold</strong></td><td style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;">Works</td></tr><tr><td style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;">Link (https://example.com)</td><td style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;">Readable</td></tr></table>',
+      '<table style="border-collapse:collapse;width:100%;margin:12px 0;"><tr><th style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;font-weight:bold;background:#f6f8fa;">Feature</th><th style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;font-weight:bold;background:#f6f8fa;">Expected</th></tr><tr><td style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;"><strong>Bold</strong></td><td style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;">Works</td></tr><tr><td style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;"><a href="https://example.com">Link</a></td><td style="border:1px solid #d0d7de;padding:6px 8px;text-align:left;">Readable</td></tr></table>',
+    );
+  });
+
+  it("renders markdown links as clickable email anchors", () => {
+    expect(
+      renderMessageToEmailHtml(
+        "[Cliquez ici pour consulter le rapport des visites du jour](http://localhost:3000/agents/info/previsites)",
+      ),
+    ).toBe(
+      '<a href="http://localhost:3000/agents/info/previsites">Cliquez ici pour consulter le rapport des visites du jour</a>',
     );
   });
 
