@@ -381,7 +381,18 @@ export class GenerationTurnFinalizer {
 
       this.deps.markPhase(ctx, "generation_completed");
       const terminalMessageTiming = buildMessageTiming(ctx);
-      if (status === "completed" && ctx.sandbox && ctx.generationMarkerTime) {
+      // Sandbox files can only appear when a tool that touches the sandbox
+      // filesystem actually ran; skip the collection scan otherwise so
+      // text-only and question-only turns don't pay sandbox exec round trips.
+      const mayHaveCreatedSandboxFiles = ctx.contentParts.some(
+        (part) => part.type === "tool_use" && part.name !== "question",
+      );
+      if (
+        status === "completed" &&
+        ctx.sandbox &&
+        ctx.generationMarkerTime &&
+        mayHaveCreatedSandboxFiles
+      ) {
         await this.collectAndExposeMentionedSandboxFiles(ctx, {
           summaryMessage: ({ discoveredCount, exposedCount }) =>
             `[GenerationManager] Found ${discoveredCount} new sandbox files; exposing ${exposedCount} based on final-answer mentions`,
@@ -419,13 +430,10 @@ export class GenerationTurnFinalizer {
       ctx.contentParts = finishResult.contentParts;
       const messageId = finishResult.messageId;
 
-      if (status === "completed") {
-        await this.deps.saveSessionSnapshotIfPossible(ctx, `finish:${status}`);
-      }
-
-      await this.deps.enqueueConversationQueuedMessageProcess(ctx.conversationId);
-
       if (status === "completed" && messageId) {
+        // Broadcast done as soon as the message is persisted; the session
+        // snapshot save below costs ~1s of sandbox execs and must not delay
+        // the client-visible completion.
         const artifacts = await getDoneArtifacts(messageId);
         this.deps.broadcast(ctx, {
           type: "done",
@@ -435,7 +443,15 @@ export class GenerationTurnFinalizer {
           usage: ctx.usage,
           artifacts,
         });
-      } else if (status === "cancelled") {
+      }
+
+      if (status === "completed") {
+        await this.deps.saveSessionSnapshotIfPossible(ctx, `finish:${status}`);
+      }
+
+      await this.deps.enqueueConversationQueuedMessageProcess(ctx.conversationId);
+
+      if (status === "cancelled") {
         this.deps.broadcast(ctx, {
           type: "cancelled",
           generationId: ctx.id,
