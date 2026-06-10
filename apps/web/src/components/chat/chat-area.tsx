@@ -51,6 +51,7 @@ import {
   type GenerationRuntime,
   type RuntimeActivityStats,
   type RuntimeActivitySegment,
+  type RuntimeSegmentApproval,
   type RuntimeSnapshot,
 } from "@/lib/generation-runtime";
 import {
@@ -78,6 +79,11 @@ import { useProviderAuthStatus, useOpencodeFreeModels } from "@/orpc/hooks/provi
 import { usePlatformSkillList, useSkillList } from "@/orpc/hooks/skills";
 import { useTranscribe } from "@/orpc/hooks/voice";
 import { ActivityFeed, type ActivityItemData } from "./activity-feed";
+import {
+  filterLocallyResolvedPendingApprovalSegments,
+  filterResolvedDuplicateApprovalSegments,
+  getApprovalLocalResolutionKeys,
+} from "./approval-segment-filter";
 import { AuthRequestCard } from "./auth-request-card";
 import { BottomActionBar } from "./bottom-action-bar";
 import {
@@ -1013,6 +1019,9 @@ export function ChatArea({
   const [skillSearchQuery, setSkillSearchQuery] = useState("");
   const [inputPrefillRequest, setInputPrefillRequest] = useState<InputPrefillRequest | null>(null);
   const [armedDebugPreset, setArmedDebugPreset] = useState<ArmedDebugPreset | null>(null);
+  const [locallyResolvedApprovalKeys, setLocallyResolvedApprovalKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [chatDebugSnapshot, setChatDebugSnapshot] = useState<ChatDebugSnapshot>({});
   const [isResumingPausedRunDeadline, setIsResumingPausedRunDeadline] = useState(false);
   const [pendingRunDeadlineResume, setPendingRunDeadlineResume] =
@@ -1124,13 +1133,15 @@ export function ChatArea({
     dismissedRunDeadlineGenerationId,
     pendingRunDeadlineResume,
   ]);
-  const displaySegments = useMemo(
-    () =>
-      runDeadlineResumeState
-        ? [...segments, buildRunDeadlineResumeSegment(runDeadlineResumeState)]
-        : segments,
-    [runDeadlineResumeState, segments],
-  );
+  const displaySegments = useMemo(() => {
+    const filteredSegments = filterLocallyResolvedPendingApprovalSegments(
+      filterResolvedDuplicateApprovalSegments(segments),
+      locallyResolvedApprovalKeys,
+    );
+    return runDeadlineResumeState
+      ? [...filteredSegments, buildRunDeadlineResumeSegment(runDeadlineResumeState)]
+      : filteredSegments;
+  }, [locallyResolvedApprovalKeys, runDeadlineResumeState, segments]);
   const visibleActivityItemsBySegmentId = useMemo(
     () =>
       new Map<string, ActivityItemData[]>(
@@ -1693,13 +1704,15 @@ export function ChatArea({
     const snapshot = runtime.snapshot;
     setStreamingParts(snapshot.parts as MessagePart[]);
     setSegments(
-      snapshot.segments.map((seg) => ({
-        ...seg,
-        items: seg.items.map((item) => ({
-          ...item,
-          integration: item.integration as DisplayIntegrationType | undefined,
+      filterResolvedDuplicateApprovalSegments(
+        snapshot.segments.map((seg) => ({
+          ...seg,
+          items: seg.items.map((item) => ({
+            ...item,
+            integration: item.integration as DisplayIntegrationType | undefined,
+          })),
         })),
-      })),
+      ),
     );
     setIntegrationsUsed(new Set(snapshot.integrationsUsed as DisplayIntegrationType[]));
     setStreamingSandboxFiles(snapshot.sandboxFiles as SandboxFileData[]);
@@ -3317,7 +3330,12 @@ export function ChatArea({
 
   // Handle approval/denial of tool use
   const handleApprove = useCallback(
-    async (toolUseId: string, interruptId?: string, questionAnswers?: string[][]) => {
+    async (
+      toolUseId: string,
+      interruptId?: string,
+      questionAnswers?: string[][],
+      approval?: RuntimeSegmentApproval,
+    ) => {
       if (toolUseId === RUN_DEADLINE_RESUME_TOOL_USE_ID) {
         const affirmativeAnswer = questionAnswers?.some((answers) =>
           answers.some((answer) => answer.trim().toLowerCase() === "yes"),
@@ -3331,6 +3349,17 @@ export function ChatArea({
       if (!interruptId) {
         return;
       }
+
+      const localResolutionKeys = getApprovalLocalResolutionKeys(
+        approval ?? { toolUseId, interruptId },
+      );
+      setLocallyResolvedApprovalKeys((current) => {
+        const next = new Set(current);
+        for (const key of localResolutionKeys) {
+          next.add(key);
+        }
+        return next;
+      });
 
       const runtime = runtimeRef.current;
       if (runtime) {
@@ -3349,6 +3378,13 @@ export function ChatArea({
           questionAnswers,
         });
       } catch (err) {
+        setLocallyResolvedApprovalKeys((current) => {
+          const next = new Set(current);
+          for (const key of localResolutionKeys) {
+            next.delete(key);
+          }
+          return next;
+        });
         console.error("Failed to approve tool use:", err);
       }
     },
@@ -3361,7 +3397,7 @@ export function ChatArea({
   );
 
   const handleDeny = useCallback(
-    async (toolUseId: string, interruptId?: string) => {
+    async (toolUseId: string, interruptId?: string, approval?: RuntimeSegmentApproval) => {
       if (toolUseId === RUN_DEADLINE_RESUME_TOOL_USE_ID) {
         const generationId =
           pendingRunDeadlineResume?.generationId ?? activeGeneration?.generationId ?? null;
@@ -3381,6 +3417,17 @@ export function ChatArea({
         return;
       }
 
+      const localResolutionKeys = getApprovalLocalResolutionKeys(
+        approval ?? { toolUseId, interruptId },
+      );
+      setLocallyResolvedApprovalKeys((current) => {
+        const next = new Set(current);
+        for (const key of localResolutionKeys) {
+          next.add(key);
+        }
+        return next;
+      });
+
       try {
         await submitApproval({
           interruptId,
@@ -3391,6 +3438,13 @@ export function ChatArea({
           syncFromRuntime(runtimeRef.current);
         }
       } catch (err) {
+        setLocallyResolvedApprovalKeys((current) => {
+          const next = new Set(current);
+          for (const key of localResolutionKeys) {
+            next.delete(key);
+          }
+          return next;
+        });
         console.error("Failed to deny tool use:", err);
       }
     },
@@ -3490,8 +3544,9 @@ export function ChatArea({
         continue;
       }
       const interruptId = segment.approval?.interruptId;
+      const approval = segment.approval;
       handlers.set(segment.id, (questionAnswers?: string[][]) => {
-        void handleApprove(toolUseId, interruptId, questionAnswers);
+        void handleApprove(toolUseId, interruptId, questionAnswers, approval);
       });
     }
     return handlers;
@@ -3504,8 +3559,9 @@ export function ChatArea({
         continue;
       }
       const interruptId = segment.approval?.interruptId;
+      const approval = segment.approval;
       handlers.set(segment.id, () => {
-        void handleDeny(toolUseId, interruptId);
+        void handleDeny(toolUseId, interruptId, approval);
       });
     }
     return handlers;

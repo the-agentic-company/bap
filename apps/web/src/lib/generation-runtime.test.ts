@@ -154,4 +154,96 @@ describe("GenerationRuntime tool result matching", () => {
       questionAnswers: [["Plain Hi"]],
     });
   });
+
+  it("updates a duplicate pending approval instead of appending another segment", () => {
+    const runtime = createGenerationRuntime();
+
+    runtime.handlePendingApproval({
+      interruptId: "interrupt-question-1",
+      generationId: "gen-1",
+      conversationId: "conv-1",
+      toolUseId: "tool-question-1",
+      toolName: "Question",
+      toolInput: {
+        questions: [{ header: "First", question: "Pick one" }],
+      },
+      integration: "cmdclaw",
+      operation: "question",
+    });
+    runtime.handlePendingApproval({
+      interruptId: "interrupt-question-1",
+      generationId: "gen-1",
+      conversationId: "conv-1",
+      toolUseId: "tool-question-1",
+      toolName: "Question",
+      toolInput: {
+        questions: [{ header: "Updated", question: "Pick one" }],
+      },
+      integration: "cmdclaw",
+      operation: "question",
+    });
+
+    const approvalSegments = runtime.snapshot.segments.filter((segment) => segment.approval);
+
+    expect(approvalSegments).toHaveLength(1);
+    expect(approvalSegments[0]?.approval).toMatchObject({
+      interruptId: "interrupt-question-1",
+      toolUseId: "tool-question-1",
+      status: "pending",
+      toolInput: {
+        questions: [{ header: "Updated", question: "Pick one" }],
+      },
+    });
+  });
+
+  it("ignores duplicate pending approvals after an approval is resolved", () => {
+    const runtime = createGenerationRuntime();
+
+    runtime.handlePendingApproval({
+      interruptId: "interrupt-question-1",
+      generationId: "gen-1",
+      conversationId: "conv-1",
+      toolUseId: "tool-question-1",
+      toolName: "Question",
+      toolInput: {
+        questions: [{ header: "Choose", question: "Pick one" }],
+      },
+      integration: "cmdclaw",
+      operation: "question",
+    });
+    runtime.handleApproval({
+      interruptId: "interrupt-question-1",
+      toolUseId: "tool-question-1",
+      toolName: "Question",
+      toolInput: {
+        questions: [{ header: "Choose", question: "Pick one" }],
+      },
+      integration: "cmdclaw",
+      operation: "question",
+      status: "approved",
+      questionAnswers: [["Yes"]],
+    });
+    runtime.handlePendingApproval({
+      interruptId: "interrupt-question-1",
+      generationId: "gen-1",
+      conversationId: "conv-1",
+      toolUseId: "tool-question-1",
+      toolName: "Question",
+      toolInput: {
+        questions: [{ header: "Choose", question: "Pick one" }],
+      },
+      integration: "cmdclaw",
+      operation: "question",
+    });
+
+    const approvalSegments = runtime.snapshot.segments.filter((segment) => segment.approval);
+
+    expect(approvalSegments).toHaveLength(1);
+    expect(approvalSegments[0]?.approval).toMatchObject({
+      interruptId: "interrupt-question-1",
+      toolUseId: "tool-question-1",
+      status: "approved",
+      questionAnswers: [["Yes"]],
+    });
+  });
 });

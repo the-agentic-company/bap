@@ -1,6 +1,6 @@
 import { T, useGT } from "gt-react";
 import { Check, X, Loader2, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { AppImage } from "@/components/chat/app-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +70,18 @@ function renderPreview(integration: string, previewProps: PreviewProps) {
   }
 }
 
+function getQuestionRequestKey(toolUseId: string, toolInput: unknown): string {
+  if (typeof toolInput === "string") {
+    return `${toolUseId}:${toolInput}`;
+  }
+
+  try {
+    return `${toolUseId}:${JSON.stringify(toolInput)}`;
+  } catch {
+    return toolUseId;
+  }
+}
+
 /** Dot indicator for wizard progress */
 function QuestionDots({ total, current }: { total: number; current: number }) {
   if (total <= 1) {
@@ -94,6 +106,7 @@ function QuestionDots({ total, current }: { total: number; current: number }) {
 }
 
 export function ToolApprovalCard({
+  toolUseId,
   toolName,
   toolInput,
   integration,
@@ -104,13 +117,19 @@ export function ToolApprovalCard({
   onDeny,
   status,
   isLoading,
+  readonly = false,
 }: ToolApprovalCardProps) {
   const t = useGT();
   const isQuestionRequest = isQuestionApprovalRequest({ toolName, integration, operation });
+  const questionRequestKey = useMemo(
+    () => (isQuestionRequest ? getQuestionRequestKey(toolUseId, toolInput) : null),
+    [isQuestionRequest, toolInput, toolUseId],
+  );
   const questionPayload = useMemo(
     () => (isQuestionRequest ? parseQuestionRequestPayload(toolInput) : null),
     [isQuestionRequest, toolInput],
   );
+  const previousQuestionRequestKeyRef = useRef<string | null>(questionRequestKey);
 
   const totalQuestions = questionPayload?.questions.length ?? 0;
   const isMultiQuestion = totalQuestions > 1;
@@ -140,11 +159,22 @@ export function ToolApprovalCard({
       return;
     }
 
+    const isNewQuestionRequest = previousQuestionRequestKeyRef.current !== questionRequestKey;
+    previousQuestionRequestKeyRef.current = questionRequestKey;
+
+    setCurrentStep((prev) => {
+      if (isNewQuestionRequest) {
+        return 0;
+      }
+
+      return Math.min(prev, Math.max(questionPayload.questions.length - 1, 0));
+    });
+
     setSelectedOptions((prev) => {
       const next: Record<number, string[]> = {};
       for (let index = 0; index < questionPayload.questions.length; index += 1) {
         const existing = prev[index];
-        if (Array.isArray(existing) && existing.length > 0) {
+        if (!isNewQuestionRequest && Array.isArray(existing) && existing.length > 0) {
           next[index] = existing;
         }
       }
@@ -155,7 +185,7 @@ export function ToolApprovalCard({
       const next: Record<number, boolean> = {};
       for (let index = 0; index < questionPayload.questions.length; index += 1) {
         const existing = prev[index];
-        if (typeof existing === "boolean") {
+        if (!isNewQuestionRequest && typeof existing === "boolean") {
           next[index] = existing;
           continue;
         }
@@ -169,13 +199,13 @@ export function ToolApprovalCard({
       const next: Record<number, string> = {};
       for (let index = 0; index < questionPayload.questions.length; index += 1) {
         const existing = prev[index];
-        if (typeof existing === "string") {
+        if (!isNewQuestionRequest && typeof existing === "string") {
           next[index] = existing;
         }
       }
       return next;
     });
-  }, [questionPayload]);
+  }, [questionPayload, questionRequestKey]);
 
   // For single-question mode with multiselect, keep old explicit submit behavior
   const requiresExplicitSubmit = useMemo(
@@ -213,9 +243,12 @@ export function ToolApprovalCard({
   const handleDenyClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
+      if (readonly) {
+        return;
+      }
       onDeny();
     },
-    [onDeny],
+    [onDeny, readonly],
   );
 
   const buildQuestionAnswers = useCallback(
@@ -292,11 +325,12 @@ export function ToolApprovalCard({
   /** Advance to next step or submit if last */
   const advanceOrSubmit = useCallback(
     (
+      answeredIndex: number,
       nextSelectedOptions: Record<number, string[]>,
       nextTypedAnswers: Record<number, string>,
       nextTypedMode: Record<number, boolean>,
     ) => {
-      const isLastStep = currentStep >= totalQuestions - 1;
+      const isLastStep = answeredIndex >= totalQuestions - 1;
 
       if (isLastStep) {
         onApprove(buildQuestionAnswers(nextSelectedOptions, nextTypedAnswers, nextTypedMode));
@@ -304,14 +338,17 @@ export function ToolApprovalCard({
       }
 
       // Advance to next step — CSS animation is handled via key-based remount
-      setCurrentStep((prev) => prev + 1);
+      setCurrentStep((prev) => Math.max(prev, answeredIndex + 1));
     },
-    [buildQuestionAnswers, currentStep, onApprove, totalQuestions],
+    [buildQuestionAnswers, onApprove, totalQuestions],
   );
 
   const handleApproveClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
+      if (readonly) {
+        return;
+      }
       if (!questionPayload) {
         onApprove();
         return;
@@ -337,7 +374,7 @@ export function ToolApprovalCard({
 
       onApprove(answers);
     },
-    [onApprove, questionPayload, selectedOptions, typedAnswers, typedMode],
+    [onApprove, questionPayload, readonly, selectedOptions, typedAnswers, typedMode],
   );
 
   const canSubmitQuestionAnswers = useMemo(
@@ -348,7 +385,7 @@ export function ToolApprovalCard({
   const handleSelectOption = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
-      if (isLoading || !questionPayload) {
+      if (isLoading || readonly || !questionPayload) {
         return;
       }
       const { questionIndex, optionLabel } = event.currentTarget.dataset;
@@ -379,7 +416,7 @@ export function ToolApprovalCard({
 
       // Multi-question wizard: auto-advance on single-select
       if (isMultiQuestion && !question.multiple) {
-        advanceOrSubmit(nextSelectedOptions, typedAnswers, nextTypedMode);
+        advanceOrSubmit(index, nextSelectedOptions, typedAnswers, nextTypedMode);
         return;
       }
 
@@ -400,6 +437,7 @@ export function ToolApprovalCard({
       isQuestionAnswered,
       onApprove,
       questionPayload,
+      readonly,
       requiresExplicitSubmit,
       selectedOptions,
       typedAnswers,
@@ -407,18 +445,24 @@ export function ToolApprovalCard({
     ],
   );
 
-  const handleEnableTypedMode = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    const { questionIndex } = event.currentTarget.dataset;
-    if (!questionIndex) {
-      return;
-    }
-    const index = Number(questionIndex);
-    if (Number.isNaN(index)) {
-      return;
-    }
-    setTypedMode((prev) => ({ ...prev, [index]: true }));
-  }, []);
+  const handleEnableTypedMode = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      if (readonly) {
+        return;
+      }
+      const { questionIndex } = event.currentTarget.dataset;
+      if (!questionIndex) {
+        return;
+      }
+      const index = Number(questionIndex);
+      if (Number.isNaN(index)) {
+        return;
+      }
+      setTypedMode((prev) => ({ ...prev, [index]: true }));
+    },
+    [readonly],
+  );
 
   const handleTypedAnswerChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const { questionIndex } = event.currentTarget.dataset;
@@ -440,6 +484,9 @@ export function ToolApprovalCard({
       }
       event.preventDefault();
       event.stopPropagation();
+      if (readonly) {
+        return;
+      }
 
       const { questionIndex } = event.currentTarget.dataset;
       if (!questionIndex) {
@@ -455,7 +502,7 @@ export function ToolApprovalCard({
       if (isMultiQuestion) {
         if (isSingleQuestionAnswered(index, selectedOptions, nextTypedAnswers, typedMode)) {
           setTypedAnswers(nextTypedAnswers);
-          advanceOrSubmit(selectedOptions, nextTypedAnswers, typedMode);
+          advanceOrSubmit(index, selectedOptions, nextTypedAnswers, typedMode);
         }
         return;
       }
@@ -476,6 +523,7 @@ export function ToolApprovalCard({
       isSingleQuestionAnswered,
       onApprove,
       questionPayload,
+      readonly,
       requiresExplicitSubmit,
       selectedOptions,
       typedAnswers,
@@ -486,7 +534,7 @@ export function ToolApprovalCard({
   const handleTypedAnswerSubmitClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
-      if (isLoading || !questionPayload) {
+      if (isLoading || readonly || !questionPayload) {
         return;
       }
 
@@ -503,7 +551,7 @@ export function ToolApprovalCard({
 
       if (isMultiQuestion) {
         if (isSingleQuestionAnswered(index, selectedOptions, nextTypedAnswers, typedMode)) {
-          advanceOrSubmit(selectedOptions, nextTypedAnswers, typedMode);
+          advanceOrSubmit(index, selectedOptions, nextTypedAnswers, typedMode);
         }
         return;
       }
@@ -527,6 +575,7 @@ export function ToolApprovalCard({
       isSingleQuestionAnswered,
       onApprove,
       questionPayload,
+      readonly,
       requiresExplicitSubmit,
       selectedOptions,
       typedAnswers,
@@ -538,25 +587,35 @@ export function ToolApprovalCard({
   const handleWizardNext = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
+      if (readonly) {
+        return;
+      }
       if (!isSingleQuestionAnswered(currentStep, selectedOptions, typedAnswers, typedMode)) {
         return;
       }
-      advanceOrSubmit(selectedOptions, typedAnswers, typedMode);
+      advanceOrSubmit(currentStep, selectedOptions, typedAnswers, typedMode);
     },
     [
       advanceOrSubmit,
       currentStep,
       isSingleQuestionAnswered,
+      readonly,
       selectedOptions,
       typedAnswers,
       typedMode,
     ],
   );
 
-  const handleWizardBack = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    setCurrentStep((prev) => Math.max(0, prev - 1));
-  }, []);
+  const handleWizardBack = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      if (readonly) {
+        return;
+      }
+      setCurrentStep((prev) => Math.max(0, prev - 1));
+    },
+    [readonly],
+  );
 
   const handleStopPropagation = useCallback((event: React.MouseEvent<HTMLInputElement>) => {
     event.stopPropagation();
@@ -596,6 +655,7 @@ export function ToolApprovalCard({
                     isSelected ? "border-primary bg-primary/5" : "border-border",
                   )}
                   onClick={handleSelectOption}
+                  disabled={isLoading || readonly}
                 >
                   <div className="font-medium">{option.label}</div>
                   {option.description && (
@@ -619,6 +679,7 @@ export function ToolApprovalCard({
                 useTypedAnswer ? "border-primary bg-primary/5" : "border-border",
               )}
               onClick={handleEnableTypedMode}
+              disabled={isLoading || readonly}
             >
               <div className="font-medium">
                 <T>Type your own answer</T>
@@ -634,6 +695,7 @@ export function ToolApprovalCard({
                   onKeyDown={handleTypedAnswerKeyDown}
                   placeholder={t("Type your answer")}
                   onClick={handleStopPropagation}
+                  disabled={isLoading || readonly}
                   className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
                 />
                 {(isMultiQuestion || !requiresExplicitSubmit) && (
@@ -643,7 +705,7 @@ export function ToolApprovalCard({
                     data-question-index={String(index)}
                     data-testid={`question-typed-submit-${index}`}
                     onClick={handleTypedAnswerSubmitClick}
-                    disabled={isLoading || !(typedAnswers[index]?.trim()?.length > 0)}
+                    disabled={isLoading || readonly || !(typedAnswers[index]?.trim()?.length > 0)}
                   >
                     {isMultiQuestion && currentStep < totalQuestions - 1 ? (
                       <>
@@ -753,6 +815,7 @@ export function ToolApprovalCard({
                   onClick={handleWizardNext}
                   disabled={
                     isLoading ||
+                    readonly ||
                     !isSingleQuestionAnswered(currentStep, selectedOptions, typedAnswers, typedMode)
                   }
                   data-testid={`question-wizard-next-${currentStep}`}
@@ -809,11 +872,16 @@ export function ToolApprovalCard({
 
         {status === "pending" && !questionPayload && (
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={handleDenyClick} disabled={isLoading}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDenyClick}
+              disabled={isLoading || readonly}
+            >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
               <T>Deny</T>
             </Button>
-            <Button size="sm" onClick={handleApproveClick} disabled={isLoading}>
+            <Button size="sm" onClick={handleApproveClick} disabled={isLoading || readonly}>
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -828,14 +896,24 @@ export function ToolApprovalCard({
           <div className="flex items-center justify-between gap-2">
             <div>
               {isMultiQuestion && currentStep > 0 && (
-                <Button variant="outline" size="sm" onClick={handleWizardBack} disabled={isLoading}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleWizardBack}
+                  disabled={isLoading || readonly}
+                >
                   <ChevronLeft className="h-4 w-4" />
                   <T>Back</T>
                 </Button>
               )}
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={handleDenyClick} disabled={isLoading}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDenyClick}
+                disabled={isLoading || readonly}
+              >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -847,7 +925,7 @@ export function ToolApprovalCard({
                 <Button
                   size="sm"
                   onClick={handleApproveClick}
-                  disabled={isLoading || !canSubmitQuestionAnswers}
+                  disabled={isLoading || readonly || !canSubmitQuestionAnswers}
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

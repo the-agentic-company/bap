@@ -399,6 +399,30 @@ export class GenerationRuntime {
     this.currentGenerationId = data.generationId;
     this.currentConversationId = data.conversationId;
 
+    const existingSegment = this.segments.find(
+      (segment) =>
+        segment.approval?.toolUseId === data.toolUseId ||
+        segment.approval?.interruptId === data.interruptId,
+    );
+    if (existingSegment?.approval) {
+      if (existingSegment.approval.status !== "pending") {
+        return;
+      }
+
+      existingSegment.approval = {
+        ...existingSegment.approval,
+        interruptId: data.interruptId,
+        toolUseId: data.toolUseId,
+        toolName: data.toolName,
+        toolInput: data.toolInput,
+        integration: data.integration,
+        operation: data.operation,
+        command: data.command,
+      };
+      this.traceStatus = "waiting_approval";
+      return;
+    }
+
     const currentSeg = this.getCurrentSegment();
     currentSeg.approval = {
       interruptId: data.interruptId,

@@ -48,6 +48,10 @@ const MULTI_QUESTION_TOOL_INPUT = {
   ],
 };
 
+function cloneToolInput<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 const COWORKER_APPROVAL_TOOL_INPUT = {
   command: 'coworker invoke --username linkedin-digest --message "Review this inbox" --json',
 };
@@ -215,6 +219,65 @@ describe("ToolApprovalCard", () => {
 
       // Should have submitted with all answers
       expect(onApprove).toHaveBeenCalledWith([["A"], ["D"], ["E"]]);
+    });
+
+    it("keeps wizard progress when the parent refreshes the same question request", () => {
+      const onApprove = vi.fn<VitestProcedure>();
+      const props = {
+        toolUseId: "wiz-refresh",
+        toolName: "question",
+        integration: "cmdclaw",
+        operation: "question",
+        onApprove,
+        onDeny: vi.fn<VitestProcedure>(),
+        status: "pending" as const,
+      };
+
+      const { rerender } = render(
+        <ToolApprovalCard {...props} toolInput={cloneToolInput(MULTI_QUESTION_TOOL_INPUT)} />,
+      );
+
+      fireEvent.click(screen.getByTestId("question-option-0-A"));
+      expect(screen.getByText("Choose second")).toBeInTheDocument();
+
+      rerender(
+        <ToolApprovalCard {...props} toolInput={cloneToolInput(MULTI_QUESTION_TOOL_INPUT)} />,
+      );
+
+      expect(screen.getByText("Choose second")).toBeInTheDocument();
+      expect(screen.queryByText("Choose first")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("question-option-1-D"));
+      fireEvent.click(screen.getByTestId("question-option-2-E"));
+
+      expect(onApprove).toHaveBeenCalledWith([["A"], ["D"], ["E"]]);
+    });
+
+    it("does not answer a readonly pending question card", () => {
+      const onApprove = vi.fn<VitestProcedure>();
+      const onDeny = vi.fn<VitestProcedure>();
+
+      render(
+        <ToolApprovalCard
+          toolUseId="readonly-question"
+          toolName="question"
+          toolInput={MULTI_QUESTION_TOOL_INPUT}
+          integration="cmdclaw"
+          operation="question"
+          onApprove={onApprove}
+          onDeny={onDeny}
+          status="pending"
+          readonly
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("question-option-0-A"));
+      fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+
+      expect(screen.getByText("Choose first")).toBeInTheDocument();
+      expect(screen.queryByText("Choose second")).not.toBeInTheDocument();
+      expect(onApprove).not.toHaveBeenCalled();
+      expect(onDeny).not.toHaveBeenCalled();
     });
 
     it("shows all saved answers in completed state", () => {
