@@ -21,18 +21,35 @@ type Mode =
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appRoot, "../..");
+const cliLiveTimeoutMs = 20 * 60 * 1000;
 
 function fail(message: string): never {
   console.error(`[e2e-live] ${message}`);
   process.exit(1);
 }
 
-async function run(command: string, args: string[], env: NodeJS.ProcessEnv): Promise<void> {
+async function run(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  options: { timeoutMs?: number } = {},
+): Promise<void> {
   const child = spawn(command, args, {
     cwd: appRoot,
     env,
     stdio: "inherit",
   });
+
+  let timedOut = false;
+  const timeout =
+    options.timeoutMs && options.timeoutMs > 0
+      ? setTimeout(() => {
+          timedOut = true;
+          child.kill("SIGTERM");
+          setTimeout(() => child.kill("SIGKILL"), 5_000).unref();
+        }, options.timeoutMs)
+      : undefined;
+  timeout?.unref();
 
   const status = await new Promise<number | null>((resolve, reject) => {
     child.once("error", reject);
@@ -44,10 +61,23 @@ async function run(command: string, args: string[], env: NodeJS.ProcessEnv): Pro
       }`,
     );
   });
+  if (timeout) {
+    clearTimeout(timeout);
+  }
+
+  if (timedOut) {
+    fail(`${command} ${args.join(" ")} timed out after ${formatDuration(options.timeoutMs ?? 0)}`);
+  }
 
   if (status !== 0) {
     process.exit(status ?? 1);
   }
+}
+
+function formatDuration(ms: number): string {
+  const minutes = Math.floor(ms / 60_000);
+  const seconds = Math.floor((ms % 60_000) / 1000);
+  return seconds === 0 ? `${minutes}min` : `${minutes}min ${seconds}s`;
 }
 
 function git(args: string[]): string {
@@ -354,33 +384,39 @@ function runCliLiveStable(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 async function runCliLive(env: NodeJS.ProcessEnv): Promise<void> {
-  await run("bun", ["run", "chat:auth"], env);
-  await run(
-    "bun",
-    [
-      "vitest",
-      "run",
-      "tests/e2e-cli/auth.cli.live.e2e.test.ts",
-      "tests/e2e-cli/chat.cli.live.test.ts",
-      "tests/e2e-cli/chat.interrupt.cli.live.test.ts",
-      "tests/e2e-cli/chat.performance.cli.live.test.ts",
-      "tests/e2e-cli/chat.runtime-progress-stall.cli.live.test.ts",
-      "tests/e2e-cli/chat.question.cli.live.test.ts",
-      "tests/e2e-cli/chat.file-upload.cli.live.test.ts",
-      "tests/e2e-cli/chat.fill-pdf.cli.live.test.ts",
-      "tests/e2e-cli/chat.slack.cli.live.test.ts",
-      "tests/e2e-cli/chat.gmail.cli.live.test.ts",
-      "tests/e2e-cli/chat.linear.cli.live.test.ts",
-      "tests/e2e-cli/chat.google-calendar.cli.live.test.ts",
-      "tests/e2e-cli/chat.google-drive.cli.live.test.ts",
-      "tests/e2e-cli/chat.linkedin.cli.live.test.ts",
-      "tests/e2e-cli/chat.sandbox-file.cli.live.test.ts",
-      "tests/e2e-cli/coworkers.cli.live.test.ts",
-      "tests/e2e-cli/coworker-builder.cli.live.test.ts",
-    ],
-    env,
-  );
-  await run("bun", ["run", "--cwd", "../sandbox", "test:live"], env);
+  const deadline = Date.now() + cliLiveTimeoutMs;
+  const runWithCliLiveDeadline = (command: string, args: string[]) => {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      fail(`cli-live timed out after ${formatDuration(cliLiveTimeoutMs)}`);
+    }
+
+    return run(command, args, env, { timeoutMs: remainingMs });
+  };
+
+  await runWithCliLiveDeadline("bun", ["run", "chat:auth"]);
+  await runWithCliLiveDeadline("bun", [
+    "vitest",
+    "run",
+    "tests/e2e-cli/auth.cli.live.e2e.test.ts",
+    "tests/e2e-cli/chat.cli.live.test.ts",
+    "tests/e2e-cli/chat.interrupt.cli.live.test.ts",
+    "tests/e2e-cli/chat.performance.cli.live.test.ts",
+    "tests/e2e-cli/chat.runtime-progress-stall.cli.live.test.ts",
+    "tests/e2e-cli/chat.question.cli.live.test.ts",
+    "tests/e2e-cli/chat.file-upload.cli.live.test.ts",
+    "tests/e2e-cli/chat.fill-pdf.cli.live.test.ts",
+    "tests/e2e-cli/chat.slack.cli.live.test.ts",
+    "tests/e2e-cli/chat.gmail.cli.live.test.ts",
+    "tests/e2e-cli/chat.linear.cli.live.test.ts",
+    "tests/e2e-cli/chat.google-calendar.cli.live.test.ts",
+    "tests/e2e-cli/chat.google-drive.cli.live.test.ts",
+    "tests/e2e-cli/chat.linkedin.cli.live.test.ts",
+    "tests/e2e-cli/chat.sandbox-file.cli.live.test.ts",
+    "tests/e2e-cli/coworkers.cli.live.test.ts",
+    "tests/e2e-cli/coworker-builder.cli.live.test.ts",
+  ]);
+  await runWithCliLiveDeadline("bun", ["run", "--cwd", "../sandbox", "test:live"]);
 }
 
 if (import.meta.main) {
