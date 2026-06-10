@@ -486,17 +486,12 @@ async function collectQuestionApprovalAnswers(
   return collected;
 }
 
-async function printAuthenticatedUser(
-  stdout: NodeJS.WriteStream,
-  client: CmdclawApiClient,
-): Promise<void> {
+async function printAuthenticatedUserDeferred(client: CmdclawApiClient): Promise<string> {
   try {
     const me = await client.user.me();
-    stdout.write(`[auth] ${me.email} (${me.id})\n`);
+    return `[auth] ${me.email} (${me.id})\n`;
   } catch (error) {
-    stdout.write(
-      `[auth] failed to resolve current user: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    return `[auth] failed to resolve current user: ${error instanceof Error ? error.message : String(error)}\n`;
   }
 }
 
@@ -1062,11 +1057,12 @@ export default async function (this: LocalContext, flags: ChatFlags): Promise<vo
     questionAnswer: flags.questionAnswer ?? [],
   };
 
+  const authenticatedUserPromise = printAuthenticatedUserDeferred(client);
   await hydrateProviderAvailability(client, state);
   this.process.stdout.write(
     `[model] ${formatModelSelection({ model: state.model ?? "auto", authSource: state.authSource })}\n`,
   );
-  await printAuthenticatedUser(this.process.stdout, client);
+  this.process.stdout.write(await authenticatedUserPromise);
 
   if (flags.listModels) {
     await printAvailableModels(this.process.stdout, state);
