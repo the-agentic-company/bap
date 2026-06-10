@@ -133,14 +133,14 @@ export async function validateModulrWorkspaceConnection(
       method: "POST",
       headers: {
         accept: "application/json",
-        "content-type": "application/json",
+        "content-type": "application/x-www-form-urlencoded",
         Database: normalized.database,
       },
-      body: JSON.stringify({
+      body: new URLSearchParams({
         grant_type: "client_credentials",
         client_id: normalized.clientId,
         client_secret: normalized.clientSecret,
-      }),
+      }).toString(),
     },
   );
 

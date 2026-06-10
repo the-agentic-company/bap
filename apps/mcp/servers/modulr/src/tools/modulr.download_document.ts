@@ -1,9 +1,5 @@
 import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
-import { env } from "@cmdclaw/core/env";
-import { resolvePublicCallbackBaseUrl } from "@cmdclaw/core/lib/worktree-routing";
-import { signModulrDocumentDownloadToken } from "@cmdclaw/core/server/modulr/download-token";
-import { ensureBucket, uploadToS3 } from "@cmdclaw/core/server/storage/s3-client";
 import { createManagedModulrClient, getManagedModulrClaims } from "../lib/modulr-auth";
 
 const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
@@ -17,7 +13,11 @@ function sanitizeFilename(value: string) {
   return sanitized || "modulr-document";
 }
 
-function resolveDownloadBaseUrl(): string {
+async function resolveDownloadBaseUrl(): Promise<string> {
+  const [{ env }, { resolvePublicCallbackBaseUrl }] = await Promise.all([
+    import("@cmdclaw/core/env"),
+    import("@cmdclaw/core/lib/worktree-routing"),
+  ]);
   const baseUrl = resolvePublicCallbackBaseUrl({
     callbackBaseUrl: env.E2B_CALLBACK_BASE_URL,
     appUrl: env.APP_URL,
@@ -30,8 +30,8 @@ function resolveDownloadBaseUrl(): string {
   return baseUrl;
 }
 
-function buildDownloadUrl(token: string): string {
-  const url = new URL("/api/modulr/documents/download", resolveDownloadBaseUrl());
+async function buildDownloadUrl(token: string): Promise<string> {
+  const url = new URL("/api/modulr/documents/download", await resolveDownloadBaseUrl());
   url.searchParams.set("token", token);
   return url.toString();
 }
@@ -72,6 +72,12 @@ export default async function downloadDocument(
   const storageKey = `modulr-documents/${claims.workspaceId}/${document.id}/${Date.now()}-${storageFilename}`;
   const body = Buffer.from(document.blob, "base64");
 
+  const [{ env }, { signModulrDocumentDownloadToken }, { ensureBucket, uploadToS3 }] =
+    await Promise.all([
+      import("@cmdclaw/core/env"),
+      import("@cmdclaw/core/server/modulr/download-token"),
+      import("@cmdclaw/core/server/storage/s3-client"),
+    ]);
   await ensureBucket();
   await uploadToS3(storageKey, body, document.mimeType);
   const token = signModulrDocumentDownloadToken(
@@ -86,7 +92,7 @@ export default async function downloadDocument(
     },
     env.CMDCLAW_SERVER_SECRET,
   );
-  const downloadUrl = buildDownloadUrl(token);
+  const downloadUrl = await buildDownloadUrl(token);
 
   return {
     content: [

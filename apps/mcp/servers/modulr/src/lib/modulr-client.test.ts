@@ -10,7 +10,17 @@ function jsonResponse(payload: unknown) {
   };
 }
 
-function createClient(clientSecret = crypto.randomUUID()) {
+function jsonErrorResponse(status: number, statusText: string, payload: unknown) {
+  return {
+    ok: false,
+    status,
+    statusText,
+    headers: new Headers({ "content-type": "application/json" }),
+    json: async () => payload,
+  };
+}
+
+function createClient(clientSecret: string = crypto.randomUUID()) {
   return new ModulrClient({
     database: "assurhelium",
     clientId: "api",
@@ -20,19 +30,69 @@ function createClient(clientSecret = crypto.randomUUID()) {
   });
 }
 
+function expectFormEncodedTokenRequest(init: RequestInit | undefined) {
+  expect(init?.headers).toEqual(
+    expect.objectContaining({
+      "content-type": "application/x-www-form-urlencoded",
+      Database: "assurhelium",
+    }),
+  );
+  expect(String(init?.body)).toBe(
+    new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: "api",
+      client_secret: "test-secret",
+    }).toString(),
+  );
+}
+
 describe("ModulrClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
+  it("authenticates with Modulr using form-encoded client credentials", async () => {
+    const fetchMock = vi.fn(async (url: URL | string, init?: RequestInit) => {
+      const pathname = new URL(String(url)).pathname;
+      if (pathname.endsWith("/tokens/users")) {
+        expectFormEncodedTokenRequest(init);
+        return jsonResponse({ data: { access_token: "token", expires_in: 3600 } });
+      }
+      if (pathname.endsWith("/documents/42")) {
+        return jsonResponse({
+          data: {
+            document: {
+              id: 42,
+              filename: "contract.pdf",
+              file: "JVBERi0x",
+            },
+          },
+        });
+      }
+      throw new Error(`Unexpected request to ${pathname}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createClient("test-secret").getDocument("42");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer token",
+        }),
+      }),
+    );
+  });
+
   it("finds a customer by email and returns GED document resource links", async () => {
     const fetchMock = vi.fn(async (url: URL | string, init?: RequestInit) => {
       const pathname = new URL(String(url)).pathname;
-      const body = init?.body ? JSON.parse(String(init.body)) : {};
 
       if (pathname.endsWith("/tokens/users")) {
         return jsonResponse({ access_token: "token", expires_in: 3600 });
       }
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
       if (pathname.endsWith("/clients/search") && body.filters.email) {
         return jsonResponse({
           data: {
@@ -99,11 +159,11 @@ describe("ModulrClient", () => {
   it("paginates Modulr search results when listing documents", async () => {
     const fetchMock = vi.fn(async (url: URL | string, init?: RequestInit) => {
       const pathname = new URL(String(url)).pathname;
-      const body = init?.body ? JSON.parse(String(init.body)) : {};
 
       if (pathname.endsWith("/tokens/users")) {
         return jsonResponse({ access_token: "token", expires_in: 3600 });
       }
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
       if (pathname.endsWith("/tags/search")) {
         return jsonResponse({ data: { tags: { "456": { tag_id: 456, label: "client:123" } } } });
       }
@@ -159,11 +219,11 @@ describe("ModulrClient", () => {
       "fetch",
       vi.fn(async (url: URL | string, init?: RequestInit) => {
         const pathname = new URL(String(url)).pathname;
-        const body = init?.body ? JSON.parse(String(init.body)) : {};
 
         if (pathname.endsWith("/tokens/users")) {
           return jsonResponse({ access_token: "token", expires_in: 3600 });
         }
+        const body = init?.body ? JSON.parse(String(init.body)) : {};
         if (pathname.endsWith("/clients/search") && body.filters.email) {
           return jsonResponse({
             data: {
@@ -252,6 +312,29 @@ describe("ModulrClient", () => {
           Authorization: "Bearer nested-token",
         }),
       }),
+    );
+  });
+
+  it("includes Modulr authentication error details", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: URL | string) => {
+        const pathname = new URL(String(url)).pathname;
+        if (pathname.endsWith("/tokens/users")) {
+          return jsonErrorResponse(400, "Bad Request", {
+            status: "fail",
+            data: {
+              error: "invalid_client",
+              error_description: "The client credentials are invalid",
+            },
+          });
+        }
+        throw new Error(`Unexpected request to ${pathname}`);
+      }),
+    );
+
+    await expect(createClient().getDocument("42")).rejects.toThrow(
+      /Modulr authentication failed \(400 Bad Request\).*invalid_client/,
     );
   });
 });

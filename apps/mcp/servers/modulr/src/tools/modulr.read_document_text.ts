@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
 import { createManagedModulrClient } from "../lib/modulr-auth";
-import { extractPdfTextFromBase64 } from "../lib/pdf-text";
 
 export const schema = {
   documentId: z.string().min(1).describe("Modulr document id"),
@@ -36,6 +35,7 @@ export default async function readDocumentText(
     );
   }
 
+  const { extractPdfTextFromBase64 } = await import("../lib/pdf-text");
   const extracted = await extractPdfTextFromBase64(document.blob, params.maxCharacters);
   return {
     content: [

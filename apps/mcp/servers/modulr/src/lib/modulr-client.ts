@@ -149,6 +149,17 @@ function readTokenPayload(payload: unknown): {
   };
 }
 
+async function readModulrErrorBody(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (contentType.includes("application/json")) {
+    return JSON.stringify(await response.json());
+  }
+  if (contentType.startsWith("text/")) {
+    return response.text();
+  }
+  return "";
+}
+
 function buildEqualFilter(field: string, value: string | number) {
   return { [field]: { equal: value } };
 }
@@ -267,18 +278,23 @@ export class ModulrClient {
       method: "POST",
       headers: {
         accept: "application/json",
-        "content-type": "application/json",
+        "content-type": "application/x-www-form-urlencoded",
         Database: this.credentials.database,
       },
-      body: JSON.stringify({
+      body: new URLSearchParams({
         grant_type: "client_credentials",
         client_id: this.credentials.clientId,
         client_secret: this.credentials.clientSecret,
-      }),
+      }).toString(),
     });
 
     if (!response.ok) {
-      throw new Error(`Modulr authentication failed (${response.status} ${response.statusText})`);
+      const body = await readModulrErrorBody(response);
+      throw new Error(
+        `Modulr authentication failed (${response.status} ${response.statusText})${
+          body ? `: ${body}` : ""
+        }`,
+      );
     }
 
     const payload = readTokenPayload(await response.json());
