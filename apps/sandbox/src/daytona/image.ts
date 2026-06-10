@@ -56,5 +56,11 @@ export const image = Image.debianSlim()
   .runCommands("chmod +x /app/setup.sh")
   .runCommands("chmod +x /app/daytona-start.sh")
   .runCommands("/app/setup.sh")
+  // Prewarm OpenCode project init for /app so fresh sandboxes skip the cold
+  // first-call cost (plugin dependency install, models.dev catalog fetch, and
+  // bun transpile caches all land in the snapshot).
+  .runCommands(
+    `bash -lc 'cd /app && export OPENCODE_CONFIG=/app/opencode.json && opencode serve --port 4096 --hostname 127.0.0.1 >/tmp/opencode-warmup.log 2>&1 & pid=$!; for i in $(seq 1 240); do curl -fsS http://127.0.0.1:4096/health >/dev/null 2>&1 && break; sleep 0.5; done; curl -fsS --max-time 120 "http://127.0.0.1:4096/mcp?directory=%2Fapp" >/dev/null; rc=$?; kill "$pid" 2>/dev/null; rm -f /tmp/opencode-warmup.log; exit $rc'`,
+  )
   .workdir("/app")
   .entrypoint(["/bin/bash", "/app/daytona-start.sh"]);
