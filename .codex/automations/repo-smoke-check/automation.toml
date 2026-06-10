@@ -1,0 +1,13 @@
+version = 1
+id = "repo-smoke-check"
+kind = "cron"
+name = "Repo smoke check"
+prompt = "Report the current working directory, then list the top-level files and directories in the repository. Do not edit files."
+status = "PAUSED"
+rrule = "FREQ=DAILY;BYHOUR=9;BYMINUTE=0;BYSECOND=0"
+model = "gpt-5.4"
+reasoning_effort = "medium"
+execution_environment = "local"
+cwds = ["/Users/baptiste/Git/cmdclaw"]
+created_at = 1781000000000
+updated_at = 1781000000000
