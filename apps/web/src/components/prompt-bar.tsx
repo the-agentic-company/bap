@@ -35,6 +35,7 @@ type PromptBarProps = {
   richAnimatedPlaceholders?: PromptSegment[][];
   onAnimatedPlaceholderIndexChange?: (index: number) => void;
   shouldAnimatePlaceholder?: boolean;
+  submitOnEnter?: boolean;
 
   isRecording?: boolean;
   onStartRecording?: () => void;
@@ -136,6 +137,7 @@ export function PromptBar({
   richAnimatedPlaceholders,
   onAnimatedPlaceholderIndexChange,
   shouldAnimatePlaceholder = false,
+  submitOnEnter = false,
   isRecording = false,
   onStartRecording,
   onStopRecording,
@@ -406,12 +408,15 @@ export function PromptBar({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      const shouldSubmit =
+        e.key === "Enter" &&
+        ((submitOnEnter && !e.shiftKey && !e.metaKey && !e.ctrlKey) || e.metaKey || e.ctrlKey);
+      if (shouldSubmit) {
         e.preventDefault();
         void handleSubmit();
       }
     },
-    [handleSubmit],
+    [handleSubmit, submitOnEnter],
   );
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -574,7 +579,11 @@ export function PromptBar({
             onKeyDown={handleKeyDown}
             placeholder={shouldAnimateRich ? undefined : activePlaceholder}
             aria-label={isHero ? "Automation prompt" : "Message"}
-            aria-keyshortcuts="Meta+Enter Control+Enter"
+            aria-keyshortcuts={
+              submitOnEnter
+                ? "Enter Shift+Enter Meta+Enter Control+Enter"
+                : "Meta+Enter Control+Enter"
+            }
             data-testid="prompt-input"
             disabled={disabled}
             rows={2}

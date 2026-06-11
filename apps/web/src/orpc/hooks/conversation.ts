@@ -146,27 +146,39 @@ export function useConversation(id: string | undefined) {
   const [conversation, details] = useZeroQuery(
     zeroRuntime.isReady && id ? zeroQueries.conversations.byId({ id }) : null,
   );
-  const data = useMemo(() => mapZeroConversationDetail(conversation), [conversation]);
+  const fallbackConversation = useQuery({
+    queryKey: ["conversation", "get", id],
+    queryFn: () => client.conversation.get({ id: id! }),
+    enabled: Boolean(id) && !conversation,
+  });
+  const zeroData = useMemo(() => mapZeroConversationDetail(conversation), [conversation]);
+  const data = zeroData ?? fallbackConversation.data;
   const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
   const isLoading =
     Boolean(id) &&
     !error &&
+    !fallbackConversation.error &&
     !data &&
-    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
+    (zeroRuntime.isResolvingWorkspace ||
+      (zeroRuntime.isReady && details.type !== "complete") ||
+      fallbackConversation.isLoading);
 
   return {
     data,
-    dataUpdatedAt: Date.now(),
-    error,
-    isError: Boolean(error),
+    dataUpdatedAt: fallbackConversation.dataUpdatedAt || Date.now(),
+    error: error ?? fallbackConversation.error,
+    isError: Boolean(error ?? fallbackConversation.error),
     isFetching:
       Boolean(id) &&
       !error &&
-      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
+      !fallbackConversation.error &&
+      (zeroRuntime.isResolvingWorkspace ||
+        (zeroRuntime.isReady && details.type !== "complete") ||
+        fallbackConversation.isFetching),
     isLoading,
     isPending: isLoading,
     refetch: async () => ({ data }),
-    status: error ? "error" : isLoading ? "pending" : "success",
+    status: (error ?? fallbackConversation.error) ? "error" : isLoading ? "pending" : "success",
   };
 }
 

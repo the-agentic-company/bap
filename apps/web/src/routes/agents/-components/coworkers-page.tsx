@@ -33,6 +33,7 @@ import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { getCoworkerDisplayName } from "@/components/coworkers/coworker-card-content";
 import { InteractiveCoworkerCard } from "@/components/coworkers/interactive-coworker-card";
 import { ViewTabs } from "@/components/coworkers/view-tabs";
+import { startCoworkerBuilderGeneration } from "@/components/landing/start-coworker-builder-generation";
 // Commented out — prompt bar removed from coworkers page
 // import { VoiceIndicator } from "@/components/chat/voice-indicator";
 // import { PromptBar } from "@/components/prompt-bar";
@@ -59,7 +60,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { blobToBase64, useVoiceRecording } from "@/hooks/use-voice-recording";
 import { normalizeChatModelSelection } from "@/lib/chat-model-selection";
-import { getCoworkerEditHref } from "@/lib/coworker-routes";
+import { getCoworkerEditHrefById } from "@/lib/coworker-routes";
 import { COWORKERS_OPEN_RECENT_DRAWER_EVENT } from "@/lib/coworkers-events";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import {
@@ -69,7 +70,6 @@ import {
 } from "@/lib/integration-icons";
 import { buildProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
 import { cn } from "@/lib/utils";
-import { client } from "@/orpc/client";
 import {
   useCreateCoworker,
   type CoworkerListData,
@@ -507,7 +507,7 @@ export default function CoworkersPage({
       try {
         const created = await importSharedCoworker.mutateAsync(sourceCoworkerId);
         toast.success(t("Coworker imported."));
-        router.push(getCoworkerEditHref(created));
+        router.push(getCoworkerEditHrefById(created));
       } catch (error) {
         console.error("Failed to import coworker:", error);
         toast.error(t("Failed to import coworker."));
@@ -540,7 +540,7 @@ export default function CoworkersPage({
         const definitionJson = await file.text();
         const created = await importCoworkerDefinition.mutateAsync(definitionJson);
         toast.success(t("Coworker imported in the off state."));
-        router.push(getCoworkerEditHref(created));
+        router.push(getCoworkerEditHrefById(created));
       } catch (error) {
         console.error("Failed to import coworker definition:", error);
         toast.error(t("Failed to import coworker."));
@@ -671,26 +671,17 @@ export default function CoworkersPage({
 
       const text = initialMessage?.trim() ?? "";
       if (text) {
-        try {
-          const { conversationId } = await client.coworker.getOrCreateBuilderConversation({
-            id: result.id,
-          });
-          await client.generation.startGeneration({
-            conversationId,
-            content: text,
-            model,
-            authSource: modelAuthSource,
-            autoApprove: true,
-          });
-        } catch (builderError) {
-          console.error("Failed to start coworker builder generation:", builderError);
-          throw builderError;
-        }
+        await startCoworkerBuilderGeneration({
+          coworkerId: result.id,
+          content: text,
+          model,
+          authSource: modelAuthSource,
+        });
       }
 
-      window.location.assign(getCoworkerEditHref(result));
+      router.push(getCoworkerEditHrefById(result));
     },
-    [createCoworker, model, modelAuthSource],
+    [createCoworker, model, modelAuthSource, router],
   );
 
   const _handlePromptSubmit = useCallback(

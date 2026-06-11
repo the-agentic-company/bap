@@ -9,7 +9,6 @@ import { ClientOnly, Link, useLocation, useNavigate } from "@tanstack/react-rout
 import { T, useGT } from "gt-react";
 import { ArrowUp, ChevronDown, Globe2 } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import type { AttachmentData } from "@/components/prompt-bar";
 import type { PromptSegment } from "@/lib/prompt-segments";
 import {
@@ -29,6 +28,7 @@ import {
   readPendingCoworkerPrompt,
   writePendingCoworkerPrompt,
 } from "@/components/landing/pending-coworker-prompt";
+import { startCoworkerBuilderGeneration } from "@/components/landing/start-coworker-builder-generation";
 import { TeamShowcaseSection } from "@/components/landing/team-showcase";
 import { TemplatePreviewModal } from "@/components/template-preview-modal";
 import { Button } from "@/components/ui/button";
@@ -37,11 +37,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { blobToBase64, useVoiceRecording } from "@/hooks/use-voice-recording";
 import { authClient } from "@/lib/auth-client";
 import { normalizeChatModelSelection } from "@/lib/chat-model-selection";
-import { getCoworkerEditHref } from "@/lib/coworker-routes";
-import { normalizeGenerationError } from "@/lib/generation-errors";
-import { INTEGRATION_LOGOS, COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@/lib/integration-icons";
+import { COWORKER_AVAILABLE_INTEGRATION_TYPES, INTEGRATION_LOGOS } from "@/lib/integration-icons";
 import { buildProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
-import { client } from "@/orpc/client";
 import { useCreateCoworker } from "@/orpc/hooks/coworkers";
 import { useProviderAuthStatus } from "@/orpc/hooks/provider-auth";
 import { useTranscribe } from "@/orpc/hooks/voice";
@@ -597,65 +594,6 @@ export function CoworkerLanding({
     ],
   );
 
-  const doCreate = useCallback(
-    async (opts: {
-      prompt: string;
-      triggerType?: string;
-      initialMessage?: string;
-      initialAttachments?: AttachmentData[];
-      debugRunDeadlineMs?: number;
-      debugApprovalHotWaitMs?: number;
-    }) => {
-      try {
-        const result = await createCoworker.mutateAsync({
-          name: "",
-          triggerType:
-            (opts.triggerType as "manual" | "schedule" | "email" | "webhook") ?? "manual",
-          prompt: opts.prompt,
-          model,
-          authSource: modelAuthSource,
-          allowedIntegrations: COWORKER_AVAILABLE_INTEGRATION_TYPES,
-        });
-
-        const initialMessage = getPendingCoworkerGenerationContent({
-          initialMessage: opts.initialMessage ?? "",
-          attachments: opts.initialAttachments,
-        });
-        if (initialMessage) {
-          try {
-            const { conversationId } = await client.coworker.getOrCreateBuilderConversation({
-              id: result.id,
-            });
-            await client.generation.startGeneration({
-              conversationId,
-              content: initialMessage,
-              model,
-              authSource: modelAuthSource,
-              autoApprove: true,
-              fileAttachments: opts.initialAttachments,
-              ...(opts.debugRunDeadlineMs !== undefined
-                ? { debugRunDeadlineMs: opts.debugRunDeadlineMs }
-                : {}),
-              ...(opts.debugApprovalHotWaitMs !== undefined
-                ? { debugApprovalHotWaitMs: opts.debugApprovalHotWaitMs }
-                : {}),
-            });
-          } catch (error) {
-            console.error("Failed to start coworker builder generation:", error);
-            toast.error(normalizeGenerationError(error, "start_rpc").message);
-            return false;
-          }
-        }
-
-        window.location.href = getCoworkerEditHref(result);
-      } catch {
-        return false;
-      }
-      return true;
-    },
-    [createCoworker, model, modelAuthSource],
-  );
-
   const redirectToLogin = useCallback(() => {
     window.location.assign("/login?callbackUrl=%2F&mode=getting-started");
   }, []);
@@ -671,38 +609,62 @@ export function CoworkerLanding({
         initialMessage: text,
         attachments,
       });
-      let shouldClearPendingPrompt = true;
 
       try {
         const session = await authClient.getSession().catch(() => null);
         const hasSession = Boolean(session?.data?.session && session?.data?.user);
 
         if (!hasSession) {
-          shouldClearPendingPrompt = false;
           redirectToLogin();
-          return;
+          return false;
         }
 
-        const created = await doCreate({
-          prompt: "",
+        const initialMessage = getPendingCoworkerGenerationContent({
           initialMessage: text,
-          initialAttachments: attachments,
+          attachments,
+        });
+        if (!initialMessage) {
+          return false;
+        }
+
+        const result = await createCoworker.mutateAsync({
+          name: "",
+          triggerType: "manual",
+          prompt: "",
+          model,
+          authSource: modelAuthSource,
+          allowedIntegrations: COWORKER_AVAILABLE_INTEGRATION_TYPES,
+        });
+        await startCoworkerBuilderGeneration({
+          coworkerId: result.id,
+          content: initialMessage,
+          model,
+          authSource: modelAuthSource,
+          attachments,
           debugRunDeadlineMs: armedDebugPreset?.debugRunDeadlineMs,
           debugApprovalHotWaitMs: armedDebugPreset?.debugApprovalHotWaitMs,
         });
-        if (created) {
-          setArmedDebugPreset(null);
-          clearPendingCoworkerPrompt();
-          return;
-        }
+        clearPendingCoworkerPrompt();
+        setArmedDebugPreset(null);
+        void navigate({
+          to: "/agents/edit/$id",
+          params: { id: result.id },
+          replace: true,
+        });
+        return false;
       } finally {
-        if (shouldClearPendingPrompt) {
-          clearPendingCoworkerPrompt();
-        }
         setIsCreating(false);
       }
     },
-    [armedDebugPreset, doCreate, isCreating, redirectToLogin],
+    [
+      armedDebugPreset,
+      createCoworker,
+      isCreating,
+      model,
+      modelAuthSource,
+      navigate,
+      redirectToLogin,
+    ],
   );
 
   const handleArmDebugPreset = useCallback((preset: ArmedDebugPreset) => {
@@ -931,6 +893,7 @@ export function CoworkerLanding({
                     isSubmitting={isCreating}
                     disabled={isCreating || isRecording || isProcessingVoice}
                     variant="hero"
+                    submitOnEnter
                     placeholder={gt(
                       "e.g. Every morning, summarize my unread emails and send me a digest...",
                     )}

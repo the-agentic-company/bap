@@ -77,6 +77,32 @@ describe("PromptBar", () => {
     });
   });
 
+  it("can submit on plain Enter when enabled", async () => {
+    const onSubmit = vi.fn<VitestProcedure>().mockResolvedValue(true);
+
+    render(<PromptBar onSubmit={onSubmit} submitOnEnter />);
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "Build this coworker" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith("Build this coworker", undefined);
+    });
+  });
+
+  it("keeps Shift+Enter available when plain Enter submit is enabled", () => {
+    const onSubmit = vi.fn<VitestProcedure>().mockResolvedValue(true);
+
+    render(<PromptBar onSubmit={onSubmit} submitOnEnter />);
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "Keep editing" } });
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("keeps the composer text when submit returns false", async () => {
     const onSubmit = vi.fn<VitestProcedure>().mockResolvedValue(false);
 

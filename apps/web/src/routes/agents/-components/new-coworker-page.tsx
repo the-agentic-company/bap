@@ -1,4 +1,5 @@
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@cmdclaw/core/lib/chat-model-defaults";
+import { useNavigate } from "@tanstack/react-router";
 import { T } from "gt-react";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -7,17 +8,16 @@ import {
   getPendingCoworkerGenerationContent,
   readPendingCoworkerPrompt,
 } from "@/components/landing/pending-coworker-prompt";
-import { getCoworkerEditHref } from "@/lib/coworker-routes";
-import { normalizeGenerationError } from "@/lib/generation-errors";
+import { startCoworkerBuilderGeneration } from "@/components/landing/start-coworker-builder-generation";
 import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@/lib/integration-icons";
-import { client } from "@/orpc/client";
 import { useCreateCoworker } from "@/orpc/hooks/coworkers";
-import { useRouter } from "../-lib/next-navigation-compat";
 
 const DEFAULT_COWORKER_BUILDER_MODEL = DEFAULT_CONNECTED_CHATGPT_MODEL;
 
+let activeNewCoworkerCreation: Promise<void> | null = null;
+
 export default function NewCoworkerPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const createCoworker = useCreateCoworker();
   const hasStartedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,18 +27,26 @@ export default function NewCoworkerPage() {
       return;
     }
 
+    if (activeNewCoworkerCreation) {
+      activeNewCoworkerCreation.catch((error) => {
+        console.error("Failed to resume coworker builder creation:", error);
+        setError("Failed to create coworker.");
+      });
+      return;
+    }
+
     const pendingPrompt = readPendingCoworkerPrompt();
     const initialMessage = pendingPrompt
       ? getPendingCoworkerGenerationContent(pendingPrompt)
       : null;
     if (!pendingPrompt || !initialMessage) {
-      router.replace("/");
+      void navigate({ to: "/", replace: true });
       return;
     }
 
     hasStartedRef.current = true;
 
-    void (async () => {
+    activeNewCoworkerCreation = (async () => {
       try {
         const result = await createCoworker.mutateAsync({
           name: "",
@@ -49,33 +57,33 @@ export default function NewCoworkerPage() {
           allowedIntegrations: COWORKER_AVAILABLE_INTEGRATION_TYPES,
         });
 
-        try {
-          const { conversationId } = await client.coworker.getOrCreateBuilderConversation({
-            id: result.id,
-          });
-          await client.generation.startGeneration({
-            conversationId,
-            content: initialMessage,
-            model: DEFAULT_COWORKER_BUILDER_MODEL,
-            authSource: "shared",
-            autoApprove: true,
-            fileAttachments: pendingPrompt.attachments,
-          });
-        } catch (error) {
-          console.error("Failed to start coworker builder generation:", error);
-          setError(normalizeGenerationError(error, "start_rpc").message);
-          return;
-        }
-
+        await startCoworkerBuilderGeneration({
+          coworkerId: result.id,
+          content: initialMessage,
+          model: DEFAULT_COWORKER_BUILDER_MODEL,
+          authSource: "shared",
+          attachments: pendingPrompt.attachments,
+        });
         clearPendingCoworkerPrompt();
-        window.location.assign(getCoworkerEditHref(result));
+        void navigate({
+          to: "/agents/edit/$id",
+          params: { id: result.id },
+          replace: true,
+        });
+        window.setTimeout(() => {
+          activeNewCoworkerCreation = null;
+        }, 10_000);
       } catch (error) {
-        console.error("Failed to resume coworker builder creation:", error);
+        activeNewCoworkerCreation = null;
         clearPendingCoworkerPrompt();
-        router.replace("/");
+        throw error;
       }
     })();
-  }, [createCoworker, router]);
+    activeNewCoworkerCreation.catch((error) => {
+      console.error("Failed to resume coworker builder creation:", error);
+      setError("Failed to create coworker.");
+    });
+  }, [createCoworker, navigate]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 items-center justify-center">
