@@ -105,6 +105,7 @@ export default defineConfig(({ isSsrBuild }) => ({
 		},
 	},
 	server: {
+		allowedHosts: ["host.docker.internal"],
 		port: devPort,
 		watch: {
 			ignored: [

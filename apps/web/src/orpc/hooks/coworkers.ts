@@ -1,5 +1,15 @@
 import type { ProviderAuthSource } from "@cmdclaw/core/lib/provider-auth-source";
+import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import {
+  mapZeroCoworkerFolders,
+  mapZeroCoworkerList,
+  mapZeroCoworkerRun,
+  mapZeroCoworkerTags,
+} from "@/zero/coworker-data";
+import { useCmdClawZeroRuntime } from "@/zero/provider";
+import { zeroQueries } from "@/zero/queries";
 import { client } from "../client";
 
 type CoworkerToolAccessMode = "all" | "selected";
@@ -13,23 +23,63 @@ const ACTIVE_COWORKER_RUN_STATUSES = new Set([
   "paused",
 ]);
 
+export type CoworkerListData = ReturnType<typeof mapZeroCoworkerList>;
+export type CoworkerTagListData = ReturnType<typeof mapZeroCoworkerTags>;
+const coworkerListCache = new Map<string, CoworkerListData>();
+const coworkerTagListCache = new Map<string, CoworkerTagListData>();
+
+function getZeroRuntimeCacheKey(runtime: { userId: string | null; workspaceId: string }) {
+  return runtime.userId && runtime.workspaceId ? `${runtime.userId}:${runtime.workspaceId}` : null;
+}
+
 function isActiveCoworkerRunStatus(status: string | null | undefined): boolean {
   return typeof status === "string" && ACTIVE_COWORKER_RUN_STATUSES.has(status);
 }
 
-export function useCoworkerList() {
-  return useQuery({
-    queryKey: ["coworker", "list"],
-    queryFn: () => client.coworker.list(),
-    refetchInterval: (query) =>
-      (query.state.data ?? []).some(
-        (coworker) =>
-          isActiveCoworkerRunStatus(coworker.lastRunStatus) ||
-          (coworker.recentRuns ?? []).some((run) => isActiveCoworkerRunStatus(run.status)),
-      )
-        ? 5_000
-        : false,
-  });
+export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
+  const zeroRuntime = useCmdClawZeroRuntime();
+  const [coworkers, details] = useZeroQuery(
+    zeroRuntime.isReady ? zeroQueries.coworkerInventory.coworkers() : null,
+  );
+  const cacheKey = getZeroRuntimeCacheKey(zeroRuntime);
+  const initialData = options?.initialData;
+  const mappedData = useMemo(() => mapZeroCoworkerList(coworkers ?? []), [coworkers]);
+  useEffect(() => {
+    if (cacheKey && initialData && initialData.length > 0 && !coworkerListCache.has(cacheKey)) {
+      coworkerListCache.set(cacheKey, initialData);
+    }
+  }, [cacheKey, initialData]);
+  useEffect(() => {
+    if (cacheKey && (mappedData.length > 0 || details.type === "complete")) {
+      coworkerListCache.set(cacheKey, mappedData);
+    }
+  }, [cacheKey, details.type, mappedData]);
+  const cachedData = cacheKey ? coworkerListCache.get(cacheKey) : undefined;
+  const data =
+    mappedData.length > 0 || details.type === "complete"
+      ? mappedData
+      : (cachedData ?? initialData ?? mappedData);
+  const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const isLoading =
+    !error &&
+    data.length === 0 &&
+    !cachedData &&
+    !(initialData && initialData.length > 0) &&
+    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
+
+  return {
+    data,
+    dataUpdatedAt: Date.now(),
+    error,
+    isError: Boolean(error),
+    isFetching:
+      !error &&
+      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
+    isLoading,
+    isPending: isLoading,
+    refetch: async () => ({ data }),
+    status: error ? "error" : isLoading ? "pending" : "success",
+  };
 }
 
 export function useCoworkerOverview() {
@@ -399,13 +449,35 @@ export function useCoworkerRuns(
     enabled?: boolean;
   },
 ) {
-  return useQuery({
-    queryKey: ["coworker", "runs", coworkerId, limit],
-    queryFn: () => client.coworker.listRuns({ coworkerId: coworkerId!, limit }),
-    enabled: (options?.enabled ?? true) && !!coworkerId,
-    refetchInterval: (query) =>
-      (query.state.data ?? []).some((run) => isActiveCoworkerRunStatus(run.status)) ? 5_000 : false,
-  });
+  const zeroRuntime = useCmdClawZeroRuntime();
+  const enabled = (options?.enabled ?? true) && !!coworkerId;
+  const [runs, details] = useZeroQuery(
+    zeroRuntime.isReady && enabled && coworkerId
+      ? zeroQueries.coworkerInventory.runsByCoworker({ coworkerId, limit })
+      : null,
+  );
+  const data = useMemo(() => (runs ?? []).map(mapZeroCoworkerRun), [runs]);
+  const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const isLoading =
+    enabled &&
+    !error &&
+    data.length === 0 &&
+    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
+
+  return {
+    data,
+    dataUpdatedAt: Date.now(),
+    error,
+    isError: Boolean(error),
+    isFetching:
+      enabled &&
+      !error &&
+      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
+    isLoading,
+    isPending: isLoading,
+    refetch: async () => ({ data }),
+    status: error ? "error" : isLoading ? "pending" : "success",
+  };
 }
 
 export function useCoworkerForwardingAlias(coworkerId: string | undefined) {
@@ -464,10 +536,30 @@ export function useGetOrCreateBuilderConversation() {
 // ========== COWORKER TAG HOOKS ==========
 
 export function useCoworkerFolderList() {
-  return useQuery({
-    queryKey: ["coworkerFolder", "list"],
-    queryFn: () => client.coworkerFolder.list(),
-  });
+  const zeroRuntime = useCmdClawZeroRuntime();
+  const [folders, details] = useZeroQuery(
+    zeroRuntime.isReady ? zeroQueries.coworkerInventory.folders() : null,
+  );
+  const data = useMemo(() => mapZeroCoworkerFolders(folders ?? []), [folders]);
+  const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const isLoading =
+    !error &&
+    data.length === 0 &&
+    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
+
+  return {
+    data,
+    dataUpdatedAt: Date.now(),
+    error,
+    isError: Boolean(error),
+    isFetching:
+      !error &&
+      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
+    isLoading,
+    isPending: isLoading,
+    refetch: async () => ({ data }),
+    status: error ? "error" : isLoading ? "pending" : "success",
+  };
 }
 
 export function useCreateCoworkerFolderPath() {
@@ -493,11 +585,48 @@ export function useMoveCoworkerToFolder() {
   });
 }
 
-export function useCoworkerTagList() {
-  return useQuery({
-    queryKey: ["coworkerTag", "list"],
-    queryFn: () => client.coworkerTag.list(),
-  });
+export function useCoworkerTagList(options?: { initialData?: CoworkerTagListData }) {
+  const zeroRuntime = useCmdClawZeroRuntime();
+  const [tags, details] = useZeroQuery(
+    zeroRuntime.isReady ? zeroQueries.coworkerInventory.tags() : null,
+  );
+  const cacheKey = getZeroRuntimeCacheKey(zeroRuntime);
+  const initialData = options?.initialData;
+  const data = useMemo(() => mapZeroCoworkerTags(tags ?? []), [tags]);
+  useEffect(() => {
+    if (cacheKey && initialData && initialData.length > 0 && !coworkerTagListCache.has(cacheKey)) {
+      coworkerTagListCache.set(cacheKey, initialData);
+    }
+  }, [cacheKey, initialData]);
+  useEffect(() => {
+    if (cacheKey && (data.length > 0 || details.type === "complete")) {
+      coworkerTagListCache.set(cacheKey, data);
+    }
+  }, [cacheKey, data, details.type]);
+  const cachedData = cacheKey ? coworkerTagListCache.get(cacheKey) : undefined;
+  const visibleData =
+    data.length > 0 || details.type === "complete" ? data : (cachedData ?? initialData ?? data);
+  const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const isLoading =
+    !error &&
+    visibleData.length === 0 &&
+    !cachedData &&
+    !(initialData && initialData.length > 0) &&
+    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
+
+  return {
+    data: visibleData,
+    dataUpdatedAt: Date.now(),
+    error,
+    isError: Boolean(error),
+    isFetching:
+      !error &&
+      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
+    isLoading,
+    isPending: isLoading,
+    refetch: async () => ({ data }),
+    status: error ? "error" : isLoading ? "pending" : "success",
+  };
 }
 
 export function useCreateCoworkerTag() {

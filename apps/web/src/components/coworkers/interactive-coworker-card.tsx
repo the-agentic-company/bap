@@ -132,13 +132,14 @@ function buildToolSummary(
       : (coworker.allowedIntegrations ?? []).filter((entry) =>
           COWORKER_AVAILABLE_INTEGRATION_TYPES.includes(entry),
         );
+  const uniqueIntegrationTypes = [...new Set(integrationTypes)];
   const skillCount =
     coworker.toolAccessMode === "selected" ? (coworker.allowedSkillSlugs?.length ?? 0) : 0;
-  const visibleIntegrations = integrationTypes.slice(0, MAX_VISIBLE_TOOL_INDICATORS);
+  const visibleIntegrations = uniqueIntegrationTypes.slice(0, MAX_VISIBLE_TOOL_INDICATORS);
   const remainingSlots = MAX_VISIBLE_TOOL_INDICATORS - visibleIntegrations.length;
   const showSkillBadge = skillCount > 0 && remainingSlots > 0;
   const coveredCount = visibleIntegrations.length + (showSkillBadge ? skillCount : 0);
-  const totalCount = integrationTypes.length + skillCount;
+  const totalCount = uniqueIntegrationTypes.length + skillCount;
 
   return {
     visibleIntegrations,

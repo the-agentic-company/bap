@@ -24,6 +24,23 @@ containers or per-worktree Grafana datasources.
 
 The main checkout `docker/compose/dev.yml` remains the full local stack.
 
+Zero local sync runs in this stack as `zero-cache` on
+`http://127.0.0.1:4848` by default. Local Postgres is started with
+`wal_level=logical` so Zero can consume logical replication. The browser-facing
+defaults are:
+
+- `NEXT_PUBLIC_ZERO_CACHE_URL=http://localhost:4848`
+- `NEXT_PUBLIC_ZERO_QUERY_URL=http://host.docker.internal:3000/api/zero/query`
+- `CMDCLAW_ZERO_CACHE_PORT=4848`
+
+The local vertical slice uses the app's Better Auth session cookie for
+`/api/zero/query`, so Compose enables `ZERO_QUERY_FORWARD_COOKIES=true`.
+Without cookie forwarding, `zero-cache` can start successfully but authenticated
+custom queries stay unresolved.
+
+`zero-cache` stores its SQLite replica in the `cmdclaw_zero_cache_data` Docker
+volume and exposes a health check at `http://127.0.0.1:4848/keepalive`.
+
 The default observability endpoints are:
 
 - `Vector` on `http://127.0.0.1:4318` for OTLP/HTTP metrics and logs, `http://127.0.0.1:5318` for raw OTLP/HTTP traces, `127.0.0.1:4317` for OTLP/gRPC metrics and logs, and `http://127.0.0.1:8686/logs` for JSON logs

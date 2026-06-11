@@ -95,6 +95,7 @@ function mockAdminSession() {
 
 const INITIAL_ADMIN_PRINCIPAL = {
   userId: "user-1",
+  activeWorkspaceId: "workspace-1",
   email: "admin@example.com",
   image: "/avatar.png",
   name: "Admin User",

@@ -2,7 +2,8 @@ import { isSelfHostedEdition } from "@cmdclaw/core/server/edition";
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { auth } from "@/lib/auth";
+import { getRequestSession } from "@/server/session-auth";
+import { resolveSessionPrincipalWorkspaceId } from "@/server/session-principal-workspace";
 import { isWorktreeAutoLoginConfigured } from "@/lib/worktree-auto-login";
 
 /**
@@ -22,6 +23,7 @@ import { isWorktreeAutoLoginConfigured } from "@/lib/worktree-auto-login";
 
 export interface SessionPrincipal {
   userId: string;
+  activeWorkspaceId: string;
   email: string;
   image: string | null;
   name: string | null;
@@ -44,14 +46,17 @@ export const fetchSessionContext = createServerFn({ method: "GET" }).handler(
   async (): Promise<SessionContext> => {
     const request = getRequest();
     const selfHost = isSelfHostedEdition();
-    const sessionData = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+    const sessionData = await getRequestSession(request.headers);
 
     const user = sessionData?.user ?? null;
     const session = sessionData?.session ?? null;
+    const activeWorkspaceId =
+      user && session ? await resolveSessionPrincipalWorkspaceId(user.id) : null;
     const principal: SessionPrincipal | null =
       user && session
         ? {
             userId: user.id,
+            activeWorkspaceId: activeWorkspaceId ?? "",
             email: user.email,
             image: user.image ?? null,
             name: user.name ?? null,

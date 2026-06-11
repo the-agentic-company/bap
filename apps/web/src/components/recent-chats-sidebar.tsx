@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { hasUnreadConversationResults } from "@/lib/conversation-seen";
 import { cn } from "@/lib/utils";
 import {
+  type ConversationListData as RecentConversationList,
   useConversationList,
   useDeleteConversation,
   useMarkAllConversationsSeen,
@@ -44,25 +45,6 @@ import {
 const RUNNING_CONVERSATION_STATUSES = new Set(["generating"]);
 const HUMAN_INPUT_CONVERSATION_STATUSES = new Set(["awaiting_approval", "awaiting_auth", "paused"]);
 const LOAD_MORE_THRESHOLD_PX = 24;
-
-type ConversationListData = {
-  conversations: Array<{
-    id: string;
-    title: string | null;
-    isPinned: boolean;
-    generationStatus:
-      | "idle"
-      | "generating"
-      | "awaiting_approval"
-      | "awaiting_auth"
-      | "paused"
-      | "complete"
-      | "error";
-    updatedAt: Date;
-    messageCount: number;
-    seenMessageCount: number;
-  }>;
-};
 
 function formatRelativeShort(date: Date) {
   const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
@@ -100,7 +82,7 @@ function HumanInputDot() {
 }
 
 type ConversationRowProps = {
-  conversation: ConversationListData["conversations"][number];
+  conversation: RecentConversationList[number];
   active: boolean;
   onDelete: (id: string) => Promise<void>;
   onPin: (id: string, isPinned: boolean) => Promise<void>;
@@ -213,9 +195,10 @@ function ConversationRow({
 
 type RecentChatsSidebarProps = {
   className?: string;
+  initialConversations?: RecentConversationList;
 };
 
-export function RecentChatsSidebar({ className }: RecentChatsSidebarProps) {
+export function RecentChatsSidebar({ className, initialConversations }: RecentChatsSidebarProps) {
   const t = useGT();
 
   const pathname = usePathname();
@@ -228,8 +211,8 @@ export function RecentChatsSidebar({ className }: RecentChatsSidebarProps) {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useConversationList();
-  const conversationData = rawConversationData as ConversationListData | undefined;
+  } = useConversationList({ initialData: initialConversations });
+  const conversationData = rawConversationData;
   const deleteConversation = useDeleteConversation();
   const markAllConversationsSeenMutation = useMarkAllConversationsSeen();
   const updateConversationPinned = useUpdateConversationPinned();
@@ -413,11 +396,7 @@ export function RecentChatsSidebar({ className }: RecentChatsSidebarProps) {
           onScroll={handleScroll}
           className="min-h-0 flex-1 overflow-y-auto py-2"
         >
-          {isLoading ? (
-            <p className="text-sidebar-foreground/55 px-4 py-3 text-xs">
-              <T>Loading...</T>
-            </p>
-          ) : conversations.length === 0 ? (
+          {conversations.length === 0 && !isLoading ? (
             <p className="text-sidebar-foreground/45 px-4 py-6 text-center text-xs">
               <T>No conversations yet</T>
             </p>

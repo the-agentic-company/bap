@@ -135,6 +135,8 @@ export const env = createEnv({
     NEXT_PUBLIC_CMDCLAW_EDITION: z.enum(["cloud", "selfhost"]).optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().optional(),
+    NEXT_PUBLIC_ZERO_CACHE_URL: z.url().optional(),
+    NEXT_PUBLIC_ZERO_QUERY_URL: z.url().optional(),
   },
 
   /**
@@ -236,6 +238,8 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_CMDCLAW_EDITION ?? process.env.CMDCLAW_EDITION,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_ZERO_CACHE_URL: process.env.NEXT_PUBLIC_ZERO_CACHE_URL,
+    NEXT_PUBLIC_ZERO_QUERY_URL: process.env.NEXT_PUBLIC_ZERO_QUERY_URL,
   },
   onValidationError: (issues) => {
     const formattedIssues = issues.map((issue) => {

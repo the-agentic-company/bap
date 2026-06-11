@@ -72,6 +72,8 @@ import { cn } from "@/lib/utils";
 import { client } from "@/orpc/client";
 import {
   useCreateCoworker,
+  type CoworkerListData,
+  type CoworkerTagListData,
   useCoworkerList,
   useCoworkerViewList,
   useDeleteCoworker,
@@ -86,27 +88,8 @@ import { AppImage as Image } from "../-lib/app-image";
 import { AppLink as Link } from "../-lib/app-link";
 import { useRouter } from "../-lib/next-navigation-compat";
 
-type CoworkerItem = {
-  id: string;
-  name?: string | null;
-  username?: string | null;
-  description?: string | null;
-  status: "on" | "off";
-  triggerType: string;
-  toolAccessMode: CoworkerToolAccessMode;
-  allowedIntegrations?: IntegrationType[];
-  allowedSkillSlugs?: string[];
-  recentRuns?: {
-    id: string;
-    status: string;
-    startedAt?: Date | string | null;
-    conversationId?: string | null;
-    source?: string;
-  }[];
-  isPinned?: boolean;
-  sharedAt?: Date | string | null;
-  tags?: { id: string; name: string; color: string | null }[];
-};
+export type CoworkerItem = CoworkerListData[number];
+const EMPTY_INITIAL_COWORKERS: CoworkerListData = [];
 
 type SharedCoworkerItem = {
   id: string;
@@ -180,7 +163,11 @@ function getTriggerLabel(triggerType: string) {
 }
 
 function buildToolSummary(
-  coworker: Pick<CoworkerItem, "toolAccessMode" | "allowedIntegrations" | "allowedSkillSlugs">,
+  coworker: {
+    toolAccessMode: CoworkerToolAccessMode;
+    allowedIntegrations?: IntegrationType[];
+    allowedSkillSlugs?: string[];
+  },
   connectedIntegrationTypes: IntegrationType[],
 ) {
   const integrationTypes =
@@ -329,12 +316,23 @@ function SharedCoworkerCard({
   );
 }
 
-export default function CoworkersPage() {
+export default function CoworkersPage({
+  initialCoworkerSharedCount = 0,
+  initialCoworkerTags,
+  initialCoworkerTotalCount = 0,
+  initialCoworkers,
+}: {
+  initialCoworkerSharedCount?: number;
+  initialCoworkerTags?: CoworkerTagListData;
+  initialCoworkerTotalCount?: number;
+  initialCoworkers?: CoworkerListData;
+}) {
   const t = useGT();
   const m = useMessages();
 
   const router = useRouter();
-  const { data: coworkers, isLoading } = useCoworkerList();
+  const initialCoworkerList = initialCoworkers ?? EMPTY_INITIAL_COWORKERS;
+  const { data: coworkers, isLoading } = useCoworkerList({ initialData: initialCoworkerList });
   const { data: sharedCoworkers } = useSharedCoworkerList();
   const { data: integrations } = useIntegrationList();
   const { data: providerAuthStatus } = useProviderAuthStatus();
@@ -437,6 +435,7 @@ export default function CoworkersPage() {
       }),
     );
   }, [coworkers]);
+  const visibleCoworkerCount = Math.max(initialCoworkerTotalCount, coworkerList.length);
   const connectedIntegrationTypes = useMemo(
     () =>
       (integrations ?? []).flatMap((entry) =>
@@ -464,8 +463,9 @@ export default function CoworkersPage() {
     [sharedCoworkers],
   );
   const sharedByMeCount = useMemo(
-    () => coworkerList.filter((c) => c.sharedAt != null).length,
-    [coworkerList],
+    () =>
+      Math.max(initialCoworkerSharedCount, coworkerList.filter((c) => c.sharedAt != null).length),
+    [coworkerList, initialCoworkerSharedCount],
   );
   const currentFilters = useMemo(
     () => ({
@@ -753,11 +753,7 @@ export default function CoworkersPage() {
       </div>
       */}
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" />
-        </div>
-      ) : coworkerList.length === 0 && !searchQuery.trim() ? (
+      {coworkerList.length === 0 && !searchQuery.trim() && !isLoading ? (
         <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
           <Image src="/tools/lobster.svg" alt="" width={64} height={64} className="mb-6" />
           <h2 className="text-foreground mb-1.5 text-center text-xl font-semibold tracking-tight">
@@ -788,7 +784,7 @@ export default function CoworkersPage() {
               <h2 className="flex items-center gap-2 text-base font-semibold tracking-tight">
                 <T>My coworkers</T>
                 <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium tabular-nums">
-                  {coworkerList.length}
+                  {visibleCoworkerCount}
                 </span>
               </h2>
               <Link
@@ -948,6 +944,7 @@ export default function CoworkersPage() {
             onSelectView={handleSelectView}
             currentFilters={currentFilters}
             hasActiveFilters={hasActiveFilters}
+            initialTags={initialCoworkerTags}
             selectedTagIds={selectedTagIds}
             onToggleTag={handleToggleTagFilter}
             onClearAll={handleClearAllFilters}

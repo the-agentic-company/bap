@@ -1,13 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getRequestMock, getSessionMock, isSelfHostedEditionMock, redirectMock } = vi.hoisted(
-  () => ({
-    getRequestMock: vi.fn<() => Request>(),
-    getSessionMock: vi.fn<() => Promise<unknown>>(),
-    isSelfHostedEditionMock: vi.fn<() => boolean>(),
-    redirectMock: vi.fn<(options: unknown) => never>(),
-  }),
-);
+process.env.BETTER_AUTH_SECRET ??= "test-better-auth-secret";
+process.env.DATABASE_URL ??= "postgresql://postgres:postgres@localhost:5432/cmdclaw";
+process.env.REDIS_URL ??= "redis://localhost:6379";
+process.env.OPENAI_API_KEY ??= "test-openai-key";
+process.env.SANDBOX_DEFAULT ??= "docker";
+process.env.ENCRYPTION_KEY ??= "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+process.env.CMDCLAW_SERVER_SECRET ??= "test-server-secret";
+process.env.AWS_ENDPOINT_URL ??= "http://localhost:4566";
+process.env.AWS_ACCESS_KEY_ID ??= "test";
+process.env.AWS_SECRET_ACCESS_KEY ??= "test";
+
+const {
+  getRequestMock,
+  getRequestSessionMock,
+  isSelfHostedEditionMock,
+  redirectMock,
+  resolveSessionPrincipalWorkspaceIdMock,
+} = vi.hoisted(() => ({
+  getRequestMock: vi.fn<() => Request>(),
+  getRequestSessionMock: vi.fn<() => Promise<unknown>>(),
+  isSelfHostedEditionMock: vi.fn<() => boolean>(),
+  redirectMock: vi.fn<(options: unknown) => never>(),
+  resolveSessionPrincipalWorkspaceIdMock: vi.fn<(userId: string) => Promise<string>>(),
+}));
+
+vi.mock("@/server/session-principal-workspace", () => ({
+  resolveSessionPrincipalWorkspaceId: resolveSessionPrincipalWorkspaceIdMock,
+}));
 
 vi.mock("@cmdclaw/core/server/edition", () => ({
   isSelfHostedEdition: isSelfHostedEditionMock,
@@ -27,12 +47,8 @@ vi.mock("@tanstack/react-start/server", () => ({
   getRequest: getRequestMock,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      getSession: getSessionMock,
-    },
-  },
+vi.mock("@/server/session-auth", () => ({
+  getRequestSession: getRequestSessionMock,
 }));
 
 import {
@@ -43,7 +59,7 @@ import {
 } from "./route-guards";
 
 function mockSession(role: string | null = null) {
-  getSessionMock.mockResolvedValue({
+  getRequestSessionMock.mockResolvedValue({
     user: {
       id: "user-1",
       email: "admin@example.com",
@@ -60,7 +76,8 @@ describe("route guards", () => {
     vi.clearAllMocks();
     delete process.env.CMDCLAW_INSTANCE_ROOT;
     getRequestMock.mockReturnValue(new Request("http://localhost:3000/chat"));
-    getSessionMock.mockResolvedValue(null);
+    getRequestSessionMock.mockResolvedValue(null);
+    resolveSessionPrincipalWorkspaceIdMock.mockResolvedValue("workspace-1");
     isSelfHostedEditionMock.mockReturnValue(false);
     redirectMock.mockImplementation((options: unknown) => {
       throw options;
@@ -73,6 +90,7 @@ describe("route guards", () => {
     await expect(fetchSessionContext()).resolves.toEqual({
       principal: {
         userId: "user-1",
+        activeWorkspaceId: "workspace-1",
         email: "admin@example.com",
         image: null,
         name: null,
@@ -82,6 +100,7 @@ describe("route guards", () => {
       isAdmin: true,
       worktreeAutoLoginConfigured: false,
     });
+    expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1");
   });
 
   it("redirects unauthenticated protected routes to login with callback", async () => {
@@ -104,6 +123,7 @@ describe("route guards", () => {
     await expect(requireSession("/settings")).resolves.toMatchObject({
       principal: {
         userId: "user-1",
+        activeWorkspaceId: "workspace-1",
       },
     });
   });

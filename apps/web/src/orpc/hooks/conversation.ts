@@ -1,8 +1,9 @@
 import type { InfiniteData } from "@tanstack/react-query";
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { mapZeroConversationDetail, mapZeroConversationList } from "@/zero/chat-data";
+import { useCmdClawZeroRuntime } from "@/zero/provider";
 import { zeroQueries } from "@/zero/queries";
 import { client } from "../client";
 
@@ -23,6 +24,17 @@ type DeleteConversationMutationContext = {
   previousConversation: unknown;
   previousConversationUsage: unknown;
 };
+export type ConversationListData = ReturnType<typeof mapZeroConversationList>;
+const conversationListCache = new Map<string, ConversationListData>();
+
+function getZeroRuntimeCacheKey(
+  runtime: { userId: string | null; workspaceId: string },
+  limit: number,
+) {
+  return runtime.userId && runtime.workspaceId
+    ? `${runtime.userId}:${runtime.workspaceId}:${limit}`
+    : null;
+}
 
 function isConversationListInfiniteData(
   data: ConversationListCacheData | undefined,
@@ -67,49 +79,94 @@ function removeConversationFromConversationListData(
 }
 
 // Hook for listing conversations
-export function useConversationList(options?: { limit?: number }) {
+export function useConversationList(options?: {
+  initialData?: ConversationListData;
+  limit?: number;
+}) {
+  const zeroRuntime = useCmdClawZeroRuntime();
+  const limit = options?.limit ?? 50;
+  const initialData = options?.initialData;
   const [conversations, details] = useZeroQuery(
-    zeroQueries.conversations.recent({ limit: options?.limit ?? 50 }),
+    zeroRuntime.isReady ? zeroQueries.conversations.recent({ limit }) : null,
   );
-  const data = useMemo(
-    () => ({
-      conversations: mapZeroConversationList(conversations ?? []),
-    }),
+  const cacheKey = getZeroRuntimeCacheKey(zeroRuntime, limit);
+  const mappedConversations = useMemo(
+    () => mapZeroConversationList(conversations ?? []),
     [conversations],
   );
-  const isLoading = details.type !== "complete" && data.conversations.length === 0;
+  useEffect(() => {
+    if (cacheKey && initialData && initialData.length > 0 && !conversationListCache.has(cacheKey)) {
+      conversationListCache.set(cacheKey, initialData);
+    }
+  }, [cacheKey, initialData]);
+  useEffect(() => {
+    if (cacheKey && (mappedConversations.length > 0 || details.type === "complete")) {
+      conversationListCache.set(cacheKey, mappedConversations);
+    }
+  }, [cacheKey, details.type, mappedConversations]);
+  const cachedConversations = cacheKey ? conversationListCache.get(cacheKey) : undefined;
+  const conversationList =
+    mappedConversations.length > 0 || details.type === "complete"
+      ? mappedConversations
+      : (cachedConversations ?? initialData ?? mappedConversations);
+  const data = useMemo(
+    () => ({
+      conversations: conversationList,
+    }),
+    [conversationList],
+  );
+  const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const isLoading =
+    !error &&
+    data.conversations.length === 0 &&
+    !cachedConversations &&
+    !(initialData && initialData.length > 0) &&
+    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
 
   return {
     dataUpdatedAt: Date.now(),
-    error: details.type === "error" ? details.error : null,
+    error,
     fetchNextPage: async () => undefined,
     hasNextPage: false,
-    isError: details.type === "error",
-    isFetching: details.type !== "complete",
+    isError: Boolean(error),
+    isFetching:
+      !error &&
+      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
     isFetchingNextPage: false,
     isLoading,
     isPending: isLoading,
     refetch: async () => ({ data }),
-    status: details.type === "error" ? "error" : isLoading ? "pending" : "success",
+    status: error ? "error" : isLoading ? "pending" : "success",
     data,
   };
 }
 
 export function useConversation(id: string | undefined) {
-  const [conversation, details] = useZeroQuery(id ? zeroQueries.conversations.byId({ id }) : null);
+  const zeroRuntime = useCmdClawZeroRuntime();
+  const [conversation, details] = useZeroQuery(
+    zeroRuntime.isReady && id ? zeroQueries.conversations.byId({ id }) : null,
+  );
   const data = useMemo(() => mapZeroConversationDetail(conversation), [conversation]);
-  const isLoading = Boolean(id) && details.type !== "complete" && !data;
+  const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const isLoading =
+    Boolean(id) &&
+    !error &&
+    !data &&
+    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
 
   return {
     data,
     dataUpdatedAt: Date.now(),
-    error: details.type === "error" ? details.error : null,
-    isError: details.type === "error",
-    isFetching: Boolean(id) && details.type !== "complete",
+    error,
+    isError: Boolean(error),
+    isFetching:
+      Boolean(id) &&
+      !error &&
+      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
     isLoading,
     isPending: isLoading,
     refetch: async () => ({ data }),
-    status: details.type === "error" ? "error" : isLoading ? "pending" : "success",
+    status: error ? "error" : isLoading ? "pending" : "success",
   };
 }
 

@@ -6,6 +6,7 @@ import { SessionPrincipalCacheGuard } from "@/components/session-principal-cache
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env";
 import { ORPCProvider } from "@/orpc/provider";
+import { CmdClawZeroProvider } from "@/zero/provider";
 
 const isSelfHostedEdition = env.NEXT_PUBLIC_CMDCLAW_EDITION === "selfhost";
 
@@ -69,14 +70,19 @@ export function AppRootShell({
 }) {
   return (
     <PostHogClientProvider>
-      <ORPCProvider>
-        <BillingProviderWrapper>
-          <SessionPrincipalCacheGuard />
-          <AppShellRouteWrapper initialHasSession={hasSession} initialPrincipal={initialPrincipal}>
-            {children}
-          </AppShellRouteWrapper>
-          <Toaster />
-        </BillingProviderWrapper>
+      <ORPCProvider syncSessionUser={false}>
+        <CmdClawZeroProvider hasSession={hasSession} principal={initialPrincipal}>
+          <BillingProviderWrapper>
+            <SessionPrincipalCacheGuard />
+            <AppShellRouteWrapper
+              initialHasSession={hasSession}
+              initialPrincipal={initialPrincipal}
+            >
+              {children}
+            </AppShellRouteWrapper>
+            <Toaster />
+          </BillingProviderWrapper>
+        </CmdClawZeroProvider>
       </ORPCProvider>
     </PostHogClientProvider>
   );

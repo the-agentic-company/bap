@@ -19,13 +19,15 @@ polling to Zero reads — no long-lived dual read path.
 
 ## Scope (what Zero owns)
 
-- **Synced tables:** `conversation`, `message`, `coworker`, `coworkerFolder`,
-  `coworkerTag`, and `workspaceMember` (replicated for permission checks only, hidden
-  from clients by a read rule).
+- **Synced tables:** `conversation`, `message`, `coworker`, `coworkerRun`,
+  `coworkerFolder`, `coworkerTag`, `coworkerTagAssignment`, and `workspaceMember`
+  (replicated for permission checks only, hidden from clients by a read rule).
 - **Explicitly NOT synced:** `generation` (holds `pendingAuth`/`debugInfo`/`sandboxId`;
-  Zero has no column-level permissions, so the whole row would leak). List-level run
-  state comes from `conversation.generationStatus` + `currentGenerationId`; live
-  generation detail stays on the existing **SSE + Redis** stream.
+  Zero has no column-level permissions, so the whole row would leak). List-level chat
+  run state comes from `conversation.generationStatus` + `currentGenerationId`.
+  Coworker run list rows sync only list-safe columns from `coworkerRun`, excluding
+  trigger payloads, debug info, raw errors, and runtime details. Live generation detail
+  stays on the existing **SSE + Redis** stream.
 - **Stays on oRPC:** starting generations, integrations/OAuth, provider tokens,
   billing, sandbox control — anything with secrets, heavy side effects, or
   non-idempotent external calls.

@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
+  type CoworkerTagListData,
   useCoworkerTagList,
   useCoworkerViewList,
   useCreateCoworkerView,
@@ -28,6 +29,7 @@ type ViewTabsProps = {
   onSelectView: (viewId: string | null) => void;
   currentFilters: ViewFilters;
   hasActiveFilters: boolean;
+  initialTags?: CoworkerTagListData;
   selectedTagIds: Set<string>;
   onToggleTag: (tagId: string) => void;
   onClearAll: () => void;
@@ -44,13 +46,14 @@ export function ViewTabs({
   onSelectView,
   currentFilters,
   hasActiveFilters,
+  initialTags,
   selectedTagIds,
   onToggleTag,
   onClearAll,
 }: ViewTabsProps) {
   const t = useGT();
 
-  const { data: tags } = useCoworkerTagList();
+  const { data: tags } = useCoworkerTagList({ initialData: initialTags });
   const { data: views } = useCoworkerViewList();
   const createView = useCreateCoworkerView();
   const updateView = useUpdateCoworkerView();

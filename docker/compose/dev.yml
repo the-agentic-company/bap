@@ -3,10 +3,11 @@ name: ${CMDCLAW_COMPOSE_PROJECT:-cmdclaw-local}
 services:
   database:
     image: pgvector/pgvector:pg16
+    command: ["postgres", "-c", "wal_level=logical"]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-${DB_PASSWORD:-}}
-      POSTGRES_DB: cmdclaw
+      POSTGRES_DB: ${CMDCLAW_POSTGRES_DB:-cmdclaw}
     ports:
       - "${CMDCLAW_POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -17,6 +18,33 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  zero-cache:
+    image: rocicorp/zero:1.6.2
+    ports:
+      - "${CMDCLAW_ZERO_CACHE_PORT:-4848}:4848"
+    stop_grace_period: 10m
+    environment:
+      ZERO_UPSTREAM_DB: postgresql://postgres:${DATABASE_PASSWORD:-${DB_PASSWORD:-}}@database:5432/${CMDCLAW_POSTGRES_DB:-cmdclaw}
+      ZERO_CVR_DB: postgresql://postgres:${DATABASE_PASSWORD:-${DB_PASSWORD:-}}@database:5432/${CMDCLAW_POSTGRES_DB:-cmdclaw}
+      ZERO_CHANGE_DB: postgresql://postgres:${DATABASE_PASSWORD:-${DB_PASSWORD:-}}@database:5432/${CMDCLAW_POSTGRES_DB:-cmdclaw}
+      ZERO_REPLICA_FILE: /data/replica.db
+      ZERO_ADMIN_PASSWORD: ${ZERO_ADMIN_PASSWORD:-cmdclaw-local-zero}
+      ZERO_QUERY_URL: ${NEXT_PUBLIC_ZERO_QUERY_URL:-http://host.docker.internal:3000/api/zero/query}
+      ZERO_QUERY_FORWARD_COOKIES: "true"
+      ZERO_ENABLE_CRUD_MUTATIONS: "false"
+    volumes:
+      - cmdclaw_zero_cache_data:/data
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4848/keepalive"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10m
 
   redis:
     image: redis:8-alpine
@@ -453,6 +481,8 @@ volumes:
     name: ${CMDCLAW_REDIS_VOLUME:-cmdclaw-local_cmdclaw_redis_data}
   cmdclaw_minio_data:
     name: ${CMDCLAW_MINIO_VOLUME:-cmdclaw-local_cmdclaw_minio_data}
+  cmdclaw_zero_cache_data:
+    name: ${CMDCLAW_ZERO_CACHE_VOLUME:-cmdclaw-local_cmdclaw_zero_cache_data}
   cmdclaw_victoria_metrics_data:
     name: ${CMDCLAW_VICTORIA_METRICS_VOLUME:-cmdclaw-local_cmdclaw_victoria_metrics_data}
   cmdclaw_victoria_logs_data:

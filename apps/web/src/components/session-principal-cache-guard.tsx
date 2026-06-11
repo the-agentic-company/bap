@@ -43,7 +43,9 @@ export function SessionPrincipalCacheGuard() {
         }
         lastSessionUserIdRef.current = currentUserId;
       } catch (error) {
-        console.error("[Auth] Failed to sync session principal for cache guard", error);
+        if (active) {
+          console.debug("[Auth] Failed to sync session principal for cache guard", error);
+        }
       }
     };
 
