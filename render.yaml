@@ -122,7 +122,6 @@ projects:
             region: frankfurt
             plan: starter
             numInstances: 1
-            maxShutdownDelaySeconds: 300
             image:
               url: rocicorp/zero:1.6.2
             disk:
@@ -598,7 +597,6 @@ projects:
             region: frankfurt
             plan: standard
             numInstances: 1
-            maxShutdownDelaySeconds: 300
             image:
               url: rocicorp/zero:1.6.2
             disk:
