@@ -47,6 +47,27 @@ const SNAPSHOT_ENV_NAMES: Record<SnapshotStage, string> = {
   prod: "DAYTONA_SNAPSHOT_PROD",
 };
 
+const SNAPSHOT_RECREATE_ATTEMPTS = 18;
+const SNAPSHOT_DELETE_CHECKS = 24;
+
+type DaytonaSnapshotClient = {
+  create: Daytona["snapshot"]["create"];
+  get: Daytona["snapshot"]["get"];
+  delete: Daytona["snapshot"]["delete"];
+};
+
+type DaytonaSnapshotOwner = {
+  snapshot: DaytonaSnapshotClient;
+};
+
+type CreateOrReplaceSnapshotOptions = {
+  sleep?: (ms: number) => Promise<void>;
+  recreateAttempts?: number;
+  deleteChecks?: number;
+  recreateDelayMs?: (attempt: number) => number;
+  deleteCheckDelayMs?: (attempt: number) => number;
+};
+
 function readNonEmptyEnv(name: string): string | undefined {
   const value = process.env[name]?.trim();
   return value ? value : undefined;
@@ -108,6 +129,13 @@ function isConflictError(error: unknown): boolean {
   const record = getErrorRecord(error);
   const statusCode = Number(record.statusCode ?? record.response?.status);
   return statusCode === 409 || (record.message ?? "").includes("already exists");
+}
+
+function isNotFoundError(error: unknown): boolean {
+  const record = getErrorRecord(error);
+  const statusCode = Number(record.statusCode ?? record.response?.status);
+  const message = record.message ?? "";
+  return statusCode === 404 || message.includes("not found") || message.includes("Not Found");
 }
 
 function isLocalDaytonaApiUrl(apiUrl?: string): boolean {
@@ -208,7 +236,45 @@ export function formatDaytonaBuildError(error: unknown, apiUrl?: string): string
   ].join(" ");
 }
 
-async function createOrReplaceSnapshot(daytona: Daytona, name: string) {
+function getRecreateDelayMs(attempt: number): number {
+  return Math.min(5_000, 1_000 * attempt);
+}
+
+function getDeleteCheckDelayMs(attempt: number): number {
+  return Math.min(10_000, 2_000 * attempt);
+}
+
+async function waitForSnapshotDeletion(
+  daytona: DaytonaSnapshotOwner,
+  name: string,
+  options: CreateOrReplaceSnapshotOptions,
+) {
+  const sleepFn = options.sleep ?? sleep;
+  const maxChecks = options.deleteChecks ?? SNAPSHOT_DELETE_CHECKS;
+  const getDelayMs = options.deleteCheckDelayMs ?? getDeleteCheckDelayMs;
+
+  for (let attempt = 1; attempt <= maxChecks; attempt++) {
+    await sleepFn(getDelayMs(attempt));
+
+    try {
+      await daytona.snapshot.get(name);
+      console.log(`[daytona] Snapshot "${name}" still exists after delete request; waiting...`);
+    } catch (error) {
+      if (isNotFoundError(error)) {
+        return;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error(`Snapshot "${name}" still exists after waiting for deletion.`);
+}
+
+export async function createOrReplaceSnapshot(
+  daytona: DaytonaSnapshotOwner,
+  name: string,
+  options: CreateOrReplaceSnapshotOptions = {},
+) {
   const tryCreate = async () => {
     console.log(`[daytona] Requesting snapshot build: ${name}`);
     const startedAt = Date.now();
@@ -232,13 +298,13 @@ async function createOrReplaceSnapshot(daytona: Daytona, name: string) {
   };
 
   const retryCreate = async (attempt: number, lastError?: unknown) => {
-    if (attempt > 8) {
+    if (attempt > (options.recreateAttempts ?? SNAPSHOT_RECREATE_ATTEMPTS)) {
       throw new Error(`Unable to recreate snapshot "${name}" after replacement retries.`, {
         cause: lastError,
       });
     }
 
-    await sleep(1_000 * attempt);
+    await (options.sleep ?? sleep)((options.recreateDelayMs ?? getRecreateDelayMs)(attempt));
     try {
       return await tryCreate();
     } catch (retryError) {
@@ -259,6 +325,7 @@ async function createOrReplaceSnapshot(daytona: Daytona, name: string) {
     console.log(`[daytona] Snapshot "${name}" already exists, replacing it...`);
     const existing = await daytona.snapshot.get(name);
     await daytona.snapshot.delete(existing);
+    await waitForSnapshotDeletion(daytona, name, options);
     return retryCreate(1, error);
   }
 }

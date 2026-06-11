@@ -6,11 +6,13 @@ import babel from "@rolldown/plugin-babel";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { fileURLToPath } from "node:url";
+import * as tslibRuntime from "tslib";
 import { defineConfig, type Plugin } from "vite";
 // Validate environment variables at config load (mirrors the old next.config.ts side effect).
 import * as envConfig from "./src/env.js";
 
 void envConfig;
+void tslibRuntime;
 
 // Resolve the `@/*` -> `src/*` alias directly here rather than scanning every workspace
 // tsconfig (vite-tsconfig-paths trips over the monorepo's extended base configs).
@@ -26,6 +28,7 @@ const radixPackagePathPattern =
 const zodPackagePathPattern = /[/\\]node_modules[/\\](?:\.bun[/\\])?zod@?[/\\]/;
 const uiVendorPackagePathPattern =
 	/[/\\]node_modules[/\\](?:\.bun[/\\])?(?:sonner|tailwind-merge|lucide-react|@floating-ui[+/\\])@?[/\\]/;
+const ssrExternalPackages = ["dockerode", "docker-modem", "ssh2", "cpu-features", "tslib"];
 
 // Self-host dev runs on 3001 via `dev:selfhost`, everything else stays on 3000.
 const devPort =
@@ -137,7 +140,7 @@ export default defineConfig(({ isSsrBuild }) => ({
 		],
 	},
 	ssr: {
-		external: ["dockerode", "docker-modem", "ssh2", "cpu-features"],
+		external: ssrExternalPackages,
 	},
 	build: {
 		rollupOptions: {
@@ -158,6 +161,7 @@ export default defineConfig(({ isSsrBuild }) => ({
 		nitro({
 			rollupConfig: {
 				external: [
+					/^tslib$/,
 					/^dockerode$/,
 					/^docker-modem$/,
 					/^ssh2($|\/)/,

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { formatDaytonaBuildError, getSnapshotName, rewriteStorageUrlForHostBuild } from "./build";
+import {
+  createOrReplaceSnapshot,
+  formatDaytonaBuildError,
+  getSnapshotName,
+  rewriteStorageUrlForHostBuild,
+} from "./build";
 
 const originalEnv = {
   CMDCLAW_MINIO_API_PORT: process.env.CMDCLAW_MINIO_API_PORT,
@@ -87,5 +92,47 @@ describe("daytona build helpers", () => {
     expect(
       rewriteStorageUrlForHostBuild("http://minio:9000", "http://localhost:3300/api"),
     ).toBe("http://127.0.0.1:9200");
+  });
+
+  it("waits for snapshot deletion to propagate before recreating a conflicting snapshot", async () => {
+    const calls: string[] = [];
+    let getAttempts = 0;
+    const createdSnapshot = { id: "snapshot-created" };
+    const existingSnapshot = { id: "snapshot-existing" };
+    const daytona = {
+      snapshot: {
+        create: async () => {
+          calls.push("create");
+          if (calls.filter((call) => call === "create").length === 1) {
+            throw { statusCode: 409, message: "Snapshot already exists" };
+          }
+          return createdSnapshot;
+        },
+        get: async () => {
+          calls.push("get");
+          getAttempts++;
+          if (getAttempts === 1) {
+            return existingSnapshot;
+          }
+          if (getAttempts === 2) {
+            return existingSnapshot;
+          }
+          throw { statusCode: 404, message: "not found" };
+        },
+        delete: async () => {
+          calls.push("delete");
+        },
+      },
+    };
+
+    await expect(
+      createOrReplaceSnapshot(daytona, "cmdclaw-agent-staging", {
+        sleep: async () => {},
+        recreateDelayMs: () => 0,
+        deleteCheckDelayMs: () => 0,
+      }),
+    ).resolves.toBe(createdSnapshot);
+
+    expect(calls).toEqual(["create", "get", "delete", "get", "get", "create"]);
   });
 });
