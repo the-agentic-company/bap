@@ -8,7 +8,6 @@ import {
 } from "@/components/coworkers/coworker-card-content";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 export type InboxCoworkerSelectorItem = CoworkerCardData & {
@@ -100,7 +99,10 @@ export function InboxCoworkerSelector({
             {!selectedCoworkerId ? <Check className="size-4 shrink-0" /> : null}
           </button>
 
-          <ScrollArea className="max-h-[420px] pr-1">
+          <div
+            data-testid="inbox-coworker-selector-list"
+            className="max-h-[min(420px,calc(100vh-20rem))] overflow-y-auto pr-1"
+          >
             <div className="space-y-2">
               {coworkers.map((coworker) => (
                 <CoworkerSelectorRow
@@ -111,7 +113,7 @@ export function InboxCoworkerSelector({
                 />
               ))}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -136,7 +138,7 @@ function CoworkerSelectorRow({
       onClick={handleClick}
       data-coworker-id={coworker.id}
       className={cn(
-        "hover:bg-muted/50 relative w-full rounded-xl border p-3 text-left transition-colors",
+        "hover:bg-muted/50 relative flex w-full flex-col gap-3 rounded-xl border p-3 text-left transition-colors",
         selected ? "border-foreground/30 bg-muted/40" : "border-border",
       )}
     >

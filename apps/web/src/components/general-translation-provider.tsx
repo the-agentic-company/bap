@@ -64,6 +64,7 @@ export function GeneralTranslationProvider({ children }: { children: ReactNode }
 
   return (
     <GTProvider
+      environment={import.meta.env.DEV ? "development" : "production"}
       cacheUrl={null}
       defaultLocale={gtConfig.defaultLocale}
       enableI18n
