@@ -42,6 +42,7 @@ const stagingResources: Resource[] = [
   { kind: "service", name: "cmdclaw-s3-staging" },
   { kind: "service", name: "cmdclaw-tailscale-staging" },
   { kind: "service", name: "cmdclaw-postgres-tailscale-staging" },
+  { kind: "service", name: "cmdclaw-zero-cache-staging" },
   { kind: "service", name: "cmdclaw-caddy-staging" },
   { kind: "service", name: "cmdclaw-caddy-tailscale-staging" },
   { kind: "service", name: "cmdclaw-victoria-metrics-staging" },

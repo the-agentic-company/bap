@@ -95,6 +95,10 @@ workflow expects these names to exist:
 - staging: `cmdclaw-web-staging`, `cmdclaw-worker-staging`, `cmdclaw-mcp-staging`
 - prod: `cmdclaw-web-prod`, `cmdclaw-worker-prod`, `cmdclaw-mcp-prod`
 
+Stateful infrastructure such as `cmdclaw-zero-cache-staging` and
+`cmdclaw-zero-cache-prod` is managed by the Render blueprint rather than the
+per-commit deploy workflow because it uses a pinned prebuilt image.
+
 Staging is intentionally on-demand. The `staging-resume` job starts every
 staging Render resource listed in `scripts/release/render-staging-lifecycle.ts`
 before migrations and deployment. The `staging-suspend` job runs with
