@@ -40,8 +40,7 @@ projects:
         databases:
           - name: cmdclaw-postgres-staging
             region: frankfurt
-            plan: pro-4gb
-            diskSizeGB: 100
+            plan: basic-256mb
             postgresMajorVersion: "18"
             ipAllowList: []
 
@@ -384,6 +383,7 @@ projects:
             region: frankfurt
             plan: starter
             numInstances: 1
+            autoDeployTrigger: "off"
             dockerContext: .
             dockerfilePath: docker/images/web/Dockerfile
             dockerCommand: node .output/server/index.mjs
@@ -440,6 +440,7 @@ projects:
             region: frankfurt
             plan: standard
             numInstances: 1
+            autoDeployTrigger: "off"
             dockerContext: .
             dockerfilePath: docker/images/mcp/Dockerfile
             healthCheckPath: /
@@ -466,6 +467,7 @@ projects:
             region: frankfurt
             plan: starter
             numInstances: 1
+            autoDeployTrigger: "off"
             dockerContext: .
             dockerfilePath: docker/images/worker/Dockerfile
             dockerCommand: bun dist/index.js
@@ -515,8 +517,7 @@ projects:
         databases:
           - name: cmdclaw-postgres-prod
             region: frankfurt
-            plan: pro-4gb
-            diskSizeGB: 100
+            plan: basic-1gb
             postgresMajorVersion: "18"
             ipAllowList: []
 
@@ -859,6 +860,7 @@ projects:
             region: frankfurt
             plan: standard
             numInstances: 1
+            autoDeployTrigger: "off"
             dockerContext: .
             dockerfilePath: docker/images/web/Dockerfile
             dockerCommand: node .output/server/index.mjs
@@ -915,6 +917,7 @@ projects:
             region: frankfurt
             plan: standard
             numInstances: 1
+            autoDeployTrigger: "off"
             dockerContext: .
             dockerfilePath: docker/images/mcp/Dockerfile
             healthCheckPath: /
@@ -941,6 +944,7 @@ projects:
             region: frankfurt
             plan: standard
             numInstances: 1
+            autoDeployTrigger: "off"
             dockerContext: .
             dockerfilePath: docker/images/worker/Dockerfile
             dockerCommand: bun dist/index.js
