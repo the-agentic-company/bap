@@ -2,7 +2,8 @@ import { vite as gtCompiler } from "@generaltranslation/compiler";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
@@ -171,10 +172,9 @@ export default defineConfig(({ isSsrBuild }) => ({
 		// We own @vitejs/plugin-react (TanStack Start does not bundle it), which is where
 		// React Fast Refresh AND the React Compiler run. React Compiler MUST stay enabled in
 		// the Vite build — this is a hard migration requirement.
-		react({
-			babel: {
-				plugins: [["babel-plugin-react-compiler", {}]],
-			},
+		react(),
+		babel({
+			presets: [reactCompilerPreset()],
 		}),
 	],
 }));
