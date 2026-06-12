@@ -219,6 +219,7 @@
       "dependencies": {
         "@cmdclaw/core": "workspace:*",
         "@cmdclaw/db": "workspace:*",
+        "@cmdclaw/sandbox": "workspace:*",
       },
     },
     "apps/worktree": {
