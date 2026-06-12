@@ -11,7 +11,7 @@ test("renders login screen controls", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Log in" })).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue with Apple" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue with Apple" })).toBeHidden();
   await expect(page.getByRole("button", { name: "Magic link" })).toBeVisible();
 });
 
