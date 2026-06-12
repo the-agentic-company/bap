@@ -7,7 +7,7 @@ COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
 RUN bun --version && node --version
 COPY . .
-RUN bun x turbo prune --scope=@cmdclaw/web --docker --out-dir /tmp/pruned
+RUN bun x turbo prune @cmdclaw/web --docker --out-dir /tmp/pruned
 RUN bun -e 'const fs = require("fs"); for (const path of ["/tmp/pruned/json/package.json", "/tmp/pruned/full/package.json"]) { const pkg = JSON.parse(fs.readFileSync(path, "utf8")); pkg.workspaces = pkg.workspaces.filter((entry) => entry !== "docs"); fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`); }'
 RUN mkdir -p /tmp/pruned/full/packages/config
 RUN cp -R /app/packages/config/. /tmp/pruned/full/packages/config/
