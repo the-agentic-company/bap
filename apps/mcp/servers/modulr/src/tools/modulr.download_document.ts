@@ -90,7 +90,7 @@ export default async function downloadDocument(
       sizeBytes: byteLength,
       exp: Math.floor(Date.now() / 1000) + DOWNLOAD_URL_TTL_SECONDS,
     },
-    env.CMDCLAW_SERVER_SECRET,
+    env.APP_SERVER_SECRET,
   );
   const downloadUrl = await buildDownloadUrl(token);
 

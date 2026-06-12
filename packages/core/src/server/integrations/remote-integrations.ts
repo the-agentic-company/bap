@@ -107,9 +107,9 @@ function getRemoteTargetBaseUrl(targetEnv: RemoteIntegrationTargetEnv): string {
 }
 
 function requireRemoteIntegrationSecret(): string {
-  const secret = env.CMDCLAW_SERVER_SECRET?.trim();
+  const secret = env.APP_SERVER_SECRET?.trim();
   if (!secret) {
-    throw new Error("CMDCLAW_SERVER_SECRET is not configured");
+    throw new Error("APP_SERVER_SECRET is not configured");
   }
   return secret;
 }

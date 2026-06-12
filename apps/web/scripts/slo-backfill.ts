@@ -314,7 +314,7 @@ async function run(): Promise<void> {
     const samples = buildCumulativeSloSamples(rawBuckets, window);
     const rows = renderPrometheusImportRows(samples);
     await importSloBucketsToVictoriaMetrics(rows, {
-      victoriaMetricsUrl: process.env.CMDCLAW_VICTORIA_METRICS_URL,
+      victoriaMetricsUrl: process.env.APP_VICTORIA_METRICS_URL,
     });
 
     const eventCount = rawBuckets.reduce((total, bucket) => total + parseCount(bucket.count), 0);

@@ -1,11 +1,11 @@
 apiVersion: pyrra.dev/v1alpha1
 kind: ServiceLevelObjective
 metadata:
-  name: cmdclaw-chat-success
-  namespace: cmdclaw
+  name: app-chat-success
+  namespace: app
   labels:
     pyrra.dev/team: product
-    pyrra.dev/service: cmdclaw
+    pyrra.dev/service: app
     pyrra.dev/journey: chat
 spec:
   target: "95"
@@ -14,9 +14,9 @@ spec:
   indicator:
     ratio:
       errors:
-        metric: cmdclaw_slo_events_total{journey="chat",result="bad"}
+        metric: app_slo_events_total{journey="chat",result="bad"}
       total:
-        metric: cmdclaw_slo_events_total{journey="chat"}
+        metric: app_slo_events_total{journey="chat"}
   alerting:
     disabled: true
     absent: false

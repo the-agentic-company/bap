@@ -17,9 +17,9 @@ on:
         type: boolean
         default: true
     secrets:
-      CMDCLAW_SERVER_SECRET:
+      APP_SERVER_SECRET:
         required: true
-      CMDCLAW_DEFAULT_USER_EMAIL:
+      APP_DEFAULT_USER_EMAIL:
         required: false
       DATABASE_URL_PROD:
         required: false
@@ -69,9 +69,9 @@ jobs:
 
       - name: Run CLI live checks
         env:
-          CMDCLAW_DEFAULT_USER_EMAIL: ${{ secrets.CMDCLAW_DEFAULT_USER_EMAIL }}
-          CMDCLAW_SERVER_SECRET: ${{ secrets.CMDCLAW_SERVER_SECRET }}
-          CMDCLAW_SERVER_URL: ${{ inputs.base_url }}
+          APP_DEFAULT_USER_EMAIL: ${{ secrets.APP_DEFAULT_USER_EMAIL }}
+          APP_SERVER_SECRET: ${{ secrets.APP_SERVER_SECRET }}
+          APP_SERVER_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
         run: bun run --cwd apps/web test:e2e:cli:live
@@ -79,9 +79,9 @@ jobs:
       - name: Run conversation and workflow replay
         if: ${{ inputs.run_replay }}
         env:
-          CMDCLAW_DEFAULT_USER_EMAIL: ${{ secrets.CMDCLAW_DEFAULT_USER_EMAIL }}
-          CMDCLAW_SERVER_SECRET: ${{ secrets.CMDCLAW_SERVER_SECRET }}
-          CMDCLAW_SERVER_URL: ${{ inputs.base_url }}
+          APP_DEFAULT_USER_EMAIL: ${{ secrets.APP_DEFAULT_USER_EMAIL }}
+          APP_SERVER_SECRET: ${{ secrets.APP_SERVER_SECRET }}
+          APP_SERVER_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
           RELEASE_REPLAY_FILE: ${{ secrets.RELEASE_REPLAY_FILE }}
         shell: bash

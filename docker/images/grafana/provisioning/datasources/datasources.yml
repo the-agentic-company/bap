@@ -5,7 +5,7 @@ datasources:
     type: prometheus
     uid: victoriametrics
     access: proxy
-    url: http://${CMDCLAW_VICTORIA_METRICS_HOST}:8428
+    url: http://${APP_VICTORIA_METRICS_HOST}:8428
     isDefault: true
     editable: false
     jsonData:
@@ -20,7 +20,7 @@ datasources:
     type: victoriametrics-logs-datasource
     uid: victorialogs
     access: proxy
-    url: http://${CMDCLAW_VICTORIA_LOGS_HOST}:9428
+    url: http://${APP_VICTORIA_LOGS_HOST}:9428
     editable: false
     jsonData:
       logLevelRules:
@@ -44,7 +44,7 @@ datasources:
     type: jaeger
     uid: victoriatraces
     access: proxy
-    url: http://${CMDCLAW_VICTORIA_TRACES_HOST}:10428/select/jaeger
+    url: http://${APP_VICTORIA_TRACES_HOST}:10428/select/jaeger
     editable: false
     jsonData:
       nodeGraph:
@@ -56,7 +56,7 @@ datasources:
     type: alertmanager
     uid: alertmanager
     access: proxy
-    url: http://${CMDCLAW_ALERTMANAGER_HOST}:9093
+    url: http://${APP_ALERTMANAGER_HOST}:9093
     editable: false
     jsonData:
       implementation: prometheus

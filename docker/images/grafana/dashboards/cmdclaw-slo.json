@@ -82,7 +82,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "1 - (sum(increase(cmdclaw_slo_events_total{journey=\"global\",result=\"bad\"}[30d])) / sum(increase(cmdclaw_slo_events_total{journey=\"global\"}[30d])))",
+          "expr": "1 - (sum(increase(app_slo_events_total{journey=\"global\",result=\"bad\"}[30d])) / sum(increase(app_slo_events_total{journey=\"global\"}[30d])))",
           "legendFormat": "global",
           "refId": "A"
         }
@@ -151,7 +151,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "1 - (sum by (journey) (increase(cmdclaw_slo_events_total{result=\"bad\"}[30d])) / sum by (journey) (increase(cmdclaw_slo_events_total[30d])))",
+          "expr": "1 - (sum by (journey) (increase(app_slo_events_total{result=\"bad\"}[30d])) / sum by (journey) (increase(app_slo_events_total[30d])))",
           "legendFormat": "{{journey}}",
           "refId": "A"
         }
@@ -205,7 +205,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (journey) (increase(cmdclaw_slo_events_total{result=\"bad\"}[30d])) / sum by (journey) (increase(cmdclaw_slo_events_total[30d]))",
+          "expr": "sum by (journey) (increase(app_slo_events_total{result=\"bad\"}[30d])) / sum by (journey) (increase(app_slo_events_total[30d]))",
           "legendFormat": "{{journey}}",
           "refId": "A"
         }
@@ -259,7 +259,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (journey) (rate(cmdclaw_slo_events_total{result=\"bad\"}[1d1h43m])) / sum by (journey) (rate(cmdclaw_slo_events_total[1d1h43m])) / 0.05",
+          "expr": "sum by (journey) (rate(app_slo_events_total{result=\"bad\"}[1d1h43m])) / sum by (journey) (rate(app_slo_events_total[1d1h43m])) / 0.05",
           "legendFormat": "{{journey}}",
           "refId": "A"
         }
@@ -324,7 +324,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (journey, result) (increase(cmdclaw_slo_events_total[30d]))",
+          "expr": "sum by (journey, result) (increase(app_slo_events_total[30d]))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{journey}} {{result}}",
@@ -339,7 +339,7 @@
   "refresh": "30s",
   "schemaVersion": 41,
   "tags": [
-    "cmdclaw",
+    "app",
     "slo"
   ],
   "templating": {
@@ -351,7 +351,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "CmdClaw SLOs",
-  "uid": "cmdclaw-slo",
+  "title": "App SLOs",
+  "uid": "app-slo",
   "version": 1
 }

@@ -59,15 +59,15 @@ function getPublicAppBaseUrl(): string {
   return (
     process.env.APP_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.CMDCLAW_SERVER_URL ??
+    process.env.APP_SERVER_URL ??
     `http://localhost:${process.env.PORT ?? 3000}`
   );
 }
 
 function getDownloadSecret(): string {
-  const secret = process.env.CMDCLAW_SERVER_SECRET ?? process.env.BETTER_AUTH_SECRET;
+  const secret = process.env.APP_SERVER_SECRET ?? process.env.BETTER_AUTH_SECRET;
   if (!secret) {
-    throw new Error("CMDCLAW_SERVER_SECRET or BETTER_AUTH_SECRET must be configured");
+    throw new Error("APP_SERVER_SECRET or BETTER_AUTH_SECRET must be configured");
   }
   return secret;
 }

@@ -116,7 +116,7 @@ export async function resolveRuntimeEnvironmentForTurn(
         ? JSON.stringify(input.remoteIntegrationSource)
         : undefined,
       CMDCLAW_USER_ID: input.userId,
-      CMDCLAW_SERVER_SECRET: env.CMDCLAW_SERVER_SECRET || "",
+      APP_SERVER_SECRET: env.APP_SERVER_SECRET || "",
       CONVERSATION_ID: input.conversationId,
     },
     userTimezone: dbUser?.timezone ?? null,

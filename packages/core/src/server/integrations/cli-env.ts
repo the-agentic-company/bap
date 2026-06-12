@@ -149,7 +149,7 @@ export async function getCliEnvForUser(userId: string): Promise<Record<string, s
   }
 
   // Slack bot relay config (keeps SLACK_BOT_TOKEN server-side only)
-  const slackRelaySecret = env.SLACK_BOT_RELAY_SECRET ?? env.CMDCLAW_SERVER_SECRET;
+  const slackRelaySecret = env.SLACK_BOT_RELAY_SECRET ?? env.APP_SERVER_SECRET;
   if (slackRelaySecret) {
     cliEnv.SLACK_BOT_RELAY_SECRET = slackRelaySecret;
   }

@@ -96,7 +96,7 @@ export async function authenticateHostedMcpRequest(params: {
 
   try {
     const claims = await verifyHostedMcpAccessToken(token, {
-      secret: process.env.CMDCLAW_SERVER_SECRET ?? "",
+      secret: process.env.APP_SERVER_SECRET ?? "",
       expectedAudience: params.requiredAudience,
     });
     const scopes = claims.scope;
@@ -122,7 +122,7 @@ export async function authenticateHostedMcpRequest(params: {
       throw oauthError instanceof Error ? oauthError : new Error("Unauthorized");
     }
 
-    const managedClaims = verifyManagedMcpToken(token, process.env.CMDCLAW_SERVER_SECRET ?? "");
+    const managedClaims = verifyManagedMcpToken(token, process.env.APP_SERVER_SECRET ?? "");
     if (managedClaims.internalKey !== params.requiredAudience) {
       throw new Error("Managed token does not match this MCP audience.");
     }

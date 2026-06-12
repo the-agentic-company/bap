@@ -10,15 +10,15 @@
 	}
 
 	handle_path /zero/* {
-		reverse_proxy http://{$CMDCLAW_ZERO_CACHE_HOST}:4848 {
+		reverse_proxy http://{$APP_ZERO_CACHE_HOST}:4848 {
 			header_up Host {host}
 			header_up X-Forwarded-Proto https
 		}
 	}
 
 	handle {
-		reverse_proxy https://{$CMDCLAW_WEB_HOST} {
-			header_up Host {$CMDCLAW_WEB_HOST}
+		reverse_proxy https://{$APP_WEB_HOST} {
+			header_up Host {$APP_WEB_HOST}
 			header_up X-Forwarded-Proto https
 		}
 	}

@@ -118,33 +118,33 @@ type ObservabilityRuntimeState = {
   instruments: InstrumentRegistry;
 };
 
-const SERVICE_NAMESPACE = "cmdclaw";
-const INSTRUMENTATION_SCOPE = "cmdclaw.observability";
+const SERVICE_NAMESPACE = "app";
+const INSTRUMENTATION_SCOPE = "app.observability";
 const QUEUE_TRACE_CONTEXT_KEY = "__trace_context";
 const DEFAULT_OBSERVABILITY_HOST = "127.0.0.1";
 const ATTR_DEPLOYMENT_ENVIRONMENT = "deployment.environment" as const;
-const ATTR_CMDCLAW_INSTANCE_ID = "cmdclaw_instance_id" as const;
-const ATTR_CMDCLAW_WORKTREE_SLOT = "cmdclaw_worktree_slot" as const;
+const ATTR_APP_INSTANCE_ID = "app_instance_id" as const;
+const ATTR_APP_WORKTREE_SLOT = "app_worktree_slot" as const;
 const TELEMETRY_SCHEMA_VERSION = "2026-05-22";
 const FORBIDDEN_FIELD_PATTERNS = [
   /(^|[._-])(authorization|cookie|password|secret|token|credential|api[_-]?key|oauth[_-]?code)($|[._-])/i,
   /(^|[._-])(prompt|model[_-]?output|request[_-]?body|response[_-]?body|body|content|document|email)($|[._-])/i,
   /(^|[._-])(tool[_-]?(input|result|payload)|file[_-]?contents?)($|[._-])/i,
 ];
-const SAFE_FIELD_PREFIXES = ["cmdclaw.phase."] as const;
+const SAFE_FIELD_PREFIXES = ["app.phase."] as const;
 const MAX_SAFE_ARRAY_ITEMS = 25;
 const MAX_SAFE_STRING_LENGTH = 512;
 
 const globalState = globalThis as typeof globalThis & {
-  __cmdclawObservabilityState?: ObservabilityRuntimeState;
+  __appObservabilityState?: ObservabilityRuntimeState;
 };
 
 const runtimeState: ObservabilityRuntimeState =
-  globalState.__cmdclawObservabilityState ??
+  globalState.__appObservabilityState ??
   (() => {
     const initial = {
       initialized: false,
-      serviceName: "cmdclaw",
+      serviceName: "app",
       env: process.env.NODE_ENV ?? "development",
       vectorLogUrl: `http://${DEFAULT_OBSERVABILITY_HOST}:8686/logs`,
       vectorMetricsUrl: `http://${DEFAULT_OBSERVABILITY_HOST}:4318/v1/metrics`,
@@ -160,7 +160,7 @@ const runtimeState: ObservabilityRuntimeState =
         observableGauges: new Set<string>(),
       },
     } satisfies ObservabilityRuntimeState;
-    globalState.__cmdclawObservabilityState = initial;
+    globalState.__appObservabilityState = initial;
     return initial;
   })();
 
@@ -195,15 +195,19 @@ function buildVectorUrlFromEnv(
 
   const hostport = getValueFromEnvRecord(
     env,
-    "CMDCLAW_VECTOR_HOSTPORT",
-    "CMDCLAW_OBSERVABILITY_HOSTPORT",
+    "APP_VECTOR_HOSTPORT",
+    "APP_OBSERVABILITY_HOSTPORT",
   );
   if (hostport) {
     return `http://${hostport}${path}`;
   }
 
   const host =
-    getValueFromEnvRecord(env, "CMDCLAW_VECTOR_HOST", "CMDCLAW_OBSERVABILITY_HOST") ??
+    getValueFromEnvRecord(
+      env,
+      "APP_VECTOR_HOST",
+      "APP_OBSERVABILITY_HOST",
+    ) ??
     DEFAULT_OBSERVABILITY_HOST;
   const port = getValueFromEnvRecord(env, ...portEnvNames);
   if (port) {
@@ -218,17 +222,17 @@ export function resolveObservabilityVectorUrls(
 ): ObservabilityVectorUrls {
   return {
     logUrl: buildVectorUrlFromEnv("/logs", env, {
-      fullUrlEnvNames: ["CMDCLAW_VECTOR_LOG_URL"],
-      portEnvNames: ["CMDCLAW_VECTOR_LOG_PORT"],
+      fullUrlEnvNames: ["APP_VECTOR_LOG_URL"],
+      portEnvNames: ["APP_VECTOR_LOG_PORT"],
       defaultPort: "8686",
     }),
     metricsUrl: buildVectorUrlFromEnv("/v1/metrics", env, {
-      fullUrlEnvNames: ["CMDCLAW_VECTOR_METRICS_URL"],
-      portEnvNames: ["CMDCLAW_VECTOR_OTLP_HTTP_PORT", "CMDCLAW_OTEL_HTTP_PORT"],
+      fullUrlEnvNames: ["APP_VECTOR_METRICS_URL"],
+      portEnvNames: ["APP_VECTOR_OTLP_HTTP_PORT", "APP_OTEL_HTTP_PORT"],
     }),
     tracesUrl: buildVectorUrlFromEnv("/v1/traces", env, {
-      fullUrlEnvNames: ["CMDCLAW_VECTOR_TRACES_URL"],
-      portEnvNames: ["CMDCLAW_VECTOR_TRACES_PORT"],
+      fullUrlEnvNames: ["APP_VECTOR_TRACES_URL"],
+      portEnvNames: ["APP_VECTOR_TRACES_PORT"],
       defaultPort: "5318",
     }),
   };
@@ -382,8 +386,8 @@ function buildResource(serviceName: string) {
     [ATTR_SERVICE_NAMESPACE]: SERVICE_NAMESPACE,
     [ATTR_DEPLOYMENT_ENVIRONMENT]: runtimeState.env,
     [ATTR_SERVICE_VERSION]: process.env.npm_package_version ?? "0.1.0",
-    [ATTR_CMDCLAW_INSTANCE_ID]: process.env.CMDCLAW_INSTANCE_ID,
-    [ATTR_CMDCLAW_WORKTREE_SLOT]: process.env.CMDCLAW_WORKTREE_SLOT,
+    [ATTR_APP_INSTANCE_ID]: process.env.APP_INSTANCE_ID,
+    [ATTR_APP_WORKTREE_SLOT]: process.env.APP_WORKTREE_SLOT,
   });
 }
 
@@ -447,11 +451,11 @@ export function initializeObservabilityRuntime(serviceName: string): void {
   metrics.setGlobalMeterProvider(meterProvider);
 
   registerObservableGauge(
-    "cmdclaw_runtime_up",
+    "app_runtime_up",
     (observe) => {
       observe(1);
     },
-    "Whether the current CmdClaw runtime process is alive and exporting telemetry.",
+    "Whether the current app runtime process is alive and exporting telemetry.",
   );
 
   runtimeState.initialized = true;
@@ -728,18 +732,17 @@ function buildCommonTelemetryEnvelope(input: {
 }): Record<string, CanonicalValue> {
   return {
     "event.kind": input.eventKind,
-    "cmdclaw.event.id": input.eventId,
-    "cmdclaw.event.name": input.eventName,
-    "cmdclaw.telemetry.schema_version": TELEMETRY_SCHEMA_VERSION,
+    "app.event.id": input.eventId,
+    "app.event.name": input.eventName,
+    "app.telemetry.schema_version": TELEMETRY_SCHEMA_VERSION,
     "service.name": input.context?.service ?? runtimeState.serviceName,
     "service.namespace": SERVICE_NAMESPACE,
     "service.version": process.env.npm_package_version ?? "0.1.0",
     "deployment.environment": runtimeState.env,
-    "cmdclaw.deployment.id": process.env.RENDER_SERVICE_ID ?? process.env.CMDCLAW_DEPLOYMENT_ID,
-    "cmdclaw.deployment.commit_sha":
-      process.env.RENDER_GIT_COMMIT ?? process.env.CMDCLAW_COMMIT_SHA,
-    "cmdclaw.instance.id": process.env.CMDCLAW_INSTANCE_ID,
-    "cmdclaw.worktree.slot": process.env.CMDCLAW_WORKTREE_SLOT,
+    "app.deployment.id": process.env.RENDER_SERVICE_ID ?? process.env.APP_DEPLOYMENT_ID,
+    "app.deployment.commit_sha": process.env.RENDER_GIT_COMMIT ?? process.env.APP_COMMIT_SHA,
+    "app.instance.id": process.env.APP_INSTANCE_ID,
+    "app.worktree.slot": process.env.APP_WORKTREE_SLOT,
     timestamp: input.timestamp ?? new Date(),
   };
 }
@@ -753,8 +756,8 @@ export function emitCanonicalServiceEvent(input: CanonicalServiceEventInput): vo
       timestamp: input.timestamp,
       context: input.context,
     }),
-    "cmdclaw.operation.name": input.operationName,
-    "cmdclaw.operation.outcome": input.outcome,
+    "app.operation.name": input.operationName,
+    "app.operation.outcome": input.outcome,
     ...input.attributes,
   });
 
@@ -786,11 +789,11 @@ export function emitClientObservation(input: ClientObservationInput): void {
       timestamp: input.timestamp,
       context: input.context,
     }),
-    "cmdclaw.client_observation.type": input.eventType,
+    "app.client_observation.type": input.eventType,
     ...input.attributes,
   });
 
-  runWithTelemetrySpan("cmdclaw.client_observation", payload, input.context?.traceId, () => {
+  runWithTelemetrySpan("app.client_observation", payload, input.context?.traceId, () => {
     const activeIds = getActiveSpanIds();
     emitStructuredLog(
       "info",

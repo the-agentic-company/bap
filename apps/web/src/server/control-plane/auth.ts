@@ -18,7 +18,7 @@ export function assertValidInstanceApiKey(request: Request) {
   assertCloudControlPlaneEnabled();
 
   const provided = request.headers.get(CONTROL_PLANE_INSTANCE_API_KEY_HEADER);
-  if (!env.CMDCLAW_CLOUD_INSTANCE_API_KEY || provided !== env.CMDCLAW_CLOUD_INSTANCE_API_KEY) {
+  if (!env.APP_CLOUD_INSTANCE_API_KEY || provided !== env.APP_CLOUD_INSTANCE_API_KEY) {
     throw new Error("Invalid instance API key");
   }
 }

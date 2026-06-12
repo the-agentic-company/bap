@@ -60,14 +60,14 @@ Options:
     generationId,
     traceId: values.get("trace-id") ?? process.env.TRACE_ID,
     logsUrl:
-      values.get("logs-url") ?? process.env.CMDCLAW_VICTORIA_LOGS_URL ?? "http://127.0.0.1:9428",
+      values.get("logs-url") ?? process.env.APP_VICTORIA_LOGS_URL ?? "http://127.0.0.1:9428",
     tracesUrl:
       values.get("traces-url") ??
-      process.env.CMDCLAW_VICTORIA_TRACES_URL ??
+      process.env.APP_VICTORIA_TRACES_URL ??
       "http://127.0.0.1:10428",
     metricsUrl:
       values.get("metrics-url") ??
-      process.env.CMDCLAW_VICTORIA_METRICS_URL ??
+      process.env.APP_VICTORIA_METRICS_URL ??
       "http://127.0.0.1:8428",
     requireClientObservation: booleans.has("require-client-observation"),
   };

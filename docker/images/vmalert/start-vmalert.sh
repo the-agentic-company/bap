@@ -1,10 +1,10 @@
 #!/bin/sh
 set -eu
 
-: "${CMDCLAW_VICTORIA_METRICS_HOST:?cmdclaw victoria metrics host is required}"
-: "${CMDCLAW_ALERTMANAGER_HOST:?cmdclaw alertmanager host is required}"
+: "${APP_VICTORIA_METRICS_HOST:?app victoria metrics host is required}"
+: "${APP_ALERTMANAGER_HOST:?app alertmanager host is required}"
 
-alert_env="${CMDCLAW_ALERT_ENV:-staging}"
+alert_env="${APP_ALERT_ENV:-staging}"
 case "${alert_env}" in
   staging | prod) ;;
   *)
@@ -15,9 +15,9 @@ esac
 
 rules_dir="/tmp/vmalert-rules"
 mkdir -p "${rules_dir}"
-sed "s/__CMDCLAW_ALERT_ENV__/${alert_env}/g" \
-  /etc/vmalert/templates/cmdclaw-runtime.rules.yml.tpl \
-  > "${rules_dir}/cmdclaw-runtime.rules.yml"
+sed "s/__APP_ALERT_ENV__/${alert_env}/g" \
+  /etc/vmalert/templates/app-runtime.rules.yml.tpl \
+  > "${rules_dir}/app-runtime.rules.yml"
 
 if ls /etc/pyrra/slos/*.yaml >/dev/null 2>&1; then
   pyrra generate \
@@ -29,10 +29,10 @@ fi
 exec /vmalert-prod \
   -rule="${rules_dir}/*.yml" \
   -rule="${rules_dir}/*.yaml" \
-  -datasource.url="http://${CMDCLAW_VICTORIA_METRICS_HOST}:8428" \
-  -remoteWrite.url="http://${CMDCLAW_VICTORIA_METRICS_HOST}:8428" \
-  -remoteRead.url="http://${CMDCLAW_VICTORIA_METRICS_HOST}:8428" \
-  -notifier.url="http://${CMDCLAW_ALERTMANAGER_HOST}:9093" \
+  -datasource.url="http://${APP_VICTORIA_METRICS_HOST}:8428" \
+  -remoteWrite.url="http://${APP_VICTORIA_METRICS_HOST}:8428" \
+  -remoteRead.url="http://${APP_VICTORIA_METRICS_HOST}:8428" \
+  -notifier.url="http://${APP_ALERTMANAGER_HOST}:9093" \
   -evaluationInterval=30s \
   -rule.evalDelay=30s \
   -httpListenAddr=:8880

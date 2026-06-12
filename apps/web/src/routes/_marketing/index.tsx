@@ -16,7 +16,7 @@ import { fetchLandingData } from "./-landing-data";
  *   Twitter card), edition-aware via the client-exposed `NEXT_PUBLIC_*` env names.
  */
 
-const isSelfHostedEdition = env.NEXT_PUBLIC_CMDCLAW_EDITION === "selfhost";
+const isSelfHostedEdition = env.NEXT_PUBLIC_APP_EDITION === "selfhost";
 const siteUrl = env.NEXT_PUBLIC_APP_URL ?? "https://cmdclaw.ai";
 const logoUrl = `${siteUrl.replace(/\/$/, "")}/logo.png`;
 

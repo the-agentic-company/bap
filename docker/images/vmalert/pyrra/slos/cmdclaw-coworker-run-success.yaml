@@ -1,11 +1,11 @@
 apiVersion: pyrra.dev/v1alpha1
 kind: ServiceLevelObjective
 metadata:
-  name: cmdclaw-coworker-run-success
-  namespace: cmdclaw
+  name: app-coworker-run-success
+  namespace: app
   labels:
     pyrra.dev/team: product
-    pyrra.dev/service: cmdclaw
+    pyrra.dev/service: app
     pyrra.dev/journey: coworker_run
 spec:
   target: "95"
@@ -14,9 +14,9 @@ spec:
   indicator:
     ratio:
       errors:
-        metric: cmdclaw_slo_events_total{journey="coworker_run",result="bad"}
+        metric: app_slo_events_total{journey="coworker_run",result="bad"}
       total:
-        metric: cmdclaw_slo_events_total{journey="coworker_run"}
+        metric: app_slo_events_total{journey="coworker_run"}
   alerting:
     disabled: true
     absent: false

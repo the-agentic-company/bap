@@ -152,7 +152,7 @@ function isLocalDaytonaApiUrl(apiUrl?: string): boolean {
 }
 
 function getLocalMinioPort(): string {
-  return process.env.CMDCLAW_MINIO_API_PORT?.trim() || "9000";
+  return process.env.APP_MINIO_API_PORT?.trim() || "9000";
 }
 
 export function rewriteStorageUrlForHostBuild(storageUrl: string, apiUrl?: string): string {

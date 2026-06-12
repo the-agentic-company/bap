@@ -1,11 +1,11 @@
 apiVersion: pyrra.dev/v1alpha1
 kind: ServiceLevelObjective
 metadata:
-  name: cmdclaw-unknown-coworker-generation-success
-  namespace: cmdclaw
+  name: app-unknown-coworker-generation-success
+  namespace: app
   labels:
     pyrra.dev/team: product
-    pyrra.dev/service: cmdclaw
+    pyrra.dev/service: app
     pyrra.dev/journey: unknown_coworker_generation
 spec:
   target: "95"
@@ -14,9 +14,9 @@ spec:
   indicator:
     ratio:
       errors:
-        metric: cmdclaw_slo_events_total{journey="unknown_coworker_generation",result="bad"}
+        metric: app_slo_events_total{journey="unknown_coworker_generation",result="bad"}
       total:
-        metric: cmdclaw_slo_events_total{journey="unknown_coworker_generation"}
+        metric: app_slo_events_total{journey="unknown_coworker_generation"}
   alerting:
     disabled: true
     absent: false

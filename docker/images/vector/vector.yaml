@@ -67,15 +67,15 @@ transforms:
       } else {
         null
       }
-      .instanceId = if exists(.resources.cmdclaw_instance_id) && !is_null(.resources.cmdclaw_instance_id) {
-        .resources.cmdclaw_instance_id
+      .instanceId = if exists(.resources.app_instance_id) && !is_null(.resources.app_instance_id) {
+        .resources.app_instance_id
       } else if exists(.instanceId) && !is_null(.instanceId) {
         .instanceId
       } else {
         null
       }
-      .worktreeSlot = if exists(.resources.cmdclaw_worktree_slot) && !is_null(.resources.cmdclaw_worktree_slot) {
-        .resources.cmdclaw_worktree_slot
+      .worktreeSlot = if exists(.resources.app_worktree_slot) && !is_null(.resources.app_worktree_slot) {
+        .resources.app_worktree_slot
       } else if exists(.worktreeSlot) && !is_null(.worktreeSlot) {
         .worktreeSlot
       } else {
@@ -106,7 +106,7 @@ sinks:
       - app_logs
       - otlp_logs_for_victoria
     method: post
-    uri: http://${CMDCLAW_VICTORIA_LOGS_HOST:?cmdclaw victoria logs host is required}:9428/insert/jsonline?_stream_fields=service,env,level,instanceId,worktreeSlot&_msg_field=message,event&_time_field=ts
+    uri: http://${APP_VICTORIA_LOGS_HOST:?app victoria logs host is required}:9428/insert/jsonline?_stream_fields=service,env,level,instanceId,worktreeSlot&_msg_field=message,event&_time_field=ts
     request:
       headers:
         content-type: application/stream+json
@@ -120,7 +120,7 @@ sinks:
     inputs:
       - app_otlp.metrics
       - vector_internal_metrics
-    endpoint: http://${CMDCLAW_VICTORIA_METRICS_HOST:?cmdclaw victoria metrics host is required}:8428/api/v1/write
+    endpoint: http://${APP_VICTORIA_METRICS_HOST:?app victoria metrics host is required}:8428/api/v1/write
     healthcheck:
       enabled: false
 
@@ -130,6 +130,6 @@ sinks:
       - raw_otlp_traces.traces
     protocol:
       type: http
-      uri: http://${CMDCLAW_VICTORIA_TRACES_HOST:?cmdclaw victoria traces host is required}:10428/insert/opentelemetry/v1/traces
+      uri: http://${APP_VICTORIA_TRACES_HOST:?app victoria traces host is required}:10428/insert/opentelemetry/v1/traces
       encoding:
         codec: otlp

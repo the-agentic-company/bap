@@ -39,7 +39,7 @@ export function createFsProfileStore(options?: { rootDir?: string }): CmdclawPro
     getConfigPathForServerUrl(serverUrl: string): string {
       return join(profilesDir, `chat-config.${profileSlugForServerUrl(serverUrl)}.json`);
     },
-    load(serverUrl = process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL): CmdclawProfile | null {
+    load(serverUrl = process.env.APP_SERVER_URL || DEFAULT_SERVER_URL): CmdclawProfile | null {
       try {
         const configPath = join(profilesDir, `chat-config.${profileSlugForServerUrl(serverUrl)}.json`);
         if (!existsSync(configPath)) {
@@ -60,7 +60,7 @@ export function createFsProfileStore(options?: { rootDir?: string }): CmdclawPro
       );
       writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
     },
-    clear(serverUrl = process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL): void {
+    clear(serverUrl = process.env.APP_SERVER_URL || DEFAULT_SERVER_URL): void {
       const configPath = join(profilesDir, `chat-config.${profileSlugForServerUrl(serverUrl)}.json`);
       if (existsSync(configPath)) {
         unlinkSync(configPath);

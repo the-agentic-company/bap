@@ -11,9 +11,9 @@
 (grafana_proxy) {
 	encode zstd gzip
 
-	reverse_proxy http://{$CMDCLAW_GRAFANA_HOST}:3000 {
-		header_up Host {$CMDCLAW_GRAFANA_DOMAIN}
-		header_up X-Forwarded-Host {$CMDCLAW_GRAFANA_DOMAIN}
+	reverse_proxy http://{$APP_GRAFANA_HOST}:3000 {
+		header_up Host {$APP_GRAFANA_DOMAIN}
+		header_up X-Forwarded-Host {$APP_GRAFANA_DOMAIN}
 		header_up X-Forwarded-Proto https
 	}
 }
@@ -21,9 +21,9 @@
 (victoria_metrics_proxy) {
 	encode zstd gzip
 
-	reverse_proxy http://{$CMDCLAW_VICTORIA_METRICS_HOST}:8428 {
-		header_up Host {$CMDCLAW_VICTORIA_METRICS_DOMAIN}
-		header_up X-Forwarded-Host {$CMDCLAW_VICTORIA_METRICS_DOMAIN}
+	reverse_proxy http://{$APP_VICTORIA_METRICS_HOST}:8428 {
+		header_up Host {$APP_VICTORIA_METRICS_DOMAIN}
+		header_up X-Forwarded-Host {$APP_VICTORIA_METRICS_DOMAIN}
 		header_up X-Forwarded-Proto https
 	}
 }
@@ -31,9 +31,9 @@
 (victoria_logs_proxy) {
 	encode zstd gzip
 
-	reverse_proxy http://{$CMDCLAW_VICTORIA_LOGS_HOST}:9428 {
-		header_up Host {$CMDCLAW_VICTORIA_LOGS_DOMAIN}
-		header_up X-Forwarded-Host {$CMDCLAW_VICTORIA_LOGS_DOMAIN}
+	reverse_proxy http://{$APP_VICTORIA_LOGS_HOST}:9428 {
+		header_up Host {$APP_VICTORIA_LOGS_DOMAIN}
+		header_up X-Forwarded-Host {$APP_VICTORIA_LOGS_DOMAIN}
 		header_up X-Forwarded-Proto https
 	}
 }
@@ -41,9 +41,9 @@
 (victoria_traces_proxy) {
 	encode zstd gzip
 
-	reverse_proxy http://{$CMDCLAW_VICTORIA_TRACES_HOST}:10428 {
-		header_up Host {$CMDCLAW_VICTORIA_TRACES_DOMAIN}
-		header_up X-Forwarded-Host {$CMDCLAW_VICTORIA_TRACES_DOMAIN}
+	reverse_proxy http://{$APP_VICTORIA_TRACES_HOST}:10428 {
+		header_up Host {$APP_VICTORIA_TRACES_DOMAIN}
+		header_up X-Forwarded-Host {$APP_VICTORIA_TRACES_DOMAIN}
 		header_up X-Forwarded-Proto https
 	}
 }
@@ -53,22 +53,22 @@
 	respond "not found" 404
 }
 
-{$CMDCLAW_GRAFANA_DOMAIN} {
+{$APP_GRAFANA_DOMAIN} {
 	import cloudflare
 	import grafana_proxy
 }
 
-{$CMDCLAW_VICTORIA_METRICS_DOMAIN} {
+{$APP_VICTORIA_METRICS_DOMAIN} {
 	import cloudflare
 	import victoria_metrics_proxy
 }
 
-{$CMDCLAW_VICTORIA_LOGS_DOMAIN} {
+{$APP_VICTORIA_LOGS_DOMAIN} {
 	import cloudflare
 	import victoria_logs_proxy
 }
 
-{$CMDCLAW_VICTORIA_TRACES_DOMAIN} {
+{$APP_VICTORIA_TRACES_DOMAIN} {
 	import cloudflare
 	import victoria_traces_proxy
 }

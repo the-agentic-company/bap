@@ -81,7 +81,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(increase(cmdclaw_rpc_requests_total{status_code=~\"5..\"}[30d]))",
+          "expr": "sum(increase(app_rpc_requests_total{status_code=~\"5..\"}[30d]))",
           "legendFormat": "5xx requests",
           "refId": "A"
         }
@@ -154,7 +154,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(increase(cmdclaw_rpc_requests_total{status_code=~\"5..\"}[30d])) / clamp_min(sum(increase(cmdclaw_rpc_requests_total[30d])), 1)",
+          "expr": "sum(increase(app_rpc_requests_total{status_code=~\"5..\"}[30d])) / clamp_min(sum(increase(app_rpc_requests_total[30d])), 1)",
           "legendFormat": "5xx rate",
           "refId": "A"
         }
@@ -223,7 +223,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "1 - (sum(increase(cmdclaw_rpc_requests_total{status_code=~\"5..\"}[30d])) / clamp_min(sum(increase(cmdclaw_rpc_requests_total[30d])), 1))",
+          "expr": "1 - (sum(increase(app_rpc_requests_total{status_code=~\"5..\"}[30d])) / clamp_min(sum(increase(app_rpc_requests_total[30d])), 1))",
           "legendFormat": "availability",
           "refId": "A"
         }
@@ -287,7 +287,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(increase(cmdclaw_rpc_requests_total[30d]))",
+          "expr": "sum(increase(app_rpc_requests_total[30d]))",
           "legendFormat": "all requests",
           "refId": "A"
         }
@@ -341,7 +341,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(rate(cmdclaw_rpc_requests_total[5m]))",
+          "expr": "sum(rate(app_rpc_requests_total[5m]))",
           "legendFormat": "all",
           "refId": "A"
         },
@@ -350,7 +350,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(rate(cmdclaw_rpc_requests_total{status_code=~\"5..\"}[5m]))",
+          "expr": "sum(rate(app_rpc_requests_total{status_code=~\"5..\"}[5m]))",
           "legendFormat": "5xx",
           "refId": "B"
         }
@@ -405,7 +405,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(increase(cmdclaw_rpc_requests_total{status_code=~\"5..\"}[15m])) / clamp_min(sum(increase(cmdclaw_rpc_requests_total[15m])), 1)",
+          "expr": "sum(increase(app_rpc_requests_total{status_code=~\"5..\"}[15m])) / clamp_min(sum(increase(app_rpc_requests_total[15m])), 1)",
           "legendFormat": "5xx rate",
           "refId": "A"
         }
@@ -470,7 +470,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "topk(20, sum by (route, method, status_code) (increase(cmdclaw_rpc_requests_total{status_code=~\"5..\"}[30d])))",
+          "expr": "topk(20, sum by (route, method, status_code) (increase(app_rpc_requests_total{status_code=~\"5..\"}[30d])))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{method}} {{route}} {{status_code}}",
@@ -485,7 +485,7 @@
   "refresh": "30s",
   "schemaVersion": 41,
   "tags": [
-    "cmdclaw",
+    "app",
     "sli",
     "internal"
   ],
@@ -498,7 +498,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "CmdClaw Internal RPC SLI",
-  "uid": "cmdclaw-internal-rpc-sli",
+  "title": "App Internal RPC SLI",
+  "uid": "app-internal-rpc-sli",
   "version": 1
 }

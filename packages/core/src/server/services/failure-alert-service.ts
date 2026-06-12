@@ -283,7 +283,8 @@ async function enqueueFailureAlertLinearSync(groupId: string, occurrenceId: stri
 function resolveFailureAlertEnvironment(): string {
   return (
     process.env.LINEAR_FAILURE_ALERT_ENV?.trim() ||
-    process.env.CMDCLAW_ALERT_ENV?.trim() ||
+    process.env.APP_ALERT_ENV?.trim() ||
+    process.env.APP_ALERT_ENV?.trim() ||
     process.env.NODE_ENV?.trim() ||
     "development"
   );

@@ -56,15 +56,15 @@ export async function resolveCmdclawPlatformMcpServer(input: {
   workspaceId?: string | null;
   spawnDepth: number;
 }): Promise<PlatformMcpServerResolution> {
-  const baseUrl = env.CMDCLAW_MCP_BASE_URL?.trim();
-  const secret = env.CMDCLAW_SERVER_SECRET;
+  const baseUrl = env.APP_MCP_BASE_URL?.trim() || env.APP_MCP_BASE_URL?.trim();
+  const secret = env.APP_SERVER_SECRET;
   if (!baseUrl || !secret) {
     return {
       server: null,
       warning: {
         serverName: CMDCLAW_PLATFORM_MCP_SERVER_NAME,
         message:
-          "CmdClaw tools are unavailable: platform MCP server is not configured (CMDCLAW_MCP_BASE_URL / CMDCLAW_SERVER_SECRET).",
+          "CmdClaw tools are unavailable: platform MCP server is not configured (APP_MCP_BASE_URL / APP_SERVER_SECRET).",
       },
     };
   }

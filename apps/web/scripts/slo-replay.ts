@@ -23,8 +23,8 @@ const REPLAY_CONFIG_VERSION = 1;
 
 export const SLO_REPLAY_TARGET_EMAIL_ALLOWLIST = [
   "collebaptiste@gmail.com",
-  ...(process.env.CMDCLAW_DEFAULT_USER_EMAIL?.trim()
-    ? [process.env.CMDCLAW_DEFAULT_USER_EMAIL.trim()]
+  ...(process.env.APP_DEFAULT_USER_EMAIL?.trim()
+    ? [process.env.APP_DEFAULT_USER_EMAIL.trim()]
     : []),
   "lubin@hyperstack.studio",
   "louis@hyperstack.studio",
@@ -548,7 +548,7 @@ async function importSyntheticSloSnapshot(): Promise<void> {
   );
 
   await importSloBucketsToVictoriaMetrics(renderPrometheusImportRows(samples), {
-    victoriaMetricsUrl: process.env.CMDCLAW_VICTORIA_METRICS_URL,
+    victoriaMetricsUrl: process.env.APP_VICTORIA_METRICS_URL,
   });
 }
 

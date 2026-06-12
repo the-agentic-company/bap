@@ -155,7 +155,7 @@ function buildSandboxBootstrapEnv(config: OpenCodeSessionConfig): Record<string,
     ANTHROPIC_API_KEY: config.anthropicApiKey,
     ANVIL_API_KEY: env.ANVIL_API_KEY || "",
     APP_URL: resolveSandboxRuntimeAppUrl(),
-    CMDCLAW_SERVER_SECRET: env.CMDCLAW_SERVER_SECRET || "",
+    APP_SERVER_SECRET: env.APP_SERVER_SECRET || "",
     CONVERSATION_ID: config.conversationId,
     ...config.integrationEnvs,
   };

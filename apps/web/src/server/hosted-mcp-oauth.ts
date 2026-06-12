@@ -372,7 +372,7 @@ async function issueHostedMcpTokenSet(params: {
     scope: normalizeHostedMcpScopes(params.grant.scopes),
     clientId: params.clientId,
     grantId: params.grant.id,
-    secret: env.CMDCLAW_SERVER_SECRET,
+    secret: env.APP_SERVER_SECRET,
     issuer: buildIssuerUrl(params.request),
     expiresInSeconds: ACCESS_TOKEN_TTL_SECONDS,
   });

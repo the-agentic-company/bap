@@ -121,7 +121,7 @@ function hasStoredCredentialSecret(
 }
 
 function resolveManagedMcpBaseUrl(): string | null {
-  const value = env.CMDCLAW_MCP_BASE_URL?.trim();
+  const value = env.APP_MCP_BASE_URL?.trim() || env.APP_MCP_BASE_URL?.trim();
   return value && value.length > 0 ? value : null;
 }
 
@@ -587,8 +587,8 @@ async function buildWorkspaceMcpRuntimeServer(input: {
     input.source.internalKey === "galien" ||
     input.source.internalKey === MODULR_INTERNAL_KEY
   ) {
-    if (!env.CMDCLAW_SERVER_SECRET) {
-      throw new Error("CMDCLAW_SERVER_SECRET is required for managed MCP servers.");
+    if (!env.APP_SERVER_SECRET) {
+      throw new Error("APP_SERVER_SECRET is required for managed MCP servers.");
     }
     headers.Authorization = `Bearer ${signManagedMcpToken(
       {
@@ -598,7 +598,7 @@ async function buildWorkspaceMcpRuntimeServer(input: {
         exp: Math.floor(Date.now() / 1000) + MANAGED_MCP_TOKEN_TTL_SECONDS,
         remoteIntegrationSource: input.remoteIntegrationSource ?? undefined,
       },
-      env.CMDCLAW_SERVER_SECRET,
+      env.APP_SERVER_SECRET,
     )}`;
   } else if (input.source.authType === "oauth2") {
     const hydrated = await getHydratedWorkspaceMcpServerOauthCredential({

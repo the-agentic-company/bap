@@ -2,7 +2,7 @@ global:
   resolve_timeout: 5m
 
 route:
-  receiver: __CMDCLAW_ALERT_RECEIVER__
+  receiver: __APP_ALERT_RECEIVER__
   group_by:
     - alertname
     - alertgroup
@@ -21,7 +21,7 @@ inhibit_rules:
       - queue
 
 receivers:
-  - name: __CMDCLAW_ALERT_RECEIVER__
+  - name: __APP_ALERT_RECEIVER__
     slack_configs:
       - api_url: https://slack.com/api/chat.postMessage
         channel: "#ops-telemetry-alerts"
@@ -29,7 +29,7 @@ receivers:
           authorization:
             credentials_file: /etc/alertmanager/secrets/slack_bot_token
         send_resolved: true
-        username: __CMDCLAW_ALERT_USERNAME__
+        username: __APP_ALERT_USERNAME__
         icon_emoji: ":rotating_light:"
         title: >-
           [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
@@ -38,7 +38,7 @@ receivers:
           *Summary:* {{ .Annotations.summary }}
           *Description:* {{ .Annotations.description }}
           *Severity:* {{ .Labels.severity }}
-          *Environment:* __CMDCLAW_ALERT_ENV__
+          *Environment:* __APP_ALERT_ENV__
           {{ if .Labels.service_name }}*Service:* {{ .Labels.service_name }}{{ end }}
           {{ if .Labels.queue }}*Queue:* {{ .Labels.queue }}{{ end }}
           {{ if .Labels.component_id }}*Component:* {{ .Labels.component_id }}{{ end }}

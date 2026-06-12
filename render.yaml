@@ -1,4 +1,4 @@
-# Render Blueprint for CmdClaw staging and production.
+# Render Blueprint for Bap staging and production.
 #
 # Current mapping:
 # - Render manages separate staging and production environments in one project.
@@ -173,30 +173,30 @@ projects:
               - key: PORT
                 value: "10000"
               - fromGroup: staging
-              - key: CMDCLAW_GRAFANA_DOMAIN
+              - key: APP_GRAFANA_DOMAIN
                 value: grafana.ops.staging.bap.ai
-              - key: CMDCLAW_VICTORIA_METRICS_DOMAIN
+              - key: APP_VICTORIA_METRICS_DOMAIN
                 value: victoria-metrics.ops.staging.bap.ai
-              - key: CMDCLAW_VICTORIA_LOGS_DOMAIN
+              - key: APP_VICTORIA_LOGS_DOMAIN
                 value: victoria-logs.ops.staging.bap.ai
-              - key: CMDCLAW_VICTORIA_TRACES_DOMAIN
+              - key: APP_VICTORIA_TRACES_DOMAIN
                 value: victoria-traces.ops.staging.bap.ai
-              - key: CMDCLAW_GRAFANA_HOST
+              - key: APP_GRAFANA_HOST
                 fromService:
                   type: pserv
                   name: bap-grafana-staging
                   property: host
-              - key: CMDCLAW_VICTORIA_METRICS_HOST
+              - key: APP_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-metrics-staging
                   property: host
-              - key: CMDCLAW_VICTORIA_LOGS_HOST
+              - key: APP_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-logs-staging
                   property: host
-              - key: CMDCLAW_VICTORIA_TRACES_HOST
+              - key: APP_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-traces-staging
@@ -216,9 +216,9 @@ projects:
             envVars:
               - key: PORT
                 value: "10000"
-              - key: CMDCLAW_WEB_HOST
-                value: bap-web-staging.onrender.com
-              - key: CMDCLAW_ZERO_CACHE_HOST
+              - key: APP_WEB_HOST
+                value: app-web-staging.onrender.com
+              - key: APP_ZERO_CACHE_HOST
                 fromService:
                   type: pserv
                   name: bap-zero-cache-staging
@@ -302,17 +302,17 @@ projects:
             dockerContext: docker/images/vector
             dockerfilePath: docker/images/vector/Dockerfile
             envVars:
-              - key: CMDCLAW_VICTORIA_METRICS_HOST
+              - key: APP_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-metrics-staging
                   property: host
-              - key: CMDCLAW_VICTORIA_LOGS_HOST
+              - key: APP_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-logs-staging
                   property: host
-              - key: CMDCLAW_VICTORIA_TRACES_HOST
+              - key: APP_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-traces-staging
@@ -331,7 +331,7 @@ projects:
               mountPath: /alertmanager
               sizeGB: 1
             envVars:
-              - key: CMDCLAW_ALERT_ENV
+              - key: APP_ALERT_ENV
                 value: staging
 
           - type: pserv
@@ -343,14 +343,14 @@ projects:
             dockerContext: docker/images/vmalert
             dockerfilePath: docker/images/vmalert/Dockerfile
             envVars:
-              - key: CMDCLAW_ALERT_ENV
+              - key: APP_ALERT_ENV
                 value: staging
-              - key: CMDCLAW_VICTORIA_METRICS_HOST
+              - key: APP_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-metrics-staging
                   property: host
-              - key: CMDCLAW_ALERTMANAGER_HOST
+              - key: APP_ALERTMANAGER_HOST
                 fromService:
                   type: pserv
                   name: bap-alertmanager-staging
@@ -377,29 +377,29 @@ projects:
                 value: https://grafana.ops.staging.bap.ai
               - key: GF_PLUGINS_PREINSTALL_SYNC
                 value: victoriametrics-logs-datasource
-              - key: CMDCLAW_VICTORIA_METRICS_HOST
+              - key: APP_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-metrics-staging
                   property: host
-              - key: CMDCLAW_VICTORIA_LOGS_HOST
+              - key: APP_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-logs-staging
                   property: host
-              - key: CMDCLAW_VICTORIA_TRACES_HOST
+              - key: APP_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-traces-staging
                   property: host
-              - key: CMDCLAW_ALERTMANAGER_HOST
+              - key: APP_ALERTMANAGER_HOST
                 fromService:
                   type: pserv
                   name: bap-alertmanager-staging
                   property: host
 
           - type: web
-            name: bap-web-staging
+            name: app-web-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -432,18 +432,18 @@ projects:
                 value: bap-documents
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
-              - key: CMDCLAW_VECTOR_HOST
+              - key: APP_VECTOR_HOST
                 fromService:
                   type: pserv
                   name: bap-vector-staging
                   property: host
-              - key: CMDCLAW_VECTOR_LOG_PORT
+              - key: APP_VECTOR_LOG_PORT
                 value: "8686"
-              - key: CMDCLAW_VECTOR_OTLP_HTTP_PORT
+              - key: APP_VECTOR_OTLP_HTTP_PORT
                 value: "4318"
-              - key: CMDCLAW_VECTOR_TRACES_PORT
+              - key: APP_VECTOR_TRACES_PORT
                 value: "5318"
-              - key: CMDCLAW_MCP_BASE_URL
+              - key: APP_MCP_BASE_URL
                 fromService:
                   type: web
                   name: bap-mcp-staging
@@ -483,7 +483,7 @@ projects:
                 value: start
 
           - type: worker
-            name: bap-worker-staging
+            name: app-worker-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -511,18 +511,18 @@ projects:
                 value: bap-documents
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
-              - key: CMDCLAW_VECTOR_HOST
+              - key: APP_VECTOR_HOST
                 fromService:
                   type: pserv
                   name: bap-vector-staging
                   property: host
-              - key: CMDCLAW_VECTOR_LOG_PORT
+              - key: APP_VECTOR_LOG_PORT
                 value: "8686"
-              - key: CMDCLAW_VECTOR_OTLP_HTTP_PORT
+              - key: APP_VECTOR_OTLP_HTTP_PORT
                 value: "4318"
-              - key: CMDCLAW_VECTOR_TRACES_PORT
+              - key: APP_VECTOR_TRACES_PORT
                 value: "5318"
-              - key: CMDCLAW_MCP_BASE_URL
+              - key: APP_MCP_BASE_URL
                 fromService:
                   type: web
                   name: bap-mcp-staging
@@ -671,30 +671,30 @@ projects:
               - key: PORT
                 value: "10000"
               - fromGroup: prod
-              - key: CMDCLAW_GRAFANA_DOMAIN
+              - key: APP_GRAFANA_DOMAIN
                 value: grafana.ops.prod.bap.ai
-              - key: CMDCLAW_VICTORIA_METRICS_DOMAIN
+              - key: APP_VICTORIA_METRICS_DOMAIN
                 value: victoria-metrics.ops.prod.bap.ai
-              - key: CMDCLAW_VICTORIA_LOGS_DOMAIN
+              - key: APP_VICTORIA_LOGS_DOMAIN
                 value: victoria-logs.ops.prod.bap.ai
-              - key: CMDCLAW_VICTORIA_TRACES_DOMAIN
+              - key: APP_VICTORIA_TRACES_DOMAIN
                 value: victoria-traces.ops.prod.bap.ai
-              - key: CMDCLAW_GRAFANA_HOST
+              - key: APP_GRAFANA_HOST
                 fromService:
                   type: pserv
                   name: bap-grafana-prod
                   property: host
-              - key: CMDCLAW_VICTORIA_METRICS_HOST
+              - key: APP_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-metrics-prod
                   property: host
-              - key: CMDCLAW_VICTORIA_LOGS_HOST
+              - key: APP_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-logs-prod
                   property: host
-              - key: CMDCLAW_VICTORIA_TRACES_HOST
+              - key: APP_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-traces-prod
@@ -714,9 +714,9 @@ projects:
             envVars:
               - key: PORT
                 value: "10000"
-              - key: CMDCLAW_WEB_HOST
-                value: bap-web-prod.onrender.com
-              - key: CMDCLAW_ZERO_CACHE_HOST
+              - key: APP_WEB_HOST
+                value: app-web-prod.onrender.com
+              - key: APP_ZERO_CACHE_HOST
                 fromService:
                   type: pserv
                   name: bap-zero-cache-prod
@@ -800,17 +800,17 @@ projects:
             dockerContext: docker/images/vector
             dockerfilePath: docker/images/vector/Dockerfile
             envVars:
-              - key: CMDCLAW_VICTORIA_METRICS_HOST
+              - key: APP_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-metrics-prod
                   property: host
-              - key: CMDCLAW_VICTORIA_LOGS_HOST
+              - key: APP_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-logs-prod
                   property: host
-              - key: CMDCLAW_VICTORIA_TRACES_HOST
+              - key: APP_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-traces-prod
@@ -829,7 +829,7 @@ projects:
               mountPath: /alertmanager
               sizeGB: 2
             envVars:
-              - key: CMDCLAW_ALERT_ENV
+              - key: APP_ALERT_ENV
                 value: prod
 
           - type: pserv
@@ -841,14 +841,14 @@ projects:
             dockerContext: docker/images/vmalert
             dockerfilePath: docker/images/vmalert/Dockerfile
             envVars:
-              - key: CMDCLAW_ALERT_ENV
+              - key: APP_ALERT_ENV
                 value: prod
-              - key: CMDCLAW_VICTORIA_METRICS_HOST
+              - key: APP_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-metrics-prod
                   property: host
-              - key: CMDCLAW_ALERTMANAGER_HOST
+              - key: APP_ALERTMANAGER_HOST
                 fromService:
                   type: pserv
                   name: bap-alertmanager-prod
@@ -875,29 +875,29 @@ projects:
                 value: https://grafana.ops.prod.bap.ai
               - key: GF_PLUGINS_PREINSTALL_SYNC
                 value: victoriametrics-logs-datasource
-              - key: CMDCLAW_VICTORIA_METRICS_HOST
+              - key: APP_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-metrics-prod
                   property: host
-              - key: CMDCLAW_VICTORIA_LOGS_HOST
+              - key: APP_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-logs-prod
                   property: host
-              - key: CMDCLAW_VICTORIA_TRACES_HOST
+              - key: APP_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
                   name: bap-victoria-traces-prod
                   property: host
-              - key: CMDCLAW_ALERTMANAGER_HOST
+              - key: APP_ALERTMANAGER_HOST
                 fromService:
                   type: pserv
                   name: bap-alertmanager-prod
                   property: host
 
           - type: web
-            name: bap-web-prod
+            name: app-web-prod
             runtime: docker
             region: frankfurt
             plan: standard
@@ -930,18 +930,18 @@ projects:
                 value: bap-documents-prod
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
-              - key: CMDCLAW_VECTOR_HOST
+              - key: APP_VECTOR_HOST
                 fromService:
                   type: pserv
                   name: bap-vector-prod
                   property: host
-              - key: CMDCLAW_VECTOR_LOG_PORT
+              - key: APP_VECTOR_LOG_PORT
                 value: "8686"
-              - key: CMDCLAW_VECTOR_OTLP_HTTP_PORT
+              - key: APP_VECTOR_OTLP_HTTP_PORT
                 value: "4318"
-              - key: CMDCLAW_VECTOR_TRACES_PORT
+              - key: APP_VECTOR_TRACES_PORT
                 value: "5318"
-              - key: CMDCLAW_MCP_BASE_URL
+              - key: APP_MCP_BASE_URL
                 fromService:
                   type: web
                   name: bap-mcp-prod
@@ -981,7 +981,7 @@ projects:
                 value: start
 
           - type: worker
-            name: bap-worker-prod
+            name: app-worker-prod
             runtime: docker
             region: frankfurt
             plan: standard
@@ -1009,18 +1009,18 @@ projects:
                 value: bap-documents-prod
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
-              - key: CMDCLAW_VECTOR_HOST
+              - key: APP_VECTOR_HOST
                 fromService:
                   type: pserv
                   name: bap-vector-prod
                   property: host
-              - key: CMDCLAW_VECTOR_LOG_PORT
+              - key: APP_VECTOR_LOG_PORT
                 value: "8686"
-              - key: CMDCLAW_VECTOR_OTLP_HTTP_PORT
+              - key: APP_VECTOR_OTLP_HTTP_PORT
                 value: "4318"
-              - key: CMDCLAW_VECTOR_TRACES_PORT
+              - key: APP_VECTOR_TRACES_PORT
                 value: "5318"
-              - key: CMDCLAW_MCP_BASE_URL
+              - key: APP_MCP_BASE_URL
                 fromService:
                   type: web
                   name: bap-mcp-prod

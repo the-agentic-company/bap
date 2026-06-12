@@ -18,7 +18,7 @@ export async function downloadModulrDocument(request: Request): Promise<Response
 
   let claims: ReturnType<typeof verifyModulrDocumentDownloadToken>;
   try {
-    claims = verifyModulrDocumentDownloadToken(token, env.CMDCLAW_SERVER_SECRET);
+    claims = verifyModulrDocumentDownloadToken(token, env.APP_SERVER_SECRET);
   } catch {
     return Response.json({ error: "Invalid or expired download token." }, { status: 401 });
   }

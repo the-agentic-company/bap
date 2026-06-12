@@ -143,9 +143,7 @@ const resolveLoginPage = createServerFn({ method: "GET" })
       kind: "selfhost",
       callbackUrl,
       errorMessage: getSelfHostedErrorMessage(params.error),
-      hasCloudAuthConfig: Boolean(
-        env.CMDCLAW_CLOUD_API_BASE_URL && env.CMDCLAW_CLOUD_INSTANCE_API_KEY,
-      ),
+      hasCloudAuthConfig: Boolean(env.APP_CLOUD_API_BASE_URL && env.APP_CLOUD_INSTANCE_API_KEY),
       authStartUrl: `/api/instance/auth/start?callbackUrl=${encodeURIComponent(callbackUrl)}`,
     };
   });
@@ -215,8 +213,8 @@ function LoginPage() {
         {!data.hasCloudAuthConfig ? (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
             <T>
-              Set `CMDCLAW_CLOUD_API_BASE_URL` and `CMDCLAW_CLOUD_INSTANCE_API_KEY` on this
-              self-hosted deployment to enable cloud-managed sign-in.
+              Set `APP_CLOUD_API_BASE_URL` and `APP_CLOUD_INSTANCE_API_KEY` on this self-hosted
+              deployment to enable cloud-managed sign-in.
             </T>
           </div>
         ) : null}

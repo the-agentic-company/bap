@@ -257,7 +257,7 @@ async function resolveCliEnv(
           remoteUserEmail: remoteIntegrationSource.remoteUserEmail ?? credentials.remoteUserEmail,
         }),
         CMDCLAW_RUNTIME_CREDENTIALS_URL: `${serverUrl.replace(/\/$/, "")}/api/internal/mcp/runtime-credentials`,
-        CMDCLAW_SERVER_SECRET: env.CMDCLAW_SERVER_SECRET || "",
+        APP_SERVER_SECRET: env.APP_SERVER_SECRET || "",
         CMDCLAW_USER_ID: me.id,
       },
     };

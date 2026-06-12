@@ -7,7 +7,7 @@ import {
 } from "./build";
 
 const originalEnv = {
-  CMDCLAW_MINIO_API_PORT: process.env.CMDCLAW_MINIO_API_PORT,
+  APP_MINIO_API_PORT: process.env.APP_MINIO_API_PORT,
   DAYTONA_OBJECT_STORAGE_URL: process.env.DAYTONA_OBJECT_STORAGE_URL,
   E2B_DAYTONA_SANDBOX_NAME: process.env.E2B_DAYTONA_SANDBOX_NAME,
   DAYTONA_SNAPSHOT_DEV: process.env.DAYTONA_SNAPSHOT_DEV,
@@ -26,7 +26,7 @@ function restoreEnvVar(name: keyof typeof originalEnv) {
 
 describe("daytona build helpers", () => {
   afterEach(() => {
-    restoreEnvVar("CMDCLAW_MINIO_API_PORT");
+    restoreEnvVar("APP_MINIO_API_PORT");
     restoreEnvVar("DAYTONA_OBJECT_STORAGE_URL");
     restoreEnvVar("E2B_DAYTONA_SANDBOX_NAME");
     restoreEnvVar("DAYTONA_SNAPSHOT_DEV");
@@ -79,7 +79,7 @@ describe("daytona build helpers", () => {
   });
 
   it("rewrites the local minio endpoint to the published host port", () => {
-    process.env.CMDCLAW_MINIO_API_PORT = "9000";
+    process.env.APP_MINIO_API_PORT = "9000";
 
     expect(
       rewriteStorageUrlForHostBuild("http://minio:9000", "http://localhost:3300/api"),

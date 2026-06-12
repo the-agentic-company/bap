@@ -16,14 +16,14 @@ export const env = createEnv({
   server: {
     BETTER_AUTH_SECRET: z.string(),
     APP_URL: z.url().optional(),
-    CMDCLAW_DEV_AUTO_LOGIN: z.enum(["0", "1"]).default("0"),
-    CMDCLAW_DEV_AUTO_LOGIN_EMAIL: z.email().optional(),
-    CMDCLAW_DEFAULT_USER_EMAIL: z.email().optional(),
-    CMDCLAW_ADMIN_EMAILS: z.string().optional(),
-    CMDCLAW_MCP_BASE_URL: z.url().optional(),
-    CMDCLAW_EDITION: z.enum(["cloud", "selfhost"]).default("cloud"),
-    CMDCLAW_CLOUD_API_BASE_URL: z.url().optional(),
-    CMDCLAW_CLOUD_INSTANCE_API_KEY: z.string().optional(),
+    APP_DEV_AUTO_LOGIN: z.enum(["0", "1"]).default("0"),
+    APP_DEV_AUTO_LOGIN_EMAIL: z.email().optional(),
+    APP_DEFAULT_USER_EMAIL: z.email().optional(),
+    APP_ADMIN_EMAILS: z.string().optional(),
+    APP_MCP_BASE_URL: z.url().optional(),
+    APP_EDITION: z.enum(["cloud", "selfhost"]).default("cloud"),
+    APP_CLOUD_API_BASE_URL: z.url().optional(),
+    APP_CLOUD_INSTANCE_API_KEY: z.string().optional(),
     REMOTE_INTEGRATION_STAGING_BASE_URL: z.url().optional(),
     REMOTE_INTEGRATION_PROD_BASE_URL: z.url().optional(),
     DATABASE_URL: z.url(),
@@ -84,7 +84,7 @@ export const env = createEnv({
     // Encryption key for provider OAuth tokens (32-byte hex string)
     ENCRYPTION_KEY: z.string().regex(/^[a-fA-F0-9]{64}$/),
     // OpenCode plugin callback secret
-    CMDCLAW_SERVER_SECRET: z.string(),
+    APP_SERVER_SECRET: z.string(),
     // Public callback URL for sandbox -> app internal routes (approval/auth)
     E2B_CALLBACK_BASE_URL: z.url().optional(),
     // Dedicated WebSocket server port
@@ -132,7 +132,7 @@ export const env = createEnv({
    */
   client: {
     NEXT_PUBLIC_APP_URL: z.url().optional(),
-    NEXT_PUBLIC_CMDCLAW_EDITION: z.enum(["cloud", "selfhost"]).optional(),
+    NEXT_PUBLIC_APP_EDITION: z.enum(["cloud", "selfhost"]).optional(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().optional(),
     NEXT_PUBLIC_ZERO_CACHE_URL: z.url().optional(),
@@ -146,14 +146,14 @@ export const env = createEnv({
   runtimeEnv: {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     APP_URL: process.env.APP_URL,
-    CMDCLAW_DEV_AUTO_LOGIN: process.env.CMDCLAW_DEV_AUTO_LOGIN,
-    CMDCLAW_DEV_AUTO_LOGIN_EMAIL: process.env.CMDCLAW_DEV_AUTO_LOGIN_EMAIL,
-    CMDCLAW_DEFAULT_USER_EMAIL: process.env.CMDCLAW_DEFAULT_USER_EMAIL,
-    CMDCLAW_ADMIN_EMAILS: process.env.CMDCLAW_ADMIN_EMAILS,
-    CMDCLAW_MCP_BASE_URL: process.env.CMDCLAW_MCP_BASE_URL,
-    CMDCLAW_EDITION: process.env.CMDCLAW_EDITION,
-    CMDCLAW_CLOUD_API_BASE_URL: process.env.CMDCLAW_CLOUD_API_BASE_URL,
-    CMDCLAW_CLOUD_INSTANCE_API_KEY: process.env.CMDCLAW_CLOUD_INSTANCE_API_KEY,
+    APP_DEV_AUTO_LOGIN: process.env.APP_DEV_AUTO_LOGIN,
+    APP_DEV_AUTO_LOGIN_EMAIL: process.env.APP_DEV_AUTO_LOGIN_EMAIL,
+    APP_DEFAULT_USER_EMAIL: process.env.APP_DEFAULT_USER_EMAIL,
+    APP_ADMIN_EMAILS: process.env.APP_ADMIN_EMAILS,
+    APP_MCP_BASE_URL: process.env.APP_MCP_BASE_URL,
+    APP_EDITION: process.env.APP_EDITION,
+    APP_CLOUD_API_BASE_URL: process.env.APP_CLOUD_API_BASE_URL,
+    APP_CLOUD_INSTANCE_API_KEY: process.env.APP_CLOUD_INSTANCE_API_KEY,
     REMOTE_INTEGRATION_STAGING_BASE_URL: process.env.REMOTE_INTEGRATION_STAGING_BASE_URL,
     REMOTE_INTEGRATION_PROD_BASE_URL: process.env.REMOTE_INTEGRATION_PROD_BASE_URL,
     DATABASE_URL: process.env.DATABASE_URL,
@@ -204,7 +204,7 @@ export const env = createEnv({
     DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
-    CMDCLAW_SERVER_SECRET: process.env.CMDCLAW_SERVER_SECRET ?? process.env.BAP_SERVER_SECRET,
+    APP_SERVER_SECRET: process.env.APP_SERVER_SECRET,
     E2B_CALLBACK_BASE_URL: process.env.E2B_CALLBACK_BASE_URL,
     WS_PORT: process.env.WS_PORT,
     AWS_ENDPOINT_URL: process.env.AWS_ENDPOINT_URL,
@@ -234,8 +234,8 @@ export const env = createEnv({
     WEB_PUSH_VAPID_PUBLIC_KEY: process.env.WEB_PUSH_VAPID_PUBLIC_KEY,
     WEB_PUSH_VAPID_PRIVATE_KEY: process.env.WEB_PUSH_VAPID_PRIVATE_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_CMDCLAW_EDITION:
-      process.env.NEXT_PUBLIC_CMDCLAW_EDITION ?? process.env.CMDCLAW_EDITION,
+    NEXT_PUBLIC_APP_EDITION:
+      process.env.NEXT_PUBLIC_APP_EDITION ?? process.env.APP_EDITION,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_ZERO_CACHE_URL: process.env.NEXT_PUBLIC_ZERO_CACHE_URL,

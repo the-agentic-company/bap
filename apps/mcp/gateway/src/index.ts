@@ -99,7 +99,7 @@ function resolveAuthorizationServerOrigin(requestUrl: URL): string {
   const configured =
     process.env.APP_URL?.trim() ||
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.CMDCLAW_SERVER_URL?.trim();
+    process.env.APP_SERVER_URL?.trim();
 
   if (configured && URL.canParse(configured)) {
     return new URL(configured).origin;

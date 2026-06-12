@@ -66,7 +66,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(rate(cmdclaw_rpc_requests_total[5m]))",
+          "expr": "sum(rate(app_rpc_requests_total[5m]))",
           "legendFormat": "all rpc",
           "refId": "A"
         },
@@ -75,7 +75,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(rate(cmdclaw_rpc_requests_total{status_code=~\"5..\"}[5m]))",
+          "expr": "sum(rate(app_rpc_requests_total{status_code=~\"5..\"}[5m]))",
           "legendFormat": "rpc 5xx",
           "refId": "B"
         }
@@ -128,7 +128,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(rate(cmdclaw_worker_jobs_total[15m])) by (status)",
+          "expr": "sum(rate(app_worker_jobs_total[15m])) by (status)",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -195,7 +195,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "max(cmdclaw_runtime_up) by (service_name)",
+          "expr": "max(app_runtime_up) by (service_name)",
           "legendFormat": "{{service_name}}",
           "refId": "A"
         }
@@ -248,7 +248,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "max(cmdclaw_bullmq_jobs{state=\"waiting\"})",
+          "expr": "max(app_bullmq_jobs{state=\"waiting\"})",
           "legendFormat": "waiting",
           "refId": "A"
         },
@@ -257,7 +257,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "max(cmdclaw_bullmq_jobs{state=\"active\"})",
+          "expr": "max(app_bullmq_jobs{state=\"active\"})",
           "legendFormat": "active",
           "refId": "B"
         }
@@ -326,7 +326,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "max(cmdclaw_bullmq_oldest_waiting_job_age_seconds)",
+          "expr": "max(app_bullmq_oldest_waiting_job_age_seconds)",
           "legendFormat": "oldest waiting job",
           "refId": "A"
         }
@@ -410,7 +410,7 @@
   "refresh": "30s",
   "schemaVersion": 41,
   "tags": [
-    "cmdclaw",
+    "app",
     "observability",
     "staging"
   ],
@@ -423,7 +423,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "CmdClaw Staging Observability",
-  "uid": "cmdclaw-staging-observability",
+  "title": "App Staging Observability",
+  "uid": "app-staging-observability",
   "version": 1
 }

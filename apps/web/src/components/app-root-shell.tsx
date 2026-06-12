@@ -8,7 +8,7 @@ import { env } from "@/env";
 import { ORPCProvider } from "@/orpc/provider";
 import { CmdClawZeroProvider } from "@/zero/provider";
 
-const isSelfHostedEdition = env.NEXT_PUBLIC_CMDCLAW_EDITION === "selfhost";
+const isSelfHostedEdition = env.NEXT_PUBLIC_APP_EDITION === "selfhost";
 
 type AutumnProviderComponent = (typeof import("autumn-js/react"))["AutumnProvider"];
 

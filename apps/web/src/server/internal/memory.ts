@@ -51,11 +51,11 @@ const memoryRequestSchema = z.discriminatedUnion("operation", [
 ]);
 
 function verifyPluginSecret(authHeader: string | undefined): boolean {
-  if (!env.CMDCLAW_SERVER_SECRET) {
-    console.warn("[Internal] CMDCLAW_SERVER_SECRET not configured");
+  if (!env.APP_SERVER_SECRET) {
+    console.warn("[Internal] APP_SERVER_SECRET not configured");
     return false;
   }
-  return authHeader === `Bearer ${env.CMDCLAW_SERVER_SECRET}`;
+  return authHeader === `Bearer ${env.APP_SERVER_SECRET}`;
 }
 
 /** POST /api/internal/memory */
