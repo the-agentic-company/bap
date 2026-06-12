@@ -29,7 +29,7 @@ const testEnvDefaults = {
   ANTHROPIC_API_KEY: "test-anthropic-key",
   SANDBOX_DEFAULT: "e2b",
   ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  CMDCLAW_SERVER_SECRET: "test-server-secret",
+  APP_SERVER_SECRET: "test-server-secret",
   AWS_ENDPOINT_URL: "https://s3.test.local",
   AWS_ACCESS_KEY_ID: "test-access-key",
   AWS_SECRET_ACCESS_KEY: "test-secret-key",

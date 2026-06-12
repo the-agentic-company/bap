@@ -61,7 +61,7 @@ async function runChatCommand(args: string[], timeoutMs: number): Promise<Comman
     const child = spawn("bun", args, {
       env: {
         ...process.env,
-        CMDCLAW_SERVER_URL: defaultServerUrl,
+        APP_SERVER_URL: defaultServerUrl,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -151,7 +151,7 @@ function startInteractiveChatCommand(args: string[], options?: { pty?: boolean }
         {
           env: {
             ...process.env,
-            CMDCLAW_SERVER_URL: defaultServerUrl,
+            APP_SERVER_URL: defaultServerUrl,
           },
           stdio: ["pipe", "pipe", "pipe"],
         },
@@ -159,7 +159,7 @@ function startInteractiveChatCommand(args: string[], options?: { pty?: boolean }
     : spawn("bun", args, {
         env: {
           ...process.env,
-          CMDCLAW_SERVER_URL: defaultServerUrl,
+          APP_SERVER_URL: defaultServerUrl,
         },
         stdio: ["pipe", "pipe", "pipe"],
       });

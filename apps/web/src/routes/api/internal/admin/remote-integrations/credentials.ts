@@ -3,7 +3,7 @@ import { handleRemoteIntegrationCredentials } from "@/server/internal/admin-remo
 
 /**
  * Thin server-route adapter for the internal admin remote-integration credentials endpoint.
- * Authorization (Bearer CMDCLAW_SERVER_SECRET) stays inside the handler, not in any page
+ * Authorization (Bearer APP_SERVER_SECRET) stays inside the handler, not in any page
  * guard, so the API contract is preserved regardless of routing.
  */
 export const Route = createFileRoute("/api/internal/admin/remote-integrations/credentials")({

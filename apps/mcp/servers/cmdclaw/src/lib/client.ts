@@ -2,7 +2,7 @@ import type { ToolExtraArguments } from "xmcp";
 import { createRpcClient, DEFAULT_SERVER_URL } from "@cmdclaw/client";
 
 function resolveServerUrl(serverUrl?: string): string {
-  return serverUrl || process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL;
+  return serverUrl || process.env.APP_SERVER_URL || DEFAULT_SERVER_URL;
 }
 
 export function createMcpClient(extra?: ToolExtraArguments, serverUrl?: string) {

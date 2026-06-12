@@ -17,12 +17,12 @@ const {
   readFileSyncMock,
 } = vi.hoisted(() => ({
   ensureWorkspaceForUserMock: vi.fn<VitestProcedure>(),
-    envMock: {
-      BETTER_AUTH_SECRET: "test-secret",
-      CMDCLAW_DEV_AUTO_LOGIN: "0",
-      CMDCLAW_DEV_AUTO_LOGIN_EMAIL: undefined as string | undefined,
-      CMDCLAW_DEFAULT_USER_EMAIL: undefined as string | undefined,
-    },
+  envMock: {
+    BETTER_AUTH_SECRET: "test-secret",
+    APP_DEV_AUTO_LOGIN: "0",
+    APP_DEV_AUTO_LOGIN_EMAIL: undefined as string | undefined,
+    APP_DEFAULT_USER_EMAIL: undefined as string | undefined,
+  },
   findFirstMock: vi.fn<VitestProcedure>(),
   insertValuesMock: vi.fn<VitestProcedure>(),
   serializeSignedCookieMock: vi.fn<VitestProcedure>(),
@@ -96,9 +96,9 @@ describe("handleDevAutoLogin (GET /api/dev/auto-login)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     envMock.BETTER_AUTH_SECRET = "test-secret";
-    envMock.CMDCLAW_DEV_AUTO_LOGIN = "0";
-    envMock.CMDCLAW_DEV_AUTO_LOGIN_EMAIL = undefined;
-    envMock.CMDCLAW_DEFAULT_USER_EMAIL = undefined;
+    envMock.APP_DEV_AUTO_LOGIN = "0";
+    envMock.APP_DEV_AUTO_LOGIN_EMAIL = undefined;
+    envMock.APP_DEFAULT_USER_EMAIL = undefined;
     findFirstMock.mockResolvedValue(null);
     updateSetMock.mockReturnValue({ where: updateWhereMock });
     updateWhereMock.mockResolvedValue(undefined);
@@ -119,7 +119,7 @@ describe("handleDevAutoLogin (GET /api/dev/auto-login)", () => {
   });
 
   it("does not expose the hatch to non-loopback hosts", async () => {
-    envMock.CMDCLAW_DEV_AUTO_LOGIN = "1";
+    envMock.APP_DEV_AUTO_LOGIN = "1";
 
     const response = await handleDevAutoLogin(
       new Request("https://cmdclaw.ai/api/dev/auto-login?callbackUrl=%2Fagents"),
@@ -130,8 +130,8 @@ describe("handleDevAutoLogin (GET /api/dev/auto-login)", () => {
   });
 
   it("creates a session cookie and redirects to the callback for loopback requests", async () => {
-    envMock.CMDCLAW_DEV_AUTO_LOGIN = "1";
-    envMock.CMDCLAW_DEV_AUTO_LOGIN_EMAIL = "admin@example.com";
+    envMock.APP_DEV_AUTO_LOGIN = "1";
+    envMock.APP_DEV_AUTO_LOGIN_EMAIL = "admin@example.com";
     findFirstMock.mockResolvedValue({
       id: "user-1",
       name: "Baptiste",

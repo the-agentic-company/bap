@@ -52,7 +52,7 @@ command = [
 ]
 
 env = dict(os.environ)
-env["CMDCLAW_SERVER_URL"] = os.environ["CHAT_SERVER_URL"]
+env["APP_SERVER_URL"] = os.environ["CHAT_SERVER_URL"]
 
 master_fd, slave_fd = pty.openpty()
 process = subprocess.Popen(
@@ -209,7 +209,7 @@ command = [
 ]
 
 env = dict(os.environ)
-env["CMDCLAW_SERVER_URL"] = os.environ["CHAT_SERVER_URL"]
+env["APP_SERVER_URL"] = os.environ["CHAT_SERVER_URL"]
 
 master_fd, slave_fd = pty.openpty()
 process = subprocess.Popen(

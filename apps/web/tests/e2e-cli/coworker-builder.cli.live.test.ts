@@ -74,7 +74,7 @@ for answer in json.loads(os.environ.get("COWORKER_QUESTION_ANSWERS") or "[]"):
     command.extend(["--question-answer", answer])
 
 env = dict(os.environ)
-env["CMDCLAW_SERVER_URL"] = os.environ["COWORKER_SERVER_URL"]
+env["APP_SERVER_URL"] = os.environ["COWORKER_SERVER_URL"]
 
 master_fd, slave_fd = pty.openpty()
 process = subprocess.Popen(

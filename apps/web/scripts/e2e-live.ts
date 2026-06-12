@@ -196,7 +196,7 @@ export function buildRecordModeEnv(
 
   if (options.hasWorktreeEnv) {
     env.PLAYWRIGHT_SKIP_WEBSERVER ??= "1";
-    env.CMDCLAW_SERVER_URL ??= env.PLAYWRIGHT_BASE_URL;
+    env.APP_SERVER_URL ??= env.PLAYWRIGHT_BASE_URL;
   }
 
   return env;
@@ -207,7 +207,7 @@ function logRecordMode(worktreeEnvFile: string | null, env: NodeJS.ProcessEnv): 
     return;
   }
 
-  const target = env.PLAYWRIGHT_BASE_URL ?? env.CMDCLAW_SERVER_URL ?? "unknown";
+  const target = env.PLAYWRIGHT_BASE_URL ?? env.APP_SERVER_URL ?? "unknown";
   console.log(`[e2e-live] using worktree server ${target}`);
 }
 
@@ -356,14 +356,14 @@ async function main(): Promise<void> {
       await runCliLiveStable({
         ...baseEnv,
         E2E_LIVE: "1",
-        CMDCLAW_SERVER_URL: baseEnv.CMDCLAW_SERVER_URL ?? "http://localhost:3000",
+        APP_SERVER_URL: baseEnv.APP_SERVER_URL ?? "http://localhost:3000",
       });
       return;
     case "cli-live":
       await runCliLive({
         ...baseEnv,
         E2E_LIVE: "1",
-        CMDCLAW_SERVER_URL: baseEnv.CMDCLAW_SERVER_URL ?? "http://localhost:3000",
+        APP_SERVER_URL: baseEnv.APP_SERVER_URL ?? "http://localhost:3000",
       });
       return;
     default:

@@ -32,7 +32,7 @@ function formatError(err: unknown): string {
 }
 
 async function main(): Promise<void> {
-  const serverUrl = process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL;
+  const serverUrl = process.env.APP_SERVER_URL || DEFAULT_SERVER_URL;
   const loaded = loadConfig(serverUrl);
 
   if (!isLocalServerUrl(serverUrl)) {
@@ -57,7 +57,7 @@ async function main(): Promise<void> {
     const email =
       process.env.CHAT_AUTH_EMAIL ||
       process.env.E2E_TEST_EMAIL ||
-      process.env.CMDCLAW_DEFAULT_USER_EMAIL?.trim() ||
+      process.env.APP_DEFAULT_USER_EMAIL?.trim() ||
       DEFAULT_CHAT_AUTH_EMAIL;
     const name = process.env.CHAT_AUTH_NAME || DEFAULT_CHAT_AUTH_NAME;
 

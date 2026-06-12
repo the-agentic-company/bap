@@ -592,8 +592,7 @@ async function runGeneration(
   const runtime = createGenerationRuntime();
   const streamedSandboxFileIds = new Set<string>();
   const authHandlingInProgress = new Set<string>();
-  const resolvedServerUrl =
-    options.serverUrl || process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL;
+  const resolvedServerUrl = options.serverUrl || process.env.APP_SERVER_URL || DEFAULT_SERVER_URL;
   const normalizedServerUrl = resolvedServerUrl.replace(/\/$/, "");
 
   try {
@@ -986,7 +985,7 @@ async function hydrateProviderAvailability(
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const requestedServerUrl = args.serverUrl || process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL;
+  const requestedServerUrl = args.serverUrl || process.env.APP_SERVER_URL || DEFAULT_SERVER_URL;
 
   if (args.resetAuth) {
     clearConfig(requestedServerUrl);

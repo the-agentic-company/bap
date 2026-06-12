@@ -3,12 +3,12 @@ import { getAdminEmails, normalizeAdminEmail, shouldGrantAdminRole } from "./adm
 
 describe("admin-emails", () => {
   afterEach(() => {
-    delete process.env.CMDCLAW_ADMIN_EMAILS;
-    delete process.env.CMDCLAW_DEFAULT_USER_EMAIL;
+    delete process.env.APP_ADMIN_EMAILS;
+    delete process.env.APP_DEFAULT_USER_EMAIL;
   });
 
   it("normalizes emails for admin access checks", () => {
-    process.env.CMDCLAW_ADMIN_EMAILS = "  Admin@Example.com ";
+    process.env.APP_ADMIN_EMAILS = "  Admin@Example.com ";
 
     expect(shouldGrantAdminRole("  ADMIN@EXAMPLE.COM ")).toBe(true);
   });
@@ -18,13 +18,13 @@ describe("admin-emails", () => {
   });
 
   it("returns configured admin emails", () => {
-    process.env.CMDCLAW_ADMIN_EMAILS = "second@example.com, First@Example.com";
+    process.env.APP_ADMIN_EMAILS = "second@example.com, First@Example.com";
 
     expect(getAdminEmails()).toEqual(["first@example.com", "second@example.com"]);
   });
 
   it("falls back to the default user email", () => {
-    process.env.CMDCLAW_DEFAULT_USER_EMAIL = "Owner@Example.com";
+    process.env.APP_DEFAULT_USER_EMAIL = "Owner@Example.com";
 
     expect(getAdminEmails()).toEqual(["owner@example.com"]);
   });

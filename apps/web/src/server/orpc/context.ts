@@ -91,7 +91,7 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
 
   try {
     const claims = await verifyHostedMcpAccessToken(token, {
-      secret: process.env.CMDCLAW_SERVER_SECRET ?? "",
+      secret: process.env.APP_SERVER_SECRET ?? "",
     });
     const dbUser = await db.query.user.findFirst({
       where: eq(userTable.id, claims.userId),
@@ -134,7 +134,7 @@ async function resolveRuntimeMcpContext(headers: Headers): Promise<{
   runtimeMcp: RuntimeMcpContext;
 } | null> {
   try {
-    const claims = resolveManagedMcpClaims(headers, process.env.CMDCLAW_SERVER_SECRET ?? "");
+    const claims = resolveManagedMcpClaims(headers, process.env.APP_SERVER_SECRET ?? "");
     const dbUser = await db.query.user.findFirst({
       where: eq(userTable.id, claims.userId),
     });

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { envMock } = vi.hoisted(() => ({
   envMock: {
-    CMDCLAW_SERVER_SECRET: "test-secret",
+    APP_SERVER_SECRET: "test-secret",
     SLACK_BOT_RELAY_SECRET: undefined as string | undefined,
     SLACK_BOT_TOKEN: "xoxb-test",
     SLACK_BOT_RELAY_ALLOWED_CHANNELS: undefined as string | undefined,

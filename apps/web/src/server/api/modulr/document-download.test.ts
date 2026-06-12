@@ -12,7 +12,7 @@ const { downloadFromS3Mock } = vi.hoisted(() => ({
 
 vi.mock("@cmdclaw/core/env", () => ({
   env: {
-    CMDCLAW_SERVER_SECRET: "test-server-secret",
+    APP_SERVER_SECRET: "test-server-secret",
   },
 }));
 

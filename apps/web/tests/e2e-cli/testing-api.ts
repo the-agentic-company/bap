@@ -3,8 +3,8 @@ export type CliLiveTestingAction = Record<string, unknown> & {
 };
 
 export async function callCliLiveTestingApi<T>(payload: CliLiveTestingAction): Promise<T> {
-  const serverUrl = process.env.CMDCLAW_SERVER_URL ?? "http://localhost:3000";
-  const secret = process.env.APP_SERVER_SECRET ?? process.env.BAP_SERVER_SECRET;
+  const serverUrl = process.env.APP_SERVER_URL ?? "http://localhost:3000";
+  const secret = process.env.APP_SERVER_SECRET;
   if (!secret) {
     throw new Error("APP_SERVER_SECRET is required for CLI live testing API calls.");
   }

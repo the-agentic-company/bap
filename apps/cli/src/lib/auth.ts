@@ -44,7 +44,7 @@ function isLocalServerUrl(serverUrl: string): boolean {
 
 function shouldUseRemoteTestLogin(): boolean {
   return Boolean(
-    process.env.CMDCLAW_SERVER_SECRET?.trim() &&
+    process.env.APP_SERVER_SECRET?.trim() &&
       (process.env.CI === "true" || process.env.E2E_LIVE === "1"),
   );
 }
@@ -64,15 +64,15 @@ async function readResponseErrorSnippet(res: Response): Promise<string> {
 }
 
 async function loginWithRemoteTestSession(serverUrl: string): Promise<CmdclawProfile> {
-  const secret = process.env.CMDCLAW_SERVER_SECRET?.trim();
+  const secret = process.env.APP_SERVER_SECRET?.trim();
   if (!secret) {
-    throw new Error("CMDCLAW_SERVER_SECRET is required for remote test login.");
+    throw new Error("APP_SERVER_SECRET is required for remote test login.");
   }
 
   const email =
     process.env.CHAT_AUTH_EMAIL ||
     process.env.E2E_TEST_EMAIL ||
-    process.env.CMDCLAW_DEFAULT_USER_EMAIL?.trim() ||
+    process.env.APP_DEFAULT_USER_EMAIL?.trim() ||
     DEFAULT_CHAT_AUTH_EMAIL;
   const name = process.env.CHAT_AUTH_NAME || DEFAULT_CHAT_AUTH_NAME;
   const ttlHours = parsePositiveInt(process.env.CHAT_SESSION_TTL_HOURS, 24);
@@ -171,7 +171,7 @@ async function bootstrapLocalProfile(serverUrl: string): Promise<CmdclawProfile>
   const email =
     process.env.CHAT_AUTH_EMAIL ||
     process.env.E2E_TEST_EMAIL ||
-    process.env.CMDCLAW_DEFAULT_USER_EMAIL?.trim() ||
+    process.env.APP_DEFAULT_USER_EMAIL?.trim() ||
     DEFAULT_CHAT_AUTH_EMAIL;
   const name = process.env.CHAT_AUTH_NAME || DEFAULT_CHAT_AUTH_NAME;
 

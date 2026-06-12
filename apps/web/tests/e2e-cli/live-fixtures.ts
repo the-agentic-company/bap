@@ -21,7 +21,7 @@ import { callCliLiveTestingApi } from "./testing-api";
 export { callCliLiveTestingApi };
 
 export const liveEnabled = process.env.E2E_LIVE === "1";
-export const defaultServerUrl = process.env.CMDCLAW_SERVER_URL ?? "http://localhost:3000";
+export const defaultServerUrl = process.env.APP_SERVER_URL ?? "http://localhost:3000";
 export const responseTimeoutMs = Number(process.env.E2E_RESPONSE_TIMEOUT_MS ?? "180000");
 export const commandTimeoutMs = Number(process.env.E2E_CLI_TIMEOUT_MS ?? String(responseTimeoutMs));
 export const artifactTimeoutMs = Number(process.env.E2E_ARTIFACT_TIMEOUT_MS ?? "45000");
@@ -44,7 +44,7 @@ export const optionalProdFixtureTestsEnabled =
 
 export const expectedUserEmail =
   process.env.E2E_TEST_EMAIL?.trim() ||
-  process.env.CMDCLAW_DEFAULT_USER_EMAIL?.trim() ||
+  process.env.APP_DEFAULT_USER_EMAIL?.trim() ||
   "cmdclaw@example.com";
 export const expectedGmailAccountLabel = process.env.E2E_GMAIL_ACCOUNT_LABEL ?? "baptiste";
 export const sourceChannelName = "experiment-cmdclaw-testing";
@@ -202,7 +202,7 @@ export function runBunCommand(
       cwd: repoRoot,
       env: {
         ...process.env,
-        CMDCLAW_SERVER_URL: defaultServerUrl,
+        APP_SERVER_URL: defaultServerUrl,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -294,7 +294,7 @@ export async function resolveLiveModel(): Promise<string> {
 }
 
 export function getCliClient() {
-  const serverUrl = process.env.CMDCLAW_SERVER_URL || defaultServerUrl;
+  const serverUrl = process.env.APP_SERVER_URL || defaultServerUrl;
   const config = defaultProfileStore.load(serverUrl);
   if (!config?.token) {
     throw new Error(

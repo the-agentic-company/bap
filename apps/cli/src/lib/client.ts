@@ -7,7 +7,7 @@ import {
 } from "@cmdclaw/client";
 
 export function resolveServerUrl(serverUrl?: string): string {
-  return serverUrl || process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL;
+  return serverUrl || process.env.APP_SERVER_URL || DEFAULT_SERVER_URL;
 }
 
 function loadStoredProfile(serverUrl?: string): CmdclawProfile | null {

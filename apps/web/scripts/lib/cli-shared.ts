@@ -47,7 +47,7 @@ export function getConfigPathForServerUrl(serverUrl: string): string {
 }
 
 export function loadConfig(
-  serverUrl = process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL,
+  serverUrl = process.env.APP_SERVER_URL || DEFAULT_SERVER_URL,
 ): ChatConfig | null {
   try {
     const configPath = getConfigPathForServerUrl(serverUrl);
@@ -67,9 +67,7 @@ export function saveConfig(config: ChatConfig): void {
   writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
 
-export function clearConfig(
-  serverUrl = process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL,
-): void {
+export function clearConfig(serverUrl = process.env.APP_SERVER_URL || DEFAULT_SERVER_URL): void {
   const configPath = getConfigPathForServerUrl(serverUrl);
   if (existsSync(configPath)) {
     unlinkSync(configPath);

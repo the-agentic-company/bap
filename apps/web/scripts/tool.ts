@@ -96,7 +96,7 @@ function printHelp(): void {
 
 function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = {
-    serverUrl: process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL,
+    serverUrl: process.env.APP_SERVER_URL || DEFAULT_SERVER_URL,
     toolArgs: [],
   };
 
@@ -301,7 +301,7 @@ async function main(): Promise<void> {
     env: {
       ...process.env,
       ...cliEnv,
-      CMDCLAW_SERVER_URL: parsed.serverUrl,
+      APP_SERVER_URL: parsed.serverUrl,
     },
   });
 

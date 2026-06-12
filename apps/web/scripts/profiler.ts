@@ -58,7 +58,7 @@ function printHelp(): void {
 
 function parseArgs(argv: string[]): Args {
   const args: Args = {
-    serverUrl: process.env.CMDCLAW_SERVER_URL || DEFAULT_SERVER_URL,
+    serverUrl: process.env.APP_SERVER_URL || DEFAULT_SERVER_URL,
     message: "hi",
     model: process.env.CMDCLAW_CHAT_MODEL || "openai/gpt-5.2-codex",
     runs: 3,

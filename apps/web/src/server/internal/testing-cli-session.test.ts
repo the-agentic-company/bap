@@ -17,7 +17,7 @@ const { findFirstMock, insertMock, insertValuesMock, updateMock, updateSetMock, 
 
 vi.mock("@/env", () => ({
   env: {
-    CMDCLAW_SERVER_SECRET: "test-secret",
+    APP_SERVER_SECRET: "test-secret",
   },
 }));
 

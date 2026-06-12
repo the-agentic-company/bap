@@ -31,7 +31,7 @@ describe("sandbox file download API", () => {
     sandboxFileFindFirstMock.mockReset();
     downloadFromS3Mock.mockReset();
     process.env.APP_URL = "https://app.example.com";
-    process.env.CMDCLAW_SERVER_SECRET = "test-download-secret";
+    process.env.APP_SERVER_SECRET = "test-download-secret";
   });
 
   it("streams a valid signed sandbox file download through the app", async () => {

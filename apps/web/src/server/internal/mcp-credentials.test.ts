@@ -7,7 +7,7 @@ process.env.REDIS_URL ??= "redis://localhost:6379";
 process.env.OPENAI_API_KEY ??= "test-openai-key";
 process.env.SANDBOX_DEFAULT ??= "docker";
 process.env.ENCRYPTION_KEY ??= "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-process.env.CMDCLAW_SERVER_SECRET ??= "test-secret";
+process.env.APP_SERVER_SECRET ??= "test-secret";
 process.env.AWS_ENDPOINT_URL ??= "http://localhost:9000";
 process.env.AWS_ACCESS_KEY_ID ??= "test-access-key";
 process.env.AWS_SECRET_ACCESS_KEY ??= "test-secret-key";
@@ -19,7 +19,7 @@ const userFindFirstMock = vi.fn<() => Promise<unknown>>();
 
 vi.mock("@/env", () => ({
   env: {
-    CMDCLAW_SERVER_SECRET: "test-secret",
+    APP_SERVER_SECRET: "test-secret",
   },
 }));
 

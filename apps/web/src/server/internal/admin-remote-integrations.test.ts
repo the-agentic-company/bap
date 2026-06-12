@@ -14,7 +14,7 @@ const { getLocalRemoteIntegrationCredentialsMock, listLocalRemoteIntegrationUser
 
 vi.mock("@/env", () => ({
   env: {
-    CMDCLAW_SERVER_SECRET: "test-secret",
+    APP_SERVER_SECRET: "test-secret",
   },
 }));
 

@@ -436,7 +436,7 @@ describe("conversationRouter.downloadSandboxFile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.APP_URL = "https://app.example.com";
-    process.env.CMDCLAW_SERVER_SECRET = "test-download-secret";
+    process.env.APP_SERVER_SECRET = "test-download-secret";
   });
 
   it("returns an app-hosted signed download URL for an owned sandbox file", async () => {

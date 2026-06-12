@@ -28,7 +28,7 @@ const slackPollIntervalMs = Number(process.env.E2E_SLACK_POLL_INTERVAL_MS ?? "25
 const slackPostVerifyTimeoutMs = Number(process.env.E2E_SLACK_POST_VERIFY_TIMEOUT_MS ?? "30000");
 const expectedUserEmail =
   process.env.E2E_TEST_EMAIL?.trim() ||
-  process.env.CMDCLAW_DEFAULT_USER_EMAIL?.trim() ||
+  process.env.APP_DEFAULT_USER_EMAIL?.trim() ||
   "playwright@example.com";
 const sourceChannelName = "experiment-cmdclaw-testing";
 const targetChannelName = "e2e-slack-testing";

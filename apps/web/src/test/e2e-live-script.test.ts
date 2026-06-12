@@ -15,7 +15,7 @@ describe("buildRecordModeEnv", () => {
     expect(env.PLAYWRIGHT_REUSE_SERVER).toBe("1");
     expect(env.PLAYWRIGHT_VIDEO).toBe("on");
     expect(env.PLAYWRIGHT_SKIP_WEBSERVER).toBe("1");
-    expect(env.CMDCLAW_SERVER_URL).toBe("http://127.0.0.1:3419");
+    expect(env.APP_SERVER_URL).toBe("http://127.0.0.1:3419");
   });
 
   test("preserves explicit server settings", () => {
@@ -24,19 +24,19 @@ describe("buildRecordModeEnv", () => {
         NODE_ENV: "test",
         PLAYWRIGHT_BASE_URL: "http://127.0.0.1:3419",
         PLAYWRIGHT_SKIP_WEBSERVER: "0",
-        CMDCLAW_SERVER_URL: "http://127.0.0.1:9999",
+        APP_SERVER_URL: "http://127.0.0.1:9999",
       },
       { hasWorktreeEnv: true },
     );
 
     expect(env.PLAYWRIGHT_SKIP_WEBSERVER).toBe("0");
-    expect(env.CMDCLAW_SERVER_URL).toBe("http://127.0.0.1:9999");
+    expect(env.APP_SERVER_URL).toBe("http://127.0.0.1:9999");
   });
 
   test("keeps non-worktree runs unchanged", () => {
     const env = buildRecordModeEnv({ NODE_ENV: "test" }, { hasWorktreeEnv: false });
 
     expect(env.PLAYWRIGHT_SKIP_WEBSERVER).toBeUndefined();
-    expect(env.CMDCLAW_SERVER_URL).toBeUndefined();
+    expect(env.APP_SERVER_URL).toBeUndefined();
   });
 });
