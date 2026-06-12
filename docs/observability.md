@@ -18,6 +18,14 @@ CmdClaw’s local observability stack is built for direct machine querying.
 For the credentials for hosted observability, look at `.env.staging.observability` and
 `.env.prod.observability`.
 
+## Hosted Database Access
+
+Hosted Postgres access goes through the Tailscale Postgres hosts. When using
+`psql` with `DATABASE_URL_STAGING` or `DATABASE_URL_PROD`, remove the
+`uselibpqcompat` query parameter first. That parameter is accepted by some app
+database clients, but stock `psql`/libpq rejects it as an invalid URI query
+parameter.
+
 ## Canonical Service Events
 
 CmdClaw treats one context-rich `canonical_service_event` as the authoritative
