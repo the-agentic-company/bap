@@ -13,7 +13,12 @@ describe("Zero provider URLs", () => {
   });
 
   it("falls back to local docker compose URLs on loopback app hosts", async () => {
-    const location = { hostname: "localhost", port: "3000" };
+    const location = {
+      host: "localhost:3000",
+      hostname: "localhost",
+      port: "3000",
+      protocol: "http:",
+    };
 
     expect(resolveZeroCacheURL(undefined, location)).toBe("http://localhost:4848");
     expect(resolveZeroQueryURL(undefined, location)).toBe(
@@ -21,11 +26,18 @@ describe("Zero provider URLs", () => {
     );
   });
 
-  it("does not assume local Zero endpoints on non-loopback hosts", async () => {
-    const location = { hostname: "app.cmdclaw.com", port: "" };
+  it("falls back to same-origin app edge URLs on non-loopback hosts", async () => {
+    const location = {
+      host: "staging.cmdclaw.ai",
+      hostname: "staging.cmdclaw.ai",
+      port: "",
+      protocol: "https:",
+    };
 
-    expect(resolveZeroCacheURL(undefined, location)).toBeUndefined();
-    expect(resolveZeroQueryURL(undefined, location)).toBeUndefined();
+    expect(resolveZeroCacheURL(undefined, location)).toBe("https://staging.cmdclaw.ai/zero");
+    expect(resolveZeroQueryURL(undefined, location)).toBe(
+      "https://staging.cmdclaw.ai/api/zero/query",
+    );
   });
 });
 

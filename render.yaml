@@ -448,10 +448,6 @@ projects:
                   type: web
                   name: cmdclaw-mcp-staging
                   envVarKey: RENDER_EXTERNAL_URL
-              - key: NEXT_PUBLIC_ZERO_CACHE_URL
-                value: https://staging.cmdclaw.ai/zero
-              - key: NEXT_PUBLIC_ZERO_QUERY_URL
-                value: https://staging.cmdclaw.ai/api/zero/query
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT

@@ -1,7 +1,7 @@
 const DEFAULT_LOCAL_ZERO_CACHE_PORT = "4848";
 const DEFAULT_LOCAL_ZERO_QUERY_HOST = "host.docker.internal";
 
-export type BrowserLocation = Pick<Location, "hostname" | "port">;
+export type BrowserLocation = Pick<Location, "host" | "hostname" | "port" | "protocol">;
 
 function isLoopbackHostname(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
@@ -15,11 +15,15 @@ export function resolveZeroCacheURL(
     return configuredURL;
   }
 
-  if (!location || !isLoopbackHostname(location.hostname)) {
+  if (!location) {
     return undefined;
   }
 
-  return `http://${location.hostname}:${DEFAULT_LOCAL_ZERO_CACHE_PORT}`;
+  if (isLoopbackHostname(location.hostname)) {
+    return `http://${location.hostname}:${DEFAULT_LOCAL_ZERO_CACHE_PORT}`;
+  }
+
+  return `${location.protocol}//${location.host}/zero`;
 }
 
 export function resolveZeroQueryURL(
@@ -30,8 +34,12 @@ export function resolveZeroQueryURL(
     return configuredURL;
   }
 
-  if (!location || !isLoopbackHostname(location.hostname)) {
+  if (!location) {
     return undefined;
+  }
+
+  if (!isLoopbackHostname(location.hostname)) {
+    return `${location.protocol}//${location.host}/api/zero/query`;
   }
 
   const appPort = location.port || "3000";
