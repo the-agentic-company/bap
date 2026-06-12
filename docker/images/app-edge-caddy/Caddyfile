@@ -1,0 +1,25 @@
+{
+	admin off
+}
+
+:{$PORT:10000} {
+	encode zstd gzip
+
+	handle /health {
+		respond "ok" 200
+	}
+
+	handle_path /zero/* {
+		reverse_proxy http://{$CMDCLAW_ZERO_CACHE_HOST}:4848 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	handle {
+		reverse_proxy http://{$CMDCLAW_WEB_HOST}:10000 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto https
+		}
+	}
+}

@@ -202,6 +202,31 @@ projects:
                   name: cmdclaw-victoria-traces-staging
                   property: host
 
+          - type: web
+            name: cmdclaw-app-edge-staging
+            runtime: docker
+            region: frankfurt
+            plan: starter
+            numInstances: 1
+            autoDeployTrigger: "off"
+            dockerContext: docker/images/app-edge-caddy
+            dockerfilePath: docker/images/app-edge-caddy/Dockerfile
+            dockerCommand: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+            healthCheckPath: /health
+            envVars:
+              - key: PORT
+                value: "10000"
+              - key: CMDCLAW_WEB_HOST
+                fromService:
+                  type: web
+                  name: cmdclaw-web-staging
+                  property: host
+              - key: CMDCLAW_ZERO_CACHE_HOST
+                fromService:
+                  type: pserv
+                  name: cmdclaw-zero-cache-staging
+                  property: host
+
           - type: worker
             name: cmdclaw-caddy-tailscale-staging
             runtime: docker
@@ -426,6 +451,10 @@ projects:
                   type: web
                   name: cmdclaw-mcp-staging
                   envVarKey: RENDER_EXTERNAL_URL
+              - key: NEXT_PUBLIC_ZERO_CACHE_URL
+                value: https://staging.cmdclaw.ai/zero
+              - key: NEXT_PUBLIC_ZERO_QUERY_URL
+                value: https://staging.cmdclaw.ai/api/zero/query
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
