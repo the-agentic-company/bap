@@ -700,6 +700,28 @@ projects:
                   name: cmdclaw-victoria-traces-prod
                   property: host
 
+          - type: web
+            name: cmdclaw-app-edge-prod
+            runtime: docker
+            region: frankfurt
+            plan: starter
+            numInstances: 1
+            autoDeployTrigger: "off"
+            dockerContext: docker/images/app-edge-caddy
+            dockerfilePath: docker/images/app-edge-caddy/Dockerfile
+            dockerCommand: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+            healthCheckPath: /health
+            envVars:
+              - key: PORT
+                value: "10000"
+              - key: CMDCLAW_WEB_HOST
+                value: cmdclaw-web-prod.onrender.com
+              - key: CMDCLAW_ZERO_CACHE_HOST
+                fromService:
+                  type: pserv
+                  name: cmdclaw-zero-cache-prod
+                  property: host
+
           - type: worker
             name: cmdclaw-caddy-tailscale-prod
             runtime: docker
