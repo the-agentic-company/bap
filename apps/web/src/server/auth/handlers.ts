@@ -185,14 +185,24 @@ function isSuccessfulMagicLinkVerifyResponse(response: Response): boolean {
 
 function withMagicLinkRedirectParams(
   url: URL,
+  request: Request,
   state: Extract<Awaited<ReturnType<typeof resolveMagicLinkPageState>>, { email: string }>,
 ) {
-  url.searchParams.set("callbackURL", state.callbackUrl ?? "/");
+  url.searchParams.set(
+    "callbackURL",
+    buildRequestAwareUrl(state.callbackUrl ?? "/", request).toString(),
+  );
   if (state.newUserCallbackUrl) {
-    url.searchParams.set("newUserCallbackURL", state.newUserCallbackUrl);
+    url.searchParams.set(
+      "newUserCallbackURL",
+      buildRequestAwareUrl(state.newUserCallbackUrl, request).toString(),
+    );
   }
   if (state.errorCallbackUrl) {
-    url.searchParams.set("errorCallbackURL", state.errorCallbackUrl);
+    url.searchParams.set(
+      "errorCallbackURL",
+      buildRequestAwareUrl(state.errorCallbackUrl, request).toString(),
+    );
   }
 }
 
@@ -214,7 +224,7 @@ export async function handleMagicLinkConfirm(request: Request, token: string): P
 
   const verifyUrl = buildRequestAwareUrl("/api/auth/magic-link/verify", request);
   verifyUrl.searchParams.set("token", token);
-  withMagicLinkRedirectParams(verifyUrl, state);
+  withMagicLinkRedirectParams(verifyUrl, request, state);
 
   const response = await handleBetterAuth(
     new Request(verifyUrl, {
@@ -253,9 +263,20 @@ export async function handleMagicLinkResend(request: Request, token: string): Pr
       headers,
       body: JSON.stringify({
         email: state.email,
-        callbackURL: state.callbackUrl ?? "/",
-        ...(state.newUserCallbackUrl ? { newUserCallbackURL: state.newUserCallbackUrl } : {}),
-        ...(state.errorCallbackUrl ? { errorCallbackURL: state.errorCallbackUrl } : {}),
+        callbackURL: buildRequestAwareUrl(state.callbackUrl ?? "/", request).toString(),
+        ...(state.newUserCallbackUrl
+          ? {
+              newUserCallbackURL: buildRequestAwareUrl(
+                state.newUserCallbackUrl,
+                request,
+              ).toString(),
+            }
+          : {}),
+        ...(state.errorCallbackUrl
+          ? {
+              errorCallbackURL: buildRequestAwareUrl(state.errorCallbackUrl, request).toString(),
+            }
+          : {}),
       }),
     }),
   );

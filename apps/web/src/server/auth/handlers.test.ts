@@ -240,11 +240,42 @@ describe("handleMagicLinkConfirm (POST /sign-in/:token/confirm)", () => {
     const delegatedUrl = new URL(delegatedRequest.url);
     expect(delegatedUrl.pathname).toBe("/api/auth/magic-link/verify");
     expect(delegatedUrl.searchParams.get("token")).toBe("abc123");
-    expect(delegatedUrl.searchParams.get("callbackURL")).toBe("/chat");
-    expect(delegatedUrl.searchParams.get("newUserCallbackURL")).toBe("/onboarding");
-    expect(delegatedUrl.searchParams.get("errorCallbackURL")).toBe("/login?error=magic-link");
+    expect(delegatedUrl.searchParams.get("callbackURL")).toBe("https://cmdclaw.ai/chat");
+    expect(delegatedUrl.searchParams.get("newUserCallbackURL")).toBe(
+      "https://cmdclaw.ai/onboarding",
+    );
+    expect(delegatedUrl.searchParams.get("errorCallbackURL")).toBe(
+      "https://cmdclaw.ai/login?error=magic-link",
+    );
     expect(delegatedRequest.headers.get("cookie")).toBe("csrf=token");
     expect(markMagicLinkRequestConsumedMock).toHaveBeenCalledWith("abc123");
+  });
+
+  it("delegates complex MCP OAuth return paths as absolute URLs for Better Auth", async () => {
+    const mcpAuthorizePath =
+      "/api/mcp/oauth/authorize?response_type=code&client_id=cmdclaw-mcp-client&redirect_uri=http%3A%2F%2Flocalhost%3A34567%2Fcallback&scope=cmdclaw+gmail&resource=https%3A%2F%2Fmcp.heybap.com%2Fbap";
+    resolveMagicLinkPageStateMock.mockResolvedValueOnce({
+      status: "pending",
+      email: "pilot@cmdclaw.ai",
+      callbackUrl: mcpAuthorizePath,
+      newUserCallbackUrl: mcpAuthorizePath,
+      errorCallbackUrl: "/login?error=magic-link",
+    });
+    authHandlerMock.mockResolvedValue(Response.redirect("https://heybap.com/chat", 302));
+
+    await handleMagicLinkConfirm(
+      new Request("https://heybap.com/sign-in/abc123/confirm", { method: "POST" }),
+      "abc123",
+    );
+
+    const delegatedRequest = authHandlerMock.mock.calls[0]?.[0] as Request;
+    const delegatedUrl = new URL(delegatedRequest.url);
+    expect(delegatedUrl.searchParams.get("callbackURL")).toBe(
+      `https://heybap.com${mcpAuthorizePath}`,
+    );
+    expect(delegatedUrl.searchParams.get("newUserCallbackURL")).toBe(
+      `https://heybap.com${mcpAuthorizePath}`,
+    );
   });
 
   it("does not mark the page state consumed when Better Auth rejects the token", async () => {
@@ -306,9 +337,9 @@ describe("handleMagicLinkResend (POST /sign-in/:token/resend)", () => {
     expect(new URL(delegatedRequest.url).pathname).toBe("/api/auth/sign-in/magic-link");
     await expect(delegatedRequest.json()).resolves.toEqual({
       email: "pilot@cmdclaw.ai",
-      callbackURL: "/chat",
-      newUserCallbackURL: "/onboarding",
-      errorCallbackURL: "/login?error=magic-link",
+      callbackURL: "https://cmdclaw.ai/chat",
+      newUserCallbackURL: "https://cmdclaw.ai/onboarding",
+      errorCallbackURL: "https://cmdclaw.ai/login?error=magic-link",
     });
   });
 
