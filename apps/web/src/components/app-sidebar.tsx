@@ -410,26 +410,13 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
 
       <aside className="bg-sidebar hidden h-screen w-16 shrink-0 flex-col border-r md:flex">
         <div className="flex h-14 items-center justify-center">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AppLink
-                href="/"
-                aria-label={t("CmdClaw home")}
-                className="hover:bg-sidebar-accent focus-visible:ring-sidebar-ring/45 flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus-visible:ring-3 focus-visible:outline-none"
-              >
-                <AppImage
-                  src="/logo.png"
-                  alt=""
-                  width={24}
-                  height={24}
-                  className="object-contain"
-                />
-              </AppLink>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={10}>
-              <T>CmdClaw</T>
-            </TooltipContent>
-          </Tooltip>
+          <AppLink
+            href="/"
+            aria-label={t("CmdClaw home")}
+            className="hover:bg-sidebar-accent focus-visible:ring-sidebar-ring/45 flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus-visible:ring-3 focus-visible:outline-none"
+          >
+            <AppImage src="/logo.png" alt="" width={24} height={24} className="object-contain" />
+          </AppLink>
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 pb-4">
