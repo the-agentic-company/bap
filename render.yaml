@@ -148,7 +148,7 @@ projects:
               - key: ZERO_ADMIN_PASSWORD
                 generateValue: true
               - key: ZERO_QUERY_URL
-                value: https://staging.bap.ai/api/zero/query
+                value: https://staging.heybap.com/api/zero/query
               - key: ZERO_QUERY_FORWARD_COOKIES
                 value: "true"
               - key: ZERO_ENABLE_CRUD_MUTATIONS
@@ -174,13 +174,13 @@ projects:
                 value: "10000"
               - fromGroup: staging
               - key: APP_GRAFANA_DOMAIN
-                value: grafana.ops.staging.bap.ai
+                value: grafana.ops.staging.heybap.com
               - key: APP_VICTORIA_METRICS_DOMAIN
-                value: victoria-metrics.ops.staging.bap.ai
+                value: victoria-metrics.ops.staging.heybap.com
               - key: APP_VICTORIA_LOGS_DOMAIN
-                value: victoria-logs.ops.staging.bap.ai
+                value: victoria-logs.ops.staging.heybap.com
               - key: APP_VICTORIA_TRACES_DOMAIN
-                value: victoria-traces.ops.staging.bap.ai
+                value: victoria-traces.ops.staging.heybap.com
               - key: APP_GRAFANA_HOST
                 fromService:
                   type: pserv
@@ -217,7 +217,7 @@ projects:
               - key: PORT
                 value: "10000"
               - key: APP_WEB_HOST
-                value: bap-web-staging.onrender.com
+                value: cmdclaw-web-staging.onrender.com
               - key: APP_ZERO_CACHE_HOST
                 fromService:
                   type: pserv
@@ -374,7 +374,7 @@ projects:
               - key: GF_AUTH_DISABLE_LOGIN_FORM
                 value: "false"
               - key: GF_SERVER_ROOT_URL
-                value: https://grafana.ops.staging.bap.ai
+                value: https://grafana.ops.staging.heybap.com
               - key: GF_PLUGINS_PREINSTALL_SYNC
                 value: victoriametrics-logs-datasource
               - key: APP_VICTORIA_METRICS_HOST
@@ -646,7 +646,7 @@ projects:
               - key: ZERO_ADMIN_PASSWORD
                 generateValue: true
               - key: ZERO_QUERY_URL
-                value: https://bap.ai/api/zero/query
+                value: https://heybap.com/api/zero/query
               - key: ZERO_QUERY_FORWARD_COOKIES
                 value: "true"
               - key: ZERO_ENABLE_CRUD_MUTATIONS
@@ -672,13 +672,13 @@ projects:
                 value: "10000"
               - fromGroup: prod
               - key: APP_GRAFANA_DOMAIN
-                value: grafana.ops.prod.bap.ai
+                value: grafana.ops.prod.heybap.com
               - key: APP_VICTORIA_METRICS_DOMAIN
-                value: victoria-metrics.ops.prod.bap.ai
+                value: victoria-metrics.ops.prod.heybap.com
               - key: APP_VICTORIA_LOGS_DOMAIN
-                value: victoria-logs.ops.prod.bap.ai
+                value: victoria-logs.ops.prod.heybap.com
               - key: APP_VICTORIA_TRACES_DOMAIN
-                value: victoria-traces.ops.prod.bap.ai
+                value: victoria-traces.ops.prod.heybap.com
               - key: APP_GRAFANA_HOST
                 fromService:
                   type: pserv
@@ -715,7 +715,7 @@ projects:
               - key: PORT
                 value: "10000"
               - key: APP_WEB_HOST
-                value: bap-web-prod.onrender.com
+                value: cmdclaw-web-prod.onrender.com
               - key: APP_ZERO_CACHE_HOST
                 fromService:
                   type: pserv
@@ -872,7 +872,7 @@ projects:
               - key: GF_AUTH_DISABLE_LOGIN_FORM
                 value: "false"
               - key: GF_SERVER_ROOT_URL
-                value: https://grafana.ops.prod.bap.ai
+                value: https://grafana.ops.prod.heybap.com
               - key: GF_PLUGINS_PREINSTALL_SYNC
                 value: victoriametrics-logs-datasource
               - key: APP_VICTORIA_METRICS_HOST
