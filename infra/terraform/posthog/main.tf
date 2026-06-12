@@ -1,1 +1,0 @@
-# Define PostHog resources here.
