@@ -217,7 +217,7 @@ projects:
               - key: PORT
                 value: "10000"
               - key: APP_WEB_HOST
-                value: app-web-staging.onrender.com
+                value: bap-web-staging.onrender.com
               - key: APP_ZERO_CACHE_HOST
                 fromService:
                   type: pserv
@@ -399,7 +399,7 @@ projects:
                   property: host
 
           - type: web
-            name: app-web-staging
+            name: bap-web-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -483,7 +483,7 @@ projects:
                 value: start
 
           - type: worker
-            name: app-worker-staging
+            name: bap-worker-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -715,7 +715,7 @@ projects:
               - key: PORT
                 value: "10000"
               - key: APP_WEB_HOST
-                value: app-web-prod.onrender.com
+                value: bap-web-prod.onrender.com
               - key: APP_ZERO_CACHE_HOST
                 fromService:
                   type: pserv
@@ -897,7 +897,7 @@ projects:
                   property: host
 
           - type: web
-            name: app-web-prod
+            name: bap-web-prod
             runtime: docker
             region: frankfurt
             plan: standard
@@ -981,7 +981,7 @@ projects:
                 value: start
 
           - type: worker
-            name: app-worker-prod
+            name: bap-worker-prod
             runtime: docker
             region: frankfurt
             plan: standard
