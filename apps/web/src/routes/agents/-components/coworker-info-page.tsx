@@ -1,3 +1,4 @@
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
 import {
   AlertCircle,
@@ -58,7 +59,6 @@ import {
   useTriggerCoworker,
 } from "@/orpc/hooks/coworkers";
 import { AppLink as Link } from "../-lib/app-link";
-import { useRouter, useSearchParams } from "../-lib/next-navigation-compat";
 
 type Props = {
   coworkerSlug: string;
@@ -672,8 +672,9 @@ function RunDetailsPanel({
 export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const t = useGT();
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchStr = useRouterState({ select: (state) => state.location.searchStr });
+  const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
+  const navigate = useNavigate();
   const triggerCoworker = useTriggerCoworker();
   const coworkerList = useCoworkerList();
   const coworkerListItem = useMemo(
@@ -763,9 +764,16 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     (runId: string) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set("run", runId);
-      router.push(`/agents/info/${resolvedCoworkerSlug}?${params.toString()}`);
+      void navigate({
+        to: "/agents/info/$slug",
+        params: { slug: resolvedCoworkerSlug },
+        search: {
+          run: params.get("run") ?? undefined,
+          tab: params.get("tab") ?? undefined,
+        },
+      });
     },
-    [resolvedCoworkerSlug, router, searchParams],
+    [navigate, resolvedCoworkerSlug, searchParams],
   );
 
   const handleTabChange = useCallback(
@@ -777,10 +785,16 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       } else {
         params.set("tab", infoTab);
       }
-      const query = params.toString();
-      router.push(`/agents/info/${resolvedCoworkerSlug}${query ? `?${query}` : ""}`);
+      void navigate({
+        to: "/agents/info/$slug",
+        params: { slug: resolvedCoworkerSlug },
+        search: {
+          run: params.get("run") ?? undefined,
+          tab: params.get("tab") ?? undefined,
+        },
+      });
     },
-    [resolvedCoworkerSlug, router, searchParams],
+    [navigate, resolvedCoworkerSlug, searchParams],
   );
 
   const handleMobilePanelChange = useCallback(
@@ -797,10 +811,16 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       } else {
         params.set("tab", nextPanel);
       }
-      const query = params.toString();
-      router.push(`/agents/info/${resolvedCoworkerSlug}${query ? `?${query}` : ""}`);
+      void navigate({
+        to: "/agents/info/$slug",
+        params: { slug: resolvedCoworkerSlug },
+        search: {
+          run: params.get("run") ?? undefined,
+          tab: params.get("tab") ?? undefined,
+        },
+      });
     },
-    [mobilePanel, resolvedCoworkerSlug, router, searchParams],
+    [mobilePanel, navigate, resolvedCoworkerSlug, searchParams],
   );
   const handleMobilePanelPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -858,11 +878,11 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         payload: {},
       });
       toast.success(result.generationId ? "Generation started." : "Needs your input.");
-      router.push(`/agents/info/${resolvedCoworkerSlug}`);
+      void navigate({ to: "/agents/info/$slug", params: { slug: resolvedCoworkerSlug } });
     } catch (error) {
       toast.error(normalizeGenerationError(error, "start_rpc").message);
     }
-  }, [resolvedCoworkerId, resolvedCoworkerSlug, router, triggerCoworker]);
+  }, [navigate, resolvedCoworkerId, resolvedCoworkerSlug, triggerCoworker]);
 
   const detailsPanel = useMemo(
     () => (

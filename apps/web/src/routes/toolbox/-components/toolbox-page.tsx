@@ -1,5 +1,6 @@
 // oxlint-disable jsx-a11y/control-has-associated-label
 
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T, msg, useGT, useMessages } from "gt-react";
 import {
   ArrowUp,
@@ -69,7 +70,6 @@ import {
 import { useWorkspaceMcpServerList } from "@/orpc/hooks/workspace-mcp-servers";
 import { AppImage } from "../-lib/app-image";
 import { AppLink } from "../-lib/app-link";
-import { useRouter, useSearchParams } from "../-lib/next-navigation-compat";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -531,7 +531,7 @@ function CustomToolCard({
   onUnshare: (id: string, displayName: string) => Promise<void>;
   onSaveShared: (id: string, displayName: string) => Promise<void>;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleDelete = useCallback(
     (e: React.MouseEvent) => {
@@ -573,9 +573,9 @@ function CustomToolCard({
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      void router.push(`/skills/${skill.id}`);
+      void navigate({ to: "/skills/$id", params: { id: skill.id } });
     },
-    [router, skill.id],
+    [navigate, skill.id],
   );
 
   const handleCardActionClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -785,8 +785,9 @@ function WorkspaceMcpServerToolCard({
 export function ToolboxPage() {
   const t = useGT();
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const searchStr = useRouterState({ select: (state) => state.location.searchStr });
+  const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
   const isMobile = useIsMobile();
   const { isAdmin } = useIsAdmin();
 
@@ -887,10 +888,10 @@ export function ToolboxPage() {
           toast.error(t("Failed to connect LinkedIn. Please try again."));
         })
         .finally(() => {
-          window.history.replaceState({}, "", "/toolbox");
+          void navigate({ to: "/toolbox", replace: true });
         });
     }
-  }, [searchParams, linkLinkedIn, refetchIntegrations, t]);
+  }, [searchParams, linkLinkedIn, navigate, refetchIntegrations, t]);
 
   // ─── URL params handling (OAuth callback) ───────────────────────────────────
   useEffect(() => {
@@ -900,15 +901,15 @@ export function ToolboxPage() {
       queueMicrotask(() => {
         toast.success(t("Integration connected successfully!"));
       });
-      window.history.replaceState({}, "", "/toolbox");
+      void navigate({ to: "/toolbox", replace: true });
       refetchIntegrations();
     } else if (error) {
       queueMicrotask(() => {
         toast.error(formatOAuthConnectionError(error));
       });
-      window.history.replaceState({}, "", "/toolbox");
+      void navigate({ to: "/toolbox", replace: true });
     }
-  }, [searchParams, refetchIntegrations, t]);
+  }, [searchParams, navigate, refetchIntegrations, t]);
 
   useEffect(() => {
     const input = folderImportInputRef.current;
@@ -1005,12 +1006,12 @@ export function ToolboxPage() {
         displayName: "New Skill",
         description: msg("Add a description for this skill"),
       });
-      router.push(`/skills/${result.id}`);
+      void navigate({ to: "/skills/$id", params: { id: result.id } });
     } catch {
       toast.error(t("Failed to create skill."));
       setIsCreating(false);
     }
-  }, [createSkill, router, t]);
+  }, [createSkill, navigate, t]);
 
   const handleImportZipClick = useCallback(() => {
     if (importSkill.isPending) {
@@ -1027,8 +1028,8 @@ export function ToolboxPage() {
   }, [importSkill.isPending, supportsFolderImport]);
 
   const handleNewMcpSource = useCallback(() => {
-    router.push("/toolbox/sources/new?kind=mcp");
-  }, [router]);
+    void navigate({ to: "/toolbox/sources/new", search: { kind: "mcp" } });
+  }, [navigate]);
 
   const handleImportZipChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1049,13 +1050,13 @@ export function ToolboxPage() {
           contentBase64: await blobToBase64(file),
         });
         toast.success(`Imported ${created.displayName}. Review it before enabling.`);
-        router.push(`/skills/${created.id}`);
+        void navigate({ to: "/skills/$id", params: { id: created.id } });
       } catch (error) {
         console.error("Failed to import skill zip:", error);
         toast.error(toErrorMessage(error, "Failed to import skill."));
       }
     },
-    [importSkill, router, t],
+    [importSkill, navigate, t],
   );
 
   const handleImportFolderChange = useCallback(
@@ -1084,13 +1085,13 @@ export function ToolboxPage() {
           files: importedFiles,
         });
         toast.success(`Imported ${created.displayName}. Review it before enabling.`);
-        router.push(`/skills/${created.id}`);
+        void navigate({ to: "/skills/$id", params: { id: created.id } });
       } catch (error) {
         console.error("Failed to import skill folder:", error);
         toast.error(toErrorMessage(error, "Failed to import skill."));
       }
     },
-    [importSkill, router],
+    [importSkill, navigate],
   );
 
   const handleSkillDelete = useCallback(
@@ -1140,12 +1141,12 @@ export function ToolboxPage() {
       try {
         const saved = await saveSharedSkill.mutateAsync(id);
         toast.success(`Saved "${displayName}" to your skills.`);
-        router.push(`/skills/${saved.id}`);
+        void navigate({ to: "/skills/$id", params: { id: saved.id } });
       } catch (error) {
         toast.error(toErrorMessage(error, "Failed to save shared skill."));
       }
     },
-    [router, saveSharedSkill],
+    [navigate, saveSharedSkill],
   );
 
   // ─── Community skill handlers ─────────────────────────────────────────────
@@ -1324,8 +1325,13 @@ export function ToolboxPage() {
       return;
     }
 
-    router.replace(`/integrations/${previewId.slice("integration:".length)}`, { scroll: false });
-  }, [isMobile, previewId, router]);
+    void navigate({
+      to: "/integrations/$type",
+      params: { type: previewId.slice("integration:".length) },
+      replace: true,
+      resetScroll: false,
+    });
+  }, [isMobile, navigate, previewId]);
 
   const getIntegrationConfig = useCallback((type: string) => integrationConfig[type], []);
 

@@ -1,5 +1,6 @@
 // oxlint-disable eslint/no-underscore-dangle
 
+import { useNavigate } from "@tanstack/react-router";
 import type { ProviderAuthSource } from "@cmdclaw/core/lib/provider-auth-source";
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@cmdclaw/core/lib/chat-model-defaults";
 import { type CoworkerToolAccessMode } from "@cmdclaw/core/lib/coworker-tool-policy";
@@ -60,7 +61,6 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { blobToBase64, useVoiceRecording } from "@/hooks/use-voice-recording";
 import { normalizeChatModelSelection } from "@/lib/chat-model-selection";
-import { getCoworkerEditHrefById } from "@/lib/coworker-routes";
 import { COWORKERS_OPEN_RECENT_DRAWER_EVENT } from "@/lib/coworkers-events";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import {
@@ -86,7 +86,6 @@ import { useProviderAuthStatus } from "@/orpc/hooks/provider-auth";
 import { useTranscribe } from "@/orpc/hooks/voice";
 import { AppImage as Image } from "../-lib/app-image";
 import { AppLink as Link } from "../-lib/app-link";
-import { useRouter } from "../-lib/next-navigation-compat";
 
 export type CoworkerItem = CoworkerListData[number];
 const EMPTY_INITIAL_COWORKERS: CoworkerListData = [];
@@ -330,7 +329,7 @@ export default function CoworkersPage({
   const t = useGT();
   const m = useMessages();
 
-  const router = useRouter();
+  const navigate = useNavigate();
   const initialCoworkerList = initialCoworkers ?? EMPTY_INITIAL_COWORKERS;
   const { data: coworkers, isLoading } = useCoworkerList({ initialData: initialCoworkerList });
   const { data: sharedCoworkers } = useSharedCoworkerList();
@@ -507,7 +506,7 @@ export default function CoworkersPage({
       try {
         const created = await importSharedCoworker.mutateAsync(sourceCoworkerId);
         toast.success(t("Coworker imported."));
-        router.push(getCoworkerEditHrefById(created));
+        void navigate({ to: "/agents/edit/$id", params: { id: created.id } });
       } catch (error) {
         console.error("Failed to import coworker:", error);
         toast.error(t("Failed to import coworker."));
@@ -515,7 +514,7 @@ export default function CoworkersPage({
         setImportingSharedCoworkerId(null);
       }
     },
-    [importSharedCoworker, router, t],
+    [importSharedCoworker, navigate, t],
   );
   const handleImportCoworkerClick = useCallback(() => {
     if (importCoworkerDefinition.isPending) {
@@ -540,13 +539,13 @@ export default function CoworkersPage({
         const definitionJson = await file.text();
         const created = await importCoworkerDefinition.mutateAsync(definitionJson);
         toast.success(t("Coworker imported in the off state."));
-        router.push(getCoworkerEditHrefById(created));
+        void navigate({ to: "/agents/edit/$id", params: { id: created.id } });
       } catch (error) {
         console.error("Failed to import coworker definition:", error);
         toast.error(t("Failed to import coworker."));
       }
     },
-    [importCoworkerDefinition, router, t],
+    [importCoworkerDefinition, navigate, t],
   );
   const handleDeleteDialogChange = useCallback(
     (open: boolean) => {
@@ -679,9 +678,9 @@ export default function CoworkersPage({
         });
       }
 
-      router.push(getCoworkerEditHrefById(result));
+      void navigate({ to: "/agents/edit/$id", params: { id: result.id } });
     },
-    [createCoworker, model, modelAuthSource, router],
+    [createCoworker, model, modelAuthSource, navigate],
   );
 
   const _handlePromptSubmit = useCallback(

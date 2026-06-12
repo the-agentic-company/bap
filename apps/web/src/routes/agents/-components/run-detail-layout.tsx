@@ -1,4 +1,4 @@
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useParams as useTanStackParams } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
 import { BarChart3, MoreHorizontal, Pencil } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -15,13 +15,12 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { useCoworkerRun } from "@/orpc/hooks/coworkers";
 import { AppLink as Link } from "../-lib/app-link";
-import { useParams } from "../-lib/next-navigation-compat";
 
 export default function CoworkerRunLayout() {
   const t = useGT();
 
   const { isAdmin } = useIsAdmin();
-  const params = useParams<{ id: string }>();
+  const params = useTanStackParams({ strict: false, shouldThrow: false }) as { id?: string };
   const runId = params?.id;
   const { data: run } = useCoworkerRun(runId);
   const [isUsageOpen, setIsUsageOpen] = useState(false);

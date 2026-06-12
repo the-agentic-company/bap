@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import type { ChangeEvent, FormEvent } from "react";
 import { T, useGT } from "gt-react";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -19,12 +20,11 @@ import {
   useSetWorkspaceMcpServerCredential,
 } from "@/orpc/hooks/workspace-mcp-servers";
 import { AppLink } from "../-lib/app-link";
-import { useRouter } from "../-lib/next-navigation-compat";
 
 export function NewSourcePage() {
   const t = useGT();
 
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data, isLoading: listLoading } = useWorkspaceMcpServerList();
   const createSource = useCreateWorkspaceMcpServer();
   const startOAuth = useStartWorkspaceMcpServerOAuth();
@@ -102,12 +102,12 @@ export function NewSourcePage() {
         }
 
         toast.success(t("Source added."));
-        router.push(`/toolbox/sources/${result.id}`);
+        void navigate({ to: "/toolbox/sources/$id", params: { id: result.id } });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to connect source.");
       }
     },
-    [createSource, form, inferredName, isMcpCreate, router, setCredential, startOAuth, t],
+    [createSource, form, inferredName, isMcpCreate, navigate, setCredential, startOAuth, t],
   );
 
   if (listLoading) {

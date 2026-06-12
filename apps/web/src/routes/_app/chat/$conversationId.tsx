@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { T } from "gt-react";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo } from "react";
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_app/chat/$conversationId")({
 function ConversationPage() {
   const { conversationId } = Route.useParams();
   const search = Route.useSearch();
+  const navigate = useNavigate();
   const authComplete = search.auth_complete ?? null;
   const interruptId = search.interrupt_id ?? null;
   const { data: conversation, isLoading } = useConversation(conversationId);
@@ -65,13 +66,17 @@ function ConversationPage() {
         })
         .then(() => {
           // Clear URL params
-          window.history.replaceState({}, "", `/chat/${conversationId}`);
+          void navigate({
+            to: "/chat/$conversationId",
+            params: { conversationId },
+            replace: true,
+          });
         })
         .catch((err) => {
           console.error("Failed to submit auth result:", err);
         });
     }
-  }, [authComplete, conversationId, interruptId]);
+  }, [authComplete, conversationId, interruptId, navigate]);
 
   if (isLoading || (shouldLoadImpersonationTarget && isImpersonationTargetLoading)) {
     return (

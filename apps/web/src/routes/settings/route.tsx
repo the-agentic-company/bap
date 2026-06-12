@@ -12,8 +12,7 @@ import { requireSession } from "@/lib/route-guards";
  *
  * Replaces the old Next `settings/layout.tsx`. Shell selection is route nesting: every
  * settings page renders inside this tabbed layout via `<Outlet />`. The active tab is
- * derived from the TanStack router location instead of the old `next/navigation`
- * `usePathname` global switch.
+ * derived from the TanStack router location.
  *
  * Access is protected: `beforeLoad` runs the shared session guard, redirecting
  * unauthenticated users to `/login` (or worktree auto-login) and returning them to the

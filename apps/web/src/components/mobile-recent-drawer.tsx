@@ -1,3 +1,4 @@
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
 import {
   BarChart3,
@@ -15,7 +16,6 @@ import { Sheet, SheetContent } from "@/components/animate-ui/components/radix/sh
 import { AppLink } from "@/components/app-link";
 import { useChatDraftStore } from "@/components/chat/chat-draft-store";
 import { ConversationUsageDialog } from "@/components/conversation-usage-dialog";
-import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -121,8 +121,8 @@ type MobileRecentDrawerProps = {
 export function MobileRecentDrawer({ open, onOpenChange, mode }: MobileRecentDrawerProps) {
   const t = useGT();
 
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const navigate = useNavigate();
   const recentScrollRef = useRef<HTMLDivElement | null>(null);
   const recentChatsLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -170,10 +170,10 @@ export function MobileRecentDrawer({ open, onOpenChange, mode }: MobileRecentDra
       await deleteConversation.mutateAsync(id);
       useChatDraftStore.getState().clearDraft(id);
       if (pathname === `/chat/${id}`) {
-        router.push("/chat");
+        void navigate({ to: "/chat" });
       }
     },
-    [deleteConversation, pathname, router],
+    [deleteConversation, navigate, pathname],
   );
 
   const handleMarkAllRead = useCallback(async () => {

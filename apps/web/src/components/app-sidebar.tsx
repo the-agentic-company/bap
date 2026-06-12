@@ -1,5 +1,6 @@
 // oxlint-disable jsx-a11y/prefer-tag-over-role
 
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
 import {
   Activity,
@@ -28,7 +29,6 @@ import { AppImage } from "@/components/app-image";
 import { AppLink } from "@/components/app-link";
 import { BugReportDialog } from "@/components/bug-report-dialog";
 import { BrickIcon } from "@/components/icons/brick-icon";
-import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -232,8 +232,8 @@ type AppSidebarProps = {
 export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   const t = useGT();
 
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const navigate = useNavigate();
   const [session, setSession] = useState<SessionData | undefined>(undefined);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(readStoredSidebarMode);
   const [reportOpen, setReportOpen] = useState(false);
@@ -264,9 +264,9 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     const { error } = await authClient.signOut();
     if (!error) {
       setSession(null);
-      router.push("/login");
+      void navigate({ to: "/login" });
     }
-  }, [router]);
+  }, [navigate]);
 
   const handleStopImpersonating = useCallback(async () => {
     setStoppingImpersonation(true);
@@ -290,8 +290,8 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   }, []);
 
   const openAdminRoute = useCallback(() => {
-    router.push("/admin");
-  }, [router]);
+    void navigate({ to: "/admin" });
+  }, [navigate]);
 
   const enterUserMode = useCallback(() => {
     setSidebarMode("user");
@@ -300,8 +300,8 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     } catch {
       // Ignore storage failures; the in-memory view mode still updates.
     }
-    router.push("/inbox");
-  }, [router]);
+    void navigate({ to: "/inbox" });
+  }, [navigate]);
 
   const handleSidebarModeChange = useCallback(
     (mode: SidebarMode) => {
@@ -322,9 +322,9 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   const handleChatNavClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
-      openNewChat(router);
+      openNewChat(navigate);
     },
-    [router],
+    [navigate],
   );
 
   const isActive = (href: string) => {

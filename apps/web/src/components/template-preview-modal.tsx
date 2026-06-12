@@ -1,9 +1,9 @@
+import { useNavigate } from "@tanstack/react-router";
 import type { TemplateCatalogTemplate } from "@cmdclaw/db/template-catalog";
 import { T, useGT } from "gt-react";
 import { Maximize2, X } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { AppLink } from "@/components/app-link";
-import { useRouter } from "@/components/next-navigation-compat";
 import { TemplateDetailContent } from "@/components/template-detail-content";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,12 +23,12 @@ export function TemplatePreviewModal({
 }) {
   const t = useGT();
 
-  const router = useRouter();
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => {
-    router.push(closeHref);
-  }, [closeHref, router]);
+    void navigate({ href: closeHref });
+  }, [closeHref, navigate]);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {

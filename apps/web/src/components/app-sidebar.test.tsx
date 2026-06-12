@@ -15,15 +15,14 @@ void jestDomVitest;
 
 const mocks = vi.hoisted(() => ({
   pathname: "/inbox",
-  push: vi.fn<VitestProcedure>(),
+  navigate: vi.fn<VitestProcedure>(),
   getSession: vi.fn<VitestProcedure>(),
 }));
 
-vi.mock("@/components/next-navigation-compat", () => ({
-  usePathname: () => mocks.pathname,
-  useRouter: () => ({
-    push: mocks.push,
-  }),
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mocks.navigate,
+  useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) =>
+    select({ location: { pathname: mocks.pathname } }),
 }));
 
 vi.mock("@/components/app-link", () => ({
@@ -106,7 +105,7 @@ describe("AppSidebar", () => {
   beforeEach(() => {
     installLocalStorageStub();
     mocks.pathname = "/inbox";
-    mocks.push.mockReset();
+    mocks.navigate.mockReset();
     mocks.getSession.mockReset();
     window.localStorage.clear();
     mockAdminSession();
@@ -173,7 +172,7 @@ describe("AppSidebar", () => {
     render(<AppSidebar />);
 
     fireEvent.click(await screen.findByRole("button", { name: "User view" }));
-    expect(mocks.push).toHaveBeenCalledWith("/inbox");
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/inbox" });
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "User view" })).toHaveAttribute(
         "aria-pressed",
@@ -182,7 +181,7 @@ describe("AppSidebar", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Admin view" }));
-    expect(mocks.push).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Admin view" })).toHaveAttribute(
       "aria-pressed",
       "true",

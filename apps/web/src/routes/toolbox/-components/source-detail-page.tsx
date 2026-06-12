@@ -1,3 +1,8 @@
+import {
+  useNavigate,
+  useParams as useTanStackParams,
+  useRouterState,
+} from "@tanstack/react-router";
 import type { ChangeEvent } from "react";
 import { T, useGT } from "gt-react";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
@@ -19,14 +24,14 @@ import {
   useDisconnectWorkspaceMcpServerCredential,
 } from "@/orpc/hooks/workspace-mcp-servers";
 import { AppLink } from "../-lib/app-link";
-import { useParams, useRouter, useSearchParams } from "../-lib/next-navigation-compat";
 
 export function SourceDetailPage() {
   const t = useGT();
 
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const { id } = useTanStackParams({ strict: false, shouldThrow: false }) as { id?: string };
+  const searchStr = useRouterState({ select: (state) => state.location.searchStr });
+  const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
+  const navigate = useNavigate();
 
   const { data, isLoading } = useWorkspaceMcpServerList();
   const updateSource = useUpdateWorkspaceMcpServer();
@@ -120,8 +125,8 @@ export function SourceDetailPage() {
       toast.error(formatOAuthConnectionError(searchParams.get("oauth_error")));
     }
 
-    router.replace(`/toolbox/sources/${id}`);
-  }, [id, router, searchParams, t]);
+    void navigate({ to: "/toolbox/sources/$id", params: { id: id ?? "" }, replace: true });
+  }, [id, navigate, searchParams, t]);
 
   const handleToggleEnabled = useCallback(
     async (enabled: boolean) => {
@@ -163,11 +168,11 @@ export function SourceDetailPage() {
     try {
       await deleteSource.mutateAsync(source.id);
       toast.success(t("Source deleted."));
-      router.push("/toolbox");
+      void navigate({ to: "/toolbox" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to delete source.");
     }
-  }, [deleteSource, router, source, t]);
+  }, [deleteSource, navigate, source, t]);
 
   const handleSaveCredential = useCallback(async () => {
     if (!source) {

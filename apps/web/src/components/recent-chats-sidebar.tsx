@@ -1,3 +1,4 @@
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
 import {
   BarChart3,
@@ -14,7 +15,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppLink } from "@/components/app-link";
 import { useChatDraftStore } from "@/components/chat/chat-draft-store";
 import { ConversationUsageDialog } from "@/components/conversation-usage-dialog";
-import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -201,8 +201,8 @@ type RecentChatsSidebarProps = {
 export function RecentChatsSidebar({ className, initialConversations }: RecentChatsSidebarProps) {
   const t = useGT();
 
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const {
@@ -286,10 +286,10 @@ export function RecentChatsSidebar({ className, initialConversations }: RecentCh
       await deleteConversation.mutateAsync(id);
       useChatDraftStore.getState().clearDraft(id);
       if (pathname === `/chat/${id}`) {
-        router.push("/chat");
+        void navigate({ to: "/chat" });
       }
     },
-    [deleteConversation, pathname, router],
+    [deleteConversation, navigate, pathname],
   );
 
   const handlePinConversation = useCallback(

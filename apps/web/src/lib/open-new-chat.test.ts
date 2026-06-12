@@ -19,7 +19,7 @@ describe("openNewChat", () => {
     window.addEventListener("new-chat", listener);
 
     try {
-      openNewChat({ push });
+      openNewChat(({ to }) => push(to));
 
       expect(listener).toHaveBeenCalledTimes(1);
       expect(push).toHaveBeenCalledWith("/chat");

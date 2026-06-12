@@ -1,3 +1,4 @@
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   AlertCircle,
   Clock,
@@ -40,7 +41,6 @@ import {
 } from "@/orpc/hooks/coworkers";
 import type { SandboxFileData } from "@/components/chat/message-list";
 import { AppLink as Link } from "../../../-lib/app-link";
-import { useRouter, useSearchParams } from "../../../-lib/next-navigation-compat";
 
 type Props = {
   coworkerSlug: string;
@@ -251,8 +251,9 @@ function HistoryRunButton({
 }
 
 export function CoworkerInfoPrototype({ coworkerSlug }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchStr = useRouterState({ select: (state) => state.location.searchStr });
+  const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
+  const navigate = useNavigate();
   const triggerCoworker = useTriggerCoworker();
   const coworkerList = useCoworkerList();
   const coworkerListItem = useMemo(
@@ -300,9 +301,13 @@ export function CoworkerInfoPrototype({ coworkerSlug }: Props) {
     (runId: string) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set("run", runId);
-      router.push(`/prototype/coworker/info/${resolvedCoworkerSlug}?${params.toString()}`);
+      void navigate({
+        to: "/prototype/coworker/info/$slug",
+        params: { slug: resolvedCoworkerSlug },
+        search: { run: params.get("run") ?? undefined },
+      });
     },
-    [resolvedCoworkerSlug, router, searchParams],
+    [navigate, resolvedCoworkerSlug, searchParams],
   );
   const handleRunNow = useCallback(async () => {
     if (!resolvedCoworkerId || triggerCoworker.isPending) {
@@ -315,11 +320,14 @@ export function CoworkerInfoPrototype({ coworkerSlug }: Props) {
         payload: {},
       });
       toast.success(result.generationId ? "Run started." : "Needs your input.");
-      router.push(`/prototype/coworker/info/${resolvedCoworkerSlug}`);
+      void navigate({
+        to: "/prototype/coworker/info/$slug",
+        params: { slug: resolvedCoworkerSlug },
+      });
     } catch (error) {
       toast.error(normalizeGenerationError(error, "start_rpc").message);
     }
-  }, [resolvedCoworkerId, resolvedCoworkerSlug, router, triggerCoworker]);
+  }, [navigate, resolvedCoworkerId, resolvedCoworkerSlug, triggerCoworker]);
 
   if (isRunLoading) {
     return <LoadingState />;

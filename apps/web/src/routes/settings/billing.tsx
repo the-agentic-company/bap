@@ -26,9 +26,9 @@ const EMPTY_WORKSPACE_OPTIONS: Array<{ id: string; name: string }> = [];
 
 /**
  * Billing-admin gate. The `/settings` layout already requires a session; this guard moves
- * the old client-side `router.replace("/settings")` redirect to the route boundary so
- * non-admins (or self-host, where billing is disabled) never render the page. Cloud is the
- * only edition with billing, so the check is effectively cloud + admin.
+ * client-side redirects to the route boundary so non-admins (or self-host, where billing is
+ * disabled) never render the page. Cloud is the only edition with billing, so the check is
+ * effectively cloud + admin.
  */
 export const Route = createFileRoute("/settings/billing")({
   beforeLoad: async () => {

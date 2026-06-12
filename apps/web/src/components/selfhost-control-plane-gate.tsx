@@ -1,7 +1,7 @@
+import { useRouterState } from "@tanstack/react-router";
 import { T } from "gt-react";
 import { useCallback, useEffect, useState } from "react";
 import { AppLink } from "@/components/app-link";
-import { usePathname } from "@/components/next-navigation-compat";
 import { clientEditionCapabilities } from "@/lib/edition";
 
 type HealthPayload = {
@@ -15,7 +15,7 @@ type HealthPayload = {
 };
 
 export function SelfhostControlPlaneGate() {
-  const pathname = usePathname();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [controlPlaneHealthy, setControlPlaneHealthy] = useState(true);
   const [detail, setDetail] = useState("Cloud control plane is unavailable.");
   const handleRetry = useCallback(() => {

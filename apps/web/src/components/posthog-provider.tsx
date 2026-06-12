@@ -1,7 +1,7 @@
+import { useRouterState } from "@tanstack/react-router";
 import type { PostHog } from "posthog-js";
 import { PostHogProvider, usePostHog } from "posthog-js/react";
-import { Suspense, useEffect, useState, type ReactNode } from "react";
-import { usePathname, useSearchParams } from "@/components/next-navigation-compat";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { env } from "@/env";
 import { authClient } from "@/lib/auth-client";
 
@@ -47,8 +47,13 @@ function initializePosthog(posthogClient: PostHogClient) {
 
 function PostHogPageView() {
   const posthogClient = usePostHog() as PostHogClient | undefined;
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const { pathname, searchStr } = useRouterState({
+    select: (state) => ({
+      pathname: state.location.pathname,
+      searchStr: state.location.searchStr,
+    }),
+  });
+  const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
 
   useEffect(() => {
     if (!posthogClient) {

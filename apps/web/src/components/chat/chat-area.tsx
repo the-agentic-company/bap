@@ -5,6 +5,7 @@ import {
 } from "@cmdclaw/core/lib/chat-model-defaults";
 import { GENERATION_ERROR_PHASES } from "@cmdclaw/core/lib/generation-errors";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { T, msg, useGT, useMessages } from "gt-react";
 import {
   AlertCircle,
@@ -968,6 +969,7 @@ export function ChatArea({
   const m = useMessages();
   const { setHeaderActions } = useChatHeaderActions();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const posthog = usePostHog();
   const { data: platformSkills, isLoading: isPlatformSkillsLoading } = usePlatformSkillList();
   const { data: accessibleSkills, isLoading: isAccessibleSkillsLoading } = useSkillList();
@@ -1963,10 +1965,14 @@ export function ChatArea({
       setDraftConversationId(id);
       notifyConversationIdSync(id);
       if (!conversationId) {
-        window.history.replaceState(null, "", `/chat/${id}`);
+        void navigate({
+          to: "/chat/$conversationId",
+          params: { conversationId: id },
+          replace: true,
+        });
       }
     },
-    [conversationId, notifyConversationIdSync],
+    [conversationId, navigate, notifyConversationIdSync],
   );
 
   const persistInterruptedRuntimeMessage = useCallback(

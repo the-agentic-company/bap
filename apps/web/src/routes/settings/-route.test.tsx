@@ -16,9 +16,7 @@ const mocks = vi.hoisted(() => ({
   useIsAdmin: vi.fn<VitestProcedure>(),
 }));
 
-// Replace the TanStack location hook (the migrated layout derives the active tab from the
-// router location instead of the old next/navigation usePathname). Outlet renders nothing
-// here; we only assert tab visibility.
+// Replace the TanStack location hook. Outlet renders nothing here; we only assert tab visibility.
 vi.mock("@tanstack/react-router", async () => {
   const actual =
     await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");

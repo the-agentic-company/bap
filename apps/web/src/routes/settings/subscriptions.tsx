@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
 import { Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,8 +21,8 @@ type SubscriptionsSearch = {
 /**
  * `validateSearch` captures the OAuth completion flags the provider callback redirects
  * back with (`provider_connected` / `provider_error`). The component reads them via
- * `Route.useSearch()` (replacing the old `next/navigation` `useSearchParams`) and clears
- * them with `history.replaceState` so the success/error toast only fires once.
+ * `Route.useSearch()` and clears them with TanStack navigation so the success/error toast
+ * only fires once.
  */
 export const Route = createFileRoute("/settings/subscriptions")({
   validateSearch: (search: Record<string, unknown>): SubscriptionsSearch => ({
@@ -78,17 +78,18 @@ const PROVIDERS: {
 function SearchParamsHandler() {
   const { provider_connected: connected, provider_error: error } = Route.useSearch();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (connected) {
       toast.success(`${getProviderLabel(connected)} connected successfully!`);
       queryClient.invalidateQueries({ queryKey: ["providerAuth"] });
-      window.history.replaceState({}, "", "/settings/subscriptions");
+      void navigate({ to: "/settings/subscriptions", replace: true });
     } else if (error) {
       toast.error(`Connection failed: ${error.replace(/_/g, " ")}`);
-      window.history.replaceState({}, "", "/settings/subscriptions");
+      void navigate({ to: "/settings/subscriptions", replace: true });
     }
-  }, [connected, error, queryClient]);
+  }, [connected, error, navigate, queryClient]);
 
   return null;
 }

@@ -103,7 +103,7 @@ function WorkspaceSettingsPage() {
         await switchWorkspace.mutateAsync(workspaceId);
         // `href` escape hatch: the home route is owned by another migration area and may
         // not be in the typed route tree yet.
-        navigate({ href: "/" });
+        navigate({ to: "/" });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to switch workspace.");
       }

@@ -1,8 +1,8 @@
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import type { SessionPrincipal } from "@/lib/route-guards";
 import { AppShell, type SidebarVisibility } from "@/components/app-shell";
-import { usePathname, useRouter } from "@/components/next-navigation-compat";
 import { useCurrentUser } from "@/orpc/hooks/user";
 
 type AppShellRouteWrapperProps = {
@@ -45,7 +45,7 @@ function getSidebarVisibility(pathname: string | null): SidebarVisibility | null
 }
 
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data: user, isLoading: userLoading, isFetching: userFetching } = useCurrentUser();
   const shouldWaitForFreshUser = Boolean(user && !user.onboardedAt && userFetching);
   const shouldEnforceOnboarding = false;
@@ -53,9 +53,9 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Temporarily disable the onboarding redirect while iterating on the post-connection flow.
     if (shouldEnforceOnboarding && !userLoading && !userFetching && user && !user.onboardedAt) {
-      router.replace("/onboarding/subscriptions");
+      void navigate({ to: "/onboarding/subscriptions", replace: true });
     }
-  }, [shouldEnforceOnboarding, userFetching, userLoading, user, router]);
+  }, [shouldEnforceOnboarding, userFetching, userLoading, user, navigate]);
 
   if (
     shouldEnforceOnboarding &&
@@ -76,7 +76,7 @@ export function AppShellRouteWrapper({
   initialHasSession,
   initialPrincipal = null,
 }: AppShellRouteWrapperProps) {
-  const pathname = usePathname();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const sidebarVisibility = getSidebarVisibility(pathname);
 
   if (!sidebarVisibility) {

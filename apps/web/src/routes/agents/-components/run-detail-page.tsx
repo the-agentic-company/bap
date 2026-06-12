@@ -1,3 +1,4 @@
+import { useParams as useTanStackParams, useRouterState } from "@tanstack/react-router";
 import { T } from "gt-react";
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
@@ -9,12 +10,16 @@ import {
 import { RunDebugDetails } from "@/components/coworkers/run-debug-details";
 import { ImpersonationRequiredPage } from "@/components/impersonation/impersonation-required-page";
 import { useCoworkerRun, useCoworkerRunImpersonationTarget } from "@/orpc/hooks/coworkers";
-import { useParams, usePathname, useSearchParams } from "../-lib/next-navigation-compat";
 
 export default function CoworkerRunPage() {
-  const params = useParams<{ id: string }>();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const params = useTanStackParams({ strict: false, shouldThrow: false }) as { id?: string };
+  const { pathname, searchStr } = useRouterState({
+    select: (state) => ({
+      pathname: state.location.pathname,
+      searchStr: state.location.searchStr,
+    }),
+  });
+  const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
   const runId = params?.id;
   const { data: run, isLoading } = useCoworkerRun(runId);
   const shouldLoadImpersonationTarget = Boolean(runId && !isLoading && !run);

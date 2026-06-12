@@ -14,8 +14,7 @@ import { useCompleteOnboarding } from "@/orpc/hooks/user";
 /**
  * Search params that drive behavior on the onboarding integrations step. These are returned
  * by the LinkedIn / OAuth provider callbacks (`account_id`, `success`, `error`) and are
- * validated at the route boundary so the page consumes typed search state instead of
- * `next/navigation`'s `useSearchParams`.
+ * validated at the route boundary so the page consumes typed TanStack search state.
  */
 interface OnboardingIntegrationsSearch {
   account_id?: string;
@@ -220,22 +219,22 @@ function OnboardingIntegrationsPage() {
           console.error("Failed to link LinkedIn:", error);
         })
         .finally(() => {
-          window.history.replaceState({}, "", "/onboarding/integrations");
+          void navigate({ to: "/onboarding/integrations", replace: true });
         });
     }
-  }, [search.account_id, linkLinkedIn, refetch]);
+  }, [search.account_id, linkLinkedIn, navigate, refetch]);
 
   useEffect(() => {
     const success = search.success;
     const error = search.error;
 
     if (success || error) {
-      window.history.replaceState({}, "", "/onboarding/integrations");
+      void navigate({ to: "/onboarding/integrations", replace: true });
       if (success) {
         refetch();
       }
     }
-  }, [search.success, search.error, refetch]);
+  }, [search.success, search.error, navigate, refetch]);
 
   const handleConnect = useCallback(
     async (type: IntegrationType) => {

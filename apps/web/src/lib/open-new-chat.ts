@@ -1,8 +1,6 @@
-export type RouterLike = {
-  push: (href: string) => void;
-};
+export type NavigateLike = (options: { to: "/chat" }) => void | Promise<void>;
 
-export function openNewChat(router: RouterLike) {
+export function openNewChat(navigate: NavigateLike) {
   window.dispatchEvent(new CustomEvent("new-chat"));
-  router.push("/chat");
+  void navigate({ to: "/chat" });
 }

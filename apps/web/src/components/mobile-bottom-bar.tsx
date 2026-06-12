@@ -1,10 +1,10 @@
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T, msg, useMessages } from "gt-react";
 import { LayoutTemplate, Menu, MessageSquare, WandSparkles, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AppLink } from "@/components/app-link";
 import { BrickIcon } from "@/components/icons/brick-icon";
 import { MobileMenuPanel } from "@/components/mobile-menu-sheet";
-import { usePathname, useRouter, useSearchParams } from "@/components/next-navigation-compat";
 import { openNewChat } from "@/lib/open-new-chat";
 import { cn } from "@/lib/utils";
 
@@ -27,9 +27,14 @@ const mobileBottomNavStyle = {
 
 export function MobileBottomBar() {
   const m = useMessages();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const { pathname, searchStr } = useRouterState({
+    select: (state) => ({
+      pathname: state.location.pathname,
+      searchStr: state.location.searchStr,
+    }),
+  });
+  const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const infoTab = searchParams.get("tab");
   const isFlatBottomBar = pathname.startsWith("/agents/info/") && (!infoTab || infoTab === "app");
@@ -62,9 +67,9 @@ export function MobileBottomBar() {
         return;
       }
       event.preventDefault();
-      openNewChat(router);
+      openNewChat(navigate);
     },
-    [closeMenu, router],
+    [closeMenu, navigate],
   );
 
   return (

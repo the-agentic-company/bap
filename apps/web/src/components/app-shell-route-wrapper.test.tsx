@@ -21,7 +21,7 @@ type MockCurrentUserState = {
 
 const mocks = vi.hoisted(() => ({
   pathname: "/chat",
-  replace: vi.fn<VitestProcedure>(),
+  navigate: vi.fn<VitestProcedure>(),
   currentUser: {
     data: { onboardedAt: null },
     isLoading: false,
@@ -29,9 +29,10 @@ const mocks = vi.hoisted(() => ({
   } as MockCurrentUserState,
 }));
 
-vi.mock("@/components/next-navigation-compat", () => ({
-  usePathname: () => mocks.pathname,
-  useRouter: () => ({ replace: mocks.replace }),
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mocks.navigate,
+  useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) =>
+    select({ location: { pathname: mocks.pathname } }),
 }));
 
 vi.mock("@/components/app-shell", () => ({
@@ -70,7 +71,7 @@ describe("AppShellRouteWrapper", () => {
       </AppShellRouteWrapper>,
     );
 
-    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
 
     mocks.currentUser = {
       data: { onboardedAt: new Date("2026-03-16T12:00:00.000Z") },
@@ -85,7 +86,7 @@ describe("AppShellRouteWrapper", () => {
     );
 
     await waitFor(() => {
-      expect(mocks.replace).not.toHaveBeenCalled();
+      expect(mocks.navigate).not.toHaveBeenCalled();
     });
   });
 
@@ -97,6 +98,6 @@ describe("AppShellRouteWrapper", () => {
     );
 
     expect(screen.getByText("child")).toBeInTheDocument();
-    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

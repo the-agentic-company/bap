@@ -1,9 +1,9 @@
+import { useNavigate } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
 import { BarChart3, Bug, Settings, Shield, Toolbox } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppImage } from "@/components/app-image";
 import { AppLink } from "@/components/app-link";
-import { useRouter } from "@/components/next-navigation-compat";
 import { authClient } from "@/lib/auth-client";
 import { clientEditionCapabilities } from "@/lib/edition";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ type MobileMenuPanelProps = {
 export function MobileMenuPanel({ open, onOpenChange }: MobileMenuPanelProps) {
   const t = useGT();
 
-  const router = useRouter();
+  const navigate = useNavigate();
   const [session, setSession] = useState<SessionData>(null);
 
   useEffect(() => {
@@ -88,9 +88,9 @@ export function MobileMenuPanel({ open, onOpenChange }: MobileMenuPanelProps) {
     if (!error) {
       setSession(null);
       onOpenChange(false);
-      router.push("/login");
+      void navigate({ to: "/login" });
     }
-  }, [router, onOpenChange]);
+  }, [navigate, onOpenChange]);
 
   const handleItemClick = useCallback(() => {
     onOpenChange(false);
@@ -98,8 +98,8 @@ export function MobileMenuPanel({ open, onOpenChange }: MobileMenuPanelProps) {
 
   const handleBugReportClick = useCallback(() => {
     onOpenChange(false);
-    router.push("/bug-report");
-  }, [onOpenChange, router]);
+    void navigate({ to: "/bug-report" });
+  }, [navigate, onOpenChange]);
 
   const panelStyle = useMemo(
     () => ({ paddingBottom: "calc(4rem + var(--safe-area-inset-bottom))" }),
