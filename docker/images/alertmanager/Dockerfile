@@ -1,4 +1,4 @@
-FROM prom/alertmanager:v0.32.0
+FROM prom/alertmanager:v0.32.2
 
 USER root
 
