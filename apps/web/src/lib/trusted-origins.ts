@@ -1,6 +1,7 @@
 import { env } from "@/env";
 
 const localhostPort = process.env.PORT ?? 3000;
+const BAP_ORIGINS = ["https://heybap.com", "https://www.heybap.com", "https://mcp.heybap.com"];
 
 export function getTrustedOrigins(): string[] {
   return Array.from(
@@ -8,6 +9,7 @@ export function getTrustedOrigins(): string[] {
       [
         env.APP_URL,
         env.VITE_APP_URL,
+        ...BAP_ORIGINS,
         "https://appleid.apple.com",
         "https://cmdclaw.ai",
         "https://www.cmdclaw.ai",

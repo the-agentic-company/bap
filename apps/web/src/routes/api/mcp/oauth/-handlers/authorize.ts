@@ -22,7 +22,7 @@ function buildLoginRedirect(request: Request): Response {
     `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`,
     request,
   );
-  if (loginUrl.hostname === "mcp.heybap.com") {
+  if (loginUrl.hostname === "heybap.com" || loginUrl.hostname.endsWith(".heybap.com")) {
     loginUrl.hostname = "heybap.com";
   }
   return Response.redirect(loginUrl, 303);

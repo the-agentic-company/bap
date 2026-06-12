@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:net";
 import { initializeObservabilityRuntime } from "@cmdclaw/core/server/utils/observability";
+import { shouldProxyAppAuthFlowPath } from "./app-auth-proxy";
 import { resolveGatewayPublicOrigin } from "./public-origin";
 import { matchProtectedResourceMetadataRequest, routeMcpRequest } from "./router";
 import { shouldManageGatewayChildren, startManagedGatewayChildren } from "./supervisor";
@@ -461,6 +462,13 @@ async function main() {
                 },
               },
             ),
+          );
+        }
+
+        if (shouldProxyAppAuthFlowPath(requestUrl.pathname)) {
+          return withGatewayCors(
+            request,
+            await fetch(buildAppProxyRequest(request, requestUrl.pathname, requestUrl, publicOrigin)),
           );
         }
 

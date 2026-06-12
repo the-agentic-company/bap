@@ -23,6 +23,31 @@ import { createMagicLinkRequestState } from "@/server/lib/magic-link-request-sta
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 const appUrl = env.APP_URL ?? env.VITE_APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+const betterAuthAllowedHosts = Array.from(
+  new Set(
+    [
+      appUrl,
+      env.APP_URL,
+      env.VITE_APP_URL,
+      "https://heybap.com",
+      "https://www.heybap.com",
+      "https://mcp.heybap.com",
+      `localhost:${process.env.PORT ?? 3000}`,
+      `127.0.0.1:${process.env.PORT ?? 3000}`,
+    ]
+      .map((value) => {
+        if (!value) {
+          return null;
+        }
+        try {
+          return new URL(value).host;
+        } catch {
+          return value;
+        }
+      })
+      .filter((value): value is string => Boolean(value)),
+  ),
+);
 
 async function assertInviteOnlyLogin(email: string) {
   if (await isApprovedLoginEmail(email)) {
@@ -60,7 +85,11 @@ const socialProviders = isSelfHostedEdition()
 
 export const auth = betterAuth({
   appName: "CmdClaw",
-  baseURL: appUrl,
+  baseURL: {
+    allowedHosts: betterAuthAllowedHosts,
+    fallback: appUrl,
+    protocol: "auto",
+  },
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
