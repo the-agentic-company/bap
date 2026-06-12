@@ -70,7 +70,7 @@ describe("callbackHandler (GET /api/control-plane/link/callback)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
     getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
     consumeCloudAccountLinkStateMock.mockResolvedValue({
       state: "state-1",

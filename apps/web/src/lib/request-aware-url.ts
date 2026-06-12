@@ -11,7 +11,7 @@ function toUrl(input: Request | URL | string): URL {
 }
 
 function getConfiguredAppOrigin(): string | undefined {
-  const candidate = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+  const candidate = process.env.APP_URL ?? process.env.VITE_APP_URL;
   if (!candidate) {
     return undefined;
   }

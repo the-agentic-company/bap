@@ -252,7 +252,7 @@ function buildLinearMilestoneComment(
 }
 
 function buildConversationLink(conversationId: string): string {
-  const baseUrl = env.APP_URL ?? env.NEXT_PUBLIC_APP_URL;
+  const baseUrl = env.APP_URL ?? env.VITE_APP_URL;
   if (!baseUrl) {
     return conversationId;
   }

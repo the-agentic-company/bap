@@ -98,7 +98,7 @@ async function assertGatewayPortAvailable(port: number, host: string) {
 function resolveAuthorizationServerOrigin(requestUrl: URL): string {
   const configured =
     process.env.APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.VITE_APP_URL?.trim() ||
     process.env.APP_SERVER_URL?.trim();
 
   if (configured && URL.canParse(configured)) {

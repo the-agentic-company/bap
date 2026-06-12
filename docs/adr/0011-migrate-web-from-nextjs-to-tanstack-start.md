@@ -6,6 +6,6 @@ The migration should align with TanStack Start's model rather than preserving Ne
 
 This is intentionally not a full data-layer rewrite. Better Auth remains the auth system with its TanStack Start cookie integration, and oRPC remains the primary product API layer. TanStack loaders and server functions should be used selectively for route-local concerns such as auth gates, redirects, search/param validation, dynamic head data, and small SSR-critical bootstrap data.
 
-The cutover must preserve current deployment and performance contracts that are independent of Next.js. React Compiler remains enabled in the Vite/TanStack build, and existing `NEXT_PUBLIC_*` public environment variable names remain valid in v1 through Vite's env prefix configuration rather than being renamed during the framework migration.
+The cutover must preserve current deployment and performance contracts that are independent of Next.js. React Compiler remains enabled in the Vite/TanStack build, and existing `VITE_*` public environment variable names remain valid in v1 through Vite's env prefix configuration rather than being renamed during the framework migration.
 
 We considered a lower-risk dual-runtime or compatibility-wrapper migration, but rejected it because it would leave the app with two routing mental models and make it harder to adopt TanStack Router's typed routes, search params, route context, and layout boundaries. The accepted trade-off is a larger v1 refactor in exchange for a cleaner long-term framework shape.

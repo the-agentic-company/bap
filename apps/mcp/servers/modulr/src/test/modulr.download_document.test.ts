@@ -4,7 +4,7 @@ import { verifyModulrDocumentDownloadToken } from "@cmdclaw/core/server/modulr/d
 const mocks = vi.hoisted(() => ({
   env: {
     APP_URL: "https://cmdclaw.ai",
-    NEXT_PUBLIC_APP_URL: undefined,
+    VITE_APP_URL: undefined,
     E2B_CALLBACK_BASE_URL: undefined,
     APP_MCP_BASE_URL: "https://cmdclaw-mcp-prod.onrender.com",
     APP_SERVER_SECRET: "test-server-secret",

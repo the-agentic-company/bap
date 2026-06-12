@@ -13,7 +13,7 @@ describe("getCallbackBaseUrls", () => {
       "E2B_CALLBACK_BASE_URL",
       "https://localcan.baptistecolle.com/__worktrees/cmdclaw-5fd291f4",
     );
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://cmdclaw.ai");
+    vi.stubEnv("VITE_APP_URL", "https://cmdclaw.ai");
 
     expect(getCallbackBaseUrls()).toEqual([
       "https://localcan.baptistecolle.com/__worktrees/cmdclaw-5fd291f4",
@@ -24,7 +24,7 @@ describe("getCallbackBaseUrls", () => {
   it("uses localcan fallback only in non-production localhost setups", () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("APP_URL", "http://localhost:3000");
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+    vi.stubEnv("VITE_APP_URL", "");
     vi.stubEnv("E2B_CALLBACK_BASE_URL", "");
 
     expect(getCallbackBaseUrls()).toEqual([

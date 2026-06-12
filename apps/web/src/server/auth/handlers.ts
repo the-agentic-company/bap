@@ -42,7 +42,7 @@ import { getTrustedOrigins } from "@/lib/trusted-origins";
 const trustedOrigins = new Set(getTrustedOrigins());
 
 const DEFAULT_ALLOWED_ORIGIN =
-  env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+  env.APP_URL ?? env.VITE_APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
 function getCorsHeaders(origin: string | null): Record<string, string> {
   const isAllowed = origin && trustedOrigins.has(origin);

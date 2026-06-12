@@ -13,11 +13,11 @@ import { fetchLandingData } from "./-landing-data";
  *   preserves the worktree auto-login redirect for unauthenticated local-dev requests, and
  *   loads the featured template catalog (replaces the old server-component body).
  * - `head` reproduces the old page metadata (title, description, canonical, OpenGraph,
- *   Twitter card), edition-aware via the client-exposed `NEXT_PUBLIC_*` env names.
+ *   Twitter card), edition-aware via the client-exposed `VITE_*` env names.
  */
 
-const isSelfHostedEdition = env.NEXT_PUBLIC_APP_EDITION === "selfhost";
-const siteUrl = env.NEXT_PUBLIC_APP_URL ?? "https://cmdclaw.ai";
+const isSelfHostedEdition = env.VITE_APP_EDITION === "selfhost";
+const siteUrl = env.VITE_APP_URL ?? "https://cmdclaw.ai";
 const logoUrl = `${siteUrl.replace(/\/$/, "")}/logo.png`;
 
 const title = isSelfHostedEdition ? "CmdClaw Self-hosted" : "CmdClaw";

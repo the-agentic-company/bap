@@ -30,7 +30,7 @@ services:
       ZERO_CHANGE_DB: postgresql://postgres:${DATABASE_PASSWORD:-${DB_PASSWORD:-}}@database:5432/${CMDCLAW_POSTGRES_DB:-cmdclaw}
       ZERO_REPLICA_FILE: /data/replica.db
       ZERO_ADMIN_PASSWORD: ${ZERO_ADMIN_PASSWORD:-cmdclaw-local-zero}
-      ZERO_QUERY_URL: ${NEXT_PUBLIC_ZERO_QUERY_URL:-http://host.docker.internal:3000/api/zero/query}
+      ZERO_QUERY_URL: ${VITE_ZERO_QUERY_URL:-http://host.docker.internal:3000/api/zero/query}
       ZERO_QUERY_FORWARD_COOKIES: "true"
       ZERO_ENABLE_CRUD_MUTATIONS: "false"
     volumes:

@@ -95,8 +95,8 @@ The migration should align with TanStack Start best practices for v1 rather than
 - Move global CSS to a framework-neutral style location and import it from the TanStack app root.
 - Keep Tailwind v4, the existing PostCSS setup, animation CSS, and typography plugin.
 - Replace the old font CSS variables with the new Vite-compatible font variables so Tailwind's sans and mono font tokens continue to resolve.
-- Keep `NEXT_PUBLIC_*` public environment variable names valid in v1.
-- Configure Vite to expose only `VITE_*` and `NEXT_PUBLIC_*` client env prefixes. Do not expose unprefixed server env vars to client code.
+- Use `VITE_*` public environment variable names in v1.
+- Configure Vite to expose only the `VITE_*` client env prefix. Do not expose unprefixed server env vars to client code.
 - Replace the shared env validator's Next-specific package with a framework-neutral validator while preserving the exported `env` object and current variable names.
 - Keep React Compiler enabled in the Vite/TanStack Start build. This is a critical migration requirement.
 - Add a narrow TanStack Start `start` middleware entry for request-wide concerns only: server-function CSRF, security headers, and lightweight request/observability concerns if needed.
@@ -147,7 +147,7 @@ The migration should align with TanStack Start best practices for v1 rather than
 
 - Product redesign or navigation redesign.
 - Changing the public URL contract.
-- Renaming public environment variables from `NEXT_PUBLIC_*` to `VITE_*` in v1.
+- Renaming public environment variables again in v1.
 - Replacing Better Auth.
 - Replacing oRPC as the primary product API layer.
 - Rewriting all product data fetching into TanStack route loaders.

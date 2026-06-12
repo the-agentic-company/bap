@@ -41,11 +41,11 @@ function getBrowserLocation(): BrowserLocation | undefined {
 }
 
 export function getZeroCacheURL(): string | undefined {
-  return resolveZeroCacheURL(env.NEXT_PUBLIC_ZERO_CACHE_URL, getBrowserLocation());
+  return resolveZeroCacheURL(env.VITE_ZERO_CACHE_URL, getBrowserLocation());
 }
 
 export function getZeroQueryURL(): string | undefined {
-  return resolveZeroQueryURL(env.NEXT_PUBLIC_ZERO_QUERY_URL, getBrowserLocation());
+  return resolveZeroQueryURL(env.VITE_ZERO_QUERY_URL, getBrowserLocation());
 }
 
 export function useCmdClawZeroRuntime(): CmdClawZeroRuntime {

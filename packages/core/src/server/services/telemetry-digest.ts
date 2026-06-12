@@ -16,7 +16,7 @@ type UserPreview = {
   name: string;
 };
 
-type AppUrlSource = "APP_URL" | "NEXT_PUBLIC_APP_URL";
+type AppUrlSource = "APP_URL" | "VITE_APP_URL";
 
 export type DailyTelemetryDigestSummary = {
   activityDate: string;
@@ -73,7 +73,7 @@ function resolveDigestAppUrl(): {
 } {
   const candidates: Array<{ value: string | undefined; source: AppUrlSource }> = [
     { value: process.env.APP_URL?.trim(), source: "APP_URL" },
-    { value: process.env.NEXT_PUBLIC_APP_URL?.trim(), source: "NEXT_PUBLIC_APP_URL" },
+    { value: process.env.VITE_APP_URL?.trim(), source: "VITE_APP_URL" },
   ];
 
   for (const candidate of candidates) {

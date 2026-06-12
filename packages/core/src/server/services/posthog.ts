@@ -10,12 +10,12 @@ type CaptureEventParams = {
 };
 
 function getPostHogKey(): string | null {
-  const key = env.NEXT_PUBLIC_POSTHOG_KEY ?? env.POSTHOG_API_KEY;
+  const key = env.VITE_POSTHOG_KEY ?? env.POSTHOG_API_KEY;
   return typeof key === "string" && key.trim().length > 0 ? key.trim() : null;
 }
 
 function getPostHogHost(): string {
-  const configuredHost = env.POSTHOG_HOST ?? env.NEXT_PUBLIC_POSTHOG_HOST;
+  const configuredHost = env.POSTHOG_HOST ?? env.VITE_POSTHOG_HOST;
   if (typeof configuredHost === "string" && configuredHost.trim().length > 0) {
     return configuredHost.trim().replace(/\/+$/, "");
   }

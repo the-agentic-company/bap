@@ -51,7 +51,7 @@ describe("telemetry digest", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
   });
 
   it("builds the previous-day summary from the DB queries", async () => {

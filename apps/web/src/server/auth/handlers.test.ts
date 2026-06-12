@@ -48,7 +48,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/env", () => ({
   env: {
     APP_URL: undefined,
-    NEXT_PUBLIC_APP_URL: undefined,
+    VITE_APP_URL: undefined,
   },
 }));
 
@@ -114,7 +114,7 @@ function getLocation(response: Response): string {
 beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.APP_URL;
-  delete process.env.NEXT_PUBLIC_APP_URL;
+  delete process.env.VITE_APP_URL;
 });
 
 describe("handleBetterAuth (/api/auth/**)", () => {

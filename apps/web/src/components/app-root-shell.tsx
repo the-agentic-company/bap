@@ -8,7 +8,7 @@ import { env } from "@/env";
 import { ORPCProvider } from "@/orpc/provider";
 import { CmdClawZeroProvider } from "@/zero/provider";
 
-const isSelfHostedEdition = env.NEXT_PUBLIC_APP_EDITION === "selfhost";
+const isSelfHostedEdition = env.VITE_APP_EDITION === "selfhost";
 
 type AutumnProviderComponent = (typeof import("autumn-js/react"))["AutumnProvider"];
 
@@ -20,7 +20,7 @@ function loadAutumnProvider(): Promise<AutumnProviderComponent> {
 }
 
 export function getAutumnBetterAuthUrl() {
-  return env.NEXT_PUBLIC_APP_URL ?? (typeof window === "undefined" ? "" : window.location.origin);
+  return env.VITE_APP_URL ?? (typeof window === "undefined" ? "" : window.location.origin);
 }
 
 function BillingProviderWrapper({ children }: { children: ReactNode }) {

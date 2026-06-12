@@ -15,7 +15,7 @@
 # - Render environment groups do not override service-level variables with the
 #   same key, so any secrets provided by Infisical must not also be declared
 #   directly on these services in this blueprint.
-# - `APP_URL` and `NEXT_PUBLIC_APP_URL` should come from Infisical and point to
+# - `APP_URL` and `VITE_APP_URL` should come from Infisical and point to
 #   the correct Render hostname or custom domain for each environment before
 #   testing auth/email flows.
 # - The MinIO services are public because presigned URLs must be reachable from

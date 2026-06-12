@@ -14,7 +14,7 @@ const getAuthClientBaseURL = () => {
     return window.location.origin;
   }
 
-  return env.NEXT_PUBLIC_APP_URL ?? "";
+  return env.VITE_APP_URL ?? "";
 };
 
 export const authClient = createAuthClient({

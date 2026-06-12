@@ -3,12 +3,10 @@ import { z } from "zod";
 
 export const env = createEnv({
   /**
-   * Client-exposed environment variables keep the `NEXT_PUBLIC_` prefix in v1 of the
-   * TanStack Start migration. Vite is configured to expose only `VITE_*` and
-   * `NEXT_PUBLIC_*` prefixes to the client bundle (see apps/web/vite.config.ts), so this
-   * prefix stays valid without renaming public env vars.
+   * Client-exposed environment variables use the `VITE_` prefix. Vite is configured to
+   * expose only this prefix to the client bundle (see apps/web/vite.config.ts).
    */
-  clientPrefix: "NEXT_PUBLIC_",
+  clientPrefix: "VITE_",
   /**
    * Specify your server-side environment variables schema here. This way you can ensure the app
    * isn't built with invalid env vars.
@@ -128,15 +126,15 @@ export const env = createEnv({
   /**
    * Specify your client-side environment variables schema here. This way you can ensure the app
    * isn't built with invalid env vars. To expose them to the client, prefix them with
-   * `NEXT_PUBLIC_`.
+   * `VITE_`.
    */
   client: {
-    NEXT_PUBLIC_APP_URL: z.url().optional(),
-    NEXT_PUBLIC_APP_EDITION: z.enum(["cloud", "selfhost"]).optional(),
-    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
-    NEXT_PUBLIC_POSTHOG_HOST: z.string().optional(),
-    NEXT_PUBLIC_ZERO_CACHE_URL: z.url().optional(),
-    NEXT_PUBLIC_ZERO_QUERY_URL: z.url().optional(),
+    VITE_APP_URL: z.url().optional(),
+    VITE_APP_EDITION: z.enum(["cloud", "selfhost"]).optional(),
+    VITE_POSTHOG_KEY: z.string().optional(),
+    VITE_POSTHOG_HOST: z.string().optional(),
+    VITE_ZERO_CACHE_URL: z.url().optional(),
+    VITE_ZERO_QUERY_URL: z.url().optional(),
   },
 
   /**
@@ -233,13 +231,13 @@ export const env = createEnv({
     WEB_PUSH_VAPID_SUBJECT: process.env.WEB_PUSH_VAPID_SUBJECT,
     WEB_PUSH_VAPID_PUBLIC_KEY: process.env.WEB_PUSH_VAPID_PUBLIC_KEY,
     WEB_PUSH_VAPID_PRIVATE_KEY: process.env.WEB_PUSH_VAPID_PRIVATE_KEY,
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_APP_EDITION:
-      process.env.NEXT_PUBLIC_APP_EDITION ?? process.env.APP_EDITION,
-    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
-    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-    NEXT_PUBLIC_ZERO_CACHE_URL: process.env.NEXT_PUBLIC_ZERO_CACHE_URL,
-    NEXT_PUBLIC_ZERO_QUERY_URL: process.env.NEXT_PUBLIC_ZERO_QUERY_URL,
+    VITE_APP_URL: process.env.VITE_APP_URL,
+    VITE_APP_EDITION:
+      process.env.VITE_APP_EDITION ?? process.env.APP_EDITION,
+    VITE_POSTHOG_KEY: process.env.VITE_POSTHOG_KEY,
+    VITE_POSTHOG_HOST: process.env.VITE_POSTHOG_HOST,
+    VITE_ZERO_CACHE_URL: process.env.VITE_ZERO_CACHE_URL,
+    VITE_ZERO_QUERY_URL: process.env.VITE_ZERO_QUERY_URL,
   },
   onValidationError: (issues) => {
     const formattedIssues = issues.map((issue) => {

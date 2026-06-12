@@ -9,8 +9,8 @@ void jestDomVitest;
 
 const mocks = vi.hoisted(() => ({
   env: {
-    NEXT_PUBLIC_APP_URL: undefined as string | undefined,
-    NEXT_PUBLIC_CMDCLAW_EDITION: "cloud" as string | undefined,
+    VITE_APP_URL: undefined as string | undefined,
+    VITE_APP_EDITION: "cloud" as string | undefined,
   },
   autumnProvider: vi.fn<
     ({
@@ -60,8 +60,8 @@ vi.mock("@/zero/provider", () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  mocks.env.NEXT_PUBLIC_APP_URL = undefined;
-  mocks.env.NEXT_PUBLIC_CMDCLAW_EDITION = "cloud";
+  mocks.env.VITE_APP_URL = undefined;
+  mocks.env.VITE_APP_EDITION = "cloud";
 });
 
 describe("AppRootShell", () => {
@@ -87,7 +87,7 @@ describe("AppRootShell", () => {
   });
 
   it("uses the configured public app URL when present", async () => {
-    mocks.env.NEXT_PUBLIC_APP_URL = "https://app.cmdclaw.com";
+    mocks.env.VITE_APP_URL = "https://app.cmdclaw.com";
     const { getAutumnBetterAuthUrl } = await import("./app-root-shell");
 
     expect(getAutumnBetterAuthUrl()).toBe("https://app.cmdclaw.com");

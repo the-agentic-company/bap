@@ -4,7 +4,7 @@ export const WORKTREE_PUBLIC_ROUTE_PREFIX = "/__worktrees";
 type PublicCallbackBaseInput = {
   callbackBaseUrl?: string | null;
   appUrl?: string | null;
-  nextPublicAppUrl?: string | null;
+  viteAppUrl?: string | null;
   nodeEnv?: string | null;
 };
 
@@ -30,7 +30,7 @@ export function isLoopbackHost(hostname: string): boolean {
 }
 
 export function resolvePublicCallbackBaseUrl(input: PublicCallbackBaseInput): string {
-  const candidates = [input.callbackBaseUrl, input.appUrl, input.nextPublicAppUrl];
+  const candidates = [input.callbackBaseUrl, input.appUrl, input.viteAppUrl];
   const parsedCandidates = candidates
     .map((candidate) => {
       const parsed = parseUrl(candidate);

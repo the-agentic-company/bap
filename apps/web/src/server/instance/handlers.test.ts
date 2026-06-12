@@ -43,7 +43,7 @@ describe("handleInstanceAuthStart (GET /api/instance/auth/start)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.APP_URL;
-    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VITE_APP_URL;
     isSelfHostedEditionMock.mockReturnValue(true);
     startCloudAuthMock.mockResolvedValue(
       "https://cloud.example.com/api/control-plane/auth/authorize?code=code-1",

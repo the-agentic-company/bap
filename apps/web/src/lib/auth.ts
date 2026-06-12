@@ -22,8 +22,7 @@ import { createMagicLinkRequestState } from "@/server/lib/magic-link-request-sta
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
-const appUrl =
-  env.APP_URL ?? env.NEXT_PUBLIC_APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+const appUrl = env.APP_URL ?? env.VITE_APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
 async function assertInviteOnlyLogin(email: string) {
   if (await isApprovedLoginEmail(email)) {

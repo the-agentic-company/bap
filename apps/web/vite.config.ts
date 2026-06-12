@@ -98,11 +98,10 @@ function appGtCompiler(): Plugin {
 
 export default defineConfig(({ isSsrBuild }) => ({
 	/**
-	 * Only expose client env vars under the `VITE_*` and `NEXT_PUBLIC_*` prefixes.
-	 * `NEXT_PUBLIC_*` is preserved for v1 of the migration; unprefixed server env vars
+	 * Only expose client env vars under the `VITE_*` prefix. Unprefixed server env vars
 	 * (DATABASE_URL, secrets, OAuth credentials, etc.) are never bundled to the client.
 	 */
-	envPrefix: ["VITE_", "NEXT_PUBLIC_"],
+	envPrefix: "VITE_",
 	resolve: {
 		alias: {
 			"@": srcDir,

@@ -1,7 +1,7 @@
 import { env } from "../../env";
 
 const getAppUrl = () =>
-  process.env.NEXT_PUBLIC_APP_URL ?? env.APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+  process.env.VITE_APP_URL ?? env.APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
 function getOpenAIRedirectUri(): string {
   const appUrl = getAppUrl();

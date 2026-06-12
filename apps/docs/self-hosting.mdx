@@ -113,7 +113,7 @@ that should trust it.
 - Or set `SANDBOX_DEFAULT=docker` to use local Docker-based sandboxes.
 - Published images also get a daily `YYYYMMDD-N` tag such as `20260310-1`.
 - Use a `sha-...` tag instead of `main` if you want to test a specific published build.
-- The published `app` image does not include custom browser-side `NEXT_PUBLIC_POSTHOG_*` values; build `docker/images/web/Dockerfile` yourself if you need them.
+- The published `app` image does not include custom browser-side `VITE_POSTHOG_*` values; build `docker/images/web/Dockerfile` yourself if you need them.
 
 ## Background worker
 

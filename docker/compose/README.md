@@ -29,8 +29,8 @@ Zero local sync runs in this stack as `zero-cache` on
 `wal_level=logical` so Zero can consume logical replication. The browser-facing
 defaults are:
 
-- `NEXT_PUBLIC_ZERO_CACHE_URL=http://localhost:4848`
-- `NEXT_PUBLIC_ZERO_QUERY_URL=http://host.docker.internal:3000/api/zero/query`
+- `VITE_ZERO_CACHE_URL=http://localhost:4848`
+- `VITE_ZERO_QUERY_URL=http://host.docker.internal:3000/api/zero/query`
 - `CMDCLAW_ZERO_CACHE_PORT=4848`
 
 The local vertical slice uses the app's Better Auth session cookie for

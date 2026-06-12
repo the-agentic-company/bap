@@ -40,7 +40,7 @@ export function resolveHostedMcpIssuerUrl(value?: string | URL): URL {
     return normalizeIssuerCandidate(value);
   }
 
-  const configured = process.env.APP_URL?.trim() || process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const configured = process.env.APP_URL?.trim() || process.env.VITE_APP_URL?.trim();
   if (configured) {
     return normalizeIssuerCandidate(configured);
   }

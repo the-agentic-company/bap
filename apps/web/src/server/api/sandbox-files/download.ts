@@ -58,7 +58,7 @@ export async function downloadSandboxFile(request: Request, fileId: string): Pro
 function getPublicAppBaseUrl(): string {
   return (
     process.env.APP_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.VITE_APP_URL ??
     process.env.APP_SERVER_URL ??
     `http://localhost:${process.env.PORT ?? 3000}`
   );

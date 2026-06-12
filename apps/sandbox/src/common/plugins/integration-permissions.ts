@@ -450,7 +450,7 @@ export function getCallbackBaseUrls(): string[] {
   const rawCandidates = [
     process.env.E2B_CALLBACK_BASE_URL,
     process.env.APP_URL,
-    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.VITE_APP_URL,
   ].filter((value): value is string => Boolean(value && value.trim().length > 0));
 
   const normalized = rawCandidates.map((value) => value.replace(/\/$/, ""));
@@ -523,7 +523,7 @@ async function requestApproval(params: {
       )}`;
 
   if (serverUrls.length === 0) {
-    const reason = "Missing callback base URL (APP_URL/NEXT_PUBLIC_APP_URL/E2B_CALLBACK_BASE_URL)";
+    const reason = "Missing callback base URL (APP_URL/VITE_APP_URL/E2B_CALLBACK_BASE_URL)";
     console.error(`[Plugin] ${reason}`);
     return { error: reason };
   }
@@ -676,7 +676,7 @@ async function requestAuth(params: {
   const runtimeContext = await readRuntimeContext();
 
   if (serverUrls.length === 0) {
-    const reason = "Missing callback base URL (APP_URL/NEXT_PUBLIC_APP_URL/E2B_CALLBACK_BASE_URL)";
+    const reason = "Missing callback base URL (APP_URL/VITE_APP_URL/E2B_CALLBACK_BASE_URL)";
     console.error(`[Plugin] ${reason}`);
     return { success: false, error: reason };
   }

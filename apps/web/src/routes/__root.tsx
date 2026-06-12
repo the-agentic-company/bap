@@ -26,10 +26,10 @@ import "@fontsource/geist-mono/500.css";
 import "@/styles/globals.css";
 // oxlint-enable no-unassigned-import
 
-// Client-exposed edition flag mirrors the server APP_EDITION (NEXT_PUBLIC_* is kept
+// Client-exposed edition flag mirrors the server APP_EDITION (VITE_* is kept
 // valid in v1) so head metadata and the body data-edition attribute resolve identically
 // on the server and the client.
-const edition = env.NEXT_PUBLIC_APP_EDITION ?? "cloud";
+const edition = env.VITE_APP_EDITION ?? "cloud";
 const isSelfHost = edition === "selfhost";
 const TANSTACK_DEVTOOLS_CONFIG = { position: "bottom-right" } as const;
 const TANSTACK_DEVTOOLS_PLUGINS: Array<TanStackDevtoolsReactPlugin> = [
