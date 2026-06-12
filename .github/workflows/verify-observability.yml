@@ -37,8 +37,8 @@ jobs:
 
           case "${ENVIRONMENT}" in
             staging | prod)
-              echo "GRAFANA_URL=https://grafana.ops.${ENVIRONMENT}.cmdclaw.ai" >> "$GITHUB_ENV"
-              echo "VICTORIA_METRICS_URL=https://victoria-metrics.ops.${ENVIRONMENT}.cmdclaw.ai" >> "$GITHUB_ENV"
+              echo "GRAFANA_URL=https://grafana.ops.${ENVIRONMENT}.bap.ai" >> "$GITHUB_ENV"
+              echo "VICTORIA_METRICS_URL=https://victoria-metrics.ops.${ENVIRONMENT}.bap.ai" >> "$GITHUB_ENV"
               ;;
             *)
               echo "Unsupported environment: ${ENVIRONMENT}" >&2
@@ -81,7 +81,7 @@ jobs:
           for attempt in $(seq 1 20); do
             rules="$(curl --fail --show-error --silent "${VICTORIA_METRICS_URL}/api/v1/rules")"
 
-            if echo "${rules}" | jq -e --arg group "cmdclaw-${ENVIRONMENT}-runtime" '
+            if echo "${rules}" | jq -e --arg group "bap-${ENVIRONMENT}-runtime" '
               .status == "success"
               and any(.data.groups[]?; .name == $group)
             ' >/dev/null; then

@@ -30,9 +30,9 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_WEB_SERVICE_NAME: cmdclaw-web-${{ inputs.environment }}
-      RENDER_WORKER_SERVICE_NAME: cmdclaw-worker-${{ inputs.environment }}
-      RENDER_MCP_SERVICE_NAME: cmdclaw-mcp-${{ inputs.environment }}
+      RENDER_WEB_SERVICE_NAME: bap-web-${{ inputs.environment }}
+      RENDER_WORKER_SERVICE_NAME: bap-worker-${{ inputs.environment }}
+      RENDER_MCP_SERVICE_NAME: bap-mcp-${{ inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

@@ -40,7 +40,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_WEB_SERVICE_NAME: cmdclaw-web-${{ inputs.environment }}
+      RENDER_WEB_SERVICE_NAME: bap-web-${{ inputs.environment }}
     outputs:
       previous_web_deploy_id: ${{ steps.previous-web.outputs.deploy_id }}
       web_deploy_id: ${{ steps.deploy-web.outputs.deploy_id }}
@@ -88,7 +88,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_WORKER_SERVICE_NAME: cmdclaw-worker-${{ inputs.environment }}
+      RENDER_WORKER_SERVICE_NAME: bap-worker-${{ inputs.environment }}
     outputs:
       previous_worker_deploy_id: ${{ steps.previous-worker.outputs.deploy_id }}
       worker_deploy_id: ${{ steps.deploy-worker.outputs.deploy_id }}
@@ -136,7 +136,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_MCP_SERVICE_NAME: cmdclaw-mcp-${{ inputs.environment }}
+      RENDER_MCP_SERVICE_NAME: bap-mcp-${{ inputs.environment }}
     outputs:
       previous_mcp_deploy_id: ${{ steps.previous-mcp.outputs.deploy_id }}
       mcp_deploy_id: ${{ steps.deploy-mcp.outputs.deploy_id }}

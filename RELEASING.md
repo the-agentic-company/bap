@@ -55,8 +55,8 @@ later release after the old code path is gone.
 
 Daytona snapshots use stable environment names:
 
-- staging: `cmdclaw-agent-staging`
-- production: `cmdclaw-agent-prod`
+- staging: `bap-agent-staging`
+- production: `bap-agent-prod`
 
 Rebuilding the previous commit can restore the previous snapshot contents if a
 Daytona rollback is needed.
@@ -92,11 +92,11 @@ enabling the workflow:
 Render service IDs are resolved at runtime from stable service names. The release
 workflow expects these names to exist:
 
-- staging: `cmdclaw-web-staging`, `cmdclaw-worker-staging`, `cmdclaw-mcp-staging`
-- prod: `cmdclaw-web-prod`, `cmdclaw-worker-prod`, `cmdclaw-mcp-prod`
+- staging: `bap-web-staging`, `bap-worker-staging`, `bap-mcp-staging`
+- prod: `bap-web-prod`, `bap-worker-prod`, `bap-mcp-prod`
 
-Stateful infrastructure such as `cmdclaw-zero-cache-staging` and
-`cmdclaw-zero-cache-prod` is managed by the Render blueprint rather than the
+Stateful infrastructure such as `bap-zero-cache-staging` and
+`bap-zero-cache-prod` is managed by the Render blueprint rather than the
 per-commit deploy workflow because it uses a pinned prebuilt image.
 
 Staging is intentionally on-demand. The `staging-resume` job starts every

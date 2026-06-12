@@ -23,7 +23,7 @@
 #   as S3 or R2 and set `AWS_ENDPOINT_URL`/credentials from the production
 #   environment group instead of running production object storage on Render.
 # - Create the environment-specific document buckets once after the first deploy
-#   (`cmdclaw-documents` for staging, `cmdclaw-documents-prod` for production).
+#   (`bap-documents` for staging, `bap-documents-prod` for production).
 # - The observability services stay on the private network. Operators reach the
 #   Render private `10.0.0.0/8` range through the Tailscale subnet router defined
 #   below. Grafana and the Victoria backends are exposed through one
@@ -34,11 +34,11 @@ previews:
   generation: "off"
 
 projects:
-  - name: cmdclaw
+  - name: bap
     environments:
       - name: staging
         databases:
-          - name: cmdclaw-postgres-staging
+          - name: bap-postgres-staging
             region: frankfurt
             plan: basic-256mb
             postgresMajorVersion: "18"
@@ -46,13 +46,13 @@ projects:
 
         services:
           - type: keyvalue
-            name: cmdclaw-redis-staging
+            name: bap-redis-staging
             region: frankfurt
             plan: starter
             ipAllowList: []
 
           - type: web
-            name: cmdclaw-s3-staging
+            name: bap-s3-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -61,7 +61,7 @@ projects:
             dockerfilePath: docker/images/minio/Dockerfile
             healthCheckPath: /minio/health/live
             disk:
-              name: cmdclaw-s3-data
+              name: bap-s3-data
               mountPath: /data
               sizeGB: 10
             envVars:
@@ -70,7 +70,7 @@ projects:
               - fromGroup: staging
 
           - type: worker
-            name: cmdclaw-tailscale-staging
+            name: bap-tailscale-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -79,7 +79,7 @@ projects:
             dockerContext: docker/images/tailscale
             dockerfilePath: docker/images/tailscale/Dockerfile
             disk:
-              name: cmdclaw-tailscale-state
+              name: bap-tailscale-state
               mountPath: /var/lib/tailscale
               sizeGB: 1
             envVars:
@@ -90,7 +90,7 @@ projects:
                 value: 10.0.0.0/8
 
           - type: worker
-            name: cmdclaw-postgres-tailscale-staging
+            name: bap-postgres-tailscale-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -99,7 +99,7 @@ projects:
             dockerContext: docker/images/tailscale
             dockerfilePath: docker/images/tailscale/Dockerfile
             disk:
-              name: cmdclaw-postgres-tailscale-state
+              name: bap-postgres-tailscale-state
               mountPath: /var/lib/tailscale
               sizeGB: 1
             envVars:
@@ -107,16 +107,16 @@ projects:
               - key: TAILSCALE_VERSION
                 value: 1.96.4
               - key: TAILSCALE_HOSTNAME
-                value: cmdclaw-postgres-tailscale-staging
+                value: bap-postgres-tailscale-staging
               - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
                 fromDatabase:
-                  name: cmdclaw-postgres-staging
+                  name: bap-postgres-staging
                   property: host
               - key: TAILSCALE_TCP_FORWARD_PORTS
                 value: "5432:5432"
 
           - type: pserv
-            name: cmdclaw-zero-cache-staging
+            name: bap-zero-cache-staging
             runtime: image
             region: frankfurt
             plan: starter
@@ -124,7 +124,7 @@ projects:
             image:
               url: rocicorp/zero:1.6.2
             disk:
-              name: cmdclaw-zero-cache-data
+              name: bap-zero-cache-data
               mountPath: /data
               sizeGB: 10
             envVars:
@@ -134,21 +134,21 @@ projects:
               - key: ZERO_PORT
                 value: "4848"
               - key: ZERO_APP_PUBLICATIONS
-                value: zero_cmdclaw_staging
+                value: zero_bap_staging
               - key: ZERO_CVR_DB
                 fromDatabase:
-                  name: cmdclaw-postgres-staging
+                  name: bap-postgres-staging
                   property: connectionString
               - key: ZERO_CHANGE_DB
                 fromDatabase:
-                  name: cmdclaw-postgres-staging
+                  name: bap-postgres-staging
                   property: connectionString
               - key: ZERO_REPLICA_FILE
                 value: /data/replica.db
               - key: ZERO_ADMIN_PASSWORD
                 generateValue: true
               - key: ZERO_QUERY_URL
-                value: https://staging.cmdclaw.ai/api/zero/query
+                value: https://staging.bap.ai/api/zero/query
               - key: ZERO_QUERY_FORWARD_COOKIES
                 value: "true"
               - key: ZERO_ENABLE_CRUD_MUTATIONS
@@ -157,7 +157,7 @@ projects:
                 value: json
 
           - type: pserv
-            name: cmdclaw-caddy-staging
+            name: bap-caddy-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -166,7 +166,7 @@ projects:
             dockerfilePath: docker/images/caddy/Dockerfile
             dockerCommand: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
             disk:
-              name: cmdclaw-caddy-data
+              name: bap-caddy-data
               mountPath: /data
               sizeGB: 1
             envVars:
@@ -174,36 +174,36 @@ projects:
                 value: "10000"
               - fromGroup: staging
               - key: CMDCLAW_GRAFANA_DOMAIN
-                value: grafana.ops.staging.cmdclaw.ai
+                value: grafana.ops.staging.bap.ai
               - key: CMDCLAW_VICTORIA_METRICS_DOMAIN
-                value: victoria-metrics.ops.staging.cmdclaw.ai
+                value: victoria-metrics.ops.staging.bap.ai
               - key: CMDCLAW_VICTORIA_LOGS_DOMAIN
-                value: victoria-logs.ops.staging.cmdclaw.ai
+                value: victoria-logs.ops.staging.bap.ai
               - key: CMDCLAW_VICTORIA_TRACES_DOMAIN
-                value: victoria-traces.ops.staging.cmdclaw.ai
+                value: victoria-traces.ops.staging.bap.ai
               - key: CMDCLAW_GRAFANA_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-grafana-staging
+                  name: bap-grafana-staging
                   property: host
               - key: CMDCLAW_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-metrics-staging
+                  name: bap-victoria-metrics-staging
                   property: host
               - key: CMDCLAW_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-logs-staging
+                  name: bap-victoria-logs-staging
                   property: host
               - key: CMDCLAW_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-traces-staging
+                  name: bap-victoria-traces-staging
                   property: host
 
           - type: web
-            name: cmdclaw-app-edge-staging
+            name: bap-app-edge-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -217,15 +217,15 @@ projects:
               - key: PORT
                 value: "10000"
               - key: CMDCLAW_WEB_HOST
-                value: cmdclaw-web-staging.onrender.com
+                value: bap-web-staging.onrender.com
               - key: CMDCLAW_ZERO_CACHE_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-zero-cache-staging
+                  name: bap-zero-cache-staging
                   property: host
 
           - type: worker
-            name: cmdclaw-caddy-tailscale-staging
+            name: bap-caddy-tailscale-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -234,7 +234,7 @@ projects:
             dockerContext: docker/images/tailscale
             dockerfilePath: docker/images/tailscale/Dockerfile
             disk:
-              name: cmdclaw-caddy-tailscale-state
+              name: bap-caddy-tailscale-state
               mountPath: /var/lib/tailscale
               sizeGB: 1
             envVars:
@@ -242,31 +242,31 @@ projects:
               - key: TAILSCALE_VERSION
                 value: 1.96.4
               - key: TAILSCALE_HOSTNAME
-                value: cmdclaw-caddy-tailscale-staging
+                value: bap-caddy-tailscale-staging
               - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-caddy-staging
+                  name: bap-caddy-staging
                   property: host
               - key: TAILSCALE_TCP_FORWARD_PORTS
                 value: "80:80,443:443"
 
           - type: pserv
-            name: cmdclaw-victoria-metrics-staging
+            name: bap-victoria-metrics-staging
             runtime: image
             region: frankfurt
             plan: starter
             numInstances: 1
             image:
               url: victoriametrics/victoria-metrics:v1.140.0
-            dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://cmdclaw-vmalert-staging:8880
+            dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://bap-vmalert-staging:8880
             disk:
-              name: cmdclaw-victoria-metrics-data
+              name: bap-victoria-metrics-data
               mountPath: /victoria-metrics-data
               sizeGB: 10
 
           - type: pserv
-            name: cmdclaw-victoria-logs-staging
+            name: bap-victoria-logs-staging
             runtime: image
             region: frankfurt
             plan: starter
@@ -275,12 +275,12 @@ projects:
               url: victoriametrics/victoria-logs:v1.48.0
             dockerCommand: /victoria-logs-prod -storageDataPath=/victoria-logs-data
             disk:
-              name: cmdclaw-victoria-logs-data
+              name: bap-victoria-logs-data
               mountPath: /victoria-logs-data
               sizeGB: 2
 
           - type: pserv
-            name: cmdclaw-victoria-traces-staging
+            name: bap-victoria-traces-staging
             runtime: image
             region: frankfurt
             plan: starter
@@ -289,12 +289,12 @@ projects:
               url: victoriametrics/victoria-traces:v0.8.0
             dockerCommand: /victoria-traces-prod -storageDataPath=/victoria-traces-data
             disk:
-              name: cmdclaw-victoria-traces-data
+              name: bap-victoria-traces-data
               mountPath: /victoria-traces-data
               sizeGB: 2
 
           - type: pserv
-            name: cmdclaw-vector-staging
+            name: bap-vector-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -305,21 +305,21 @@ projects:
               - key: CMDCLAW_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-metrics-staging
+                  name: bap-victoria-metrics-staging
                   property: host
               - key: CMDCLAW_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-logs-staging
+                  name: bap-victoria-logs-staging
                   property: host
               - key: CMDCLAW_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-traces-staging
+                  name: bap-victoria-traces-staging
                   property: host
 
           - type: pserv
-            name: cmdclaw-alertmanager-staging
+            name: bap-alertmanager-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -327,7 +327,7 @@ projects:
             dockerContext: docker/images/alertmanager
             dockerfilePath: docker/images/alertmanager/Dockerfile
             disk:
-              name: cmdclaw-alertmanager-data
+              name: bap-alertmanager-data
               mountPath: /alertmanager
               sizeGB: 1
             envVars:
@@ -335,7 +335,7 @@ projects:
                 value: staging
 
           - type: pserv
-            name: cmdclaw-vmalert-staging
+            name: bap-vmalert-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -348,16 +348,16 @@ projects:
               - key: CMDCLAW_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-metrics-staging
+                  name: bap-victoria-metrics-staging
                   property: host
               - key: CMDCLAW_ALERTMANAGER_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-alertmanager-staging
+                  name: bap-alertmanager-staging
                   property: host
 
           - type: pserv
-            name: cmdclaw-grafana-staging
+            name: bap-grafana-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -365,7 +365,7 @@ projects:
             dockerContext: docker/images/grafana
             dockerfilePath: docker/images/grafana/Dockerfile
             disk:
-              name: cmdclaw-grafana-data
+              name: bap-grafana-data
               mountPath: /var/lib/grafana
               sizeGB: 2
             envVars:
@@ -374,32 +374,32 @@ projects:
               - key: GF_AUTH_DISABLE_LOGIN_FORM
                 value: "false"
               - key: GF_SERVER_ROOT_URL
-                value: https://grafana.ops.staging.cmdclaw.ai
+                value: https://grafana.ops.staging.bap.ai
               - key: GF_PLUGINS_PREINSTALL_SYNC
                 value: victoriametrics-logs-datasource
               - key: CMDCLAW_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-metrics-staging
+                  name: bap-victoria-metrics-staging
                   property: host
               - key: CMDCLAW_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-logs-staging
+                  name: bap-victoria-logs-staging
                   property: host
               - key: CMDCLAW_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-traces-staging
+                  name: bap-victoria-traces-staging
                   property: host
               - key: CMDCLAW_ALERTMANAGER_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-alertmanager-staging
+                  name: bap-alertmanager-staging
                   property: host
 
           - type: web
-            name: cmdclaw-web-staging
+            name: bap-web-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -417,25 +417,25 @@ projects:
               - fromGroup: staging
               - key: DATABASE_URL
                 fromDatabase:
-                  name: cmdclaw-postgres-staging
+                  name: bap-postgres-staging
                   property: connectionString
               - key: REDIS_URL
                 fromService:
                   type: keyvalue
-                  name: cmdclaw-redis-staging
+                  name: bap-redis-staging
                   property: connectionString
               - key: AWS_ENDPOINT_URL
-                value: http://cmdclaw-s3-staging:10000
+                value: http://bap-s3-staging:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
-                value: cmdclaw-documents
+                value: bap-documents
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: CMDCLAW_VECTOR_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-vector-staging
+                  name: bap-vector-staging
                   property: host
               - key: CMDCLAW_VECTOR_LOG_PORT
                 value: "8686"
@@ -446,17 +446,17 @@ projects:
               - key: CMDCLAW_MCP_BASE_URL
                 fromService:
                   type: web
-                  name: cmdclaw-mcp-staging
+                  name: bap-mcp-staging
                   envVarKey: RENDER_EXTERNAL_URL
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
                 value: daytona
               - key: E2B_DAYTONA_SANDBOX_NAME
-                value: cmdclaw-agent-staging
+                value: bap-agent-staging
 
           - type: web
-            name: cmdclaw-mcp-staging
+            name: bap-mcp-staging
             runtime: docker
             region: frankfurt
             plan: standard
@@ -470,11 +470,11 @@ projects:
                 value: "10000"
               - fromGroup: staging
               - key: AWS_ENDPOINT_URL
-                value: http://cmdclaw-s3-staging:10000
+                value: http://bap-s3-staging:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
-                value: cmdclaw-documents
+                value: bap-documents
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: MCP_GATEWAY_MANAGED_CHILDREN
@@ -483,7 +483,7 @@ projects:
                 value: start
 
           - type: worker
-            name: cmdclaw-worker-staging
+            name: bap-worker-staging
             runtime: docker
             region: frankfurt
             plan: starter
@@ -496,25 +496,25 @@ projects:
               - fromGroup: staging
               - key: DATABASE_URL
                 fromDatabase:
-                  name: cmdclaw-postgres-staging
+                  name: bap-postgres-staging
                   property: connectionString
               - key: REDIS_URL
                 fromService:
                   type: keyvalue
-                  name: cmdclaw-redis-staging
+                  name: bap-redis-staging
                   property: connectionString
               - key: AWS_ENDPOINT_URL
-                value: http://cmdclaw-s3-staging:10000
+                value: http://bap-s3-staging:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
-                value: cmdclaw-documents
+                value: bap-documents
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: CMDCLAW_VECTOR_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-vector-staging
+                  name: bap-vector-staging
                   property: host
               - key: CMDCLAW_VECTOR_LOG_PORT
                 value: "8686"
@@ -525,18 +525,18 @@ projects:
               - key: CMDCLAW_MCP_BASE_URL
                 fromService:
                   type: web
-                  name: cmdclaw-mcp-staging
+                  name: bap-mcp-staging
                   envVarKey: RENDER_EXTERNAL_URL
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
                 value: daytona
               - key: E2B_DAYTONA_SANDBOX_NAME
-                value: cmdclaw-agent-staging
+                value: bap-agent-staging
 
       - name: production
         databases:
-          - name: cmdclaw-postgres-prod
+          - name: bap-postgres-prod
             region: frankfurt
             plan: basic-1gb
             postgresMajorVersion: "18"
@@ -544,13 +544,13 @@ projects:
 
         services:
           - type: keyvalue
-            name: cmdclaw-redis-prod
+            name: bap-redis-prod
             region: frankfurt
             plan: starter
             ipAllowList: []
 
           - type: web
-            name: cmdclaw-s3-prod
+            name: bap-s3-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -559,7 +559,7 @@ projects:
             dockerfilePath: docker/images/minio/Dockerfile
             healthCheckPath: /minio/health/live
             disk:
-              name: cmdclaw-s3-data-prod
+              name: bap-s3-data-prod
               mountPath: /data
               sizeGB: 25
             envVars:
@@ -568,7 +568,7 @@ projects:
               - fromGroup: prod
 
           - type: worker
-            name: cmdclaw-tailscale-prod
+            name: bap-tailscale-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -577,7 +577,7 @@ projects:
             dockerContext: docker/images/tailscale
             dockerfilePath: docker/images/tailscale/Dockerfile
             disk:
-              name: cmdclaw-tailscale-state-prod
+              name: bap-tailscale-state-prod
               mountPath: /var/lib/tailscale
               sizeGB: 2
             envVars:
@@ -588,7 +588,7 @@ projects:
                 value: 10.0.0.0/8
 
           - type: worker
-            name: cmdclaw-postgres-tailscale-prod
+            name: bap-postgres-tailscale-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -597,7 +597,7 @@ projects:
             dockerContext: docker/images/tailscale
             dockerfilePath: docker/images/tailscale/Dockerfile
             disk:
-              name: cmdclaw-postgres-tailscale-state-prod
+              name: bap-postgres-tailscale-state-prod
               mountPath: /var/lib/tailscale
               sizeGB: 1
             envVars:
@@ -605,16 +605,16 @@ projects:
               - key: TAILSCALE_VERSION
                 value: 1.96.4
               - key: TAILSCALE_HOSTNAME
-                value: cmdclaw-postgres-tailscale-prod
+                value: bap-postgres-tailscale-prod
               - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
                 fromDatabase:
-                  name: cmdclaw-postgres-prod
+                  name: bap-postgres-prod
                   property: host
               - key: TAILSCALE_TCP_FORWARD_PORTS
                 value: "5432:5432"
 
           - type: pserv
-            name: cmdclaw-zero-cache-prod
+            name: bap-zero-cache-prod
             runtime: image
             region: frankfurt
             plan: standard
@@ -622,7 +622,7 @@ projects:
             image:
               url: rocicorp/zero:1.6.2
             disk:
-              name: cmdclaw-zero-cache-data-prod
+              name: bap-zero-cache-data-prod
               mountPath: /data
               sizeGB: 10
             envVars:
@@ -632,21 +632,21 @@ projects:
               - key: ZERO_PORT
                 value: "4848"
               - key: ZERO_APP_PUBLICATIONS
-                value: zero_cmdclaw_prod
+                value: zero_bap_prod
               - key: ZERO_CVR_DB
                 fromDatabase:
-                  name: cmdclaw-postgres-prod
+                  name: bap-postgres-prod
                   property: connectionString
               - key: ZERO_CHANGE_DB
                 fromDatabase:
-                  name: cmdclaw-postgres-prod
+                  name: bap-postgres-prod
                   property: connectionString
               - key: ZERO_REPLICA_FILE
                 value: /data/replica.db
               - key: ZERO_ADMIN_PASSWORD
                 generateValue: true
               - key: ZERO_QUERY_URL
-                value: https://cmdclaw.ai/api/zero/query
+                value: https://bap.ai/api/zero/query
               - key: ZERO_QUERY_FORWARD_COOKIES
                 value: "true"
               - key: ZERO_ENABLE_CRUD_MUTATIONS
@@ -655,7 +655,7 @@ projects:
                 value: json
 
           - type: pserv
-            name: cmdclaw-caddy-prod
+            name: bap-caddy-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -664,7 +664,7 @@ projects:
             dockerfilePath: docker/images/caddy/Dockerfile
             dockerCommand: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
             disk:
-              name: cmdclaw-caddy-data-prod
+              name: bap-caddy-data-prod
               mountPath: /data
               sizeGB: 2
             envVars:
@@ -672,36 +672,36 @@ projects:
                 value: "10000"
               - fromGroup: prod
               - key: CMDCLAW_GRAFANA_DOMAIN
-                value: grafana.ops.prod.cmdclaw.ai
+                value: grafana.ops.prod.bap.ai
               - key: CMDCLAW_VICTORIA_METRICS_DOMAIN
-                value: victoria-metrics.ops.prod.cmdclaw.ai
+                value: victoria-metrics.ops.prod.bap.ai
               - key: CMDCLAW_VICTORIA_LOGS_DOMAIN
-                value: victoria-logs.ops.prod.cmdclaw.ai
+                value: victoria-logs.ops.prod.bap.ai
               - key: CMDCLAW_VICTORIA_TRACES_DOMAIN
-                value: victoria-traces.ops.prod.cmdclaw.ai
+                value: victoria-traces.ops.prod.bap.ai
               - key: CMDCLAW_GRAFANA_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-grafana-prod
+                  name: bap-grafana-prod
                   property: host
               - key: CMDCLAW_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-metrics-prod
+                  name: bap-victoria-metrics-prod
                   property: host
               - key: CMDCLAW_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-logs-prod
+                  name: bap-victoria-logs-prod
                   property: host
               - key: CMDCLAW_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-traces-prod
+                  name: bap-victoria-traces-prod
                   property: host
 
           - type: web
-            name: cmdclaw-app-edge-prod
+            name: bap-app-edge-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -715,15 +715,15 @@ projects:
               - key: PORT
                 value: "10000"
               - key: CMDCLAW_WEB_HOST
-                value: cmdclaw-web-prod.onrender.com
+                value: bap-web-prod.onrender.com
               - key: CMDCLAW_ZERO_CACHE_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-zero-cache-prod
+                  name: bap-zero-cache-prod
                   property: host
 
           - type: worker
-            name: cmdclaw-caddy-tailscale-prod
+            name: bap-caddy-tailscale-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -732,7 +732,7 @@ projects:
             dockerContext: docker/images/tailscale
             dockerfilePath: docker/images/tailscale/Dockerfile
             disk:
-              name: cmdclaw-caddy-tailscale-state-prod
+              name: bap-caddy-tailscale-state-prod
               mountPath: /var/lib/tailscale
               sizeGB: 2
             envVars:
@@ -740,31 +740,31 @@ projects:
               - key: TAILSCALE_VERSION
                 value: 1.96.4
               - key: TAILSCALE_HOSTNAME
-                value: cmdclaw-caddy-tailscale-prod
+                value: bap-caddy-tailscale-prod
               - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-caddy-prod
+                  name: bap-caddy-prod
                   property: host
               - key: TAILSCALE_TCP_FORWARD_PORTS
                 value: "80:80,443:443"
 
           - type: pserv
-            name: cmdclaw-victoria-metrics-prod
+            name: bap-victoria-metrics-prod
             runtime: image
             region: frankfurt
             plan: starter
             numInstances: 1
             image:
               url: victoriametrics/victoria-metrics:v1.140.0
-            dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://cmdclaw-vmalert-prod:8880
+            dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://bap-vmalert-prod:8880
             disk:
-              name: cmdclaw-victoria-metrics-data-prod
+              name: bap-victoria-metrics-data-prod
               mountPath: /victoria-metrics-data
               sizeGB: 10
 
           - type: pserv
-            name: cmdclaw-victoria-logs-prod
+            name: bap-victoria-logs-prod
             runtime: image
             region: frankfurt
             plan: starter
@@ -773,12 +773,12 @@ projects:
               url: victoriametrics/victoria-logs:v1.48.0
             dockerCommand: /victoria-logs-prod -storageDataPath=/victoria-logs-data
             disk:
-              name: cmdclaw-victoria-logs-data-prod
+              name: bap-victoria-logs-data-prod
               mountPath: /victoria-logs-data
               sizeGB: 10
 
           - type: pserv
-            name: cmdclaw-victoria-traces-prod
+            name: bap-victoria-traces-prod
             runtime: image
             region: frankfurt
             plan: starter
@@ -787,12 +787,12 @@ projects:
               url: victoriametrics/victoria-traces:v0.8.0
             dockerCommand: /victoria-traces-prod -storageDataPath=/victoria-traces-data
             disk:
-              name: cmdclaw-victoria-traces-data-prod
+              name: bap-victoria-traces-data-prod
               mountPath: /victoria-traces-data
               sizeGB: 10
 
           - type: pserv
-            name: cmdclaw-vector-prod
+            name: bap-vector-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -803,21 +803,21 @@ projects:
               - key: CMDCLAW_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-metrics-prod
+                  name: bap-victoria-metrics-prod
                   property: host
               - key: CMDCLAW_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-logs-prod
+                  name: bap-victoria-logs-prod
                   property: host
               - key: CMDCLAW_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-traces-prod
+                  name: bap-victoria-traces-prod
                   property: host
 
           - type: pserv
-            name: cmdclaw-alertmanager-prod
+            name: bap-alertmanager-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -825,7 +825,7 @@ projects:
             dockerContext: docker/images/alertmanager
             dockerfilePath: docker/images/alertmanager/Dockerfile
             disk:
-              name: cmdclaw-alertmanager-data-prod
+              name: bap-alertmanager-data-prod
               mountPath: /alertmanager
               sizeGB: 2
             envVars:
@@ -833,7 +833,7 @@ projects:
                 value: prod
 
           - type: pserv
-            name: cmdclaw-vmalert-prod
+            name: bap-vmalert-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -846,16 +846,16 @@ projects:
               - key: CMDCLAW_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-metrics-prod
+                  name: bap-victoria-metrics-prod
                   property: host
               - key: CMDCLAW_ALERTMANAGER_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-alertmanager-prod
+                  name: bap-alertmanager-prod
                   property: host
 
           - type: pserv
-            name: cmdclaw-grafana-prod
+            name: bap-grafana-prod
             runtime: docker
             region: frankfurt
             plan: starter
@@ -863,7 +863,7 @@ projects:
             dockerContext: docker/images/grafana
             dockerfilePath: docker/images/grafana/Dockerfile
             disk:
-              name: cmdclaw-grafana-data-prod
+              name: bap-grafana-data-prod
               mountPath: /var/lib/grafana
               sizeGB: 10
             envVars:
@@ -872,32 +872,32 @@ projects:
               - key: GF_AUTH_DISABLE_LOGIN_FORM
                 value: "false"
               - key: GF_SERVER_ROOT_URL
-                value: https://grafana.ops.prod.cmdclaw.ai
+                value: https://grafana.ops.prod.bap.ai
               - key: GF_PLUGINS_PREINSTALL_SYNC
                 value: victoriametrics-logs-datasource
               - key: CMDCLAW_VICTORIA_METRICS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-metrics-prod
+                  name: bap-victoria-metrics-prod
                   property: host
               - key: CMDCLAW_VICTORIA_LOGS_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-logs-prod
+                  name: bap-victoria-logs-prod
                   property: host
               - key: CMDCLAW_VICTORIA_TRACES_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-victoria-traces-prod
+                  name: bap-victoria-traces-prod
                   property: host
               - key: CMDCLAW_ALERTMANAGER_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-alertmanager-prod
+                  name: bap-alertmanager-prod
                   property: host
 
           - type: web
-            name: cmdclaw-web-prod
+            name: bap-web-prod
             runtime: docker
             region: frankfurt
             plan: standard
@@ -915,25 +915,25 @@ projects:
               - fromGroup: prod
               - key: DATABASE_URL
                 fromDatabase:
-                  name: cmdclaw-postgres-prod
+                  name: bap-postgres-prod
                   property: connectionString
               - key: REDIS_URL
                 fromService:
                   type: keyvalue
-                  name: cmdclaw-redis-prod
+                  name: bap-redis-prod
                   property: connectionString
               - key: AWS_ENDPOINT_URL
-                value: http://cmdclaw-s3-prod:10000
+                value: http://bap-s3-prod:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
-                value: cmdclaw-documents-prod
+                value: bap-documents-prod
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: CMDCLAW_VECTOR_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-vector-prod
+                  name: bap-vector-prod
                   property: host
               - key: CMDCLAW_VECTOR_LOG_PORT
                 value: "8686"
@@ -944,17 +944,17 @@ projects:
               - key: CMDCLAW_MCP_BASE_URL
                 fromService:
                   type: web
-                  name: cmdclaw-mcp-prod
+                  name: bap-mcp-prod
                   envVarKey: RENDER_EXTERNAL_URL
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
                 value: daytona
               - key: E2B_DAYTONA_SANDBOX_NAME
-                value: cmdclaw-agent-prod
+                value: bap-agent-prod
 
           - type: web
-            name: cmdclaw-mcp-prod
+            name: bap-mcp-prod
             runtime: docker
             region: frankfurt
             plan: standard
@@ -968,11 +968,11 @@ projects:
                 value: "10000"
               - fromGroup: prod
               - key: AWS_ENDPOINT_URL
-                value: http://cmdclaw-s3-prod:10000
+                value: http://bap-s3-prod:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
-                value: cmdclaw-documents-prod
+                value: bap-documents-prod
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: MCP_GATEWAY_MANAGED_CHILDREN
@@ -981,7 +981,7 @@ projects:
                 value: start
 
           - type: worker
-            name: cmdclaw-worker-prod
+            name: bap-worker-prod
             runtime: docker
             region: frankfurt
             plan: standard
@@ -994,25 +994,25 @@ projects:
               - fromGroup: prod
               - key: DATABASE_URL
                 fromDatabase:
-                  name: cmdclaw-postgres-prod
+                  name: bap-postgres-prod
                   property: connectionString
               - key: REDIS_URL
                 fromService:
                   type: keyvalue
-                  name: cmdclaw-redis-prod
+                  name: bap-redis-prod
                   property: connectionString
               - key: AWS_ENDPOINT_URL
-                value: http://cmdclaw-s3-prod:10000
+                value: http://bap-s3-prod:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
-                value: cmdclaw-documents-prod
+                value: bap-documents-prod
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: CMDCLAW_VECTOR_HOST
                 fromService:
                   type: pserv
-                  name: cmdclaw-vector-prod
+                  name: bap-vector-prod
                   property: host
               - key: CMDCLAW_VECTOR_LOG_PORT
                 value: "8686"
@@ -1023,11 +1023,11 @@ projects:
               - key: CMDCLAW_MCP_BASE_URL
                 fromService:
                   type: web
-                  name: cmdclaw-mcp-prod
+                  name: bap-mcp-prod
                   envVarKey: RENDER_EXTERNAL_URL
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
                 value: daytona
               - key: E2B_DAYTONA_SANDBOX_NAME
-                value: cmdclaw-agent-prod
+                value: bap-agent-prod

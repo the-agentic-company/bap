@@ -47,7 +47,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_NAME: cmdclaw-grafana-${{ inputs.environment }}
+      RENDER_SERVICE_NAME: bap-grafana-${{ inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -79,7 +79,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_NAME: cmdclaw-vmalert-${{ inputs.environment }}
+      RENDER_SERVICE_NAME: bap-vmalert-${{ inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -111,7 +111,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_NAME: cmdclaw-alertmanager-${{ inputs.environment }}
+      RENDER_SERVICE_NAME: bap-alertmanager-${{ inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -143,7 +143,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_NAME: cmdclaw-vector-${{ inputs.environment }}
+      RENDER_SERVICE_NAME: bap-vector-${{ inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -175,7 +175,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_NAME: cmdclaw-caddy-${{ inputs.environment }}
+      RENDER_SERVICE_NAME: bap-caddy-${{ inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

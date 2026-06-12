@@ -278,7 +278,7 @@ jobs:
     uses: ./.github/workflows/verify-deployment.yml
     with:
       environment: staging
-      base_url: https://staging.cmdclaw.ai
+      base_url: https://staging.bap.ai
       run_replay: true
     secrets: inherit
 
@@ -347,7 +347,7 @@ jobs:
     uses: ./.github/workflows/verify-deployment.yml
     with:
       environment: prod
-      base_url: https://cmdclaw.ai
+      base_url: https://bap.ai
       run_replay: true
     secrets: inherit
 
