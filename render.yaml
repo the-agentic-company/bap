@@ -49,6 +49,7 @@ projects:
             name: bap-redis-staging
             region: frankfurt
             plan: starter
+            maxmemoryPolicy: noeviction
             ipAllowList: []
 
           - type: web
@@ -547,6 +548,7 @@ projects:
             name: bap-redis-prod
             region: frankfurt
             plan: starter
+            maxmemoryPolicy: noeviction
             ipAllowList: []
 
           - type: web
