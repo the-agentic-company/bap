@@ -28,27 +28,27 @@ afterEach(() => {
 describe("resolveObservabilityVectorUrls", () => {
   it("uses the explicit Vector host and ports from the environment", () => {
     const urls = resolveObservabilityVectorUrls({
-      CMDCLAW_VECTOR_HOST: "cmdclaw-vector-staging",
-      CMDCLAW_VECTOR_LOG_PORT: "8686",
-      CMDCLAW_VECTOR_OTLP_HTTP_PORT: "4318",
-      CMDCLAW_VECTOR_TRACES_PORT: "5318",
+      APP_VECTOR_HOST: "app-vector-staging",
+      APP_VECTOR_LOG_PORT: "8686",
+      APP_VECTOR_OTLP_HTTP_PORT: "4318",
+      APP_VECTOR_TRACES_PORT: "5318",
     });
 
     expect(urls).toEqual({
-      logUrl: "http://cmdclaw-vector-staging:8686/logs",
-      metricsUrl: "http://cmdclaw-vector-staging:4318/v1/metrics",
-      tracesUrl: "http://cmdclaw-vector-staging:5318/v1/traces",
+      logUrl: "http://app-vector-staging:8686/logs",
+      metricsUrl: "http://app-vector-staging:4318/v1/metrics",
+      tracesUrl: "http://app-vector-staging:5318/v1/traces",
     });
   });
 
   it("prefers fully qualified endpoint URLs when provided", () => {
     const urls = resolveObservabilityVectorUrls({
-      CMDCLAW_VECTOR_LOG_URL: "http://vector.example/log-ingest",
-      CMDCLAW_VECTOR_METRICS_URL: "http://vector.example/metric-ingest",
-      CMDCLAW_VECTOR_TRACES_URL: "http://vector.example/trace-ingest",
-      CMDCLAW_VECTOR_HOST: "ignored-host",
-      CMDCLAW_VECTOR_LOG_PORT: "9999",
-      CMDCLAW_VECTOR_OTLP_HTTP_PORT: "9998",
+      APP_VECTOR_LOG_URL: "http://vector.example/log-ingest",
+      APP_VECTOR_METRICS_URL: "http://vector.example/metric-ingest",
+      APP_VECTOR_TRACES_URL: "http://vector.example/trace-ingest",
+      APP_VECTOR_HOST: "ignored-host",
+      APP_VECTOR_LOG_PORT: "9999",
+      APP_VECTOR_OTLP_HTTP_PORT: "9998",
     });
 
     expect(urls).toEqual({
@@ -70,14 +70,14 @@ describe("resolveObservabilityVectorUrls", () => {
 
   it("keeps traces on the dedicated raw OTLP port when only the shared OTLP port is set", () => {
     const urls = resolveObservabilityVectorUrls({
-      CMDCLAW_VECTOR_HOST: "cmdclaw-vector-staging",
-      CMDCLAW_VECTOR_OTLP_HTTP_PORT: "4318",
+      APP_VECTOR_HOST: "app-vector-staging",
+      APP_VECTOR_OTLP_HTTP_PORT: "4318",
     });
 
     expect(urls).toEqual({
-      logUrl: "http://cmdclaw-vector-staging:8686/logs",
-      metricsUrl: "http://cmdclaw-vector-staging:4318/v1/metrics",
-      tracesUrl: "http://cmdclaw-vector-staging:5318/v1/traces",
+      logUrl: "http://app-vector-staging:8686/logs",
+      metricsUrl: "http://app-vector-staging:4318/v1/metrics",
+      tracesUrl: "http://app-vector-staging:5318/v1/traces",
     });
   });
 });
@@ -127,13 +127,13 @@ describe("normalizeTelemetryAttributes", () => {
   it("keeps safe phase timing fields whose names include prompt", () => {
     expect(
       normalizeTelemetryAttributes({
-        "cmdclaw.phase.pre_prompt_setup_ms": 25,
-        "cmdclaw.phase.prompt_to_first_token_ms": 50,
+        "app.phase.pre_prompt_setup_ms": 25,
+        "app.phase.prompt_to_first_token_ms": 50,
         prompt: "do secret work",
       }),
     ).toEqual({
-      "cmdclaw.phase.pre_prompt_setup_ms": 25,
-      "cmdclaw.phase.prompt_to_first_token_ms": 50,
+      "app.phase.pre_prompt_setup_ms": 25,
+      "app.phase.prompt_to_first_token_ms": 50,
     });
   });
 });
@@ -220,7 +220,7 @@ describe("logger", () => {
     });
   });
 
-  it("adds explicit product pivots and keeps cmdclaw.event.name off Operational Logs", () => {
+  it("adds explicit product pivots and keeps app.event.name off Operational Logs", () => {
     const records = captureLogs();
 
     logger
@@ -245,7 +245,7 @@ describe("logger", () => {
         "cmdclaw.telemetry.schema_version": "2026-05-22",
       }),
     );
-    expect(records[0]?.record).not.toHaveProperty("cmdclaw.event.name");
+    expect(records[0]?.record).not.toHaveProperty("app.event.name");
   });
 
   it("ships default Pino log records to the configured Vector log endpoint", () => {
@@ -323,10 +323,10 @@ describe("semantic log emission", () => {
     expect(records[0]?.record).toEqual(
       expect.objectContaining({
         "event.kind": "canonical_service_event",
-        "cmdclaw.event.id": "event-1",
-        "cmdclaw.event.name": "cmdclaw.generation.terminal",
-        "cmdclaw.operation.name": "generation.terminal",
-        "cmdclaw.operation.outcome": "success",
+        "app.event.id": "event-1",
+        "app.event.name": "cmdclaw.generation.terminal",
+        "app.operation.name": "generation.terminal",
+        "app.operation.outcome": "success",
         "cmdclaw.generation.id": "gen-1",
         trace_id: "a".repeat(32),
       }),
@@ -351,9 +351,9 @@ describe("semantic log emission", () => {
     expect(records[0]?.record).toEqual(
       expect.objectContaining({
         "event.kind": "client_observation",
-        "cmdclaw.event.id": "client-event-1",
-        "cmdclaw.event.name": "generation.stream.error",
-        "cmdclaw.client_observation.type": "generation.stream.error",
+        "app.event.id": "client-event-1",
+        "app.event.name": "generation.stream.error",
+        "app.client_observation.type": "generation.stream.error",
         "cmdclaw.client.visible_error_code": "stream_closed",
         trace_id: "b".repeat(32),
       }),

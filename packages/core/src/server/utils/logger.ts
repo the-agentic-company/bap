@@ -57,7 +57,7 @@ const FORBIDDEN_FIELD_PATTERNS = [
   /(^|[._-])(prompt|model[_-]?output|request[_-]?body|response[_-]?body|body|content|document|email)($|[._-])/i,
   /(^|[._-])(tool[_-]?(input|result|payload)|file[_-]?contents?)($|[._-])/i,
 ];
-const SAFE_FIELD_PREFIXES = ["cmdclaw.phase."] as const;
+const SAFE_FIELD_PREFIXES = ["app.phase."] as const;
 
 let runtimeConfig: LoggerRuntimeConfig = {
   serviceName: "cmdclaw",

@@ -418,46 +418,46 @@ export async function emitGenerationTerminalCanonicalEvent(generationId: string)
             ? runtimeDiagnosticSnapshot.lastRuntimeProgressKind
             : undefined,
         "cmdclaw.generation.duration_ms": durationMs,
-        "cmdclaw.phase.sandbox_startup_ms": timing?.sandboxStartupDurationMs,
-        "cmdclaw.phase.sandbox_startup_mode": timing?.sandboxStartupMode,
-        "cmdclaw.phase.sandbox_connect_or_create_ms": phaseDurationsMs.sandboxConnectOrCreateMs,
-        "cmdclaw.phase.opencode_ready_ms": phaseDurationsMs.opencodeReadyMs,
-        "cmdclaw.phase.session_ready_ms": phaseDurationsMs.sessionReadyMs,
-        "cmdclaw.phase.agent_init_ms": phaseDurationsMs.agentInitMs,
-        "cmdclaw.phase.pre_prompt_setup_ms": phaseDurationsMs.prePromptSetupMs,
-        "cmdclaw.phase.pre_prompt_memory_sync_ms": phaseDurationsMs.prePromptMemorySyncMs,
-        "cmdclaw.phase.pre_prompt_runtime_context_write_ms":
+        "app.phase.sandbox_startup_ms": timing?.sandboxStartupDurationMs,
+        "app.phase.sandbox_startup_mode": timing?.sandboxStartupMode,
+        "app.phase.sandbox_connect_or_create_ms": phaseDurationsMs.sandboxConnectOrCreateMs,
+        "app.phase.opencode_ready_ms": phaseDurationsMs.opencodeReadyMs,
+        "app.phase.session_ready_ms": phaseDurationsMs.sessionReadyMs,
+        "app.phase.agent_init_ms": phaseDurationsMs.agentInitMs,
+        "app.phase.pre_prompt_setup_ms": phaseDurationsMs.prePromptSetupMs,
+        "app.phase.pre_prompt_memory_sync_ms": phaseDurationsMs.prePromptMemorySyncMs,
+        "app.phase.pre_prompt_runtime_context_write_ms":
           phaseDurationsMs.prePromptRuntimeContextWriteMs,
-        "cmdclaw.phase.pre_prompt_workspace_mcp_resolve_ms":
+        "app.phase.pre_prompt_workspace_mcp_resolve_ms":
           phaseDurationsMs.prePromptWorkspaceMcpResolveMs,
-        "cmdclaw.phase.pre_prompt_skills_and_creds_load_ms":
+        "app.phase.pre_prompt_skills_and_creds_load_ms":
           phaseDurationsMs.prePromptSkillsAndCredsLoadMs,
-        "cmdclaw.phase.pre_prompt_cache_read_ms": phaseDurationsMs.prePromptCacheReadMs,
-        "cmdclaw.phase.pre_prompt_skills_write_ms": phaseDurationsMs.prePromptSkillsWriteMs,
-        "cmdclaw.phase.pre_prompt_custom_integration_cli_write_ms":
+        "app.phase.pre_prompt_cache_read_ms": phaseDurationsMs.prePromptCacheReadMs,
+        "app.phase.pre_prompt_skills_write_ms": phaseDurationsMs.prePromptSkillsWriteMs,
+        "app.phase.pre_prompt_custom_integration_cli_write_ms":
           phaseDurationsMs.prePromptCustomIntegrationCliWriteMs,
-        "cmdclaw.phase.pre_prompt_custom_integration_permissions_write_ms":
+        "app.phase.pre_prompt_custom_integration_permissions_write_ms":
           phaseDurationsMs.prePromptCustomIntegrationPermissionsWriteMs,
-        "cmdclaw.phase.pre_prompt_integration_skills_write_ms":
+        "app.phase.pre_prompt_integration_skills_write_ms":
           phaseDurationsMs.prePromptIntegrationSkillsWriteMs,
-        "cmdclaw.phase.pre_prompt_cache_write_ms": phaseDurationsMs.prePromptCacheWriteMs,
-        "cmdclaw.phase.pre_prompt_prompt_spec_compose_ms":
+        "app.phase.pre_prompt_cache_write_ms": phaseDurationsMs.prePromptCacheWriteMs,
+        "app.phase.pre_prompt_prompt_spec_compose_ms":
           phaseDurationsMs.prePromptPromptSpecComposeMs,
-        "cmdclaw.phase.pre_prompt_event_stream_subscribe_ms":
+        "app.phase.pre_prompt_event_stream_subscribe_ms":
           phaseDurationsMs.prePromptEventStreamSubscribeMs,
-        "cmdclaw.phase.pre_prompt_coworker_docs_stage_ms":
+        "app.phase.pre_prompt_coworker_docs_stage_ms":
           phaseDurationsMs.prePromptCoworkerDocsStageMs,
-        "cmdclaw.phase.pre_prompt_attachments_stage_ms":
+        "app.phase.pre_prompt_attachments_stage_ms":
           phaseDurationsMs.prePromptAttachmentsStageMs,
-        "cmdclaw.phase.wait_for_first_event_ms": phaseDurationsMs.waitForFirstEventMs,
-        "cmdclaw.phase.prompt_to_first_token_ms": phaseDurationsMs.promptToFirstTokenMs,
-        "cmdclaw.phase.generation_to_first_token_ms": phaseDurationsMs.generationToFirstTokenMs,
-        "cmdclaw.phase.prompt_to_first_visible_output_ms":
+        "app.phase.wait_for_first_event_ms": phaseDurationsMs.waitForFirstEventMs,
+        "app.phase.prompt_to_first_token_ms": phaseDurationsMs.promptToFirstTokenMs,
+        "app.phase.generation_to_first_token_ms": phaseDurationsMs.generationToFirstTokenMs,
+        "app.phase.prompt_to_first_visible_output_ms":
           phaseDurationsMs.promptToFirstVisibleOutputMs,
-        "cmdclaw.phase.generation_to_first_visible_output_ms":
+        "app.phase.generation_to_first_visible_output_ms":
           phaseDurationsMs.generationToFirstVisibleOutputMs,
-        "cmdclaw.phase.model_stream_ms": phaseDurationsMs.modelStreamMs,
-        "cmdclaw.phase.post_processing_ms": phaseDurationsMs.postProcessingMs,
+        "app.phase.model_stream_ms": phaseDurationsMs.modelStreamMs,
+        "app.phase.post_processing_ms": phaseDurationsMs.postProcessingMs,
         "cmdclaw.tool.call_count": toolSummary.toolCallCount,
         "cmdclaw.tool.write_count": toolSummary.toolWriteCount,
         "cmdclaw.tool.summary_json": JSON.stringify(toolSummary.summaries.slice(0, 25)),

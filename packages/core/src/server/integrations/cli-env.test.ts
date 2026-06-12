@@ -43,7 +43,7 @@ describe("getTokensForIntegrations", () => {
     vi.stubEnv("E2B_CALLBACK_BASE_URL", "");
     vi.stubEnv("APP_URL", "http://127.0.0.1:3000");
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
-    vi.stubEnv("CMDCLAW_SERVER_SECRET", "server-secret");
+    vi.stubEnv("APP_SERVER_SECRET", "server-secret");
     vi.stubEnv("SLACK_BOT_RELAY_SECRET", "");
   });
 
