@@ -81,7 +81,7 @@ jobs:
           for attempt in $(seq 1 20); do
             rules="$(curl --fail --show-error --silent "${VICTORIA_METRICS_URL}/api/v1/rules")"
 
-            if echo "${rules}" | jq -e --arg group "bap-${ENVIRONMENT}-runtime" '
+            if echo "${rules}" | jq -e --arg group "app-${ENVIRONMENT}-runtime" '
               .status == "success"
               and any(.data.groups[]?; .name == $group)
             ' >/dev/null; then

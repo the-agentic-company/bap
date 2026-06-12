@@ -6,6 +6,7 @@ const renderConfig = readFileSync(
 );
 
 const renderServicePrefix = "bap";
+const renderPrivateHostPrefix = "cmdclaw";
 
 function requireVictoriaMetricsVmalertProxy(
   environment: "staging" | "prod",
@@ -27,7 +28,7 @@ function requireVictoriaMetricsVmalertProxy(
     ? serviceStart + serviceName.length + nextServiceMatch.index!
     : renderConfig.length;
   const serviceBlock = renderConfig.slice(serviceStart, serviceEnd);
-  const expectedProxy = `-vmalert.proxyURL=http://${renderServicePrefix}-vmalert-${environment}:8880`;
+  const expectedProxy = `-vmalert.proxyURL=http://${renderPrivateHostPrefix}-vmalert-${environment}:8880`;
 
   if (!serviceBlock.includes(expectedProxy)) {
     throw new Error(
