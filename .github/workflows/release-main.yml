@@ -278,7 +278,7 @@ jobs:
     uses: ./.github/workflows/verify-deployment.yml
     with:
       environment: staging
-      base_url: https://staging.bap.ai
+      base_url: https://staging.heybap.com
       run_replay: true
     secrets: inherit
 
@@ -347,7 +347,7 @@ jobs:
     uses: ./.github/workflows/verify-deployment.yml
     with:
       environment: prod
-      base_url: https://bap.ai
+      base_url: https://heybap.com
       run_replay: true
     secrets: inherit
 

@@ -426,7 +426,10 @@ projects:
                   name: bap-redis-staging
                   property: connectionString
               - key: AWS_ENDPOINT_URL
-                value: http://bap-s3-staging:10000
+                fromService:
+                  type: web
+                  name: bap-s3-staging
+                  envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
@@ -471,7 +474,10 @@ projects:
                 value: "10000"
               - fromGroup: staging
               - key: AWS_ENDPOINT_URL
-                value: http://bap-s3-staging:10000
+                fromService:
+                  type: web
+                  name: bap-s3-staging
+                  envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
@@ -505,7 +511,10 @@ projects:
                   name: bap-redis-staging
                   property: connectionString
               - key: AWS_ENDPOINT_URL
-                value: http://bap-s3-staging:10000
+                fromService:
+                  type: web
+                  name: bap-s3-staging
+                  envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
@@ -925,7 +934,10 @@ projects:
                   name: bap-redis-prod
                   property: connectionString
               - key: AWS_ENDPOINT_URL
-                value: http://bap-s3-prod:10000
+                fromService:
+                  type: web
+                  name: bap-s3-prod
+                  envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
@@ -970,7 +982,10 @@ projects:
                 value: "10000"
               - fromGroup: prod
               - key: AWS_ENDPOINT_URL
-                value: http://bap-s3-prod:10000
+                fromService:
+                  type: web
+                  name: bap-s3-prod
+                  envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME
@@ -1004,7 +1019,10 @@ projects:
                   name: bap-redis-prod
                   property: connectionString
               - key: AWS_ENDPOINT_URL
-                value: http://bap-s3-prod:10000
+                fromService:
+                  type: web
+                  name: bap-s3-prod
+                  envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_BUCKET_NAME

@@ -37,8 +37,8 @@ jobs:
 
           case "${ENVIRONMENT}" in
             staging | prod)
-              echo "GRAFANA_URL=https://grafana.ops.${ENVIRONMENT}.bap.ai" >> "$GITHUB_ENV"
-              echo "VICTORIA_METRICS_URL=https://victoria-metrics.ops.${ENVIRONMENT}.bap.ai" >> "$GITHUB_ENV"
+              echo "GRAFANA_URL=https://grafana.ops.${ENVIRONMENT}.heybap.com" >> "$GITHUB_ENV"
+              echo "VICTORIA_METRICS_URL=https://victoria-metrics.ops.${ENVIRONMENT}.heybap.com" >> "$GITHUB_ENV"
               ;;
             *)
               echo "Unsupported environment: ${ENVIRONMENT}" >&2

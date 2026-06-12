@@ -405,8 +405,8 @@ and that the relevant Grafana hostname resolves:
 
 ```bash
 tailscale status
-dig +short grafana.ops.staging.cmdclaw.ai
-dig +short grafana.ops.prod.cmdclaw.ai
+dig +short grafana.ops.staging.heybap.com
+dig +short grafana.ops.prod.heybap.com
 ```
 
 If Tailscale is down, or if the target Grafana hostname does not resolve, stop
@@ -415,17 +415,17 @@ be off and must be started before hosted observability can be queried.
 
 Staging endpoints:
 
-- Grafana: `https://grafana.ops.staging.cmdclaw.ai`
-- Metrics: `https://victoria-metrics.ops.staging.cmdclaw.ai`
-- Logs: `https://victoria-logs.ops.staging.cmdclaw.ai`
-- Traces: `https://victoria-traces.ops.staging.cmdclaw.ai`
+- Grafana: `https://grafana.ops.staging.heybap.com`
+- Metrics: `https://victoria-metrics.ops.staging.heybap.com`
+- Logs: `https://victoria-logs.ops.staging.heybap.com`
+- Traces: `https://victoria-traces.ops.staging.heybap.com`
 
 Production endpoints:
 
-- Grafana: `https://grafana.ops.prod.cmdclaw.ai`
-- Metrics: `https://victoria-metrics.ops.prod.cmdclaw.ai`
-- Logs: `https://victoria-logs.ops.prod.cmdclaw.ai`
-- Traces: `https://victoria-traces.ops.prod.cmdclaw.ai`
+- Grafana: `https://grafana.ops.prod.heybap.com`
+- Metrics: `https://victoria-metrics.ops.prod.heybap.com`
+- Logs: `https://victoria-logs.ops.prod.heybap.com`
+- Traces: `https://victoria-traces.ops.prod.heybap.com`
 
 Render: `render ...`
 
