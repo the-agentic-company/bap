@@ -5,7 +5,7 @@ import { createMcpClient } from "../lib/client";
 import { handleCoworkerList } from "../lib/handlers";
 
 export const schema = {
-  serverUrl: z.string().url().optional().describe("Override the CmdClaw server URL"),
+  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {

@@ -59,7 +59,7 @@ function getBearerToken(req: AuthenticatedMcpRequest): string | null {
 }
 
 function getPublicOrigin(req: AuthenticatedMcpRequest): string | null {
-  const explicit = getHeader(req, "x-cmdclaw-public-origin")?.trim();
+  const explicit = getHeader(req, "x-bap-public-origin")?.trim();
   if (explicit && URL.canParse(explicit)) {
     return new URL(explicit).origin;
   }
@@ -129,7 +129,7 @@ export async function authenticateHostedMcpRequest(params: {
 
     return {
       token,
-      clientId: "cmdclaw-executor",
+      clientId: "bap-executor",
       scopes: [params.requiredAudience],
       expiresAt: managedClaims.exp,
       extra: {

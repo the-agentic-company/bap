@@ -1,13 +1,10 @@
-import {
-  authenticateHostedMcpRequest,
-  sendUnauthorizedMcpResponse,
-} from "../../../shared/auth";
+import { authenticateHostedMcpRequest, sendUnauthorizedMcpResponse } from "../../../shared/auth";
 
 export default async function cmdclawMiddleware(req: any, res: any, next: () => void) {
   try {
     req.auth = await authenticateHostedMcpRequest({
       req,
-      requiredAudience: "cmdclaw",
+      requiredAudience: "bap",
       // Platform MCP Server (ADR-0013): generations authenticate with managed
       // tokens minted per generation; external agents keep using OAuth.
       allowManagedToken: true,
@@ -17,7 +14,7 @@ export default async function cmdclawMiddleware(req: any, res: any, next: () => 
     sendUnauthorizedMcpResponse({
       req,
       res,
-      slug: "cmdclaw",
+      slug: "bap",
       message: error instanceof Error ? error.message : "Unauthorized",
     });
   }

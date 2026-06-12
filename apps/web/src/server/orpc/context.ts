@@ -23,7 +23,7 @@ export type HostedMcpContext = {
   expiresAt: number;
 };
 
-// Runtime-originated caller: the CmdClaw Platform MCP Server inside a
+// Runtime-originated caller: the Bap Platform MCP Server inside a
 // generation sandbox, authenticated with a managed token (ADR-0013).
 export type RuntimeMcpContext = {
   token: string;
@@ -44,7 +44,7 @@ export type ORPCContext = {
   workspaceId: string | null;
 };
 
-const CMDCLAW_MANAGED_INTERNAL_KEY = "cmdclaw";
+const CMDCLAW_MANAGED_INTERNAL_KEY = "bap";
 
 export function resolveManagedMcpClaims(
   headers: Headers,
@@ -64,12 +64,12 @@ export function resolveManagedMcpClaims(
   }
   const claims = verifyManagedMcpToken(token, secret, nowSeconds);
   if (claims.internalKey !== CMDCLAW_MANAGED_INTERNAL_KEY) {
-    throw new Error("Managed MCP token is not valid for the CmdClaw API.");
+    throw new Error("Managed MCP token is not valid for the Bap API.");
   }
-  // Fail closed: the platform server always mints a spawn depth. A CmdClaw token
+  // Fail closed: the platform server always mints a spawn depth. A Bap token
   // without one is malformed and must not default to spawnable root depth.
   if (typeof claims.spawnDepth !== "number") {
-    throw new Error("Managed CmdClaw token is missing its spawn depth.");
+    throw new Error("Managed Bap token is missing its spawn depth.");
   }
   return { ...claims, token };
 }

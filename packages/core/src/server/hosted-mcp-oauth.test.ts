@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  signHostedMcpAccessToken,
-  verifyHostedMcpAccessToken,
-} from "./hosted-mcp-oauth";
+import { signHostedMcpAccessToken, verifyHostedMcpAccessToken } from "./hosted-mcp-oauth";
 
 describe("hosted MCP OAuth", () => {
   it("signs and verifies a hosted MCP access token", async () => {
@@ -14,7 +11,7 @@ describe("hosted MCP OAuth", () => {
       clientId: "client-1",
       grantId: "grant-1",
       secret: "test-secret",
-      issuer: "https://cmdclaw.ai",
+      issuer: "https://heybap.com",
       nowSeconds: 1_900_000_000,
       expiresInSeconds: 3600,
     });
@@ -23,7 +20,7 @@ describe("hosted MCP OAuth", () => {
       verifyHostedMcpAccessToken(token, {
         secret: "test-secret",
         expectedAudience: "gmail",
-        issuer: "https://cmdclaw.ai",
+        issuer: "https://heybap.com",
         nowSeconds: 1_900_000_100,
       }),
     ).resolves.toMatchObject({
@@ -45,7 +42,7 @@ describe("hosted MCP OAuth", () => {
       clientId: "client-1",
       grantId: "grant-1",
       secret: "test-secret",
-      issuer: "https://cmdclaw.ai",
+      issuer: "https://heybap.com",
       nowSeconds: 1_900_000_000,
       expiresInSeconds: 3600,
     });
@@ -54,7 +51,7 @@ describe("hosted MCP OAuth", () => {
       verifyHostedMcpAccessToken(token, {
         secret: "test-secret",
         expectedAudience: "internal",
-        issuer: "https://cmdclaw.ai",
+        issuer: "https://heybap.com",
         nowSeconds: 1_900_000_100,
       }),
     ).rejects.toThrow();

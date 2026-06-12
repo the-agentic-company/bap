@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { jwtVerify, SignJWT } from "jose";
 
-export const HOSTED_MCP_AUDIENCES = ["gmail", "cmdclaw", "galien", "modulr"] as const;
+export const HOSTED_MCP_AUDIENCES = ["gmail", "bap", "galien", "modulr"] as const;
 
 export type HostedMcpAudience = (typeof HOSTED_MCP_AUDIENCES)[number];
 export type HostedMcpScope = HostedMcpAudience;
@@ -70,20 +70,18 @@ export function hashHostedMcpSecret(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-export async function signHostedMcpAccessToken(
-  input: {
-    userId: string;
-    workspaceId: string;
-    audience: HostedMcpAudience;
-    scope: HostedMcpScope[];
-    clientId: string;
-    grantId: string;
-    secret: string;
-    issuer?: string | URL;
-    expiresInSeconds?: number;
-    nowSeconds?: number;
-  },
-): Promise<string> {
+export async function signHostedMcpAccessToken(input: {
+  userId: string;
+  workspaceId: string;
+  audience: HostedMcpAudience;
+  scope: HostedMcpScope[];
+  clientId: string;
+  grantId: string;
+  secret: string;
+  issuer?: string | URL;
+  expiresInSeconds?: number;
+  nowSeconds?: number;
+}): Promise<string> {
   const issuer = resolveHostedMcpIssuerUrl(input.issuer).toString();
   const nowSeconds = input.nowSeconds ?? Math.floor(Date.now() / 1000);
   const expiresInSeconds = input.expiresInSeconds ?? 3600;
@@ -128,8 +126,7 @@ export async function verifyHostedMcpAccessToken(
 
   const payload = verified.payload as typeof verified.payload & HostedMcpJwtPayload;
   const userId = typeof payload.sub === "string" ? payload.sub : null;
-  const workspaceId =
-    typeof payload.workspace_id === "string" ? payload.workspace_id.trim() : "";
+  const workspaceId = typeof payload.workspace_id === "string" ? payload.workspace_id.trim() : "";
   const clientId = typeof payload.client_id === "string" ? payload.client_id.trim() : "";
   const grantId = typeof payload.grant_id === "string" ? payload.grant_id.trim() : "";
   const audience =

@@ -10,11 +10,11 @@ export function createMcpClient(extra?: ToolExtraArguments, serverUrl?: string) 
   const token = extra?.authInfo?.token;
   const audience = (extra?.authInfo?.extra as { audience?: string } | undefined)?.audience;
 
-  if (!token || audience !== "cmdclaw") {
+  if (!token || audience !== "bap") {
     return {
       status: "needs_auth" as const,
       serverUrl: resolvedServerUrl,
-      message: "Authenticate with CmdClaw OAuth before using the CmdClaw MCP server.",
+      message: "Authenticate with Bap OAuth before using the Bap MCP server.",
     };
   }
 

@@ -4,13 +4,13 @@ import { signManagedMcpToken } from "../managed-mcp-auth";
 import { generationLifecyclePolicy } from "../services/lifecycle-policy";
 import type { RuntimeMcpServer } from "./core/types";
 
-export const CMDCLAW_PLATFORM_MCP_SERVER_NAME = "cmdclaw";
-export const CMDCLAW_PLATFORM_MCP_INTERNAL_KEY = "cmdclaw";
+export const CMDCLAW_PLATFORM_MCP_SERVER_NAME = "bap";
+export const CMDCLAW_PLATFORM_MCP_INTERNAL_KEY = "bap";
 
 // The platform token is minted once at generation start and embedded as a static
 // Authorization header for the whole turn (it is re-minted each generation when the
 // MCP set is reconciled). It must therefore outlive a single generation's run
-// deadline, otherwise CmdClaw tool calls in the tail of a long run fail auth.
+// deadline, otherwise Bap tool calls in the tail of a long run fail auth.
 // Unlike the workspace managed-token path, there is no mid-run refresh.
 const PLATFORM_MCP_TOKEN_BUFFER_SECONDS = 5 * 60;
 export const PLATFORM_MCP_TOKEN_TTL_SECONDS =
@@ -42,7 +42,7 @@ export function buildCmdclawPlatformMcpServer(input: {
   return {
     type: "http",
     name: CMDCLAW_PLATFORM_MCP_SERVER_NAME,
-    url: new URL("/cmdclaw", input.baseUrl).toString(),
+    url: new URL("/bap", input.baseUrl).toString(),
     headers: [{ name: "Authorization", value: `Bearer ${token}` }],
   };
 }
@@ -64,14 +64,13 @@ export async function resolveCmdclawPlatformMcpServer(input: {
       warning: {
         serverName: CMDCLAW_PLATFORM_MCP_SERVER_NAME,
         message:
-          "CmdClaw tools are unavailable: platform MCP server is not configured (APP_MCP_BASE_URL / APP_SERVER_SECRET).",
+          "Bap tools are unavailable: platform MCP server is not configured (APP_MCP_BASE_URL / APP_SERVER_SECRET).",
       },
     };
   }
 
   try {
-    const workspaceId =
-      input.workspaceId ?? (await requireActiveWorkspaceForUser(input.userId)).id;
+    const workspaceId = input.workspaceId ?? (await requireActiveWorkspaceForUser(input.userId)).id;
     return {
       server: buildCmdclawPlatformMcpServer({
         userId: input.userId,
@@ -86,7 +85,7 @@ export async function resolveCmdclawPlatformMcpServer(input: {
       server: null,
       warning: {
         serverName: CMDCLAW_PLATFORM_MCP_SERVER_NAME,
-        message: `CmdClaw tools are unavailable: ${
+        message: `Bap tools are unavailable: ${
           error instanceof Error ? error.message : "failed to resolve workspace"
         }`,
       },

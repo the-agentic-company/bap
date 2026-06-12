@@ -19,13 +19,15 @@ export const schema = {
     )
     .min(1)
     .max(100)
-    .describe("Skill folder files to import. Include SKILL.md with name and description frontmatter."),
-  serverUrl: z.string().url().optional().describe("Override the CmdClaw server URL"),
+    .describe(
+      "Skill folder files to import. Include SKILL.md with name and description frontmatter.",
+    ),
+  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {
   name: "skill.add",
-  description: "Add a user-owned CmdClaw skill from a folder-style file list",
+  description: "Add a user-owned Bap skill from a folder-style file list",
   annotations: {
     title: "Add skill",
     readOnlyHint: false,

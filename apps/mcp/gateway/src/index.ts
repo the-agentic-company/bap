@@ -6,12 +6,12 @@ import { matchProtectedResourceMetadataRequest, routeMcpRequest } from "./router
 import { shouldManageGatewayChildren, startManagedGatewayChildren } from "./supervisor";
 import {
   buildProtectedResourceMetadataPath,
-  getMcpServerDefinition,
+  getMcpServerDefinitionByPublicBasePath,
   MCP_SERVER_REGISTRY,
   type McpServerSlug,
 } from "../../shared/registry";
 
-initializeObservabilityRuntime("cmdclaw-mcp-gateway");
+initializeObservabilityRuntime("bap-mcp-gateway");
 
 const port = Number.parseInt(process.env.MCP_GATEWAY_PORT ?? process.env.PORT ?? "3010", 10);
 const hostname = process.env.HOST ?? "0.0.0.0";
@@ -135,10 +135,11 @@ function resolveScopedOAuthPath(
 ): { slug: McpServerSlug } | null {
   const match = pathname.match(new RegExp(`^/([^/]+)/${endpoint}/?$`));
   const slug = match?.[1];
-  if (!slug || !getMcpServerDefinition(slug)) {
+  if (!slug) {
     return null;
   }
-  return { slug: slug as McpServerSlug };
+  const server = getMcpServerDefinitionByPublicBasePath(slug);
+  return server ? { slug: server.slug } : null;
 }
 
 function resolveScopedAuthorizationServerMetadataPath(
@@ -148,16 +149,22 @@ function resolveScopedAuthorizationServerMetadataPath(
     /^\/\.well-known\/(?:oauth-authorization-server|openid-configuration)\/([^/]+)\/?$/,
   );
   const specSlug = specMatch?.[1];
-  if (specSlug && getMcpServerDefinition(specSlug)) {
-    return { slug: specSlug as McpServerSlug };
+  if (specSlug) {
+    const server = getMcpServerDefinitionByPublicBasePath(specSlug);
+    if (server) {
+      return { slug: server.slug };
+    }
   }
 
   const legacyMatch = pathname.match(
     /^\/([^/]+)\/\.well-known\/(?:oauth-authorization-server|openid-configuration)\/?$/,
   );
   const legacySlug = legacyMatch?.[1];
-  if (legacySlug && getMcpServerDefinition(legacySlug)) {
-    return { slug: legacySlug as McpServerSlug };
+  if (legacySlug) {
+    const server = getMcpServerDefinitionByPublicBasePath(legacySlug);
+    if (server) {
+      return { slug: server.slug };
+    }
   }
 
   return null;
@@ -223,7 +230,7 @@ function buildProxyRequest(request: Request, target: URL, publicOrigin: string):
   const publicOriginUrl = new URL(publicOrigin);
   const headers = new Headers(request.headers);
   headers.set("host", target.host);
-  headers.set("x-cmdclaw-public-origin", publicOrigin);
+  headers.set("x-bap-public-origin", publicOrigin);
   headers.set("x-forwarded-host", publicOriginUrl.host);
   headers.set("x-forwarded-proto", publicOriginUrl.protocol.replace(":", ""));
   return new Request(target, {

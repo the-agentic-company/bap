@@ -80,7 +80,7 @@ vi.mock("@cmdclaw/core/server/modulr/service", () => ({
 }));
 
 vi.mock("@cmdclaw/core/server/hosted-mcp-oauth", () => ({
-  HOSTED_MCP_AUDIENCES: ["gmail", "cmdclaw", "galien", "modulr"],
+  HOSTED_MCP_AUDIENCES: ["gmail", "bap", "galien", "modulr"],
   normalizeHostedMcpScopes: (value: string[] | string | null | undefined) =>
     Array.isArray(value) ? value : (value ?? "").split(/\s+/).filter(Boolean),
   resolveHostedMcpIssuerUrl: (url: URL) => url,
@@ -176,7 +176,7 @@ describe("hosted MCP OAuth authorization requests", () => {
     });
   });
 
-  it("accepts the CmdClaw MCP resource used by Codex login", async () => {
+  it("accepts the Bap MCP resource used by Codex login", async () => {
     const parsed = await parseHostedMcpAuthorizationRequest(
       new URLSearchParams({
         response_type: "code",
@@ -185,16 +185,16 @@ describe("hosted MCP OAuth authorization requests", () => {
         code_challenge: "challenge-1",
         code_challenge_method: "S256",
         redirect_uri: "http://localhost:34567/callback/abc",
-        scope: "cmdclaw",
-        resource: "http://127.0.0.1:3010/cmdclaw",
+        scope: "bap",
+        resource: "http://127.0.0.1:3010/bap",
       }),
     );
 
     expect(parsed).toMatchObject({
-      audience: "cmdclaw",
-      resource: "http://127.0.0.1:3010/cmdclaw",
-      resourceName: "CmdClaw MCP",
-      scopes: ["cmdclaw"],
+      audience: "bap",
+      resource: "http://127.0.0.1:3010/bap",
+      resourceName: "Bap MCP",
+      scopes: ["bap"],
     });
   });
 });

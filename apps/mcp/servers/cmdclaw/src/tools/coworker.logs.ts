@@ -6,7 +6,7 @@ import { handleCoworkerLogs } from "../lib/handlers";
 
 export const schema = {
   runId: z.string().describe("Coworker run ID"),
-  serverUrl: z.string().url().optional().describe("Override the CmdClaw server URL"),
+  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {

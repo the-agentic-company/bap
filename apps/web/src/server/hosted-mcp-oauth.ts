@@ -149,14 +149,14 @@ function resolveHostedMcpResource(resource: string | URL): {
     return {
       audience: "gmail",
       resource: parsed.toString(),
-      resourceName: "CmdClaw Gmail MCP",
+      resourceName: "Bap Gmail MCP",
     };
   }
-  if (pathname === "/cmdclaw" || pathname === "/cmdclaw/mcp") {
+  if (pathname === "/bap" || pathname === "/bap/mcp") {
     return {
-      audience: "cmdclaw",
+      audience: "bap",
       resource: parsed.toString(),
-      resourceName: "CmdClaw MCP",
+      resourceName: "Bap MCP",
     };
   }
   if (pathname === "/galien" || pathname === "/galien/mcp") {
@@ -229,7 +229,7 @@ function validateClientMetadata(metadata: HostedMcpClientMetadata) {
 export async function registerHostedMcpClient(metadata: HostedMcpClientMetadata) {
   validateClientMetadata(metadata);
 
-  const clientId = `cmdclaw-mcp-${randomUUID()}`;
+  const clientId = `bap-mcp-${randomUUID()}`;
   const nowSeconds = Math.floor(Date.now() / 1000);
 
   const [created] = await db
@@ -557,7 +557,7 @@ export async function parseHostedMcpAuthorizationRequest(params: URLSearchParams
   return {
     client,
     clientId,
-    clientName: client.clientName?.trim() || "CmdClaw MCP Client",
+    clientName: client.clientName?.trim() || "Bap MCP Client",
     redirectUri: effectiveRedirectUri,
     state,
     codeChallenge,
@@ -601,7 +601,7 @@ export function renderHostedMcpConsentHtml(params: HostedMcpConsentParams) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Authorize CmdClaw MCP access</title>
+    <title>Authorize Bap MCP access</title>
     <style>
       body { font-family: ui-sans-serif, system-ui, sans-serif; background: #f8f7f3; color: #111827; margin: 0; padding: 32px 16px; }
       .card { max-width: 640px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 18px; padding: 28px; box-shadow: 0 20px 50px rgba(17,24,39,0.08); }
@@ -621,11 +621,11 @@ export function renderHostedMcpConsentHtml(params: HostedMcpConsentParams) {
   </head>
   <body>
     <div class="card">
-      <p class="muted">CmdClaw MCP OAuth</p>
+      <p class="muted">Bap MCP OAuth</p>
       <h1>Authorize access</h1>
       <p><strong>${encodeHtml(params.clientName)}</strong> wants to connect to <strong>${encodeHtml(
         params.resourceName,
-      )}</strong> as your CmdClaw user.</p>
+      )}</strong> as your Bap user.</p>
 
       <div class="meta">
         <p><strong>Client ID</strong><br />${encodeHtml(params.clientId)}</p>

@@ -21,7 +21,7 @@ export const schema = {
   coworkerId: z.string().optional().describe("Filter to one coworker ID"),
   limit: z.number().min(1).max(100).optional().describe("Maximum runs to return. Defaults to 50."),
   cursor: z.string().optional().describe("Pagination cursor returned by the previous call"),
-  serverUrl: z.string().url().optional().describe("Override the CmdClaw server URL"),
+  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {

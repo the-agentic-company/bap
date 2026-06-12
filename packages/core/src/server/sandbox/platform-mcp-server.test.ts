@@ -6,8 +6,8 @@ import {
   PLATFORM_MCP_TOKEN_TTL_SECONDS,
 } from "./platform-mcp-server";
 
-describe("cmdclaw platform MCP server", () => {
-  it("builds an http server entry pointing at the gateway /cmdclaw path", () => {
+describe("bap platform MCP server", () => {
+  it("builds an http server entry pointing at the gateway /bap path", () => {
     const server = buildCmdclawPlatformMcpServer({
       userId: "user-1",
       workspaceId: "ws-1",
@@ -19,8 +19,8 @@ describe("cmdclaw platform MCP server", () => {
 
     expect(server).toMatchObject({
       type: "http",
-      name: "cmdclaw",
-      url: "https://mcp.example.com/cmdclaw",
+      name: "bap",
+      url: "https://mcp.example.com/bap",
     });
   });
 
@@ -45,7 +45,7 @@ describe("cmdclaw platform MCP server", () => {
     expect(claims).toMatchObject({
       userId: "user-1",
       workspaceId: "ws-1",
-      internalKey: "cmdclaw",
+      internalKey: "bap",
       spawnDepth: 2,
     });
     expect(claims.exp).toBe(1_900_000_000 + PLATFORM_MCP_TOKEN_TTL_SECONDS);
@@ -71,8 +71,6 @@ describe("cmdclaw platform MCP server", () => {
     }
     const token =
       server.headers.find((header) => header.name === "Authorization")?.value.slice(7) ?? "";
-    expect(() => verifyManagedMcpToken(token, "other-secret", 1_900_000_000)).toThrow(
-      /signature/i,
-    );
+    expect(() => verifyManagedMcpToken(token, "other-secret", 1_900_000_000)).toThrow(/signature/i);
   });
 });

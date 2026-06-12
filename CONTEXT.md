@@ -53,19 +53,19 @@ The concrete set of **Workspace MCP Servers** exposed to a chat or coworker **Ge
 _Avoid_: allowed Executor sources, allowed integrations
 
 **Platform MCP Server**:
-A CmdClaw-owned MCP server that is present in every **Generation** unconditionally. A **Platform MCP Server** is not a **Workspace MCP Server**: it does not appear in the **Toolbox**, is not subject to the **Workspace MCP Server Allowlist**, and cannot be removed per chat or per **Coworker**.
+A Bap-owned MCP server that is present in every **Generation** unconditionally. A **Platform MCP Server** is not a **Workspace MCP Server**: it does not appear in the **Toolbox**, is not subject to the **Workspace MCP Server Allowlist**, and cannot be removed per chat or per **Coworker**.
 _Avoid_: built-in integration, default tool, hidden server
 
-**CmdClaw MCP Server**:
-The **Platform MCP Server** that exposes CmdClaw's own capabilities — running chats, listing, creating, and running **Coworkers**, uploading documents, and adding skills — so a **Generation** can operate CmdClaw itself. Calls through the **CmdClaw MCP Server** act as the **Generation**'s acting user (the chat **User**, or the **Coworker**'s owner) and are recorded as runtime-originated, not user-originated.
+**Bap MCP Server**:
+The **Platform MCP Server** that exposes Bap's own capabilities — running chats, listing, creating, and running **Coworkers**, uploading documents, and adding skills — so a **Generation** can operate Bap itself. Calls through the **Bap MCP Server** act as the **Generation**'s acting user (the chat **User**, or the **Coworker**'s owner) and are recorded as runtime-originated, not user-originated. Its public hosted endpoint is `https://mcp.heybap.com/bap`; the old `/cmdclaw` hosted path is not part of the public contract.
 _Avoid_: self MCP, management API, internal tools
 
 **Runtime-Originated Run**:
-A chat or **Coworker** run started by a **Generation** through the **CmdClaw MCP Server**, rather than directly by a **User** or an external trigger. A **Runtime-Originated Run** carries a **Spawn Depth**.
+A chat or **Coworker** run started by a **Generation** through the **Bap MCP Server**, rather than directly by a **User** or an external trigger. A **Runtime-Originated Run** carries a **Spawn Depth**.
 _Avoid_: nested run, sub-run, child generation
 
 **Spawn Depth**:
-The number of **Runtime-Originated Run** hops between a **User**- or trigger-initiated run and the current **Generation**. Runs started directly by a **User** or external trigger have **Spawn Depth** zero. The **CmdClaw MCP Server** refuses to start a run beyond the platform's maximum **Spawn Depth** (currently three), so cycles between **Coworkers** self-extinguish instead of running away.
+The number of **Runtime-Originated Run** hops between a **User**- or trigger-initiated run and the current **Generation**. Runs started directly by a **User** or external trigger have **Spawn Depth** zero. The **Bap MCP Server** refuses to start a run beyond the platform's maximum **Spawn Depth** (currently three), so cycles between **Coworkers** self-extinguish instead of running away.
 _Avoid_: recursion level, nesting limit, loop guard
 
 **Canonical Service Event**:

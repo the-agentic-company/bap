@@ -14,7 +14,7 @@ function buildToken(overrides?: Partial<Parameters<typeof signManagedMcpToken>[0
     {
       userId: "user-1",
       workspaceId: "ws-1",
-      internalKey: "cmdclaw",
+      internalKey: "bap",
       exp: NOW_SECONDS + 600,
       spawnDepth: 1,
       ...overrides,
@@ -24,22 +24,22 @@ function buildToken(overrides?: Partial<Parameters<typeof signManagedMcpToken>[0
 }
 
 describe("resolveManagedMcpClaims", () => {
-  it("resolves a valid cmdclaw managed token to acting-user claims", () => {
+  it("resolves a valid bap managed token to acting-user claims", () => {
     const claims = resolveManagedMcpClaims(headersWithToken(buildToken()), SECRET, NOW_SECONDS);
     expect(claims).toMatchObject({
       userId: "user-1",
       workspaceId: "ws-1",
-      internalKey: "cmdclaw",
+      internalKey: "bap",
       spawnDepth: 1,
     });
   });
 
-  it("rejects a CmdClaw token missing its spawn depth", () => {
+  it("rejects a Bap token missing its spawn depth", () => {
     const token = signManagedMcpToken(
       {
         userId: "user-1",
         workspaceId: "ws-1",
-        internalKey: "cmdclaw",
+        internalKey: "bap",
         exp: NOW_SECONDS + 600,
       },
       SECRET,
@@ -52,7 +52,7 @@ describe("resolveManagedMcpClaims", () => {
   it("rejects tokens for other managed internal keys", () => {
     const token = buildToken({ internalKey: "galien" });
     expect(() => resolveManagedMcpClaims(headersWithToken(token), SECRET, NOW_SECONDS)).toThrow(
-      /not valid for the CmdClaw API/i,
+      /not valid for the Bap API/i,
     );
   });
 
@@ -68,7 +68,7 @@ describe("resolveManagedMcpClaims", () => {
       {
         userId: "user-1",
         workspaceId: "ws-1",
-        internalKey: "cmdclaw",
+        internalKey: "bap",
         exp: NOW_SECONDS + 600,
       },
       "other-secret",

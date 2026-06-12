@@ -17,7 +17,7 @@ export const schema = {
     )
     .min(1)
     .describe("Documents to attach to the coworker"),
-  serverUrl: z.string().url().optional().describe("Override the CmdClaw server URL"),
+  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {

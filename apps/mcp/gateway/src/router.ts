@@ -1,4 +1,4 @@
-import { getMcpServerDefinition } from "../../shared/registry";
+import { getMcpServerDefinitionByPublicBasePath } from "../../shared/registry";
 
 export type RoutedMcpRequest = {
   slug: string;
@@ -12,24 +12,24 @@ export function matchProtectedResourceMetadataRequest(requestUrl: URL): { slug: 
     /^\/\.well-known\/oauth-protected-resource\/([^/]+)\/?$/,
   );
   if (specMatch?.[1]) {
-    const slug = specMatch[1];
-    return getMcpServerDefinition(slug) ? { slug } : null;
+    const server = getMcpServerDefinitionByPublicBasePath(specMatch[1]);
+    return server ? { slug: server.slug } : null;
   }
 
   const legacySpecMatch = requestUrl.pathname.match(
     /^\/\.well-known\/oauth-protected-resource\/([^/]+)\/mcp\/?$/,
   );
   if (legacySpecMatch?.[1]) {
-    const slug = legacySpecMatch[1];
-    return getMcpServerDefinition(slug) ? { slug } : null;
+    const server = getMcpServerDefinitionByPublicBasePath(legacySpecMatch[1]);
+    return server ? { slug: server.slug } : null;
   }
 
   const legacyMatch = requestUrl.pathname.match(
     /^\/([^/]+)\/\.well-known\/oauth-protected-resource\/?$/,
   );
   if (legacyMatch?.[1]) {
-    const slug = legacyMatch[1];
-    return getMcpServerDefinition(slug) ? { slug } : null;
+    const server = getMcpServerDefinitionByPublicBasePath(legacyMatch[1]);
+    return server ? { slug: server.slug } : null;
   }
 
   return null;
@@ -57,12 +57,12 @@ export function routeMcpRequest(
     return null;
   }
 
-  const server = getMcpServerDefinition(slug);
+  const server = getMcpServerDefinitionByPublicBasePath(slug);
   if (!server) {
     return null;
   }
 
-  if (slug === "modulr" && rest.join("/") === "documents/download") {
+  if (server.slug === "modulr" && rest.join("/") === "documents/download") {
     return null;
   }
 
@@ -75,7 +75,7 @@ export function routeMcpRequest(
   const target = new URL(downstreamPath + requestUrl.search, targetBase);
 
   return {
-    slug,
+    slug: server.slug,
     target,
   };
 }

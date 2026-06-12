@@ -43,14 +43,13 @@ function originFromParts(protocol: string, host: string): string | null {
 }
 
 export function resolveGatewayPublicOrigin(request: Request, requestUrl = new URL(request.url)) {
-  const explicit = firstHeaderValue(request.headers.get("x-cmdclaw-public-origin"));
+  const explicit = firstHeaderValue(request.headers.get("x-bap-public-origin"));
   if (explicit && URL.canParse(explicit)) {
     return new URL(explicit).origin;
   }
 
   const forwarded = parseForwardedHeader(request.headers.get("forwarded"));
-  const forwardedHost =
-    forwarded.host ?? firstHeaderValue(request.headers.get("x-forwarded-host"));
+  const forwardedHost = forwarded.host ?? firstHeaderValue(request.headers.get("x-forwarded-host"));
   const forwardedProto =
     forwarded.proto ?? firstHeaderValue(request.headers.get("x-forwarded-proto"));
   const host = forwardedHost ?? requestUrl.host;

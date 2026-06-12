@@ -2,12 +2,12 @@
 status: proposed
 ---
 
-# Expose the CmdClaw MCP Server as a hard-wired platform capability
+# Expose the Bap MCP Server as a hard-wired platform capability
 
-Every **Generation** — chat, coworker, or coworker run — gets the **CmdClaw MCP
+Every **Generation** — chat, coworker, or coworker run — gets the **Bap MCP
 Server** (`apps/mcp/servers/cmdclaw`) unconditionally. Its tools (run chats; list,
 create, and run coworkers; upload documents; add skills) let the agent operate
-CmdClaw itself: a chat can build and trigger coworkers, a coworker can orchestrate
+Bap itself: a chat can build and trigger coworkers, a coworker can orchestrate
 other coworkers.
 
 This is the first **Platform MCP Server** (see `CONTEXT.md`): it is *not* a
@@ -22,10 +22,11 @@ not seeded as a `workspaceMcpServer` row the way Galien and Modulr are.
 - **Identity:** calls act as the Generation's acting user — the chat **User**, or
   the **Coworker**'s owner for triggered runs. Auth reuses the managed-token
   pattern (`signManagedMcpToken`, short-lived, `{userId, workspaceId, internalKey}`
-  signed with `CMDCLAW_SERVER_SECRET`); the CmdClaw MCP server is extended to
-  accept managed tokens alongside its existing OAuth `audience: "cmdclaw"` path
-  (kept for external agents). Runs and resources created this way are owned by the
-  acting user and count against their quotas.
+  signed with `CMDCLAW_SERVER_SECRET`); the Bap MCP server accepts managed tokens
+  alongside hosted OAuth with `audience: "bap"` and scope `bap`. Its public hosted
+  endpoint is `https://mcp.heybap.com/bap`; the old `/cmdclaw` path is deliberately
+  not accepted. Runs and resources created this way are owned by the acting user
+  and count against their quotas.
 - **Audit:** these calls are recorded as runtime-originated, not user-originated,
   so "the user did X" and "the user's coworker did X" remain distinguishable.
 - **Recursion guard:** runs started through these tools are **Runtime-Originated
@@ -53,7 +54,7 @@ not seeded as a `workspaceMcpServer` row the way Galien and Modulr are.
 - The allowlist invariant ("runtime access is granted by explicit server
   identity") now holds for Workspace MCP Servers only; Platform MCP Servers are
   the documented exception.
-- The managed `internalKey` union (`workspace-sources.ts`) gains `"cmdclaw"`, but
+- The managed platform MCP `internalKey` is `"bap"`, but
   unlike other managed servers it is never reconciled into workspace rows.
 - Trigger payloads / `coworkerRun` must carry Spawn Depth from day one; runs
   started directly by users or external triggers are depth 0.
@@ -78,7 +79,7 @@ This was reviewed and **accepted for the initial cut** under the ADR's
 "acts as the acting user" model, with the scoping tracked as P1 follow-up:
 
 - Add a runtime-only oRPC auth path (a `runtimeProcedure` or middleware
-  allowlist) that authorizes only the procedures the CmdClaw MCP tools call, and
+  allowlist) that authorizes only the procedures the Bap MCP tools call, and
   rejects managed tokens on every other route.
 - Bind the token to its generation/run (`generationId`/`jti` claim, persisted)
   and reject it once that generation is terminal, so a copied token is not a
