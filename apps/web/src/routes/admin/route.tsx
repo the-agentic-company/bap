@@ -5,7 +5,7 @@ import { requireSupportAdmin } from "@/lib/route-guards";
 /**
  * Support-admin shell layout (was src/app/admin/layout.tsx).
  *
- * Replaces the old Next admin layout. Shell selection is route nesting: every admin page
+ * Replaces the previous admin layout. Shell selection is route nesting: every admin page
  * renders inside this centered `<main>` wrapper via `<Outlet />`.
  *
  * Access is gated server-side in `beforeLoad` with the shared support-admin guard:

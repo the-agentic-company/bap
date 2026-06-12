@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
  *
  * Fetches the Nango provider catalog, normalizes each entry, and returns a sorted list.
  * Authorization stays inside the handler (Better Auth session check) so the route adapter
- * remains thin. Uses standard `Request`/`Response` only -- no Next imports.
+ * remains thin.
  */
 
 type NangoProvider = {

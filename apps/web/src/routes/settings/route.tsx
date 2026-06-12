@@ -10,7 +10,7 @@ import { requireSession } from "@/lib/route-guards";
 /**
  * Pathless layout route for the `/settings/**` shell.
  *
- * Replaces the old Next `settings/layout.tsx`. Shell selection is route nesting: every
+ * Replaces the previous `settings/layout.tsx`. Shell selection is route nesting: every
  * settings page renders inside this tabbed layout via `<Outlet />`. The active tab is
  * derived from the TanStack router location.
  *

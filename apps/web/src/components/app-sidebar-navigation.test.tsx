@@ -31,7 +31,6 @@ vi.mock("@/components/app-image", () => ({
     src,
     ...props
   }: React.ImgHTMLAttributes<HTMLImageElement> & { src: string; alt: string }) => (
-    // oxlint-disable-next-line nextjs/no-img-element
     <img alt={alt} src={src} {...props} />
   ),
 }));

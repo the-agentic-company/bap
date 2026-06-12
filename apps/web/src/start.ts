@@ -1,6 +1,9 @@
 import { createStart, createCsrfMiddleware } from "@tanstack/react-start";
+import { initializeWebObservabilityAtStartup } from "@/server/start/observability-startup";
 import { requestObservabilityMiddleware } from "@/server/start/request-observability-middleware";
 import { securityHeadersMiddleware } from "@/server/start/security-headers-middleware";
+
+initializeWebObservabilityAtStartup();
 
 /**
  * TanStack Start instance: the single place for request-wide concerns.
@@ -8,7 +11,7 @@ import { securityHeadersMiddleware } from "@/server/start/security-headers-middl
  * Intentionally narrow per the migration spec:
  * - server-function CSRF protection (TanStack's own CSRF middleware),
  * - baseline security headers,
- * - a light request/observability bootstrap hook.
+ * - a light request/observability guard.
  *
  * Page-auth routing is NOT here — that lives in route `beforeLoad` guards (see
  * src/lib/route-guards.ts). API/oRPC authorization stays inside the handlers.

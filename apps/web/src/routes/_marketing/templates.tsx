@@ -15,7 +15,7 @@ interface TemplatesSearch {
 }
 
 /**
- * Server function that loads the template catalog for SSR bootstrap. The old Next page was a
+ * Server function that loads the template catalog for SSR bootstrap. The previous page was a
  * server component that awaited `listTemplateCatalogEntries()` directly; in TanStack Start
  * this small SSR-critical list is loaded through the route loader (the page itself stays a
  * client component, and ongoing product data continues to use oRPC + React Query elsewhere).

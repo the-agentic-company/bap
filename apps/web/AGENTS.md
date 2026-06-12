@@ -18,7 +18,7 @@
 -  Keep runtime behavior compatible with stateless architecture: do not rely on in-memory state for correctness (execution, approvals, auth, routing, locks, or dedupe). Use durable storage/queue/locks (DB/Redis/BullMQ) as the source of truth.
 -  `bun run dev` behavior should stay functionally compatible with stateless architecture (no hidden in-memory-only correctness path in dev).
 
--  My infra is BullMQ queues and Next.js is on Render
+-  My infra is BullMQ queues and the TanStack Start web app is on Render
 
 ## Dev browser authentication
 -  For local browser testing, open `/login?autoLogin=1&callbackUrl=<path>` (for example `/login?autoLogin=1&callbackUrl=%2Fagents`).

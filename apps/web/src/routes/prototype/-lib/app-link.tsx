@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, FC, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
 /**
- * Raw-href link primitive for the prototype area, replacing `next/link`.
+ * Raw-href link primitive for the prototype area, replacing raw href links.
  *
  * The migrated prototype page builds string hrefs (the dynamic `/agents/edit/<id>` configure
  * link) rather than using TanStack's typed `to`. This wraps TanStack `Link`'s `href` escape

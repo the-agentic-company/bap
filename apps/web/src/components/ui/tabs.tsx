@@ -6,7 +6,7 @@ import { useId, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Raw-href link view, replacing `next/link`. Tabs build string hrefs rather than
+ * Raw-href link view, replacing raw href links. Tabs build string hrefs rather than
  * TanStack's typed `to`, so this wraps TanStack `Link`'s `href` escape hatch while
  * keeping client-side navigation. The cast is contained to this primitive.
  */

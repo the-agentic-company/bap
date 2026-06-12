@@ -72,9 +72,6 @@ async function main() {
         html { scroll-behavior: auto !important; }
         html, body { scrollbar-width: none !important; }
         ::-webkit-scrollbar { display: none !important; }
-        [data-nextjs-dialog-overlay],
-        [data-nextjs-toast],
-        nextjs-portal { display: none !important; }
       `,
     });
 

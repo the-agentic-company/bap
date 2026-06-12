@@ -100,9 +100,6 @@ function IntegrationLogos({ integrations }: { integrations: TemplateItem["integr
           return null;
         }
         return (
-          // Platform-native image replaces next/image; the Next no-img-element rule is a
-          // false positive under TanStack Start and is dropped when Next lint is removed.
-          // oxlint-disable-next-line nextjs/no-img-element
           <img
             key={key}
             src={logo}
@@ -163,8 +160,6 @@ function FilterPill<T extends string>({
       </AnimatePresence>
       {iconSrc ? (
         <span className="relative">
-          {/* Platform-native image replaces next/image (see note above). */}
-          {/* oxlint-disable-next-line nextjs/no-img-element */}
           <img
             src={iconSrc}
             alt={value}

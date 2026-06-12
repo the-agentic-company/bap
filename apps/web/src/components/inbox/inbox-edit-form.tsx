@@ -140,10 +140,6 @@ export function InboxEditForm({ toolApproval, onSave, onCancel }: Props) {
       {/* Header */}
       <div className="border-border/30 flex items-center gap-2 border-b px-3 py-2 text-sm">
         {logo && (
-          // Platform-native image is the intended TanStack Start replacement for next/image; the
-          // Next no-img-element rule is a false positive here and is dropped when the Next lint
-          // integration is removed in a later migration phase.
-          // oxlint-disable-next-line nextjs/no-img-element
           <img
             src={logo}
             alt={displayName}

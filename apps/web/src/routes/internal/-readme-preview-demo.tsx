@@ -293,9 +293,6 @@ function DemoCoworkerCard({
             </span>
             <div className="ml-auto flex items-center gap-1">
               {coworker.integrations.map((key) => (
-                // Platform-native image replaces next/image; the Next no-img-element rule is a
-                // false positive under TanStack Start and is dropped when Next lint is removed.
-                // oxlint-disable-next-line nextjs/no-img-element
                 <img
                   key={key}
                   src={INTEGRATION_LOGOS[key]}
@@ -354,8 +351,6 @@ function DemoInboxRow({ item, isDismissing }: { item: InboxItemData; isDismissin
         <div className="min-w-0 flex-1">
           <span className="block truncate text-xs font-medium text-slate-800">{item.title}</span>
           <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
-            {/* Platform-native image replaces next/image (see note above). */}
-            {/* oxlint-disable-next-line nextjs/no-img-element */}
             <img
               src={INTEGRATION_LOGOS[item.integration]}
               alt=""

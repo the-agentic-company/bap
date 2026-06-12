@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * Terms of use page. Migrated from Next `src/app/legal/terms/page.tsx`.
- * Static metadata moves from the Next `metadata` export to the route `head`.
+ * Terms of use page. Migrated from previous `src/app/legal/terms/page.tsx`.
+ * Static metadata moves from the route metadata export to the route `head`.
  * URL is preserved exactly: /legal/terms.
  */
 export const Route = createFileRoute("/legal/terms")({

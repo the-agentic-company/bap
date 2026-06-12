@@ -10,7 +10,7 @@ import { requireSession } from "@/lib/route-guards";
 /**
  * Standalone protected account snapshot page.
  *
- * Recreates the old Next `/accounts` route at the exact same URL. In the Next tree this
+ * Recreates the previous `/accounts` route at the exact same URL. In the previous route tree this
  * page rendered with no app-shell chrome (it was absent from the sidebar-visibility lists),
  * so it is modeled as a flat protected route rather than nesting under the `_app` shell.
  *

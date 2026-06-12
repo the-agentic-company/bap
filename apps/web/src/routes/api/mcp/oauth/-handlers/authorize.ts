@@ -12,8 +12,7 @@ import {
  * Framework-neutral handlers for the hosted MCP OAuth authorization endpoint
  * (`/api/mcp/oauth/authorize`). Authorization (Better Auth session) is enforced
  * inside the handlers; unauthenticated requests are redirected to login while
- * preserving the original target as the callback URL. Uses only standard
- * `Request`/`Response` -- no Next imports.
+ * preserving the original target as the callback URL.
  */
 
 function buildLoginRedirect(request: Request): Response {
@@ -23,6 +22,9 @@ function buildLoginRedirect(request: Request): Response {
     `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`,
     request,
   );
+  if (loginUrl.hostname === "mcp.heybap.com") {
+    loginUrl.hostname = "heybap.com";
+  }
   return Response.redirect(loginUrl, 303);
 }
 

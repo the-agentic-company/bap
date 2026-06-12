@@ -29,7 +29,7 @@ import { fetchDynamicsInstances } from "@/server/integrations/dynamics";
  * authorization (the Better Auth session check + state user matching) lives
  * here, not in any page route guard.
  *
- * The old Next handler emitted `NextResponse.redirect`, which is a **307**
+ * The previous handler emitted `standard redirect`, which is a **307**
  * (method-preserving) redirect. We preserve that exact status with a plain Web
  * `Response` so the observable redirect contract is unchanged.
  */

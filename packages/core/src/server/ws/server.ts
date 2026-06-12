@@ -1,6 +1,6 @@
 /**
  * Bun WebSocket server for device connections.
- * Runs as a separate process alongside Next.js on WS_PORT (default 4097).
+ * Runs as a separate process alongside the web app on WS_PORT (default 4097).
  *
  * Handles:
  * - Device authentication via JWT

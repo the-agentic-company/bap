@@ -31,7 +31,7 @@ import {
 import {
   buildDescendantPidSet,
   collectWorktreeProcessCleanupCandidates,
-  isNextProcessCommand,
+  isWebDevProcessCommand,
   type SystemProcess,
   type WorktreeProcessCleanupCandidate,
 } from "./process-cleanup";
@@ -130,7 +130,7 @@ const DEV_START_TIMEOUT_MS = 120_000;
 const GENERATED_WORKTREE_ENV_HEADER = "# Auto-generated for worktree by apps/worktree/src/cli.ts.";
 const GENERATED_WORKTREE_ENV_NOTICE = "# Do not edit manually; re-run a worktree command to refresh it.";
 const WORKTREE_START_LIMIT_ERROR =
-  `You already have ${MAX_RUNNING_WORKTREE_WEB_PROCESSES} worktree nextjs server running, you cannot start another one, please talk to the user first for him to stop one of the worktree`;
+  `You already have ${MAX_RUNNING_WORKTREE_WEB_PROCESSES} worktree web servers running, you cannot start another one, please talk to the user first for him to stop one of the worktrees`;
 type ProcessName = (typeof PROCESS_NAMES)[number];
 
 let sharedStackRuntimeCache: SharedStackConfig | null = null;
@@ -1802,7 +1802,7 @@ function listSystemProcesses(): SystemProcess[] {
     .filter((processEntry): processEntry is SystemProcess => processEntry !== null);
 }
 
-function listNextProcessesForWorktree(
+function listWebDevProcessesForWorktree(
   metadata: InstanceMetadata,
   processes: SystemProcess[],
 ): SystemProcess[] {
@@ -1819,7 +1819,7 @@ function listNextProcessesForWorktree(
 
       return (
         processEntry.command.includes(repoRoot) &&
-        isNextProcessCommand(processEntry.command)
+        isWebDevProcessCommand(processEntry.command)
       );
     })
     .sort((left, right) => left.pid - right.pid);
@@ -1850,17 +1850,17 @@ function formatPidList(pids: number[]): string {
   return pids.join(", ");
 }
 
-function classifyNextProcess(command: string): string {
-  if (/\bnext\s+dev\b/.test(command) && command.startsWith("bun ")) {
+function classifyWebDevProcess(command: string): string {
+  if (/\bvite\s+dev\b/.test(command) && command.startsWith("bun ")) {
     return "dev command";
   }
 
-  if (command.includes("/node_modules/.bin/next ")) {
-    return "next cli";
+  if (command.includes("/node_modules/.bin/vite ")) {
+    return "vite cli";
   }
 
-  if (command.includes("next-server")) {
-    return "next server";
+  if (command.includes("/node_modules/vite/bin/")) {
+    return "vite server";
   }
 
   const fileMatch = command.match(/\/([^/]+\.js)(?:\s|$)/);
@@ -1872,10 +1872,10 @@ function classifyNextProcess(command: string): string {
   return basename && basename !== "(node)" ? basename : "node helper";
 }
 
-function groupNextProcesses(processes: SystemProcess[]): Array<{ label: string; pids: number[] }> {
+function groupWebDevProcesses(processes: SystemProcess[]): Array<{ label: string; pids: number[] }> {
   const groups = new Map<string, number[]>();
   for (const processEntry of processes) {
-    const label = classifyNextProcess(processEntry.command);
+    const label = classifyWebDevProcess(processEntry.command);
     const pids = groups.get(label) ?? [];
     pids.push(processEntry.pid);
     groups.set(label, pids);
@@ -1884,7 +1884,7 @@ function groupNextProcesses(processes: SystemProcess[]): Array<{ label: string; 
   return [...groups.entries()]
     .map(([label, pids]) => ({ label, pids: pids.sort((left, right) => left - right) }))
     .sort((left, right) => {
-      const priority = ["dev command", "next cli", "next server"];
+      const priority = ["dev command", "vite cli", "vite server"];
       const leftPriority = priority.indexOf(left.label);
       const rightPriority = priority.indexOf(right.label);
       if (leftPriority !== -1 || rightPriority !== -1) {
@@ -2453,9 +2453,10 @@ function buildProcessCommand(
         args: [
           "--env-file",
           envFile,
-          "next",
+          "vite",
           "dev",
-          "--webpack",
+          "--host",
+          "0.0.0.0",
           "--port",
           String(metadata.appPort),
         ],
@@ -3246,9 +3247,9 @@ async function stopAllProcessTargets(): Promise<void> {
   const activeMetadata = metadataList.filter((metadata) => {
     const entries = getProcessEntries(metadata);
     const hasRunningTrackedProcess = entries.some((entry) => isPidRunning(entry.pid));
-    const hasRunningNextProcess =
-      listNextProcessesForWorktree(metadata, systemProcesses).length > 0;
-    return hasRunningTrackedProcess || hasRunningNextProcess;
+    const hasRunningWebDevProcess =
+      listWebDevProcessesForWorktree(metadata, systemProcesses).length > 0;
+    return hasRunningTrackedProcess || hasRunningWebDevProcess;
   });
 
   if (activeMetadata.length === 0) {
@@ -3262,22 +3263,22 @@ async function stopAllProcessTargets(): Promise<void> {
     await stopInstance(metadata);
   }
 
-  const remainingNextPids = activeMetadata
-    .flatMap((metadata) => listNextProcessesForWorktree(metadata, listSystemProcesses()))
+  const remainingWebDevPids = activeMetadata
+    .flatMap((metadata) => listWebDevProcessesForWorktree(metadata, listSystemProcesses()))
     .map((processEntry) => processEntry.pid);
-  const uniqueRemainingNextPids = Array.from(new Set(remainingNextPids)).sort((left, right) =>
+  const uniqueRemainingWebDevPids = Array.from(new Set(remainingWebDevPids)).sort((left, right) =>
     right - left,
   );
 
-  if (uniqueRemainingNextPids.length > 0) {
+  if (uniqueRemainingWebDevPids.length > 0) {
     console.log(
-      `[worktree] stopping ${uniqueRemainingNextPids.length} remaining Next.js process(es): ${formatPidList(uniqueRemainingNextPids)}`,
+      `[worktree] stopping ${uniqueRemainingWebDevPids.length} remaining web dev process(es): ${formatPidList(uniqueRemainingWebDevPids)}`,
     );
-    for (const pid of uniqueRemainingNextPids) {
+    for (const pid of uniqueRemainingWebDevPids) {
       terminateProcess(pid);
     }
 
-    const stillRunning = await waitForProcessesToExit(uniqueRemainingNextPids, 10_000);
+    const stillRunning = await waitForProcessesToExit(uniqueRemainingWebDevPids, 10_000);
     if (stillRunning.length > 0) {
       console.warn(`[worktree] still running after SIGTERM: ${formatPidList(stillRunning)}`);
     }
@@ -3433,11 +3434,11 @@ async function showProcesses(args: string[]): Promise<void> {
   let printedAnyRunningWorktree = false;
   for (const metadata of metadataList) {
     const entries = getProcessEntries(metadata);
-    const nextProcesses = listNextProcessesForWorktree(metadata, systemProcesses);
+    const webDevProcesses = listWebDevProcessesForWorktree(metadata, systemProcesses);
     const hasRunningTrackedProcess = entries.some((entry) => isPidRunning(entry.pid));
-    const hasRunningNextProcess = nextProcesses.length > 0;
+    const hasRunningWebDevProcess = webDevProcesses.length > 0;
 
-    if (!hasRunningTrackedProcess && !hasRunningNextProcess) {
+    if (!hasRunningTrackedProcess && !hasRunningWebDevProcess) {
       continue;
     }
 
@@ -3462,17 +3463,17 @@ async function showProcesses(args: string[]): Promise<void> {
       }
     }
 
-    if (nextProcesses.length === 0) {
-      console.log("  next: none");
+    if (webDevProcesses.length === 0) {
+      console.log("  web: none");
     } else {
-      console.log(`  next (${nextProcesses.length} processes):`);
-      for (const group of groupNextProcesses(nextProcesses)) {
+      console.log(`  web (${webDevProcesses.length} processes):`);
+      for (const group of groupWebDevProcesses(webDevProcesses)) {
         console.log(`    ${group.label}: ${formatPidList(group.pids)}`);
       }
 
       if (verbose) {
         console.log("  commands:");
-        for (const processEntry of nextProcesses) {
+        for (const processEntry of webDevProcesses) {
           console.log(
             `    pid ${processEntry.pid} ppid ${processEntry.ppid}  ${formatProcessCommand(processEntry.command)}`,
           );

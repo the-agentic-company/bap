@@ -12,8 +12,7 @@ import {
 import { RootErrorBoundary } from "@/components/root-error-boundary";
 import { RootNotFound } from "@/components/root-not-found";
 import { env } from "@/env";
-// Local font assets (replaces next/font Geist / Geist_Mono). These set the
-// "Geist" / "Geist Mono" font-family names that the Tailwind font tokens resolve to
+// Local font assets set the "Geist" / "Geist Mono" font-family names that Tailwind resolves
 // via the --font-geist-sans / --font-geist-mono CSS variables in globals.css.
 // oxlint-disable no-unassigned-import
 import "@fontsource/geist-sans/400.css";
@@ -90,10 +89,7 @@ function RootComponent() {
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang={getInitialAppLocale()}>
-      {/* TanStack Start owns the full document; a real <head> element is required here.
-          The Next-specific no-head-element rule is a false positive for TanStack Start and
-          is dropped when Next lint integration is removed in a later phase. */}
-      {/* oxlint-disable-next-line nextjs/no-head-element */}
+      {/* TanStack Start owns the full document; a real <head> element is required here. */}
       <head>
         <HeadContent />
       </head>

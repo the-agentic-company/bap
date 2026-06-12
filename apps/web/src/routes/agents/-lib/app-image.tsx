@@ -1,11 +1,10 @@
 import type { ImgHTMLAttributes } from "react";
 
 /**
- * Platform-native image primitive replacing `next/image` inside the agents area.
+ * Platform-native image primitive inside the agents area.
  *
  * Renders a plain <img> with explicit width/height plus sensible loading/decoding defaults.
- * No layout shift magic, no loader pipeline: assets are served from `public/` exactly as
- * the rest of the migrated tree does.
+ * Assets are served from `public/`.
  */
 export interface AppImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt"> {
   src: string;
@@ -24,10 +23,6 @@ export function AppImage({
   ...rest
 }: AppImageProps) {
   return (
-    // Platform-native image is the intended TanStack Start replacement for next/image; the
-    // Next no-img-element rule is a false positive here and is dropped when the Next lint
-    // integration is removed in a later migration phase (same handling as src/routes/__root.tsx).
-    // oxlint-disable-next-line nextjs/no-img-element
     <img
       src={src}
       alt={alt}

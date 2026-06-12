@@ -32,7 +32,7 @@ function validateSignInTokenSearch(search: Record<string, unknown>): SignInToken
 
 /**
  * Resolves the magic-link request state for a token server-side (DB-backed), so the page
- * renders pending / expired / consumed / invalid exactly as the old Next server component.
+ * renders pending / expired / consumed / invalid exactly as the previous server component.
  */
 const loadMagicLinkState = createServerFn({ method: "GET" })
   .inputValidator((token: string) => token)

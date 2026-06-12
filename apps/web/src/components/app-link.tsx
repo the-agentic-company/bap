@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, FC, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
 /**
- * Raw-href link primitive for shared components, replacing `next/link`.
+ * Raw-href link primitive for shared components, replacing raw href links.
  *
  * The migrated shared components build string hrefs (including dynamic paths) rather than using
  * TanStack's typed `to`. This wraps TanStack `Link`'s `href` escape hatch so client-side

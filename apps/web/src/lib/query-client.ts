@@ -3,7 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 /**
  * Shared React Query client factory.
  *
- * Preserves the defaults from the previous Next.js `ORPCProvider` (1 minute stale time,
+ * Preserves the defaults from the previous `ORPCProvider` (1 minute stale time,
  * no refetch on window focus). A fresh client is created per request on the server and
  * once on the client, in line with TanStack Start's SSR Query integration.
  *

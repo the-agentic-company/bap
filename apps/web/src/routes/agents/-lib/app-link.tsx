@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, FC, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
 /**
- * Raw-href link primitive for the agents area, replacing `next/link`.
+ * Raw-href link primitive for the agents area, replacing raw href links.
  *
  * The migrated agents pages build string hrefs (including dynamic `/agents/edit/<slug>` and
  * `/agents/info/<slug>?...` paths) rather than using TanStack's typed `to`. This wraps

@@ -34,9 +34,8 @@ import { getTrustedOrigins } from "@/lib/trusted-origins";
  * route guard.
  *
  * Better Auth keeps owning the catch-all `/api/auth/**` surface; we call
- * `auth.handler(request)` directly (the framework-neutral entry point that the
- * Next integration also called under the hood) and the `tanstackStartCookies`
- * plugin writes Set-Cookie headers.
+ * `auth.handler(request)` directly and the `tanstackStartCookies` plugin writes Set-Cookie
+ * headers.
  */
 
 const trustedOrigins = new Set(getTrustedOrigins());

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 /**
- * Privacy policy page. Migrated from Next `src/app/legal/privacy-policy/page.tsx`.
- * Static metadata moves from the Next `metadata` export to the route `head`.
+ * Privacy policy page. Migrated from previous `src/app/legal/privacy-policy/page.tsx`.
+ * Static metadata moves from the route metadata export to the route `head`.
  * URL is preserved exactly: /legal/privacy-policy.
  */
 export const Route = createFileRoute("/legal/privacy-policy")({

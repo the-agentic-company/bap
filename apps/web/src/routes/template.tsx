@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/route-guards";
 /**
  * Protected template shell (layout route for the `/template/*` group).
  *
- * Replaces the Next `src/app/template/layout.tsx` wrapper. This is an access=protected
+ * Replaces the previous `src/app/template/layout.tsx` wrapper. This is an access=protected
  * shell: the `beforeLoad` guard runs the shared protected-session check, so unauthenticated
  * requests redirect to `/login` (or worktree auto-login) with a `callbackUrl` that returns
  * the user to the originally requested `/template/*` path + search. The child routes

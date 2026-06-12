@@ -105,7 +105,7 @@ More setup guides:
 ```text
 cmdclaw/
 ├── apps/
-│   ├── web/       # Next.js app
+│   ├── web/       # TanStack Start web app
 │   ├── worker/    # BullMQ worker runtime
 │   ├── ws/        # WebSocket runtime
 │   ├── cli/       # Terminal interface

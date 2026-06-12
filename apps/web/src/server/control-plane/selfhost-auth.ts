@@ -156,7 +156,7 @@ export async function resolveOrCreateLocalUserFromCloudIdentity(
 
 /**
  * Serializes a `Set-Cookie` header value. Implemented inline (rather than via
- * `better-call`'s serializeCookie) to preserve the previous `NextResponse.cookies`
+ * `better-call`'s serializeCookie) to preserve the previous `standard cookie handling`
  * behavior, which does not cap `expires` at 400 days and URL-encodes the cookie value.
  */
 function serializeSetCookie(
@@ -225,7 +225,7 @@ export async function createLocalSessionRedirectResponse(args: {
     }),
   );
 
-  // Clear the cookie for the protocol we are not using (matches NextResponse.cookies.delete).
+  // Clear the cookie for the protocol we are not using (matches standard cookie handling.delete).
   headers.append(
     "set-cookie",
     serializeSetCookie(otherCookieName, "", {

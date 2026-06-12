@@ -216,7 +216,7 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
     expect(getLocation(response)).toBe("https://app.example.com/toolbox?error=missing_params");
   });
 
-  it("preserves the 307 redirect status the NextResponse.redirect contract used", async () => {
+  it("preserves the 307 redirect status the standard redirect contract used", async () => {
     const request = new Request("https://app.example.com/api/oauth/callback");
 
     const response = await handleOAuthCallback(request);

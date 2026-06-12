@@ -5,8 +5,7 @@ import { hostedMcpOauthOptionsResponse, withHostedMcpOauthCors } from "./cors";
  * Framework-neutral handlers for the hosted MCP OAuth dynamic client
  * registration endpoint (`/api/mcp/oauth/register`). Accepts RFC 7591 client
  * metadata, registers a public client, and returns it with dynamic CORS headers
- * and `Cache-Control: no-store`. Uses only standard `Request`/`Response` -- no
- * Next imports.
+ * and `Cache-Control: no-store`.
  */
 
 export function handleHostedMcpRegisterOptions(request: Request): Response {

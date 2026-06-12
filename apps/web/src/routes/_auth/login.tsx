@@ -93,7 +93,7 @@ function getCloudErrorMessage(error: string | undefined) {
 }
 
 /**
- * Server-side resolution of the login page. Mirrors the old Next server component: it runs
+ * Server-side resolution of the login page. Mirrors the previous server component: it runs
  * the invite-only / auto-login / already-authenticated / worktree redirects (thrown as
  * TanStack redirects so they propagate through the loader) and otherwise returns the render
  * data for the cloud or self-host login screen.

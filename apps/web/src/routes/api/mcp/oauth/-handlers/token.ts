@@ -9,8 +9,7 @@ import { hostedMcpOauthOptionsResponse, withHostedMcpOauthCors } from "./cors";
  * Framework-neutral handlers for the hosted MCP OAuth token endpoint
  * (`/api/mcp/oauth/token`). Supports the `authorization_code` and
  * `refresh_token` grant types for public (PKCE) clients. All responses carry
- * dynamic CORS headers and `Cache-Control: no-store`. Uses only standard
- * `Request`/`Response` -- no Next imports.
+ * dynamic CORS headers and `Cache-Control: no-store`.
  */
 
 async function resolveClientFromTokenRequest(formData: FormData) {

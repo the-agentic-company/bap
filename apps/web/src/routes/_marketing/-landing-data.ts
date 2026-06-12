@@ -12,7 +12,7 @@ import { listFeaturedTemplateCatalogEntries } from "@/server/services/template-c
 /**
  * Server-side data for the landing route (`/`).
  *
- * Migrated from the Next `src/app/page.tsx` server component. It resolves the Better Auth
+ * Migrated from the previous `src/app/page.tsx` server component. It resolves the Better Auth
  * session from the request cookies, replicates the worktree auto-login redirect for
  * unauthenticated local-dev requests, and loads the featured template catalog used by the
  * landing hero. Runs as a TanStack server function so the same logic executes on SSR and on

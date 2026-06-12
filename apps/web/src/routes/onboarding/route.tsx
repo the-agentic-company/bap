@@ -17,7 +17,7 @@ const MOTION_TRANSITION = {
 };
 
 /**
- * Onboarding shell. Migrated from the Next `onboarding/layout.tsx` to a TanStack layout
+ * Onboarding shell. Migrated from the previous `onboarding/layout.tsx` to a TanStack layout
  * route: child routes (`/onboarding/integrations`, `/onboarding/subscriptions`) nest under
  * this `<Outlet />`, so shell selection is route nesting rather than a global pathname
  * switch. Protected access is enforced once here via `requireSession`, covering every child

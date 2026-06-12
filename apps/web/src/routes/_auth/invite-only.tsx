@@ -25,7 +25,7 @@ function validateInviteOnlySearch(search: Record<string, unknown>): InviteOnlySe
 }
 
 /**
- * Server-side gate matching the old Next server component: already-authenticated users are
+ * Server-side gate matching the previous server component: already-authenticated users are
  * redirected to /chat; everyone else sees the access-request form.
  */
 const guardInviteOnly = createServerFn({ method: "GET" }).handler(async () => {

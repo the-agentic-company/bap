@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 
 /**
- * Legal shell layout. Replaces the Next `src/app/legal/layout.tsx` client wrapper as a
+ * Legal shell layout. Replaces the previous `src/app/legal/layout.tsx` client wrapper as a
  * TanStack layout route for the `/legal/*` group (privacy policy, terms of service).
  *
  * This is a public (access=public) shell, so it carries no `beforeLoad` auth guard. It

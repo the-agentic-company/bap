@@ -4,7 +4,7 @@ import { handleHealth } from "@/server/health/handler";
 /**
  * Health check server route. Preserves the public `/api/health` URL and JSON shape used by
  * the Render `healthCheckPath`. Thin TanStack Start adapter; the database/redis checks live in
- * the framework-neutral `handleHealth` handler (standard `Response`, no Next imports).
+ * the framework-neutral `handleHealth` handler.
  */
 export const Route = createFileRoute("/api/health")({
   server: {

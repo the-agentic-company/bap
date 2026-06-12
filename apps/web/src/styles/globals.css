@@ -54,7 +54,7 @@
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   /*
-   * Font tokens previously injected by next/font (Geist / Geist Mono).
+   * Font tokens previously injected by fontsource loading (Geist / Geist Mono).
    * After the TanStack Start migration these are provided by @fontsource/geist-sans
    * and @fontsource/geist-mono (imported from the root route), so we re-point the
    * Tailwind `--font-sans` / `--font-mono` tokens at the matching font-family names.

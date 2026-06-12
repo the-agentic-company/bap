@@ -13,7 +13,7 @@ import { localizedText } from "@/components/general-translation-provider";
 import { Button } from "@/components/ui/button";
 
 /**
- * Server function for the self-host edition gate. The old Next page called
+ * Server function for the self-host edition gate. The previous page called
  * `isSelfHostedEdition()` (server-only) during render and `redirect("/")`; in TanStack
  * Start that decision moves into `beforeLoad`, so the redirect happens before any render.
  */

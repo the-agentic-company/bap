@@ -13,7 +13,7 @@ export type SharedConversation = {
  * Loads a publicly shared conversation by its share token.
  *
  * Framework-neutral data layer for the `/shared/$shareToken` route. Mirrors the original
- * Next server component: it reads the conversation only when it is flagged `isShared`,
+ * previous server component: it reads the conversation only when it is flagged `isShared`,
  * keeps the visible user/assistant turns, and resolves presigned download URLs for
  * attachments and sandbox files. Returns `null` when the token does not match a shared
  * conversation so the route can surface its not-found boundary.
@@ -38,9 +38,7 @@ export async function getSharedConversationByToken(
     return null;
   }
 
-  const visibleMessages = conv.messages.filter(
-    (m) => m.role === "user" || m.role === "assistant",
-  );
+  const visibleMessages = conv.messages.filter((m) => m.role === "user" || m.role === "assistant");
 
   const sharedMessages = await Promise.all(
     visibleMessages.map(async (msg) => ({

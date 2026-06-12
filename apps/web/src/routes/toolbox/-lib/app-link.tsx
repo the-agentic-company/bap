@@ -2,13 +2,13 @@ import type { AnchorHTMLAttributes, FC, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 
 /**
- * Raw-href link primitive for the toolbox area, replacing `next/link`.
+ * Raw-href link primitive for the toolbox area.
  *
  * Toolbox cards build string hrefs (including `/toolbox?preview=...`, `/skills/<id>`, and
  * `/toolbox/sources/<id>`) rather than using TanStack's typed `to`. This wraps TanStack
  * `Link`'s `href` escape hatch so client-side navigation keeps working while the call sites
- * stay identical to the old `<Link href=...>` shape. The Next-only `scroll` prop is accepted
- * and dropped (TanStack does not scroll-restore on hash-style preview navigations here).
+ * stay identical to the old `<Link href=...>` shape. The legacy `scroll` prop is accepted
+ * and dropped because TanStack does not scroll-restore on hash-style preview navigations here.
  */
 export interface AppLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   href: string;

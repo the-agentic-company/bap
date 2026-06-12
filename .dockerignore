@@ -14,8 +14,6 @@ apple
 experiments
 infra
 
-**/.next
-**/.next-*
 **/coverage
 **/dist
 **/build

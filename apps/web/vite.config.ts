@@ -8,7 +8,7 @@ import { nitro } from "nitro/vite";
 import { fileURLToPath } from "node:url";
 import * as tslibRuntime from "tslib";
 import { defineConfig, type Plugin } from "vite";
-// Validate environment variables at config load (mirrors the old next.config.ts side effect).
+// Validate environment variables at config load.
 import * as envConfig from "./src/env.js";
 
 void envConfig;
@@ -112,7 +112,6 @@ export default defineConfig(({ isSsrBuild }) => ({
 		port: devPort,
 		watch: {
 			ignored: [
-				"**/.next/**",
 				"**/.output/**",
 				"**/.turbo/**",
 				"**/coverage/**",

@@ -4,7 +4,7 @@ import { handleOpenApi } from "@/server/openapi/handler";
 /**
  * OpenAPI schema server route. Preserves the public `/api/openapi` URL and the JSON
  * OpenAPI document shape. Thin TanStack Start adapter; spec generation lives in the
- * framework-neutral `handleOpenApi` handler (standard `Response`, no Next imports).
+ * framework-neutral `handleOpenApi` handler.
  */
 export const Route = createFileRoute("/api/openapi")({
   server: {

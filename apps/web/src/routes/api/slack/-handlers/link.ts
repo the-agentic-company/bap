@@ -10,10 +10,10 @@ import { buildRequestAwareUrl } from "@/lib/request-aware-url";
  * account, then renders a small confirmation HTML page. API authorization (the
  * Better Auth session check) lives here, not in any page route guard.
  *
- * The old Next handler used `NextResponse.redirect`, which is a **307**
+ * The previous handler used `standard redirect`, which is a **307**
  * (method-preserving) redirect. We preserve that exact status with a plain Web
  * `Response`. Session lookup reads `request.headers` directly instead of the
- * Next `headers()` helper. Uses only standard `Request`/`Response`/`URL`.
+ * previous `headers()` helper. Uses only standard `Request`/`Response`/`URL`.
  */
 export async function handleSlackLink(request: Request): Promise<Response> {
   const url = new URL(request.url);

@@ -2,10 +2,10 @@ import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { T } from "gt-react";
 
 /**
- * Support shell layout. Replaces the Next `src/app/support/layout.tsx` as a TanStack
+ * Support shell layout. Replaces the previous `src/app/support/layout.tsx` as a TanStack
  * layout route for the `/support` group (help center / contact page).
  *
- * This is a public (access=public) shell: `/support` was listed in the old Next proxy's
+ * This is a public (access=public) shell: `/support` was listed in the previous proxy's
  * `publicRoutes`, and the migration PRD lists "support" among the public pages that must
  * keep rendering for anyone. So this carries NO `beforeLoad` auth guard — gating it would
  * break the frozen public-URL behavior. (API/oRPC authorization stays inside handlers.)

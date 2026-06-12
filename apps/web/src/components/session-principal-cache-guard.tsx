@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth-client";
 /**
  * Clears the React Query cache when the signed-in principal changes.
  *
- * Ported from the old Next.js `ORPCProvider`: polls the Better Auth session, and on a
+ * Ported from the previous `ORPCProvider`: polls the Better Auth session, and on a
  * user-id transition clears the client query cache so a previous user's data can't leak
  * into the next session. Reads the request's QueryClient from the React Query context that
  * the TanStack Start SSR Query integration provides (see src/router.tsx).

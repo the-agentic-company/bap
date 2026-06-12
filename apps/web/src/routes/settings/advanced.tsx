@@ -3,7 +3,7 @@ import { fetchSessionContext } from "@/lib/route-guards";
 
 /**
  * `/settings/advanced` is a pure redirect: self-host deployments go to the instance admin
- * surface, cloud deployments go to the support-admin surface. The old Next page called
+ * surface, cloud deployments go to the support-admin surface. The previous page called
  * `redirect()` at render time; here it moves to `beforeLoad` so the route never renders a
  * component. Edition is resolved server-side via the shared session context (mirrors the
  * old server-only `isSelfHostedEdition()`).

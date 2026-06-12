@@ -26,8 +26,8 @@ import { isAuthorizedByServerSecret } from "@/server/internal/server-secret";
 
 /**
  * The MCP credential endpoints throw on an invalid server secret and convert that into a
- * 401 in their outer catch (preserving the original Next behavior). Keeping the throw lets
- * the existing control flow stay identical to the pre-migration handlers.
+ * 401 in their outer catch. Keeping the throw lets the existing control flow stay
+ * identical to the pre-migration handlers.
  */
 function assertValidServerSecret(request: Request): void {
   if (!isAuthorizedByServerSecret(request)) {

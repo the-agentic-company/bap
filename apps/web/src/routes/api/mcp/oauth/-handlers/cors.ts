@@ -3,8 +3,8 @@ import { getTrustedOrigins } from "@/lib/trusted-origins";
 
 /**
  * Framework-neutral CORS helpers for the hosted MCP OAuth endpoints
- * (`/api/mcp/oauth/**`). Mirrors the previous Next implementation exactly but
- * uses only standard `Request`/`Response`/`Headers` -- no Next imports.
+ * (`/api/mcp/oauth/**`). Mirrors the previous implementation exactly but
+ * uses only standard `Request`/`Response`/`Headers`.
  *
  * The allowed origin is computed dynamically against an origin whitelist
  * (trusted origins plus loopback hosts). Unknown origins fall back to the

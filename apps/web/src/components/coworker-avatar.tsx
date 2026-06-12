@@ -17,7 +17,6 @@ export function CoworkerAvatar({ username, size = 32, scale, className }: Cowork
   );
 
   return (
-    // oxlint-disable-next-line nextjs/no-img-element -- data URI, no optimization needed
     <img
       src={dataUri}
       alt={username ? `@${username}` : "avatar"}

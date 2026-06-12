@@ -51,7 +51,7 @@ function normalizeCookieValue(value: string): string {
 
 /**
  * Serializes a `Set-Cookie` header value. Implemented inline (rather than via
- * `better-call`'s serializeCookie) to preserve the previous `NextResponse.cookies`
+ * `better-call`'s serializeCookie) to preserve the previous `standard cookie handling`
  * behavior, which does not cap `expires` at 400 days and URL-encodes the cookie value.
  */
 function serializeSetCookie(
@@ -91,7 +91,7 @@ function serializeSetCookie(
 
 /**
  * Builds a redirect Response that sets the session cookie and clears the cookie that the
- * current protocol does not use, mirroring the previous `NextResponse.cookies` behavior.
+ * current protocol does not use, mirroring the previous `standard cookie handling` behavior.
  */
 function buildSessionRedirect(options: {
   requestUrl: URL;
@@ -117,7 +117,7 @@ function buildSessionRedirect(options: {
     }),
   );
 
-  // Clear the cookie for the protocol we are not using (matches NextResponse.cookies.delete).
+  // Clear the cookie for the protocol we are not using (matches standard cookie handling.delete).
   headers.append(
     "set-cookie",
     serializeSetCookie(getOtherSessionCookieName(cookieName), "", {

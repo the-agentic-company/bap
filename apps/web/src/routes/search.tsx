@@ -6,7 +6,7 @@ import { requireSession } from "@/lib/route-guards";
 /**
  * Global search page (`/search`).
  *
- * Replaces the old Next `src/app/search/page.tsx`. This is a standalone protected
+ * Replaces the previous `src/app/search/page.tsx`. This is a standalone protected
  * page: it renders its own full-height shell rather than the app sidebar chrome, so
  * it lives as a top-level route with its own session guard instead of nesting under
  * the `_app` layout.

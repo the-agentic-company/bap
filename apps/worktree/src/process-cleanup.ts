@@ -14,21 +14,21 @@ function normalizePath(path: string): string {
   return path.replace(/\/+$/, "");
 }
 
-export function isNextProcessCommand(command: string): boolean {
+export function isWebDevProcessCommand(command: string): boolean {
   const normalized = command.toLowerCase();
   return (
-    normalized.includes("next-server") ||
-    normalized.includes("/node_modules/.bin/next ") ||
-    normalized.includes("/.next/dev/") ||
-    normalized.includes("/next/dist/") ||
-    /\bnext\s+(dev|start|build)\b/.test(normalized)
+    normalized.includes("/node_modules/.bin/vite ") ||
+    normalized.includes("/node_modules/vite/bin/") ||
+    /\bbun\s+--env-file(?:=|\s+)\S+\/\.env\s+vite\s+dev\b/.test(normalized) ||
+    /\bvite\s+(?:--host\s+\S+\s+)?dev\b/.test(normalized) ||
+    /\bvite\s+dev\b/.test(normalized)
   );
 }
 
 export function isWorktreeServiceProcessCommand(command: string): boolean {
   const normalized = command.toLowerCase();
   return (
-    isNextProcessCommand(command) ||
+    isWebDevProcessCommand(command) ||
     /\bbun\s+--env-file(?:=|\s+)\S+\/\.env\s+index\.ts\b/.test(normalized) ||
     /\bbun\s+(?:--watch\s+)?--env-file(?:=|\s+)\S+\/\.env\s+src\/proxy\.ts\b/.test(normalized)
   );

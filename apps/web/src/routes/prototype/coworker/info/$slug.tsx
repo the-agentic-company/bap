@@ -4,7 +4,7 @@ import { CoworkerInfoPrototype } from "./-components/coworker-info-prototype";
 /**
  * /prototype/coworker/info/$slug (was src/app/prototype/coworker/info/[slug]/page.tsx).
  *
- * access = public: there is no Next layout for the prototype tree and no auth guard, so this is
+ * access = public: the prototype tree has no auth guard, so this is
  * a standalone public route rendered directly under the root. The product data it shows is
  * fetched through oRPC/React Query in the client component and remains subject to oRPC's own
  * authorization — a public page route is not API authorization.

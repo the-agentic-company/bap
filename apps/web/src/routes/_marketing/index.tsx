@@ -4,7 +4,7 @@ import { env } from "@/env";
 import { fetchLandingData } from "./-landing-data";
 
 /**
- * Landing page (`/`). Migrated from the Next `src/app/page.tsx` server component.
+ * Landing page (`/`). Migrated from the previous `src/app/page.tsx` server component.
  *
  * - Nests under the public `_marketing` shell (no auth guard); the page renders for both
  *   anonymous and authenticated visitors, with `CoworkerLanding` switching its UI via

@@ -15,7 +15,7 @@ Use a worktree when you want to run multiple copies of CmdClaw side by side with
 - the WS runtime
 - Daytona ports when that profile is enabled
 
-The worktree lifecycle enforces a cap of five running worktree Next.js development servers. Starting a sixth worktree web server fails fast and tells you to stop another worktree first.
+The worktree lifecycle enforces a cap of five running worktree web development servers. Starting a sixth worktree web server fails fast and tells you to stop another worktree first.
 
 ## Main idea
 
@@ -45,7 +45,7 @@ bun run worktree:setup
 
 This fails fast if Docker is not installed or the Docker daemon is not running. Otherwise it reuses the repo-global `cmdclaw-local` shared infrastructure (starting the missing shared services there only when needed), provisions the worktree-specific Postgres, Redis, and MinIO credentials, writes the generated `.env`, and starts the web, worker, and WS processes for that worktree.
 
-If ten other worktree web servers are already running, `worktree:setup` fails before launching another `next dev` process.
+If ten other worktree web servers are already running, `worktree:setup` fails before launching another web dev process.
 
 Each worktree writes a computed `.env` file at the repo root. That file is the authoritative runtime env for worktree commands and normal repo scripts inside that worktree, including `worktree:setup`, `worktree:dev`, and `bun run cli ...`.
 
@@ -89,7 +89,7 @@ It also shows the exact `.env` path currently backing the worktree, plus the sha
 
 `worktree:env` prints the full derived environment for the worktree, including the worktree-scoped `DATABASE_URL`, `REDIS_URL`, `AWS_ENDPOINT_URL`, the shared Vector and Victoria URLs, and the worktree identity labels used to filter telemetry.
 
-`worktree:processes` can be run from the main checkout or a worktree. It groups running worktree app processes by worktree, summarizes discovered Next.js descendants, and prints the exact command to stop each worktree. Use `bun run worktree:processes list --verbose` to include full process command lines.
+`worktree:processes` can be run from the main checkout or a worktree. It groups running worktree app processes by worktree, summarizes discovered web dev descendants, and prints the exact command to stop each worktree. Use `bun run worktree:processes list --verbose` to include full process command lines.
 
 To stop every running worktree app process from the list:
 

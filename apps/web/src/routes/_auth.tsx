@@ -4,8 +4,8 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
  * Pathless layout route for the public authentication flow: login, password reset,
  * token-based magic-link sign-in, and invite-only access request.
  *
- * This replaces the absence of a Next auth layout: each old auth page rendered its own
- * full-screen wrapper, so this shell stays intentionally thin and only groups the routes
+ * Each auth page previously rendered its own full-screen wrapper, so this shell stays
+ * intentionally thin and only groups the routes
  * via nesting. Shell selection is route nesting, not a global pathname switch. The pages
  * keep their own page-level layout wrappers so the rendered markup is unchanged.
  *

@@ -98,7 +98,6 @@ function RichPlaceholderOverlay({
             key={i}
             className="mx-0.5 inline-flex animate-[badge-in_150ms_ease-out] items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 align-middle text-xs font-medium text-slate-600"
           >
-            {/* oxlint-disable-next-line nextjs/no-img-element */}
             <img src={seg.icon} alt="" className="size-3.5 shrink-0 rounded-sm object-contain" />
             {seg.name}
           </span>,

@@ -1,7 +1,7 @@
 /**
  * Framework-neutral redirect helper for control-plane handlers.
  *
- * The old Next handlers used `NextResponse.redirect(url)`, which emits a **307** status
+ * The previous handlers used `standard redirect(url)`, which emits a **307** status
  * (temporary redirect, method-preserving). Standard `Response.redirect()` defaults to 302,
  * which would change the observable status code that callers (CLI / self-host instances and
  * tests) assert on. This helper preserves the frozen 307 behavior with a plain Web `Response`.

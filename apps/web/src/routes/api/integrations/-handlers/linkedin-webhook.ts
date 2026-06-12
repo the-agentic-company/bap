@@ -7,8 +7,7 @@ import { getUnipileAccount } from "@/server/integrations/unipile";
  * Framework-neutral handler for `POST /api/integrations/linkedin/webhook`.
  *
  * Unipile AccountStatus webhook receiver. `userId` is derived from the standard request URL
- * search params (the old Next `request.nextUrl.searchParams` contract is dropped). Uses
- * standard `Request`/`Response` only -- no Next imports.
+ * search params.
  */
 
 interface AccountStatusPayload {

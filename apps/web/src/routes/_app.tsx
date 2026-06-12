@@ -6,7 +6,7 @@ import { requireSession } from "@/lib/route-guards";
  * Protected app shell (pathless layout).
  *
  * This is the "app-shell" boundary for the main authenticated product experience
- * (chat conversations + inbox). It replaces the old Next behavior where
+ * (chat conversations + inbox). It replaces the previous behavior where
  * `AppRootShell` / `AppShellRouteWrapper` rendered the sidebar chrome for these
  * routes and the global proxy enforced the session.
  *

@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { T } from "gt-react";
 
 /**
- * Support / help-center page. Migrated from Next `src/app/support/page.tsx`.
- * Static metadata moves from the Next `metadata` export to the route `head`.
+ * Support / help-center page. Migrated from previous `src/app/support/page.tsx`.
+ * Static metadata moves from the route metadata export to the route `head`.
  * URL is preserved exactly: /support.
  */
 export const Route = createFileRoute("/support/")({
