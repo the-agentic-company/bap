@@ -8,7 +8,7 @@ import { Sandbox } from "e2b";
 import { beforeAll, describe, expect, test } from "vitest";
 import { liveEnabled } from "../../../web/tests/e2e-cli/live-fixtures";
 
-const templateName = process.env.E2B_SANDBOX_TEMPLATE_NAME || "cmdclaw-agent-dev";
+const templateName = process.env.E2B_SANDBOX_TEMPLATE_NAME || "bap-agent-dev";
 const liveSandboxAgentsEnabled = liveEnabled && Boolean(process.env.E2B_API_KEY);
 const sandboxTimeoutMs = 15 * 60 * 1000;
 const opencodePort = 4096;

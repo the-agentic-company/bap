@@ -27,7 +27,7 @@ const SNAPSHOT_NAME =
   process.env.E2B_DAYTONA_SANDBOX_NAME ||
   process.env.DAYTONA_SNAPSHOT ||
   process.env.DAYTONA_SNAPSHOT_DEV ||
-  "cmdclaw-agent-dev";
+  "bap-agent-dev";
 const DEFAULT_WORKDIR = "/app";
 const COMMAND_TIMEOUT_MS = 60 * 1000;
 const START_TIMEOUT_SECONDS = 60;

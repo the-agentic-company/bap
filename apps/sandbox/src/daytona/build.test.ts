@@ -50,7 +50,7 @@ describe("daytona build helpers", () => {
   it("falls back to the default staging snapshot when the override is blank", () => {
     process.env.DAYTONA_SNAPSHOT_STAGING = "";
 
-    expect(getSnapshotName("staging")).toBe("cmdclaw-agent-staging");
+    expect(getSnapshotName("staging")).toBe("bap-agent-staging");
   });
 
   it("falls back to the dev snapshot env when the shared dev alias is blank", () => {
@@ -126,7 +126,7 @@ describe("daytona build helpers", () => {
     };
 
     await expect(
-      createOrReplaceSnapshot(daytona, "cmdclaw-agent-staging", {
+      createOrReplaceSnapshot(daytona, "bap-agent-staging", {
         sleep: async () => {},
         recreateDelayMs: () => 0,
         deleteCheckDelayMs: () => 0,

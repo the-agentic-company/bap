@@ -17,9 +17,9 @@ bun run daytona:build:prod
 
 Defaults:
 
-- dev snapshot: `cmdclaw-agent-dev`
-- staging snapshot: `cmdclaw-agent-staging`
-- prod snapshot: `cmdclaw-agent-prod`
+- dev snapshot: `bap-agent-dev`
+- staging snapshot: `bap-agent-staging`
+- prod snapshot: `bap-agent-prod`
 
 Override names with:
 

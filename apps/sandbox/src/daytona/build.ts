@@ -36,9 +36,9 @@ type DaytonaSdkError = {
 };
 
 const SNAPSHOT_DEFAULTS: Record<SnapshotStage, string> = {
-  dev: "cmdclaw-agent-dev",
-  staging: "cmdclaw-agent-staging",
-  prod: "cmdclaw-agent-prod",
+  dev: "bap-agent-dev",
+  staging: "bap-agent-staging",
+  prod: "bap-agent-prod",
 };
 
 const SNAPSHOT_ENV_NAMES: Record<SnapshotStage, string> = {

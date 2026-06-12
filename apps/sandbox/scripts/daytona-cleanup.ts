@@ -7,7 +7,7 @@ void dotenvConfig;
 const KEEP_SNAPSHOT =
   process.env.DAYTONA_KEEP_SNAPSHOT ||
   process.env.DAYTONA_SNAPSHOT_DEV ||
-  "cmdclaw-agent-dev";
+  "bap-agent-dev";
 const PAGE_SIZE = 100;
 const TARGET_PREFIX = process.env.DAYTONA_CLEANUP_PREFIX || KEEP_SNAPSHOT;
 
