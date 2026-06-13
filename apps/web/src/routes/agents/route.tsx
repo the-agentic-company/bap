@@ -54,9 +54,15 @@ function AgentsLayout() {
   const isOrgChartRoute = visualPathname === "/agents/org-chart";
   const isCoworkerEditorRoute = visualPathname.startsWith("/agents/edit/");
   const isCoworkerInfoRoute = visualPathname.startsWith("/agents/info/");
-  const isPendingNewPath = isPendingAgentsPathChange({ pathname, resolvedPathname, status });
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const isPendingNewPath =
+    hasHydrated && isPendingAgentsPathChange({ pathname, resolvedPathname, status });
   const [settlingEditPathname, setSettlingEditPathname] = useState<string | null>(null);
   const isSettlingEditRoute = settlingEditPathname === pathname;
+
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
 
   useEffect(() => {
     const handleOpenDrawer = () => setRecentDrawerOpen(true);

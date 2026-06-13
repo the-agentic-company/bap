@@ -30,6 +30,7 @@ type QueryRelation = {
 
 const queryContext = {
   userId: "user-1",
+  workspaceId: "workspace-1",
 } satisfies ZeroQueryContext;
 
 function whereConditions(query: QueryWithAst) {
@@ -63,6 +64,7 @@ describe("Zero queries", () => {
     );
 
     expect(hasSimpleCondition(conditions, "userId", "=", queryContext.userId)).toBe(true);
+    expect(hasSimpleCondition(conditions, "workspaceId", "=", queryContext.workspaceId)).toBe(true);
     expect(hasSimpleCondition(conditions, "type", "=", "chat")).toBe(true);
     expect(hasSimpleCondition(conditions, "archivedAt", "IS", null)).toBe(true);
     expect(hasSimpleCondition(conditions, "syntheticKind", "IS", null)).toBe(true);
@@ -81,9 +83,22 @@ describe("Zero queries", () => {
 
     expect(hasSimpleCondition(conditions, "id", "=", "conversation-1")).toBe(true);
     expect(hasSimpleCondition(conditions, "userId", "=", queryContext.userId)).toBe(true);
+    expect(hasSimpleCondition(conditions, "workspaceId", "=", queryContext.workspaceId)).toBe(true);
     expect(hasSimpleCondition(conditions, "syntheticKind", "IS", null)).toBe(true);
     expect(hasSimpleCondition(conditions, "type", "=", "chat")).toBe(false);
     expect(hasSimpleCondition(conditions, "archivedAt", "IS", null)).toBe(false);
     expect(hasRelatedTable(messageRelation?.subquery.related, "sandboxFile")).toBe(true);
+  });
+
+  it("keeps coworker inventory scoped to the active workspace", () => {
+    const request = zeroQueries.coworkerInventory.coworkers();
+    const query = request.query.fn({
+      args: request.args,
+      ctx: queryContext,
+    }) as unknown as QueryWithAst;
+    const conditions = whereConditions(query);
+
+    expect(hasSimpleCondition(conditions, "ownerId", "=", queryContext.userId)).toBe(true);
+    expect(hasSimpleCondition(conditions, "workspaceId", "=", queryContext.workspaceId)).toBe(true);
   });
 });

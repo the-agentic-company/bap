@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getSessionMock = vi.fn<() => Promise<unknown>>();
 const handleQueryRequestMock = vi.fn<() => Promise<unknown>>();
 const mustGetQueryMock = vi.fn<() => { fn: (input: unknown) => unknown }>();
+const resolveSessionPrincipalWorkspaceIdMock = vi.fn<() => Promise<string>>();
 
 vi.mock("@/lib/auth", () => ({
   auth: {
@@ -16,6 +17,10 @@ vi.mock("@/zero/queries", () => ({
   zeroQueries: {
     conversations: {},
   },
+}));
+
+vi.mock("@/server/session-principal-workspace", () => ({
+  resolveSessionPrincipalWorkspaceId: resolveSessionPrincipalWorkspaceIdMock,
 }));
 
 vi.mock("@/zero/schema", () => ({
@@ -38,6 +43,7 @@ describe("handleZeroQueryRequest", () => {
     getSessionMock.mockReset();
     handleQueryRequestMock.mockReset();
     mustGetQueryMock.mockReset();
+    resolveSessionPrincipalWorkspaceIdMock.mockReset();
   });
 
   it("rejects unauthenticated query hydration", async () => {
@@ -51,9 +57,10 @@ describe("handleZeroQueryRequest", () => {
     expect(handleQueryRequestMock).not.toHaveBeenCalled();
   });
 
-  it("hydrates authenticated query requests with user-only auth context", async () => {
+  it("hydrates authenticated query requests with user and active workspace context", async () => {
     const { handleZeroQueryRequest } = await import("./query");
     getSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    resolveSessionPrincipalWorkspaceIdMock.mockResolvedValue("workspace-1");
     handleQueryRequestMock.mockResolvedValue({ ok: true });
 
     const response = await handleZeroQueryRequest(
@@ -62,6 +69,7 @@ describe("handleZeroQueryRequest", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
+    expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1");
     expect(handleQueryRequestMock).toHaveBeenCalledWith(
       expect.objectContaining({
         handler: expect.any(Function),
@@ -78,7 +86,7 @@ describe("handleZeroQueryRequest", () => {
     handler("conversations.recent", { limit: 50 });
     expect(queryFn).toHaveBeenCalledWith({
       args: { limit: 50 },
-      ctx: { userId: "user-1" },
+      ctx: { userId: "user-1", workspaceId: "workspace-1" },
     });
   });
 });

@@ -4,6 +4,7 @@ import { schema, zql } from "./schema";
 
 export type ZeroQueryContext = {
   userId: string;
+  workspaceId: string;
 };
 
 const RECENT_CONVERSATION_LIMIT = 100;
@@ -32,6 +33,7 @@ const coworkerRunsInput = z.object({
 function accessibleConversationDetails(ctx: ZeroQueryContext) {
   return zql.conversation
     .where("userId", ctx.userId)
+    .where("workspaceId", ctx.workspaceId)
     .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
     .where("syntheticKind", "IS", null);
 }
@@ -43,6 +45,7 @@ function accessibleRecentChatConversations(ctx: ZeroQueryContext) {
 function accessibleCoworkers(ctx: ZeroQueryContext) {
   return zql.coworker
     .where("ownerId", ctx.userId)
+    .where("workspaceId", ctx.workspaceId)
     .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId));
 }
 
@@ -76,6 +79,7 @@ export const zeroQueries = defineQueries({
         .related("runs", (runs) =>
           runs
             .where("ownerId", ctx.userId)
+            .where("workspaceId", ctx.workspaceId)
             .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
             .where("syntheticKind", "IS", null)
             .orderBy("startedAt", "desc")
@@ -90,6 +94,7 @@ export const zeroQueries = defineQueries({
       zql.coworkerRun
         .where("coworkerId", args.coworkerId)
         .where("ownerId", ctx.userId)
+        .where("workspaceId", ctx.workspaceId)
         .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
         .where("syntheticKind", "IS", null)
         .orderBy("startedAt", "desc")
@@ -97,6 +102,7 @@ export const zeroQueries = defineQueries({
     ),
     folders: defineQuery(({ ctx }) =>
       zql.coworkerFolder
+        .where("workspaceId", ctx.workspaceId)
         .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
         .orderBy("parentId", "asc")
         .orderBy("position", "asc")
@@ -104,6 +110,7 @@ export const zeroQueries = defineQueries({
     ),
     tags: defineQuery(({ ctx }) =>
       zql.coworkerTag
+        .where("workspaceId", ctx.workspaceId)
         .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
         .related("assignments")
         .orderBy("name", "asc"),
@@ -113,6 +120,7 @@ export const zeroQueries = defineQueries({
         .whereExists("coworker", (coworker) =>
           coworker
             .where("ownerId", ctx.userId)
+            .where("workspaceId", ctx.workspaceId)
             .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId)),
         )
         .orderBy("createdAt", "asc"),
