@@ -34,3 +34,4 @@ plans/*
 .env.backup
 
 customers
+tmp
