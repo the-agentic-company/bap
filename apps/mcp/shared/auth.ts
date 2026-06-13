@@ -98,6 +98,7 @@ export async function authenticateHostedMcpRequest(params: {
     const claims = await verifyHostedMcpAccessToken(token, {
       secret: process.env.APP_SERVER_SECRET ?? "",
       expectedAudience: params.requiredAudience,
+      issuer: getPublicOrigin(params.req) ?? undefined,
     });
     const scopes = claims.scope;
     if (!scopes.includes(params.requiredAudience)) {
