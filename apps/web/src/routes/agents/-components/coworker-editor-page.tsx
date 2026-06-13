@@ -565,7 +565,22 @@ export default function CoworkerEditorPage({
       enabled: remoteUserSearchEnabled,
       limit: 12,
     });
+  const baseTabParam = searchParams.get("tab");
+  const routeBaseTab: CoworkerTab | null =
+    baseTabParam === "chat" ||
+    baseTabParam === "instruction" ||
+    baseTabParam === "runs" ||
+    baseTabParam === "docs" ||
+    baseTabParam === "toolbox" ||
+    baseTabParam === "admin"
+      ? baseTabParam
+      : null;
+  const routeSearchRunId = routeBaseTab === "runs" ? searchParams.get("run") : null;
   const routeRunId = useMemo(() => {
+    if (routeSearchRunId) {
+      return routeSearchRunId;
+    }
+
     if (embedded || !coworkerId || !pathname) {
       return null;
     }
@@ -577,19 +592,11 @@ export default function CoworkerEditorPage({
 
     const runId = pathname.slice(prefix.length);
     return runId.length > 0 ? runId : null;
-  }, [coworkerId, embedded, pathname, routeCoworkerSlug]);
+  }, [coworkerId, embedded, pathname, routeCoworkerSlug, routeSearchRunId]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(routeRunId);
   const isRunsRoute =
-    !embedded && (pathname?.startsWith(`/agents/edit/${routeCoworkerSlug}/runs`) ?? false);
-  const baseTabParam = searchParams.get("tab");
-  const routeBaseTab: CoworkerTab | null =
-    baseTabParam === "chat" ||
-    baseTabParam === "instruction" ||
-    baseTabParam === "docs" ||
-    baseTabParam === "toolbox" ||
-    baseTabParam === "admin"
-      ? baseTabParam
-      : null;
+    routeBaseTab === "runs" ||
+    (!embedded && (pathname?.startsWith(`/agents/edit/${routeCoworkerSlug}/runs`) ?? false));
   const currentRoutePath = useMemo(() => {
     if (embedded && coworkerId) {
       return `/agents?agent=${encodeURIComponent(coworkerId)}`;
@@ -1740,16 +1747,18 @@ export default function CoworkerEditorPage({
 
       if (options?.runId) {
         void navigate({
-          to: "/agents/edit/$id/runs/$runId",
-          params: { id: coworkerRouteSlug ?? coworkerId, runId: options.runId },
+          to: "/agents/edit/$id",
+          params: { id: coworkerRouteSlug ?? coworkerId },
+          search: { tab: "runs", run: options.runId },
           replace: options.replace,
         });
         return;
       }
 
       void navigate({
-        to: "/agents/edit/$id/runs",
+        to: "/agents/edit/$id",
         params: { id: coworkerRouteSlug ?? coworkerId },
+        search: { tab: "runs" },
         replace: options?.replace,
       });
     },
