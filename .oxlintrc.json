@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "off"
+  },
+  "rules": {
+    "max-lines": ["error", { "max": 1000 }]
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.output/**",
+    "**/.tanstack/**",
+    "**/out/**",
+    "**/build/**",
+    "**/.turbo/**",
+    ".turbo-prune-web/**",
+    ".claude/**",
+    ".worktrees/**",
+    ".agents/**",
+    "experiments/**",
+    "**/*.gen.ts"
+  ]
+}

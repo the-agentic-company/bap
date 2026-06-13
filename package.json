@@ -18,6 +18,7 @@
     "dev:selfhost:web": "bun --env-file=.env.selfhost turbo dev:selfhost --filter=@bap/web",
     "build": "turbo build",
     "check": "turbo check",
+    "lint:size": "bunx --bun oxlint --config .oxlintrc.json .",
     "test": "bun run test:ci",
     "test:ui": "vitest --config vitest.ui.config.ts --ui --open",
     "dev:web": "bun --env-file=.env turbo dev --filter=@bap/web",

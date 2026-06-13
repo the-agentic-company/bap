@@ -178,6 +178,9 @@ jobs:
       - name: Run workspace checks
         run: bun run check
 
+      - name: Check file size limit
+        run: bun run lint:size
+
       - name: Run CI tests
         run: bun run test:ci
 
