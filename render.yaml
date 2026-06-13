@@ -259,7 +259,7 @@ projects:
             plan: starter
             numInstances: 1
             image:
-              url: victoriametrics/victoria-metrics:v1.140.0
+              url: docker.io/victoriametrics/victoria-metrics:v1.140.0
             dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://cmdclaw-vmalert-staging:8880
             disk:
               name: bap-victoria-metrics-data
@@ -767,7 +767,7 @@ projects:
             plan: starter
             numInstances: 1
             image:
-              url: victoriametrics/victoria-metrics:v1.140.0
+              url: docker.io/victoriametrics/victoria-metrics:v1.140.0
             dockerCommand: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://cmdclaw-vmalert-prod:8880
             disk:
               name: bap-victoria-metrics-data-prod
