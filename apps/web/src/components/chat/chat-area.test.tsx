@@ -25,6 +25,7 @@ const {
   mockSetQueryData,
   mockSetSelection,
   mockUseHotkeys,
+  mockConversationGet,
   mockEnqueueConversationMessageMutateAsync,
   mockUpdateConversationQueuedMessageMutateAsync,
   mockConversationQueuedMessagesState,
@@ -44,6 +45,7 @@ const {
   mockSetQueryData: vi.fn<VitestProcedure>(),
   mockSetSelection: vi.fn<VitestProcedure>(),
   mockUseHotkeys: vi.fn<VitestProcedure>(),
+  mockConversationGet: vi.fn<VitestProcedure>(),
   mockEnqueueConversationMessageMutateAsync: vi.fn<VitestProcedure>(),
   mockUpdateConversationQueuedMessageMutateAsync: vi.fn<VitestProcedure>(),
   mockConversationQueuedMessagesState: {
@@ -324,7 +326,7 @@ vi.mock("@/lib/generation-runtime", () => ({
 vi.mock("@/orpc/client", () => ({
   client: {
     conversation: {
-      get: vi.fn<VitestProcedure>(),
+      get: mockConversationGet,
     },
   },
 }));
@@ -593,7 +595,32 @@ vi.mock("@/components/ui/switch", () => ({
   },
 }));
 
+import { shouldRenderInitialLiveActivity, shouldRenderLiveActivity } from "./chat-live-activity";
 import { ChatArea } from "./chat-area";
+
+describe("chat live activity rendering", () => {
+  it("suppresses transient live activity while a terminal assistant message is being inserted", () => {
+    const terminalTransition = {
+      displaySegmentCount: 0,
+      isStreaming: true,
+      suppressLiveActivity: true,
+    };
+
+    expect(shouldRenderLiveActivity(terminalTransition)).toBe(false);
+    expect(shouldRenderInitialLiveActivity(terminalTransition)).toBe(false);
+  });
+
+  it("still renders the initial activity card for a new generation before stream segments arrive", () => {
+    const startingGeneration = {
+      displaySegmentCount: 0,
+      isStreaming: true,
+      suppressLiveActivity: false,
+    };
+
+    expect(shouldRenderLiveActivity(startingGeneration)).toBe(true);
+    expect(shouldRenderInitialLiveActivity(startingGeneration)).toBe(true);
+  });
+});
 
 describe("ChatArea generation errors", () => {
   afterEach(() => {
@@ -609,12 +636,22 @@ describe("ChatArea generation errors", () => {
     mockSetSelection.mockReset();
     mockPosthogCapture.mockReset();
     mockUseHotkeys.mockReset();
+    mockConversationGet.mockReset();
     mockCancelGenerationMutateAsync.mockReset();
     mockEnqueueConversationMessageMutateAsync.mockReset();
     mockUpdateConversationQueuedMessageMutateAsync.mockReset();
     mockConversationQueuedMessagesState.data = undefined;
     mockConversationState.data = null;
     mockConversationState.isLoading = false;
+    mockConversationGet.mockResolvedValue({
+      messages: [
+        {
+          id: "assistant-1",
+          role: "assistant",
+          content: "",
+        },
+      ],
+    });
     mockAdminState.isAdmin = false;
     mockAdminState.isLoading = false;
     mockActiveGenerationState.data = null;
@@ -721,6 +758,60 @@ describe("ChatArea generation errors", () => {
       expect.objectContaining({ content: "hello", conversationId: "conv-1" }),
       expect.any(Object),
     );
+  });
+
+  it("does not revive live activity from stale active-generation data after done", async () => {
+    mockStartGeneration.mockImplementationOnce(async (_input, callbacks) => {
+      callbacks.onStarted?.("gen-done", "conv-1");
+      callbacks.onToolUse?.({
+        toolName: "Bash",
+        toolInput: { command: "echo hi" },
+        toolUseId: "tool-1",
+        integration: "bap",
+        operation: "bash",
+      });
+      callbacks.onDone?.("gen-done", "conv-1", "assistant-1", undefined, {
+        timing: {
+          generationDurationMs: 1200,
+        },
+      });
+      return null;
+    });
+
+    const { rerender } = render(<ChatArea conversationId="conv-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        ["generation", "active", "conv-1"],
+        expect.objectContaining({
+          generationId: null,
+          status: null,
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Activity Feed")).not.toBeInTheDocument();
+    });
+
+    mockSubscribeToGeneration.mockClear();
+    mockActiveGenerationState.data = {
+      generationId: "gen-done",
+      startedAt: "2026-04-10T12:00:00.000Z",
+      errorMessage: null,
+      status: "generating",
+      pauseReason: null,
+      debugRunDeadlineMs: null,
+      contentParts: null,
+    };
+
+    rerender(<ChatArea conversationId="conv-1" />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Activity Feed")).not.toBeInTheDocument();
+    });
+    expect(mockSubscribeToGeneration).not.toHaveBeenCalled();
   });
 
   it("syncs coworker queries when a coworker edit tool completes", async () => {

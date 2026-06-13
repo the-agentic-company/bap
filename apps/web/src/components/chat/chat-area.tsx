@@ -92,6 +92,7 @@ import {
   type ArmedDebugPreset,
   type ChatDebugSnapshot,
 } from "./chat-debug-popover";
+import { shouldRenderInitialLiveActivity, shouldRenderLiveActivity } from "./chat-live-activity";
 import { mergePersistedConversationMessages } from "./chat-message-sync";
 import { useChatModelStore } from "./chat-model-store";
 import { formatDuration } from "./chat-performance-metrics";
@@ -991,6 +992,7 @@ export function ChatArea({
   // Track current generation ID
   const currentGenerationIdRef = useRef<string | undefined>(undefined);
   const locallyStoppedGenerationIdRef = useRef<string | null>(null);
+  const locallyCompletedGenerationIdRef = useRef<string | null>(null);
   const runtimeRef = useRef<GenerationRuntime | null>(null);
   const coworkerEditToolUseIdsRef = useRef(new Set<string>());
   const authCompletionRef = useRef<{ integration: string; interruptId: string } | null>(null);
@@ -1078,6 +1080,7 @@ export function ChatArea({
   const currentConversationIdRef = useRef<string | undefined>(conversationId);
   const viewedConversationIdRef = useRef<string | undefined>(conversationId);
   const streamScopeRef = useRef(0);
+  const suppressLiveActivityRef = useRef(false);
   const interactiveConversationId =
     currentConversationIdRef.current ?? draftConversationId ?? conversationId ?? null;
   const queueConversationId = draftConversationId ?? conversationId;
@@ -1728,6 +1731,7 @@ export function ChatArea({
       options?: { connectedIntegration?: string; questionAnswers?: string[][] },
     ) => {
       setStreamError(null);
+      suppressLiveActivityRef.current = false;
       setSegments((current) => {
         if (kind === "approval") {
           return markResolvedApprovalInterruptInSegments(
@@ -1807,6 +1811,7 @@ export function ChatArea({
   }, [authCompletion, optimisticallyResumeInterruptedGeneration, syncFromRuntime]);
 
   const clearActiveGenerationUi = useCallback(() => {
+    suppressLiveActivityRef.current = true;
     setStreamingParts([]);
     setStreamingSandboxFiles([]);
     setIsStreaming(false);
@@ -1845,6 +1850,7 @@ export function ChatArea({
         status: "error",
         pauseReason: null,
       });
+      suppressLiveActivityRef.current = true;
       clearActiveGenerationUi();
       setStreamError(error.message);
     },
@@ -1859,6 +1865,7 @@ export function ChatArea({
   );
 
   const handleGenerationDoneUi = useCallback(() => {
+    suppressLiveActivityRef.current = true;
     setStreamingParts([]);
     setStreamingSandboxFiles([]);
     setIsStreaming(false);
@@ -1884,6 +1891,7 @@ export function ChatArea({
   ]);
 
   const handleGenerationCancelledUi = useCallback(() => {
+    suppressLiveActivityRef.current = true;
     setIsStreaming(false);
     currentGenerationIdRef.current = undefined;
     runtimeRef.current = null;
@@ -2052,6 +2060,7 @@ export function ChatArea({
   useEffect(() => {
     streamScopeRef.current += 1;
     abort();
+    suppressLiveActivityRef.current = false;
 
     // Always sync the ref with the prop
     currentConversationIdRef.current = conversationId;
@@ -2065,6 +2074,7 @@ export function ChatArea({
     setStreamError(null);
     setStreamingSandboxFiles([]);
     currentGenerationIdRef.current = undefined;
+    locallyCompletedGenerationIdRef.current = null;
     setPendingRunDeadlineResume(null);
     setHistoricalActivityBlocks([]);
     setDismissedRunDeadlineGenerationId(null);
@@ -2082,6 +2092,7 @@ export function ChatArea({
     const handleNewChat = () => {
       streamScopeRef.current += 1;
       abort();
+      suppressLiveActivityRef.current = false;
       runtimeRef.current = null;
       setMessages([]);
       setStreamingParts([]);
@@ -2093,6 +2104,7 @@ export function ChatArea({
       setStreamingSandboxFiles([]);
       currentGenerationIdRef.current = undefined;
       locallyStoppedGenerationIdRef.current = null;
+      locallyCompletedGenerationIdRef.current = null;
       currentConversationIdRef.current = undefined;
       viewedConversationIdRef.current = undefined;
       setDraftConversationId(undefined);
@@ -2115,6 +2127,7 @@ export function ChatArea({
     if (
       activeGeneration?.generationId &&
       activeGeneration.generationId !== locallyStoppedGenerationIdRef.current &&
+      activeGeneration.generationId !== locallyCompletedGenerationIdRef.current &&
       (activeGeneration.status === "generating" ||
         activeGeneration.status === "awaiting_approval" ||
         activeGeneration.status === "awaiting_auth")
@@ -2126,6 +2139,7 @@ export function ChatArea({
       // There's an active generation - reconnect to it
       currentGenerationIdRef.current = activeGeneration.generationId;
       setIsStreaming(true);
+      suppressLiveActivityRef.current = false;
       const reconnectStartedAtMs = activeGeneration.startedAt
         ? Date.parse(activeGeneration.startedAt)
         : NaN;
@@ -2377,6 +2391,17 @@ export function ChatArea({
               artifacts?.sandboxFiles ?? (assistant.sandboxFiles as SandboxFileData[] | undefined),
             timing,
           };
+          locallyCompletedGenerationIdRef.current = generationId;
+          queryClient.setQueryData(["generation", "active", newConversationId], {
+            generationId: null,
+            startedAt: null,
+            errorMessage: null,
+            status: null,
+            pauseReason: null,
+            debugRunDeadlineMs: null,
+            contentParts: null,
+          });
+          suppressLiveActivityRef.current = true;
           upsertMessageById(fallbackAssistant);
           handleGenerationDoneUi();
           const hydratedAssistant = await hydrateAssistantMessage(
@@ -2446,6 +2471,7 @@ export function ChatArea({
     handleGenerationDoneUi,
     onCoworkerSync,
     persistInterruptedRuntimeMessage,
+    queryClient,
     resetInitTracking,
     segments.length,
     syncCoworkerAfterToolResult,
@@ -2545,6 +2571,7 @@ export function ChatArea({
     }
     runtimeRef.current = null;
     currentGenerationIdRef.current = undefined;
+    suppressLiveActivityRef.current = true;
 
     abort();
     // Cancel the generation on the backend too
@@ -2598,6 +2625,8 @@ export function ChatArea({
     async (content: string, attachments?: AttachmentData[], options?: RunGenerationOptions) => {
       // Reset scroll lock so auto-scroll works for the new response
       userScrolledUpRef.current = false;
+      suppressLiveActivityRef.current = false;
+      locallyCompletedGenerationIdRef.current = null;
       setStreamError(null);
       const userMessage: Message = {
         id: `temp-${Date.now()}`,
@@ -2898,6 +2927,17 @@ export function ChatArea({
               artifacts?.sandboxFiles ?? (assistant.sandboxFiles as SandboxFileData[] | undefined),
             timing,
           };
+          locallyCompletedGenerationIdRef.current = generationId;
+          queryClient.setQueryData(["generation", "active", newConversationId], {
+            generationId: null,
+            startedAt: null,
+            errorMessage: null,
+            status: null,
+            pauseReason: null,
+            debugRunDeadlineMs: null,
+            contentParts: null,
+          });
+          suppressLiveActivityRef.current = true;
           upsertMessageById(fallbackAssistant);
           handleGenerationDoneUi();
           const hydratedAssistant = await hydrateAssistantMessage(
@@ -3909,6 +3949,17 @@ export function ChatArea({
 
     return nodes;
   }, [historicalActivityBlocks, messages]);
+  const suppressLiveActivity = suppressLiveActivityRef.current;
+  const showLiveActivity = shouldRenderLiveActivity({
+    displaySegmentCount: displaySegments.length,
+    isStreaming,
+    suppressLiveActivity,
+  });
+  const showInitialLiveActivity = shouldRenderInitialLiveActivity({
+    displaySegmentCount: displaySegments.length,
+    isStreaming,
+    suppressLiveActivity,
+  });
   const latestAgenticAppFile = useMemo(
     () => (enableAgenticApp ? findLatestAgenticAppFile(messages) : null),
     [enableAgenticApp, messages],
@@ -4056,9 +4107,9 @@ export function ChatArea({
 
             {isEmptyChat ? null : (
               <>
-                {(isStreaming || displaySegments.length > 0) && (
+                {showLiveActivity && (
                   <div className="space-y-4 py-4">
-                    {isStreaming && displaySegments.length === 0 && (
+                    {showInitialLiveActivity && (
                       <div className="border-border/50 bg-muted/30 rounded-lg border">
                         <div className="flex items-center gap-2 px-3 py-2">
                           <Activity className="text-muted-foreground h-4 w-4" />
@@ -4369,6 +4420,8 @@ export function ChatArea({
       segmentApproveHandlers,
       segmentDenyHandlers,
       segmentToggleHandlers,
+      showInitialLiveActivity,
+      showLiveActivity,
       showModelSwitchWarning,
       skillsMenuNode,
       stopRecordingAndTranscribe,
