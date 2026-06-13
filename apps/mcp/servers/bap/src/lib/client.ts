@@ -8,7 +8,10 @@ function resolveServerUrl(serverUrl?: string): string {
 export function createMcpClient(extra?: ToolExtraArguments, serverUrl?: string) {
   const resolvedServerUrl = resolveServerUrl(serverUrl);
   const token = extra?.authInfo?.token;
-  const audience = (extra?.authInfo?.extra as { audience?: string } | undefined)?.audience;
+  const authClaims = extra?.authInfo?.extra as
+    | { audience?: string; authType?: string; issuer?: string }
+    | undefined;
+  const audience = authClaims?.audience;
 
   if (!token || audience !== "bap") {
     return {
@@ -21,6 +24,12 @@ export function createMcpClient(extra?: ToolExtraArguments, serverUrl?: string) 
   return {
     status: "ready" as const,
     serverUrl: resolvedServerUrl,
-    client: createRpcClient(resolvedServerUrl, token),
+    client: createRpcClient(
+      resolvedServerUrl,
+      token,
+      authClaims?.authType === "hosted_oauth" && authClaims.issuer
+        ? { "X-Bap-Public-Origin": authClaims.issuer }
+        : undefined,
+    ),
   };
 }

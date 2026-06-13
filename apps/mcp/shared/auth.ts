@@ -9,6 +9,7 @@ type AuthenticatedMcpClaims = {
   userId: string;
   workspaceId: string;
   audience: HostedMcpAudience;
+  issuer?: string;
   grantId?: string;
   internalKey?: string;
   remoteIntegrationSource?: {
@@ -114,6 +115,7 @@ export async function authenticateHostedMcpRequest(params: {
         userId: claims.userId,
         workspaceId: claims.workspaceId,
         audience: claims.audience,
+        issuer: claims.iss,
         grantId: claims.grantId,
         authType: "hosted_oauth" as const,
       },
