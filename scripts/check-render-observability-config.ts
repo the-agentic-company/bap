@@ -6,7 +6,7 @@ const renderConfig = readFileSync(
 );
 
 const renderServicePrefix = "bap";
-const renderPrivateHostPrefix = "bap";
+const renderPrivateHostPrefix = "cmdclaw";
 
 function requireVictoriaMetricsVmalertProxy(
   environment: "staging" | "prod",
