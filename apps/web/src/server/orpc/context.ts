@@ -21,6 +21,7 @@ export type HostedMcpContext = {
   clientId: string;
   grantId: string;
   expiresAt: number;
+  issuedAt: number;
 };
 
 // Runtime-originated caller: the Bap Platform MCP Server inside a
@@ -45,6 +46,61 @@ export type ORPCContext = {
 };
 
 const BAP_MANAGED_INTERNAL_KEY = "bap";
+
+function resolvePublicMcpOrigin(headers: Headers): string | undefined {
+  const explicit = headers.get("x-bap-public-origin")?.trim();
+  if (explicit && URL.canParse(explicit)) {
+    return new URL(explicit).origin;
+  }
+
+  const forwardedHost = headers.get("x-forwarded-host")?.trim();
+  if (!forwardedHost) {
+    return undefined;
+  }
+
+  const forwardedProto = headers.get("x-forwarded-proto")?.trim() || "https";
+  return `${forwardedProto}://${forwardedHost}`;
+}
+
+export async function resolveHostedMcpClaims(
+  headers: Headers,
+  secret: string,
+  nowSeconds?: number,
+): Promise<HostedMcpContext> {
+  const authorization = headers.get("authorization");
+  const token =
+    typeof authorization === "string" && authorization.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length).trim()
+      : null;
+  if (!token) {
+    throw new Error("Missing bearer token.");
+  }
+  if (!secret) {
+    throw new Error("Hosted MCP secret is not configured.");
+  }
+
+  const claims = await verifyHostedMcpAccessToken(token, {
+    secret,
+    expectedAudience: "bap",
+    issuer: resolvePublicMcpOrigin(headers),
+    nowSeconds,
+  });
+  if (!claims.scope.includes("bap")) {
+    throw new Error("Hosted MCP token is missing the Bap scope.");
+  }
+
+  return {
+    token,
+    userId: claims.userId,
+    workspaceId: claims.workspaceId,
+    audience: claims.audience,
+    scopes: claims.scope,
+    clientId: claims.clientId,
+    grantId: claims.grantId,
+    expiresAt: claims.exp,
+    issuedAt: claims.iat,
+  };
+}
 
 export function resolveManagedMcpClaims(
   headers: Headers,
@@ -79,22 +135,10 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
   session: Session;
   hostedMcp: HostedMcpContext;
 } | null> {
-  const authorization = headers.get("authorization");
-  const token =
-    typeof authorization === "string" && authorization.startsWith("Bearer ")
-      ? authorization.slice("Bearer ".length).trim()
-      : null;
-
-  if (!token) {
-    return null;
-  }
-
   try {
-    const claims = await verifyHostedMcpAccessToken(token, {
-      secret: process.env.APP_SERVER_SECRET ?? "",
-    });
+    const hostedMcp = await resolveHostedMcpClaims(headers, process.env.APP_SERVER_SECRET ?? "");
     const dbUser = await db.query.user.findFirst({
-      where: eq(userTable.id, claims.userId),
+      where: eq(userTable.id, hostedMcp.userId),
     });
     if (!dbUser) {
       return null;
@@ -103,25 +147,16 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
     return {
       user: dbUser as unknown as User,
       session: {
-        id: `hosted-mcp:${claims.grantId}`,
-        userId: claims.userId,
-        token: `hosted-mcp:${claims.grantId}`,
-        expiresAt: new Date(claims.exp * 1000),
-        createdAt: new Date(claims.iat * 1000),
-        updatedAt: new Date(claims.iat * 1000),
+        id: `hosted-mcp:${hostedMcp.grantId}`,
+        userId: hostedMcp.userId,
+        token: `hosted-mcp:${hostedMcp.grantId}`,
+        expiresAt: new Date(hostedMcp.expiresAt * 1000),
+        createdAt: new Date(hostedMcp.issuedAt * 1000),
+        updatedAt: new Date(hostedMcp.issuedAt * 1000),
         ipAddress: null,
         userAgent: headers.get("user-agent"),
       } as Session,
-      hostedMcp: {
-        token,
-        userId: claims.userId,
-        workspaceId: claims.workspaceId,
-        audience: claims.audience,
-        scopes: claims.scope,
-        clientId: claims.clientId,
-        grantId: claims.grantId,
-        expiresAt: claims.exp,
-      },
+      hostedMcp,
     };
   } catch {
     return null;
