@@ -552,6 +552,22 @@ async function createDeploy(
   );
 }
 
+async function updateDockerCommand(
+  serviceId: string,
+  dockerCommand: string,
+): Promise<void> {
+  await renderRequestWithRetry(`/services/${serviceId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      serviceDetails: {
+        envSpecificDetails: {
+          dockerCommand,
+        },
+      },
+    }),
+  });
+}
+
 async function rollbackDeploy(serviceId: string, deployId: string): Promise<RenderDeploy> {
   return unwrapDeploy(
     await renderRequestWithRetry(`/services/${serviceId}/rollback`, {
@@ -581,8 +597,13 @@ async function main(): Promise<void> {
   if (command === "deploy") {
     const commitId = readArg("--commit")?.trim();
     const imageUrl = readArg("--image-url")?.trim();
+    const dockerCommand = readArg("--docker-command")?.trim();
     if (!commitId && !imageUrl) {
       fail("Missing required argument --commit or --image-url");
+    }
+    if (dockerCommand) {
+      console.log(`[render-deploy] Updating Docker command for ${serviceId}`);
+      await updateDockerCommand(serviceId, dockerCommand);
     }
     const deploy = await createDeploy(serviceId, { commitId, imageUrl });
     writeOutput("deploy_id", deploy.id);

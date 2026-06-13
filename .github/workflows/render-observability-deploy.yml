@@ -54,6 +54,7 @@ jobs:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_NAME: bap-victoria-metrics-${{ inputs.environment }}
       RENDER_IMAGE_URL: docker.io/victoriametrics/victoria-metrics:v1.140.0
+      RENDER_DOCKER_COMMAND: /victoria-metrics-prod -storageDataPath=/victoria-metrics-data -vmalert.proxyURL=http://cmdclaw-vmalert-${{ inputs.environment }}:8880
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -75,7 +76,7 @@ jobs:
           }
 
       - name: Deploy VictoriaMetrics
-        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --image-url "${RENDER_IMAGE_URL}"
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --image-url "${RENDER_IMAGE_URL}" --docker-command "${RENDER_DOCKER_COMMAND}"
 
   deploy-grafana:
     if: ${{ inputs.deploy_grafana }}
