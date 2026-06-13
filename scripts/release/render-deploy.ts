@@ -531,11 +531,23 @@ async function findPreviousSuccessfulDeploy(serviceId: string): Promise<RenderDe
   return deploys.find((deploy) => successStatuses.has(deploy.status ?? "")) ?? null;
 }
 
-async function createDeploy(serviceId: string, commitId: string): Promise<RenderDeploy> {
+async function createDeploy(
+  serviceId: string,
+  options: { commitId?: string; imageUrl?: string },
+): Promise<RenderDeploy> {
+  const { commitId, imageUrl } = options;
+  const body: Record<string, string> = { clearCache: "do_not_clear" };
+  if (commitId) {
+    body.commitId = commitId;
+  }
+  if (imageUrl) {
+    body.imageUrl = imageUrl;
+  }
+
   return unwrapDeploy(
     await renderRequestWithRetry(`/services/${serviceId}/deploys`, {
       method: "POST",
-      body: JSON.stringify({ commitId, clearCache: "do_not_clear" }),
+      body: JSON.stringify(body),
     }),
   );
 }
@@ -567,8 +579,12 @@ async function main(): Promise<void> {
   }
 
   if (command === "deploy") {
-    const commitId = requireArg("--commit");
-    const deploy = await createDeploy(serviceId, commitId);
+    const commitId = readArg("--commit")?.trim();
+    const imageUrl = readArg("--image-url")?.trim();
+    if (!commitId && !imageUrl) {
+      fail("Missing required argument --commit or --image-url");
+    }
+    const deploy = await createDeploy(serviceId, { commitId, imageUrl });
     writeOutput("deploy_id", deploy.id);
     await waitForDeploy(serviceId, deploy.id);
     return;

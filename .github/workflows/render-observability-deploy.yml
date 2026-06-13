@@ -53,6 +53,7 @@ jobs:
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_NAME: bap-victoria-metrics-${{ inputs.environment }}
+      RENDER_IMAGE_URL: victoriametrics/victoria-metrics:v1.140.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -74,9 +75,7 @@ jobs:
           }
 
       - name: Deploy VictoriaMetrics
-        env:
-          COMMIT_SHA: ${{ inputs.commit_sha }}
-        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --commit "${COMMIT_SHA}"
+        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_SERVICE_NAME}" --image-url "${RENDER_IMAGE_URL}"
 
   deploy-grafana:
     if: ${{ inputs.deploy_grafana }}
