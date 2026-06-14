@@ -93,7 +93,7 @@ jobs:
             : > "$log_file"
             echo "Running db:push attempt ${attempt}/${max_attempts}"
 
-            if bun run db:push 2>&1 | tee "$log_file"; then
+            if bun run --cwd packages/db "db:push:${ENVIRONMENT}" 2>&1 | tee "$log_file"; then
               if grep -Eq "^error:" "$log_file"; then
                 echo "db:push printed an error but exited successfully; failing CI." >&2
                 exit 1
