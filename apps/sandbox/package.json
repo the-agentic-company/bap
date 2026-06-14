@@ -27,7 +27,7 @@
     "e2b:sandbox:kill": "bun --env-file=../../.env scripts/e2b-sandboxes.ts kill",
     "e2b:sandbox:kill-all": "bun --env-file=../../.env scripts/e2b-sandboxes.ts kill-all",
     "e2b:sandbox:list": "bun --env-file=../../.env scripts/e2b-sandboxes.ts list",
-    "test:unit": "vitest run --config vitest.config.ts scripts/test-sandbox.test.ts scripts/daytona-sandbox.test.ts src/daytona/build.test.ts",
+    "test:unit": "vitest run --config vitest.config.ts scripts/test-sandbox.test.ts scripts/daytona-sandbox.test.ts src/common/versions.test.ts src/daytona/build.test.ts",
     "test:live": "bun --env-file=../../.env vitest run src/common/opencode-agents.live.test.ts"
   },
   "dependencies": {
@@ -35,7 +35,7 @@
     "@bap/message-format": "workspace:*",
     "@daytonaio/sdk": "^0.186.0",
     "@opencode-ai/plugin": "^1.17.3",
-    "@opencode-ai/sdk": "^1.16.2",
+    "@opencode-ai/sdk": "^1.17.3",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "e2b": "^2.12.1"

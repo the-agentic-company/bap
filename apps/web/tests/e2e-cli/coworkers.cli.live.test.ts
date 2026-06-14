@@ -7,12 +7,16 @@ import {
   liveEnabled,
   requireMatch,
   responseTimeoutMs,
+  resolveLiveModel,
   runBunCommand,
 } from "./live-fixtures";
+
+let liveModel = "";
 
 describe.runIf(liveEnabled)("@live CLI coworkers", () => {
   beforeAll(async () => {
     await ensureCliAuth();
+    liveModel = await resolveLiveModel();
   });
 
   test(
@@ -36,6 +40,8 @@ describe.runIf(liveEnabled)("@live CLI coworkers", () => {
         "manual",
         "--prompt",
         prompt,
+        "--model",
+        liveModel,
         "--auto-approve",
       ]);
 

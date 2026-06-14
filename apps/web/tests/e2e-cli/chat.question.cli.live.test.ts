@@ -206,6 +206,10 @@ command = [
     "chat",
     "--attach",
     os.environ["CHAT_CONVERSATION_ID"],
+    "--model",
+    os.environ["CHAT_MODEL"],
+    "--sandbox",
+    os.environ["CHAT_SANDBOX_PROVIDER"],
 ]
 
 env = dict(os.environ)
@@ -263,6 +267,7 @@ sys.exit(process.wait())
 
 async function runInteractiveQuestionAttach(args: {
   conversationId: string;
+  model: string;
   timeoutMs: number;
 }): Promise<InteractiveCommandResult> {
   return new Promise((resolveDone) => {
@@ -272,6 +277,8 @@ async function runInteractiveQuestionAttach(args: {
         ...process.env,
         CHAT_CWD: process.cwd(),
         CHAT_CONVERSATION_ID: args.conversationId,
+        CHAT_MODEL: args.model,
+        CHAT_SANDBOX_PROVIDER: liveSandboxProvider,
         CHAT_SERVER_URL: defaultServerUrl,
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -422,6 +429,7 @@ describe.runIf(liveEnabled)("@live CLI chat question", () => {
 
       const resumed = await runInteractiveQuestionAttach({
         conversationId,
+        model: liveModel,
         timeoutMs: Math.max(responseTimeoutMs, 120_000),
       });
 
