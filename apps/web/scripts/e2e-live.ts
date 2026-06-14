@@ -409,6 +409,7 @@ async function runCliLive(env: NodeJS.ProcessEnv): Promise<void> {
     "tests/e2e-cli/chat.slack.cli.live.test.ts",
     "tests/e2e-cli/chat.gmail.cli.live.test.ts",
     "tests/e2e-cli/chat.linear.cli.live.test.ts",
+    "tests/e2e-cli/chat.bap-mcp.cli.live.test.ts",
     "tests/e2e-cli/chat.google-calendar.cli.live.test.ts",
     "tests/e2e-cli/chat.google-drive.cli.live.test.ts",
     "tests/e2e-cli/chat.linkedin.cli.live.test.ts",

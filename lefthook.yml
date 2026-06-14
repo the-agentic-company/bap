@@ -7,7 +7,7 @@ pre-commit:
       run: bunx --bun oxlint --config apps/web/.oxlintrc.json --tsconfig apps/web/tsconfig.json {staged_files}
     lint-size:
       glob: "*.{ts,tsx,js,jsx}"
-      run: bunx --bun oxlint --config .oxlintrc.json {staged_files}
+      run: bun scripts/lint-size-baseline.ts
     typecheck:
       run: bun run check:web && bun run check:worker
     format:
