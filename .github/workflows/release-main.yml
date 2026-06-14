@@ -305,21 +305,23 @@ jobs:
     if: ${{ always() && needs.staging-resume.result != 'skipped' }}
     runs-on: ubuntu-latest
     environment: staging
-    env:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+    # env:
+    #   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.resolve.outputs.commit_sha }}
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Suspend staging Render resources
-        run: bun scripts/release/render-staging-lifecycle.ts suspend
+      - name: Keep staging Render resources running
+        run: echo "Staging Render suspend is temporarily disabled for manual testing."
+      # - name: Checkout repository
+      #   uses: actions/checkout@v6
+      #   with:
+      #     ref: ${{ needs.resolve.outputs.commit_sha }}
+      #
+      # - name: Setup Bun
+      #   uses: oven-sh/setup-bun@v2
+      #   with:
+      #     bun-version: latest
+      #
+      # - name: Suspend staging Render resources
+      #   run: bun scripts/release/render-staging-lifecycle.ts suspend
 
   # Keep release-main staging-only while production release verification is paused.
   # prod-db:

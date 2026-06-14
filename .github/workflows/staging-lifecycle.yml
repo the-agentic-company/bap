@@ -1,0 +1,70 @@
+name: Manage Staging Render Resources
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Start or stop every Render resource in staging"
+        required: true
+        default: start
+        type: choice
+        options:
+          - start
+          - stop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-render-lifecycle
+  cancel-in-progress: false
+
+run-name: Staging Render ${{ inputs.action }} by @${{ github.actor }}
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 60
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Validate Render configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RENDER_API_KEY}" ]; then
+            printf 'Missing RENDER_API_KEY for GitHub environment "staging".\n' >&2
+            exit 1
+          fi
+
+      - name: Apply staging lifecycle action
+        env:
+          ACTION: ${{ inputs.action }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${ACTION}" in
+            start)
+              command=resume
+              ;;
+            stop)
+              command=suspend
+              ;;
+            *)
+              printf 'Unsupported action: %s\n' "${ACTION}" >&2
+              exit 1
+              ;;
+          esac
+
+          bun scripts/release/render-staging-lifecycle.ts "${command}"

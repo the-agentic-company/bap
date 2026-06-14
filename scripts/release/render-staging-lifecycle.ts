@@ -56,6 +56,7 @@ const stagingResources: Resource[] = [
   { kind: "service", name: "bap-web-staging" },
   { kind: "service", name: "bap-mcp-staging" },
   { kind: "service", name: "bap-worker-staging" },
+  { kind: "service", name: "bap-app-edge-staging" },
 ];
 
 function fail(message: string): never {
