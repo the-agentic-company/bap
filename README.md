@@ -70,7 +70,7 @@ bun run bap -- --help
 bun install
 docker compose -f docker/compose/dev.yml up -d
 cp .env.example .env
-bun db:push
+bun run --cwd packages/db db:push
 bun dev
 ```
 

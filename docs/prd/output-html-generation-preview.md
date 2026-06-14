@@ -150,7 +150,7 @@ The first rollout enables this only on normal chat pages. Other chat surfaces ca
 - Prior art exists in sandbox file live and CLI tests, generation manager sandbox file tests, conversation router sandbox file download tests, chat area tests, message item tests, and dual-panel workspace tests.
 - After implementation, run targeted tests for changed runtime collection, preview API, selection module, and ChatArea behavior.
 - Run `bun run check` before completion.
-- If the implementation touches database schema unexpectedly, use `bun run db:push` for local schema update per app instructions.
+- If the implementation touches database schema unexpectedly, use `bun run --cwd packages/db db:push` for the local schema update per app instructions.
 
 ## Out of Scope
 

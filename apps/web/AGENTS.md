@@ -2,7 +2,7 @@
 
 ## Package manager and scripts
 -  Use `bun`, not `npm`.
--  Use `bun db:push` for migrations, not `db:generate`.
+-  Use `bun run --cwd packages/db db:push` from the repo root for migrations, not `db:generate`.
 -  When editing a Better Auth plugin, run `bun auth:generate` to regenerate the schema.
 -  Run `bun run check` to validate types and lint.
 
@@ -28,7 +28,7 @@
 -  Do not add unnecessary environment variables to control behavior; ask the user if you want to add a variable to be sure it is really needed.
 
 ## Database
-Use `bun run db:push` when you edit schema.ts for my app to use the latest schema changes
+Use `bun run --cwd packages/db db:push` from the repo root when you edit `packages/db/src/schema.ts` for my app to use the latest schema changes.
 
 ## Bun
 always use bun not npm or pnpm

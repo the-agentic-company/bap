@@ -48,13 +48,13 @@ description: "Deploy your own Bap instance with Docker, PostgreSQL, and Redis."
     Push the schema to your database:
 
     ```bash
-    bun db:push
+    bun run --cwd packages/db db:push
     ```
 
     Optionally seed with initial data:
 
     ```bash
-    bun db:seed
+    bun run --cwd packages/db db:seed
     ```
   </Step>
   <Step title="Start the app">
@@ -149,9 +149,9 @@ This command also loads `/.env`.
 | `bun test` | Run workspace tests |
 | `bun start:worker` | Start the background job worker using `/.env` |
 | `bun start:ws` | Start the WebSocket server using `/.env` |
-| `bun db:push` | Push schema changes to the database |
-| `bun db:studio` | Open Drizzle Studio (database browser) |
-| `bun db:seed` | Seed the database |
+| `bun run --cwd packages/db db:push` | Push schema changes to the database |
+| `bun run --cwd packages/db db:studio` | Open Drizzle Studio (database browser) |
+| `bun run --cwd packages/db db:seed` | Seed the database |
 
 ## Tech stack
 

@@ -538,7 +538,7 @@ export async function waitForDatabaseReady(connectionString: string, timeoutMs: 
 }
 
 export async function runDbPush(metadata: InstanceMetadata): Promise<void> {
-  const result = spawnSync("bun", ["run", "--shell", "system", "--cwd", "apps/web", "db:push"], {
+  const result = spawnSync("bun", ["run", "--shell", "system", "--cwd", "packages/db", "db:push"], {
     cwd: metadata.repoRoot,
     env: {
       ...process.env,

@@ -179,8 +179,6 @@
     "apps/web/scripts/coworker.ts:744-753|apps/web/src/server/internal/coworker-runtime.ts:55-63",
     "apps/web/scripts/coworker.ts:1706-1716|apps/web/scripts/coworker.ts:867-884",
     "apps/web/scripts/coworker.ts:1295-1302|apps/web/scripts/coworker.ts:1323-1330",
-    "apps/web/scripts/db-push.ts:1-20|apps/web/scripts/db-studio.ts:1-20",
-    "apps/web/scripts/db-push.ts:20-33|apps/web/scripts/db-studio.ts:20-33",
     "apps/web/scripts/e2e-auth.ts:54-76|apps/web/tests/e2e/slack-live.e2e.ts:72-94",
     "apps/web/scripts/e2e-auth.ts:97-108|apps/web/src/routes/api/dev/-handlers.ts:211-222",
     "apps/web/scripts/e2e-live.ts:96-109|apps/worktree/src/cli.ts:245-258|apps/worktree/src/proxy.ts:42-55",

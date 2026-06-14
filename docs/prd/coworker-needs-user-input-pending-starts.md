@@ -165,7 +165,7 @@ The coworker builder can enable or disable the requirement and generate the User
 - Prior art exists in coworker router tests, inbox router tests, generation manager tests, coworker builder service tests, CLI parsing tests, and coworker live/CLI tests.
 - After implementation, run targeted tests for the touched modules and `bun run check`.
 - Because this crosses schema and runtime behavior, run broader coworker and inbox test suites before considering the PRD complete.
-- If the database schema changes, use `bun run db:push` for the local app schema update, per app instructions.
+- If the database schema changes, use `bun run --cwd packages/db db:push` for the local app schema update, per app instructions.
 
 ## Out of Scope
 

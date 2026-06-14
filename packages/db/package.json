@@ -13,12 +13,17 @@
   "scripts": {
     "build": "bunx tsc --noEmit -p tsconfig.json",
     "check": "bunx tsc --noEmit -p tsconfig.json",
-    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
-    "db:migrate": "bun src/ensure-extensions.ts && drizzle-kit migrate --config=drizzle.config.ts",
-    "db:push": "bun src/ensure-extensions.ts && drizzle-kit push --config=drizzle.config.ts",
-    "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
-    "reset": "bun src/reset.ts",
-    "seed": "bun src/seed.ts"
+    "db:generate": "bun --env-file=../../.env drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "bun --env-file=../../.env src/ensure-extensions.ts && bun --env-file=../../.env drizzle-kit migrate --config=drizzle.config.ts",
+    "db:push": "bun --env-file=../../.env src/ensure-extensions.ts && bun --env-file=../../.env drizzle-kit push --config=drizzle.config.ts",
+    "db:push:prod": "bun --env-file=../../.env scripts/db-push.ts prod",
+    "db:push:staging": "bun --env-file=../../.env scripts/db-push.ts staging",
+    "db:recreate": "bun run db:reset && bun run db:seed",
+    "db:reset": "bun --env-file=../../.env src/reset.ts",
+    "db:seed": "bun --env-file=../../.env src/seed.ts",
+    "db:studio": "bun --env-file=../../.env drizzle-kit studio --config=drizzle.config.ts",
+    "db:studio:prod": "bun --env-file=../../.env scripts/db-studio.ts prod",
+    "db:studio:staging": "bun --env-file=../../.env scripts/db-studio.ts staging"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",
