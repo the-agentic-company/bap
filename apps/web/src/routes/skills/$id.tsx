@@ -2,44 +2,14 @@
 
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import {
-  ArrowLeft,
-  Loader2,
-  Trash2,
-  Plus,
-  FileText,
-  CheckCircle2,
-  XCircle,
-  Pencil,
-  FileUp,
-  Download,
-  File,
-  Image,
-  FileSpreadsheet,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type { DisplayIntegrationType } from "@/lib/integration-icons";
-import { IntegrationBadges } from "@/components/chat/integration-badges";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { IconPicker } from "@/components/ui/icon-picker";
 import { Input } from "@/components/ui/input";
-import {
-  MarkdownEditorModeToggle,
-  type MarkdownEditorMode,
-} from "@/components/ui/markdown-editor-mode-toggle";
-import { MilkdownEditor } from "@/components/ui/milkdown-editor";
-import { Switch } from "@/components/ui/switch";
+import { type MarkdownEditorMode } from "@/components/ui/markdown-editor-mode-toggle";
 import { parseSkillContent, serializeSkillContent } from "@/lib/skill-markdown";
-import { cn } from "@/lib/utils";
 import {
   useSkill,
   useUpdateSkill,
@@ -52,6 +22,16 @@ import {
   useGetDocumentUrl,
   useSaveSharedSkill,
 } from "@/orpc/hooks/skills";
+import { DeleteDocumentDialog, DeleteFileDialog } from "./-skill/dialogs";
+import { SkillEditorArea } from "./-skill/editor-area";
+import { SkillFileTabs } from "./-skill/file-tabs";
+import { SkillEditorHeader, SkillEditorMetadata } from "./-skill/header";
+import {
+  generateDisplayName,
+  generateSlug,
+  isViewableDocument,
+  type SkillMarkdownViewMode,
+} from "./-skill/helpers";
 
 /**
  * /skills/$id — user skill editor (was src/app/skills/[id]/page.tsx).
@@ -60,40 +40,6 @@ import {
 export const Route = createFileRoute("/skills/$id")({
   component: SkillEditorPage,
 });
-
-type SkillMarkdownViewMode = MarkdownEditorMode;
-const markdownRemarkPlugins = [remarkGfm];
-
-function generateSlug(displayName: string): string {
-  return displayName
-    .toLowerCase()
-    .replace(/[^a-z0-9-\s]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 64);
-}
-
-function generateDisplayName(slug: string): string {
-  return slug
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function isViewableDocument(mimeType: string) {
-  return mimeType === "application/pdf" || mimeType.startsWith("image/");
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function SkillEditorPageFallback() {
   return (
@@ -559,16 +505,6 @@ function SkillEditorPageContent() {
     syncSkillMarkdownState,
   ]);
 
-  const getDocumentIcon = (mimeType: string) => {
-    if (mimeType.startsWith("image/")) {
-      return Image;
-    }
-    if (mimeType.includes("spreadsheet") || mimeType.includes("excel")) {
-      return FileSpreadsheet;
-    }
-    return File;
-  };
-
   // Auto-dismiss notification
   useEffect(() => {
     if (notification) {
@@ -883,310 +819,67 @@ function SkillEditorPageContent() {
       {/* Skill copilot dual panel is disabled until it is ready. */}
       <div className="flex h-full min-h-0 flex-col">
         {/* Header with back button and delete */}
-        <div className="mb-6 flex shrink-0 items-center justify-between">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/toolbox">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex items-center gap-2">
-            {!canEdit ? (
-              <span className="text-muted-foreground text-xs">
-                <T>Shared by</T> {skill.owner.name ?? skill.owner.email ?? "workspace"}
-              </span>
-            ) : null}
-            <span
-              className={cn(
-                "flex items-center gap-1.5 text-xs transition-opacity",
-                isSaving
-                  ? "opacity-100 text-muted-foreground"
-                  : notification?.type === "success"
-                    ? "opacity-100 text-green-600 dark:text-green-400"
-                    : notification?.type === "error"
-                      ? "opacity-100 text-red-600 dark:text-red-400"
-                      : "opacity-0 text-muted-foreground",
-              )}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <T>Saving...</T>
-                </>
-              ) : notification?.type === "success" ? (
-                <>
-                  <CheckCircle2 className="h-3 w-3" />
-                  <T>Saved</T>
-                </>
-              ) : notification?.type === "error" ? (
-                <>
-                  <XCircle className="h-3 w-3" />
-                  {notification.message}
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-3 w-3" />
-                  <T>Saved</T>
-                </>
-              )}
-            </span>
-            {canEdit ? (
-              <Button variant="ghost" size="sm" onClick={handleDeleteSkill}>
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" onClick={handleSaveSharedSkill}>
-                {isSavingShared ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Download className="h-3 w-3" />
-                )}
-                <T>Save to my skills</T>
-              </Button>
-            )}
-          </div>
-        </div>
+        <SkillEditorHeader
+          canEdit={canEdit}
+          owner={skill.owner}
+          isSaving={isSaving}
+          isSavingShared={isSavingShared}
+          notification={notification}
+          onDeleteSkill={handleDeleteSkill}
+          onSaveSharedSkill={handleSaveSharedSkill}
+        />
 
         {/* Notion-style inline editable metadata */}
-        <div className="mb-6 shrink-0 space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "size-2 rounded-full",
-                  isEnabled ? "bg-green-500" : "bg-muted-foreground/30",
-                )}
-              />
-              <span className="text-muted-foreground text-sm">
-                {isEnabled ? "Enabled" : "Disabled"}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground text-xs font-medium">
-                {isEnabled ? "On" : "Off"}
-              </span>
-              <Switch
-                checked={isEnabled}
-                onCheckedChange={handleToggleEnabled}
-                disabled={!canEdit || isSaving}
-                aria-label={t("Toggle skill enabled")}
-              />
-            </div>
-          </div>
-
-          {/* Icon and Display Name */}
-          <div className="flex items-start gap-3">
-            {canEdit ? (
-              <IconPicker value={skillIcon} onChange={setSkillIcon}>
-                <button
-                  type="button"
-                  className="bg-muted hover:bg-muted/80 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border transition-colors"
-                >
-                  {skillIcon ? (
-                    <span className="text-2xl">{skillIcon}</span>
-                  ) : (
-                    <FileText className="text-muted-foreground h-6 w-6" />
-                  )}
-                </button>
-              </IconPicker>
-            ) : (
-              <div className="bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border">
-                {skillIcon ? (
-                  <span className="text-2xl">{skillIcon}</span>
-                ) : (
-                  <FileText className="text-muted-foreground h-6 w-6" />
-                )}
-              </div>
-            )}
-            <input
-              ref={displayNameRef}
-              type="text"
-              value={skillDisplayName}
-              onChange={handleDisplayNameInputChange}
-              placeholder={t("Untitled Skill")}
-              readOnly={!canEdit}
-              className="placeholder:text-muted-foreground/50 w-full bg-transparent pt-1 text-3xl font-bold outline-none focus:outline-none"
-            />
-          </div>
-
-          {/* Slug - Small monospace, editable on click */}
-          <div className="flex items-center gap-1.5">
-            {isEditingSlug ? (
-              <input
-                ref={slugRef}
-                type="text"
-                value={skillSlug}
-                onChange={handleSlugInputChange}
-                onBlur={handleStopEditingSlug}
-                onKeyDown={handleSlugInputKeyDown}
-                className="text-muted-foreground h-6 bg-transparent font-mono text-xs outline-none"
-                autoFocus
-              />
-            ) : (
-              <button
-                onClick={handleStartEditingSlug}
-                disabled={!canEdit}
-                className="group text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-              >
-                <span className="font-mono">{skillSlug || "skill-slug"}</span>
-                {canEdit ? <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" /> : null}
-              </button>
-            )}
-          </div>
-
-          {/* Description - Muted text, expands to input on click */}
-          {isEditingDescription ? (
-            <textarea
-              ref={descriptionRef}
-              value={skillDescription}
-              onChange={handleDescriptionInputChange}
-              onBlur={handleStopEditingDescription}
-              onKeyDown={handleDescriptionInputKeyDown}
-              placeholder={t("Add a description...")}
-              className="text-muted-foreground placeholder:text-muted-foreground/50 min-h-20 w-full resize-y bg-transparent text-sm outline-none"
-              autoFocus
-            />
-          ) : (
-            <button
-              onClick={handleStartEditingDescription}
-              disabled={!canEdit}
-              className="text-muted-foreground hover:text-foreground text-left text-sm whitespace-pre-wrap"
-            >
-              {skillDescription || (
-                <span className="text-muted-foreground/50">
-                  <T>Add a description...</T>
-                </span>
-              )}
-            </button>
-          )}
-
-          {toolIntegrations.length > 0 ? (
-            <div className="pt-2">
-              <p className="text-muted-foreground mb-2 text-[10px] font-medium tracking-widest uppercase">
-                <T>Tool Integrations</T>
-              </p>
-              <IntegrationBadges integrations={toolIntegrations} size="md" />
-            </div>
-          ) : null}
-        </div>
+        <SkillEditorMetadata
+          canEdit={canEdit}
+          isEnabled={isEnabled}
+          isSaving={isSaving}
+          skillIcon={skillIcon}
+          setSkillIcon={setSkillIcon}
+          skillDisplayName={skillDisplayName}
+          skillSlug={skillSlug}
+          skillDescription={skillDescription}
+          isEditingSlug={isEditingSlug}
+          isEditingDescription={isEditingDescription}
+          toolIntegrations={toolIntegrations}
+          t={t}
+          displayNameRef={displayNameRef}
+          slugRef={slugRef}
+          descriptionRef={descriptionRef}
+          onToggleEnabled={handleToggleEnabled}
+          onDisplayNameInputChange={handleDisplayNameInputChange}
+          onSlugInputChange={handleSlugInputChange}
+          onStopEditingSlug={handleStopEditingSlug}
+          onSlugInputKeyDown={handleSlugInputKeyDown}
+          onStartEditingSlug={handleStartEditingSlug}
+          onDescriptionInputChange={handleDescriptionInputChange}
+          onStopEditingDescription={handleStopEditingDescription}
+          onDescriptionInputKeyDown={handleDescriptionInputKeyDown}
+          onStartEditingDescription={handleStartEditingDescription}
+        />
 
         {/* File tabs - subtle style, above editor */}
-        <div className="border-border/50 mb-3 flex shrink-0 items-center gap-1 overflow-x-auto border-b">
-          {/* Text files */}
-          {skill.files
-            .toSorted((a, b) => {
-              if (a.path === "SKILL.md") {
-                return -1;
-              }
-              if (b.path === "SKILL.md") {
-                return 1;
-              }
-              return a.path.localeCompare(b.path);
-            })
-            .map((file) => (
-              <button
-                key={file.id}
-                data-file-id={file.id}
-                onClick={handleFileTabClick}
-                className={cn(
-                  "group flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors",
-                  selectedFileId === file.id
-                    ? "border-b-2 border-foreground/70 font-medium text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <FileText className="h-3 w-3" />
-                {file.path}
-                {canEdit && file.path !== "SKILL.md" && (
-                  <button
-                    data-file-id={file.id}
-                    data-file-path={file.path}
-                    onClick={handlePromptDeleteFile}
-                    className="hover:bg-muted ml-0.5 rounded p-0.5 opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="h-2.5 w-2.5" />
-                  </button>
-                )}
-              </button>
-            ))}
-          {/* Document tabs */}
-          {skill.documents?.map((doc) => {
-            const Icon = getDocumentIcon(doc.mimeType);
-            return (
-              <div
-                key={doc.id}
-                data-doc-id={doc.id}
-                onClick={handleDocumentTabClick}
-                className={cn(
-                  "group flex cursor-pointer items-center gap-1 px-2.5 py-1.5 text-xs transition-colors",
-                  selectedDocumentId === doc.id
-                    ? "border-b-2 border-foreground/70 font-medium text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Icon className="h-3 w-3" />
-                {doc.path ?? doc.filename}
-                <button
-                  data-doc-id={doc.id}
-                  onClick={handlePromptDownloadDocument}
-                  className="hover:bg-muted ml-0.5 rounded p-0.5 opacity-0 group-hover:opacity-100"
-                  title={t("Download document")}
-                >
-                  <Download className="h-2.5 w-2.5" />
-                </button>
-                {canEdit ? (
-                  <button
-                    data-doc-id={doc.id}
-                    data-doc-filename={doc.path ?? doc.filename}
-                    onClick={handlePromptDeleteDocument}
-                    className="hover:bg-muted ml-0.5 rounded p-0.5 opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="h-2.5 w-2.5" />
-                  </button>
-                ) : null}
-              </div>
-            );
-          })}
-          {canEdit ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1.5 text-xs">
-                  <Plus className="h-3 w-3" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={handleShowAddFile}>
-                  <FileText className="h-4 w-4" />
-                  <T>Text file</T>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleTriggerDocumentUpload} disabled={isUploading}>
-                  {isUploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileUp className="h-4 w-4" />
-                  )}
-                  {isUploading ? "Uploading..." : "Document"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.gif,.webp,.svg"
-            className="hidden"
-          />
-
-          {/* Mode toggle - far right */}
-          {isSkillMd && (
-            <div className="ml-auto">
-              <MarkdownEditorModeToggle
-                mode={skillMarkdownViewMode}
-                onModeChange={handleMarkdownViewModeChange}
-              />
-            </div>
-          )}
-        </div>
+        <SkillFileTabs
+          files={skill.files}
+          documents={skill.documents}
+          selectedFileId={selectedFileId}
+          selectedDocumentId={selectedDocumentId}
+          canEdit={canEdit}
+          isSkillMd={isSkillMd}
+          skillMarkdownViewMode={skillMarkdownViewMode}
+          isUploading={isUploading}
+          t={t}
+          fileInputRef={fileInputRef}
+          onFileTabClick={handleFileTabClick}
+          onPromptDeleteFile={handlePromptDeleteFile}
+          onDocumentTabClick={handleDocumentTabClick}
+          onPromptDownloadDocument={handlePromptDownloadDocument}
+          onPromptDeleteDocument={handlePromptDeleteDocument}
+          onShowAddFile={handleShowAddFile}
+          onTriggerDocumentUpload={handleTriggerDocumentUpload}
+          onFileSelect={handleFileSelect}
+          onMarkdownViewModeChange={handleMarkdownViewModeChange}
+        />
 
         {/* Add file input */}
         {canEdit && showAddFile && (
@@ -1209,175 +902,41 @@ function SkillEditorPageContent() {
         )}
 
         {/* Editor/Content area */}
-        <div className="min-h-0 flex-1">
-          {selectedFile && !selectedDocumentId && (
-            <>
-              {isSkillMd && skillMarkdownViewMode === "wysiwyg" ? (
-                canEdit ? (
-                  <div className="h-full overflow-hidden rounded-lg border">
-                    <MilkdownEditor
-                      value={skillBody}
-                      onChange={handleSkillBodyChange}
-                      placeholder={t("Add your skill instructions here...")}
-                      className="h-full"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-full overflow-y-auto rounded-lg border p-4">
-                    <article className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown remarkPlugins={markdownRemarkPlugins}>
-                        {skillBody}
-                      </ReactMarkdown>
-                    </article>
-                  </div>
-                )
-              ) : isSkillMd && skillMarkdownViewMode === "source" ? (
-                <textarea
-                  value={skillMarkdownSource}
-                  onChange={handleMarkdownSourceChange}
-                  readOnly={!canEdit}
-                  className="bg-background focus:ring-ring h-full w-full resize-none rounded-lg border p-4 font-mono text-sm focus:ring-2 focus:outline-none"
-                  placeholder="---
-name: skill-name
-description: What this skill does
----
-
-# Instructions
-
-Add your skill instructions here..."
-                />
-              ) : (
-                <textarea
-                  value={editedContent}
-                  onChange={handleNonSkillFileContentChange}
-                  readOnly={!canEdit}
-                  className="bg-background focus:ring-ring h-full w-full resize-none rounded-lg border p-4 font-mono text-sm focus:ring-2 focus:outline-none"
-                />
-              )}
-            </>
-          )}
-          {selectedDocumentId &&
-            (() => {
-              const selectedDoc = skill.documents?.find((d) => d.id === selectedDocumentId);
-              if (!selectedDoc) {
-                return null;
-              }
-
-              const isViewable = isViewableDocument(selectedDoc.mimeType);
-
-              if (isLoadingDocumentUrl) {
-                return (
-                  <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                );
-              }
-
-              if (isViewable && documentUrl) {
-                if (selectedDoc.mimeType === "application/pdf") {
-                  return (
-                    <object
-                      data={documentUrl}
-                      type="application/pdf"
-                      className="h-full w-full rounded-lg border"
-                      aria-label={selectedDoc.filename}
-                    >
-                      <div className="bg-muted/30 flex h-full flex-col items-center justify-center gap-4 rounded-lg border">
-                        <FileText className="text-muted-foreground h-16 w-16" />
-                        <p className="text-muted-foreground text-sm">
-                          <T>Preview unavailable in this browser.</T>
-                        </p>
-                        <Button onClick={handleDownloadSelectedDocument}>
-                          <Download className="mr-2 h-4 w-4" />
-                          <T>Download</T>
-                        </Button>
-                      </div>
-                    </object>
-                  );
-                }
-                if (selectedDoc.mimeType.startsWith("image/")) {
-                  return (
-                    <div className="bg-muted/30 flex h-full items-center justify-center overflow-auto rounded-lg border p-4">
-                      <img
-                        src={documentUrl}
-                        alt={selectedDoc.filename}
-                        width={1200}
-                        height={1200}
-                        loading="lazy"
-                        decoding="async"
-                        className="max-h-full max-w-full object-contain"
-                      />
-                    </div>
-                  );
-                }
-              }
-
-              // Non-viewable document - show download prompt
-              const Icon = getDocumentIcon(selectedDoc.mimeType);
-              return (
-                <div className="bg-muted/30 flex h-full flex-col items-center justify-center gap-4 rounded-lg border">
-                  <Icon className="text-muted-foreground h-16 w-16" />
-                  <div className="text-center">
-                    <p className="font-medium">{selectedDoc.filename}</p>
-                    <p className="text-muted-foreground text-sm">
-                      {formatFileSize(selectedDoc.sizeBytes)}
-                    </p>
-                  </div>
-                  <Button onClick={handleDownloadSelectedDocument}>
-                    <Download className="mr-2 h-4 w-4" />
-                    <T>Download</T>
-                  </Button>
-                </div>
-              );
-            })()}
-        </div>
+        <SkillEditorArea
+          selectedFile={selectedFile}
+          selectedDocumentId={selectedDocumentId}
+          documents={skill.documents}
+          isSkillMd={isSkillMd}
+          skillMarkdownViewMode={skillMarkdownViewMode}
+          canEdit={canEdit}
+          skillBody={skillBody}
+          skillMarkdownSource={skillMarkdownSource}
+          editedContent={editedContent}
+          isLoadingDocumentUrl={isLoadingDocumentUrl}
+          documentUrl={documentUrl}
+          t={t}
+          onSkillBodyChange={handleSkillBodyChange}
+          onMarkdownSourceChange={handleMarkdownSourceChange}
+          onNonSkillFileContentChange={handleNonSkillFileContentChange}
+          onDownloadSelectedDocument={handleDownloadSelectedDocument}
+        />
 
         {/* Delete document confirmation modal */}
         {documentToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-background mx-4 w-full max-w-sm rounded-lg border p-6 shadow-lg">
-              <h3 className="text-lg font-semibold">
-                <T>Delete document</T>
-              </h3>
-              <p className="text-muted-foreground mt-2 text-sm">
-                <T>Are you sure you want to delete &quot;</T>
-                {documentToDelete.filename}
-                <T>&quot;? This action cannot be undone.</T>
-              </p>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={handleCancelDeleteDocument}>
-                  <T>Cancel</T>
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteDocument}>
-                  <T>Delete</T>
-                </Button>
-              </div>
-            </div>
-          </div>
+          <DeleteDocumentDialog
+            filename={documentToDelete.filename}
+            onCancel={handleCancelDeleteDocument}
+            onConfirm={handleDeleteDocument}
+          />
         )}
 
         {/* Delete file confirmation modal */}
         {fileToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-background mx-4 w-full max-w-sm rounded-lg border p-6 shadow-lg">
-              <h3 className="text-lg font-semibold">
-                <T>Delete file</T>
-              </h3>
-              <p className="text-muted-foreground mt-2 text-sm">
-                <T>Are you sure you want to delete &quot;</T>
-                {fileToDelete.path}
-                <T>&quot;? This action cannot be undone.</T>
-              </p>
-              <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={handleCancelDeleteFile}>
-                  <T>Cancel</T>
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteFile}>
-                  <T>Delete</T>
-                </Button>
-              </div>
-            </div>
-          </div>
+          <DeleteFileDialog
+            path={fileToDelete.path}
+            onCancel={handleCancelDeleteFile}
+            onConfirm={handleDeleteFile}
+          />
         )}
       </div>
     </div>

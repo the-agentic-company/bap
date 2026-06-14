@@ -1,39 +1,12 @@
 // oxlint-disable jsx-a11y/control-has-associated-label
 
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { T, msg, useGT, useMessages } from "gt-react";
-import {
-  ArrowUp,
-  Copy,
-  FileInput,
-  FileOutput,
-  Globe,
-  Loader2,
-  Pencil,
-  Plug,
-  Plus,
-  Puzzle,
-  Search,
-  Share2,
-  Table,
-  Trash2,
-  Wand2,
-} from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { msg, useGT } from "gt-react";
+import { Loader2 } from "lucide-react";
+import { motion } from "motion/react";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { IntegrationBadges } from "@/components/chat/integration-badges";
-import { WorkspaceMcpServerLogo } from "@/components/executor-source-logo";
 import { ToolboxPreviewModal } from "@/components/toolbox-preview-modal";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { IconDisplay } from "@/components/ui/icon-picker";
-import { AnimatedTabs, AnimatedTab } from "@/components/ui/tabs";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { blobToBase64 } from "@/hooks/use-voice-recording";
@@ -41,13 +14,7 @@ import {
   isUnipileMissingCredentialsError,
   UNIPILE_MISSING_CREDENTIALS_MESSAGE,
 } from "@/lib/integration-errors";
-import {
-  type DisplayIntegrationType,
-  isComingSoonIntegration,
-  type IntegrationType as IntegrationIconType,
-} from "@/lib/integration-icons";
 import { formatOAuthConnectionError } from "@/lib/oauth-error-message";
-import { cn } from "@/lib/utils";
 import {
   useIntegrationList,
   useGetAuthUrl,
@@ -68,717 +35,19 @@ import {
   useUnshareSkill,
 } from "@/orpc/hooks/skills";
 import { useWorkspaceMcpServerList } from "@/orpc/hooks/workspace-mcp-servers";
-import { AppImage } from "../-lib/app-image";
-import { AppLink } from "../-lib/app-link";
-
-// ─── Types ──────────────────────────────────────────────────────────────────────
-
-type FilterTab = "all" | "active" | "needs_setup";
-
-type IntegrationType = IntegrationIconType | "whatsapp";
-
-type OAuthIntegrationType = Exclude<IntegrationIconType, "linear">;
-
-type GoogleIntegrationType =
-  | "google_gmail"
-  | "google_calendar"
-  | "google_docs"
-  | "google_sheets"
-  | "google_drive";
-
-const googleIntegrationTypes = new Set<GoogleIntegrationType>([
-  "google_gmail",
-  "google_calendar",
-  "google_docs",
-  "google_sheets",
-  "google_drive",
-]);
-
-function isGoogleIntegrationType(type: OAuthIntegrationType): type is GoogleIntegrationType {
-  return googleIntegrationTypes.has(type as GoogleIntegrationType);
-}
-
-// ─── Integration config ─────────────────────────────────────────────────────────
-
-const integrationConfig: Record<string, { name: string; description: string; icon: string }> = {
-  google_gmail: {
-    name: "Google Gmail",
-    description: msg("Read and send emails"),
-    icon: "/integrations/google-gmail.svg",
-  },
-  outlook: {
-    name: "Outlook Mail",
-    description: msg("Read and send emails"),
-    icon: "/integrations/outlook.svg",
-  },
-  outlook_calendar: {
-    name: "Outlook Calendar",
-    description: msg("Manage events and calendars"),
-    icon: "/integrations/outlook-calendar.svg",
-  },
-  google_calendar: {
-    name: "Google Calendar",
-    description: msg("Manage events and calendars"),
-    icon: "/integrations/google-calendar.svg",
-  },
-  google_docs: {
-    name: "Google Docs",
-    description: msg("Read and edit documents"),
-    icon: "/integrations/google-docs.svg",
-  },
-  google_sheets: {
-    name: "Google Sheets",
-    description: msg("Read and edit spreadsheets"),
-    icon: "/integrations/google-sheets.svg",
-  },
-  google_drive: {
-    name: "Google Drive",
-    description: msg("Access and manage files"),
-    icon: "/integrations/google-drive.svg",
-  },
-  notion: {
-    name: "Notion",
-    description: msg("Search and create pages"),
-    icon: "/integrations/notion.svg",
-  },
-  airtable: {
-    name: "Airtable",
-    description: msg("Read and update bases"),
-    icon: "/integrations/airtable.svg",
-  },
-  slack: {
-    name: "Slack",
-    description: msg("Send messages and read channels"),
-    icon: "/integrations/slack.svg",
-  },
-  hubspot: {
-    name: "HubSpot",
-    description: msg("Manage CRM contacts, deals, and tickets"),
-    icon: "/integrations/hubspot.svg",
-  },
-  linkedin: {
-    name: "LinkedIn",
-    description: msg("Send messages, manage connections, and post content"),
-    icon: "/integrations/linkedin.svg",
-  },
-  salesforce: {
-    name: "Salesforce",
-    description: msg("Query and manage CRM records and contacts"),
-    icon: "/integrations/salesforce.svg",
-  },
-  dynamics: {
-    name: "Microsoft Dynamics 365",
-    description: msg("Manage Dataverse tables and CRM rows"),
-    icon: "/integrations/dynamics.svg",
-  },
-  reddit: {
-    name: "Reddit",
-    description: msg("Browse, vote, comment, and post on Reddit"),
-    icon: "/integrations/reddit.svg",
-  },
-  twitter: {
-    name: "X (Twitter)",
-    description: msg("Post tweets, manage followers, and search content"),
-    icon: "/integrations/twitter.svg",
-  },
-  whatsapp: {
-    name: "WhatsApp",
-    description: msg("Link WhatsApp and pair the bridge with QR"),
-    icon: "/integrations/whatsapp.svg",
-  },
-};
-
-const adminPreviewOnlyIntegrations = new Set<IntegrationType>(
-  (Object.keys(integrationConfig) as IntegrationType[]).filter((type) => {
-    if (type === "whatsapp") {
-      return true;
-    }
-    return isComingSoonIntegration(type as IntegrationIconType);
-  }),
-);
-
-// ─── Community skills ───────────────────────────────────────────────────────────
-
-type CommunitySkill = {
-  id: string;
-  slug: string;
-  displayName: string;
-  description: string;
-  icon: React.ReactNode;
-  logoUrl?: string;
-  category: string;
-  kind: "skill" | "tool-integration";
-  enabled: boolean;
-};
-
-const COMMUNITY_SKILLS: CommunitySkill[] = [
-  {
-    id: "agent-browser",
-    slug: "agent-browser",
-    displayName: "Browser",
-    description:
-      "Browse the web autonomously — search, navigate, extract data, and interact with pages on behalf of the user.",
-    icon: <Globe className="h-5 w-5" />,
-    logoUrl: "/tools/browser.svg",
-    category: "Automation",
-    kind: "tool-integration",
-    enabled: true,
-  },
-  {
-    id: "fill-pdf",
-    slug: "fill-pdf",
-    displayName: "Fill PDF",
-    description:
-      "Fill PDF form fields programmatically from structured data. Supports text fields, checkboxes, and dropdowns.",
-    icon: <FileInput className="h-5 w-5" />,
-    category: "Documents",
-    kind: "skill",
-    enabled: true,
-  },
-  {
-    id: "docx",
-    slug: "docx",
-    displayName: "Docx",
-    description:
-      "Generate polished Word documents from templates or scratch — headings, tables, images, and custom styles.",
-    icon: <FileOutput className="h-5 w-5" />,
-    logoUrl: "/integrations/google-docs.svg",
-    category: "Documents",
-    kind: "skill",
-    enabled: true,
-  },
-  {
-    id: "xlsx",
-    slug: "xlsx",
-    displayName: "Xlsx",
-    description:
-      "Create and manipulate Excel spreadsheets — multiple sheets, formulas, conditional formatting, and charts.",
-    icon: <Table className="h-5 w-5" />,
-    logoUrl: "/integrations/google-sheets.svg",
-    category: "Documents",
-    kind: "skill",
-    enabled: false,
-  },
-  {
-    id: "skill-creator",
-    slug: "skill-creator",
-    displayName: "Skill Creator",
-    description:
-      "Describe what you need in plain language and this skill generates a fully functional new skill with instructions and files.",
-    icon: <Wand2 className="h-5 w-5" />,
-    category: "Utilities",
-    kind: "skill",
-    enabled: true,
-  },
-];
-
-const CARD_MOTION = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-  transition: { duration: 0.2, ease: "easeOut" },
-} as const;
-
-const FADE_IN_MOTION = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-} as const;
-
-// ─── Helpers ────────────────────────────────────────────────────────────────────
-
-function toErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return fallback;
-}
-
-// ─── Card components ────────────────────────────────────────────────────────────
-
-function IntegrationToolCard({
-  config,
-  href,
-  integration,
-  connectError,
-  isPreviewOnly,
-}: {
-  config: { name: string; description: string; icon: string };
-  href: string;
-  integration: {
-    id: string;
-    type: string;
-    enabled: boolean;
-    displayName: string | null;
-    setupRequired?: boolean;
-  } | null;
-  connectError?: string;
-  isPreviewOnly: boolean;
-}) {
-  const m = useMessages();
-  const isConnected = !!integration;
-  const isEnabled = integration?.enabled ?? false;
-
-  return (
-    <motion.div
-      layout
-      initial={CARD_MOTION.initial}
-      animate={CARD_MOTION.animate}
-      exit={CARD_MOTION.exit}
-      transition={CARD_MOTION.transition}
-    >
-      <AppLink
-        href={href}
-        scroll={false}
-        className={cn(
-          "border-border bg-card hover:border-foreground/30 hover:bg-muted/30 group relative flex h-full min-h-[180px] w-full flex-col rounded-xl border p-5 transition-all duration-150",
-          isPreviewOnly && "opacity-50",
-          connectError && "border-red-500/30",
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-white p-1.5 shadow-sm dark:bg-gray-800">
-              <AppImage
-                src={config.icon}
-                alt={config.name}
-                width={22}
-                height={22}
-                className="h-auto max-h-[22px] w-auto max-w-[22px] object-contain"
-              />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] leading-tight font-medium">{config.name}</p>
-              <div className="mt-1 flex items-center gap-1.5">
-                {isConnected ? (
-                  <>
-                    <span
-                      className={cn(
-                        "inline-block h-1.5 w-1.5 rounded-full",
-                        isEnabled ? "bg-emerald-500" : "bg-amber-500",
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "text-[10px] font-medium",
-                        isEnabled
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-amber-600 dark:text-amber-400",
-                      )}
-                    >
-                      {isEnabled ? <T>Connected</T> : <T>Disabled</T>}
-                    </span>
-                  </>
-                ) : isPreviewOnly ? (
-                  <span className="text-muted-foreground/60 text-[10px] font-medium">
-                    <T>Coming soon</T>
-                  </span>
-                ) : connectError ? (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
-                    <span className="text-[10px] font-medium text-red-500">
-                      <T>Error</T>
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground text-[10px] font-medium">
-                    <T>Not connected</T>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Status */}
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span
-              className={cn(
-                "mt-0.5 size-2 rounded-full",
-                isConnected && isEnabled ? "bg-green-500" : "bg-muted-foreground/30",
-              )}
-            />
-            <span className="text-muted-foreground text-xs">
-              {isConnected && isEnabled ? <T>On</T> : <T>Off</T>}
-            </span>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="text-muted-foreground mt-3 line-clamp-2 text-xs leading-relaxed">
-          {m(config.description)}
-        </p>
-
-        {/* Error */}
-        {connectError && (
-          <p className="mt-2 text-[11px] leading-snug text-red-500 dark:text-red-400">
-            {connectError}
-          </p>
-        )}
-
-        {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-4">
-          <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium">
-            <T>Integration</T>
-          </span>
-          <ArrowUp className="text-muted-foreground/30 group-hover:text-muted-foreground size-3.5 rotate-45 transition-colors" />
-        </div>
-      </AppLink>
-    </motion.div>
-  );
-}
-
-function CommunityToolCard({ skill, enabled }: { skill: CommunitySkill; enabled: boolean }) {
-  const isToolIntegration = skill.kind === "tool-integration";
-
-  return (
-    <motion.div
-      layout
-      initial={CARD_MOTION.initial}
-      animate={CARD_MOTION.animate}
-      exit={CARD_MOTION.exit}
-      transition={CARD_MOTION.transition}
-    >
-      <AppLink
-        href={`/toolbox?preview=community:${skill.id}`}
-        scroll={false}
-        className={cn(
-          "border-border bg-card hover:border-foreground/30 hover:bg-muted/30 group relative flex h-full min-h-[180px] w-full flex-col rounded-xl border p-5 transition-all duration-150",
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
-                skill.logoUrl ? "border bg-white p-1.5 shadow-sm dark:bg-gray-800" : "bg-muted/60",
-                !skill.logoUrl && (enabled ? "text-foreground" : "text-muted-foreground"),
-              )}
-            >
-              {skill.logoUrl ? (
-                <AppImage
-                  src={skill.logoUrl}
-                  alt={skill.displayName}
-                  width={22}
-                  height={22}
-                  className="h-auto max-h-[22px] w-auto max-w-[22px] object-contain"
-                />
-              ) : (
-                skill.icon
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] leading-tight font-medium">{skill.displayName}</p>
-              <span className="text-muted-foreground mt-0.5 block text-[10px] font-medium tracking-wider uppercase">
-                {skill.category}
-              </span>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span
-              className={cn(
-                "mt-0.5 size-2 rounded-full",
-                enabled ? "bg-green-500" : "bg-muted-foreground/30",
-              )}
-            />
-            <span className="text-muted-foreground text-xs">{enabled ? "On" : "Off"}</span>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="text-muted-foreground mt-3 line-clamp-2 text-xs leading-relaxed">
-          {skill.description}
-        </p>
-
-        {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-4">
-          <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium">
-            {isToolIntegration ? "Tool Integration" : "Skill"}
-          </span>
-          <ArrowUp className="text-muted-foreground/30 group-hover:text-muted-foreground size-3.5 rotate-45 transition-colors" />
-        </div>
-      </AppLink>
-    </motion.div>
-  );
-}
-
-function CustomToolCard({
-  skill,
-  onDelete,
-  onShare,
-  onUnshare,
-  onSaveShared,
-}: {
-  skill: {
-    id: string;
-    name: string;
-    displayName: string;
-    description: string;
-    icon: string | null;
-    enabled: boolean;
-    visibility: "private" | "public";
-    owner: {
-      id: string;
-      name: string | null;
-      email: string | null;
-    };
-    isOwnedByCurrentUser: boolean;
-    canEdit: boolean;
-    toolIntegrations: string[];
-  };
-  onDelete: (id: string, displayName: string) => Promise<void>;
-  onShare: (id: string, displayName: string) => Promise<void>;
-  onUnshare: (id: string, displayName: string) => Promise<void>;
-  onSaveShared: (id: string, displayName: string) => Promise<void>;
-}) {
-  const navigate = useNavigate();
-
-  const handleDelete = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      void onDelete(skill.id, skill.displayName);
-    },
-    [onDelete, skill.id, skill.displayName],
-  );
-
-  const handleShare = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      void onShare(skill.id, skill.displayName);
-    },
-    [onShare, skill.displayName, skill.id],
-  );
-
-  const handleUnshare = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      void onUnshare(skill.id, skill.displayName);
-    },
-    [onUnshare, skill.displayName, skill.id],
-  );
-
-  const handleSaveShared = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      void onSaveShared(skill.id, skill.displayName);
-    },
-    [onSaveShared, skill.displayName, skill.id],
-  );
-
-  const handleEdit = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      void navigate({ to: "/skills/$id", params: { id: skill.id } });
-    },
-    [navigate, skill.id],
-  );
-
-  const handleCardActionClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  }, []);
-
-  return (
-    <motion.div
-      layout
-      initial={CARD_MOTION.initial}
-      animate={CARD_MOTION.animate}
-      exit={CARD_MOTION.exit}
-      transition={CARD_MOTION.transition}
-    >
-      <AppLink
-        href={`/skills/${skill.id}`}
-        className={cn(
-          "border-border bg-card hover:border-foreground/30 hover:bg-muted/30 group relative flex h-full min-h-[180px] w-full flex-col rounded-xl border p-5 transition-all duration-150",
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-muted/60 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-              <IconDisplay icon={skill.icon} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] leading-tight font-medium">{skill.displayName}</p>
-              <span className="text-muted-foreground font-mono text-[10px]">{skill.name}</span>
-              <span className="text-muted-foreground mt-1 block text-[10px]">
-                {skill.isOwnedByCurrentUser
-                  ? skill.visibility === "public"
-                    ? "Workspace public"
-                    : "Private to you"
-                  : `Shared by ${skill.owner.name ?? skill.owner.email ?? "workspace"}`}
-              </span>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span
-              className={cn(
-                "mt-0.5 size-2 rounded-full",
-                skill.enabled ? "bg-green-500" : "bg-muted-foreground/30",
-              )}
-            />
-            <span className="text-muted-foreground text-xs">{skill.enabled ? "On" : "Off"}</span>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="text-muted-foreground mt-3 line-clamp-2 text-xs leading-relaxed">
-          {skill.description}
-        </p>
-
-        {skill.toolIntegrations.length > 0 ? (
-          <IntegrationBadges
-            integrations={skill.toolIntegrations as DisplayIntegrationType[]}
-            className="mt-3"
-          />
-        ) : null}
-
-        {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-4">
-          <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium">
-            {skill.visibility === "public" ? <Share2 className="h-3 w-3" /> : null}
-            {skill.isOwnedByCurrentUser ? "Custom" : "Shared"}
-          </span>
-          <div className="flex items-center gap-0.5" onClick={handleCardActionClick}>
-            {skill.canEdit ? (
-              <>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleEdit}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={skill.visibility === "public" ? handleUnshare : handleShare}
-                  title={skill.visibility === "public" ? "Unshare" : "Share with workspace"}
-                >
-                  <Share2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive h-7 w-7"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </>
-            ) : (
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleSaveShared}>
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </AppLink>
-    </motion.div>
-  );
-}
-
-function WorkspaceMcpServerToolCard({
-  source,
-}: {
-  source: {
-    id: string;
-    name: string;
-    namespace: string;
-    kind: "mcp";
-    endpoint: string;
-    enabled: boolean;
-    connected: boolean;
-    credentialEnabled: boolean;
-  };
-}) {
-  const isActive = source.enabled && source.connected && source.credentialEnabled;
-  const needsSetup = !source.connected;
-
-  return (
-    <motion.div
-      layout
-      initial={CARD_MOTION.initial}
-      animate={CARD_MOTION.animate}
-      exit={CARD_MOTION.exit}
-      transition={CARD_MOTION.transition}
-    >
-      <AppLink
-        href={`/toolbox/sources/${source.id}`}
-        className={cn(
-          "border-border bg-card hover:border-foreground/30 hover:bg-muted/30 group relative flex h-full min-h-[180px] w-full flex-col rounded-xl border p-5 transition-all duration-150",
-        )}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <WorkspaceMcpServerLogo
-              kind={source.kind}
-              endpoint={source.endpoint}
-              className="h-10 w-10 shrink-0"
-            />
-            <div className="min-w-0">
-              <p className="text-[13px] leading-tight font-medium">{source.name}</p>
-              <div className="mt-1 flex items-center gap-1.5">
-                {isActive ? (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <T>Connected</T>
-                    </span>
-                  </>
-                ) : source.connected && !source.credentialEnabled ? (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                      <T>Paused</T>
-                    </span>
-                  </>
-                ) : needsSetup ? (
-                  <span className="text-muted-foreground text-[10px] font-medium">
-                    <T>Not connected</T>
-                  </span>
-                ) : (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                      <T>Disabled</T>
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span
-              className={cn(
-                "mt-0.5 size-2 rounded-full",
-                isActive ? "bg-green-500" : "bg-muted-foreground/30",
-              )}
-            />
-            <span className="text-muted-foreground text-xs">{isActive ? "On" : "Off"}</span>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="text-muted-foreground mt-3 line-clamp-2 text-xs leading-relaxed">
-          {source.namespace} · {source.endpoint}
-        </p>
-
-        {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-4">
-          <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium">
-            <Plug className="h-3 w-3" />
-            MCP
-          </span>
-          <ArrowUp className="text-muted-foreground/30 group-hover:text-muted-foreground size-3.5 rotate-45 transition-colors" />
-        </div>
-      </AppLink>
-    </motion.div>
-  );
-}
+import {
+  COMMUNITY_SKILLS,
+  FADE_IN_MOTION,
+  adminPreviewOnlyIntegrations,
+  integrationConfig,
+  isGoogleIntegrationType,
+  toErrorMessage,
+  type FilterTab,
+  type GoogleIntegrationType,
+  type IntegrationType,
+  type OAuthIntegrationType,
+} from "./-toolbox/data";
+import { ToolboxResults, ToolboxToolbar } from "./-toolbox/sections";
 
 // ─── Page content ───────────────────────────────────────────────────────────────
 
@@ -1303,11 +572,14 @@ export function ToolboxPage() {
     filteredCommunitySkills.length > 0 ||
     filteredWorkspaceMcpServers.length > 0;
 
-  const tabs: { id: FilterTab; label: string; count: number }[] = [
-    { id: "all", label: t("All"), count: totalAll },
-    { id: "active", label: t("Active"), count: totalActive },
-    { id: "needs_setup", label: t("Needs Setup"), count: totalNeedsSetup },
-  ];
+  const tabs: { id: FilterTab; label: string; count: number }[] = useMemo(
+    () => [
+      { id: "all", label: t("All"), count: totalAll },
+      { id: "active", label: t("Active"), count: totalActive },
+      { id: "needs_setup", label: t("Needs Setup"), count: totalNeedsSetup },
+    ],
+    [t, totalAll, totalActive, totalNeedsSetup],
+  );
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key as FilterTab);
@@ -1316,6 +588,16 @@ export function ToolboxPage() {
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
   }, []);
+
+  const skillHandlers = useMemo(
+    () => ({
+      onDelete: handleSkillDelete,
+      onShare: handleShareSkill,
+      onUnshare: handleUnshareSkill,
+      onSaveShared: handleSaveSharedSkill,
+    }),
+    [handleSaveSharedSkill, handleShareSkill, handleSkillDelete, handleUnshareSkill],
+  );
 
   // ─── Preview modal helpers ───────────────────────────────────────────────────
   const previewId = searchParams.get("preview");
@@ -1481,150 +763,26 @@ export function ToolboxPage() {
   return (
     <>
       {/* Filters row */}
-      <div className="mb-8 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1 overflow-x-auto">
-            <AnimatedTabs
-              activeKey={activeTab}
-              onTabChange={handleTabChange}
-              className="w-full min-w-max grid-cols-3 sm:flex sm:w-fit sm:min-w-0"
-            >
-              {tabs.map((tab) => (
-                <AnimatedTab key={tab.id} value={tab.id} className="text-[11px] sm:text-sm">
-                  {tab.label}
-                  <span
-                    className={cn(
-                      "ml-1 rounded-full px-1.5 py-0.5 text-[10px] sm:ml-1.5 sm:text-xs",
-                      activeTab === tab.id
-                        ? "bg-foreground/10 text-foreground/70"
-                        : "bg-muted-foreground/15 text-muted-foreground",
-                    )}
-                  >
-                    {tab.count}
-                  </span>
-                </AnimatedTab>
-              ))}
-            </AnimatedTabs>
-          </div>
-          <div className="shrink-0 xl:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={importSkill.isPending || isCreating}>
-                  {importSkill.isPending || isCreating ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wand2 className="mr-2 h-4 w-4" />
-                  )}
-                  <T>Actions</T>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {isWorkspaceAdmin ? (
-                  <>
-                    <DropdownMenuItem onClick={handleNewMcpSource}>
-                      <Puzzle className="h-4 w-4" />
-                      <T>Add MCP</T>
-                    </DropdownMenuItem>
-                  </>
-                ) : null}
-                <DropdownMenuItem onClick={handleImportZipClick} disabled={importSkill.isPending}>
-                  <FileInput className="h-4 w-4" />
-                  <T>Import .zip</T>
-                </DropdownMenuItem>
-                {supportsFolderImport ? (
-                  <DropdownMenuItem
-                    onClick={handleImportFolderClick}
-                    disabled={importSkill.isPending}
-                  >
-                    <FileOutput className="h-4 w-4" />
-                    <T>Import folder</T>
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuItem onClick={handleCreateSkill} disabled={isCreating}>
-                  <Plus className="h-4 w-4" />
-                  <T>Create Skill</T>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="border-border flex w-full min-w-0 items-center gap-3 rounded-xl border px-4 py-2.5 xl:w-80 xl:flex-initial">
-            <Search className="text-muted-foreground/60 size-4 shrink-0" />
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearchChange}
-              placeholder={t("Search tools…")}
-              className="placeholder:text-muted-foreground/40 w-full bg-transparent text-sm outline-none"
-            />
-          </div>
-          <div className="hidden items-center gap-2 xl:flex">
-            {isWorkspaceAdmin && (
-              <>
-                <Button variant="outline" asChild>
-                  <AppLink href="/toolbox/sources/new?kind=mcp">
-                    <Puzzle className="mr-2 h-4 w-4" />
-                    <T>Add MCP</T>
-                  </AppLink>
-                </Button>
-              </>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={importSkill.isPending}>
-                  {importSkill.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileInput className="mr-2 h-4 w-4" />
-                  )}
-                  <T>Import Skill</T>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleImportZipClick} disabled={importSkill.isPending}>
-                  <FileInput className="h-4 w-4" />
-                  <T>Import .zip</T>
-                </DropdownMenuItem>
-                {supportsFolderImport ? (
-                  <DropdownMenuItem
-                    onClick={handleImportFolderClick}
-                    disabled={importSkill.isPending}
-                  >
-                    <FileOutput className="h-4 w-4" />
-                    <T>Import folder</T>
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button onClick={handleCreateSkill} disabled={isCreating}>
-              {isCreating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="mr-2 h-4 w-4" />
-              )}
-              <T>Create Skill</T>
-            </Button>
-          </div>
-          <input
-            ref={zipImportInputRef}
-            type="file"
-            accept=".zip,application/zip"
-            className="hidden"
-            aria-label={t("Import skill zip")}
-            onChange={handleImportZipChange}
-          />
-          <input
-            ref={folderImportInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            aria-label={t("Import skill folder")}
-            onChange={handleImportFolderChange}
-          />
-        </div>
-      </div>
+      <ToolboxToolbar
+        activeTab={activeTab}
+        tabs={tabs}
+        onTabChange={handleTabChange}
+        importPending={importSkill.isPending}
+        isCreating={isCreating}
+        isWorkspaceAdmin={isWorkspaceAdmin}
+        supportsFolderImport={supportsFolderImport}
+        search={search}
+        t={t}
+        onNewMcpSource={handleNewMcpSource}
+        onImportZipClick={handleImportZipClick}
+        onImportFolderClick={handleImportFolderClick}
+        onCreateSkill={handleCreateSkill}
+        onSearchChange={handleSearchChange}
+        zipImportInputRef={zipImportInputRef}
+        folderImportInputRef={folderImportInputRef}
+        onImportZipChange={handleImportZipChange}
+        onImportFolderChange={handleImportFolderChange}
+      />
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
@@ -1647,178 +805,18 @@ export function ToolboxPage() {
           </p>
         </motion.div>
       ) : (
-        <div className="space-y-10">
-          {/* Personal skills section */}
-          {filteredOwnedSkills.length > 0 && (
-            <section>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold">
-                    <T>My Skills</T>
-                  </h2>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    <T>Private skills you own in this workspace</T>
-                  </p>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {filteredOwnedSkills.length} <T>tool</T>
-                  {filteredOwnedSkills.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <AnimatePresence mode="popLayout">
-                  {filteredOwnedSkills.map((skill) => (
-                    <CustomToolCard
-                      key={skill.id}
-                      skill={skill}
-                      onDelete={handleSkillDelete}
-                      onShare={handleShareSkill}
-                      onUnshare={handleUnshareSkill}
-                      onSaveShared={handleSaveSharedSkill}
-                    />
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            </section>
-          )}
-
-          {/* Shared skills section */}
-          {filteredSharedSkills.length > 0 && (
-            <section>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold">
-                    <T>Workspace Skills</T>
-                  </h2>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    <T>Public skills shared by other people in your workspace</T>
-                  </p>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {filteredSharedSkills.length} <T>tool</T>
-                  {filteredSharedSkills.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <AnimatePresence mode="popLayout">
-                  {filteredSharedSkills.map((skill) => (
-                    <CustomToolCard
-                      key={skill.id}
-                      skill={skill}
-                      onDelete={handleSkillDelete}
-                      onShare={handleShareSkill}
-                      onUnshare={handleUnshareSkill}
-                      onSaveShared={handleSaveSharedSkill}
-                    />
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            </section>
-          )}
-
-          {/* Integrations section */}
-          {filteredIntegrations.length > 0 && (
-            <section>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold">
-                    <T>Integrations</T>
-                  </h2>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    <T>Connect external services to your coworker</T>
-                  </p>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {filteredIntegrations.length} <T>tool</T>
-                  {filteredIntegrations.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <AnimatePresence mode="popLayout">
-                  {filteredIntegrations.map(([type, config]) => {
-                    const integration = connectedIntegrations.get(type) ?? null;
-                    return (
-                      <IntegrationToolCard
-                        key={type}
-                        config={config}
-                        href={
-                          isMobile
-                            ? `/integrations/${type}`
-                            : `/toolbox?preview=integration:${type}`
-                        }
-                        integration={integration}
-                        connectError={
-                          !integration
-                            ? integrationConnectErrors[type as OAuthIntegrationType]
-                            : undefined
-                        }
-                        isPreviewOnly={adminPreviewOnlyIntegrations.has(type)}
-                      />
-                    );
-                  })}
-                </AnimatePresence>
-              </motion.div>
-            </section>
-          )}
-
-          {/* Workspace MCP Servers section */}
-          {filteredWorkspaceMcpServers.length > 0 && (
-            <section>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold">
-                    <T>MCP Servers</T>
-                  </h2>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    <T>MCP servers configured for your workspace</T>
-                  </p>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {filteredWorkspaceMcpServers.length} <T>source</T>
-                  {filteredWorkspaceMcpServers.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <AnimatePresence mode="popLayout">
-                  {filteredWorkspaceMcpServers.map((source) => (
-                    <WorkspaceMcpServerToolCard key={source.id} source={source} />
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            </section>
-          )}
-
-          {/* Community Skills section */}
-          {filteredCommunitySkills.length > 0 && (
-            <section>
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold">
-                    <T>Community Skills</T>
-                  </h2>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    <T>Pre-built skills ready to activate</T>
-                  </p>
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  {filteredCommunitySkills.length} <T>tool</T>
-                  {filteredCommunitySkills.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <AnimatePresence mode="popLayout">
-                  {filteredCommunitySkills.map((skill) => (
-                    <CommunityToolCard
-                      key={skill.id}
-                      skill={skill}
-                      enabled={communitySkillToggles[skill.id] ?? skill.enabled}
-                    />
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            </section>
-          )}
-        </div>
+        <ToolboxResults
+          filteredOwnedSkills={filteredOwnedSkills}
+          filteredSharedSkills={filteredSharedSkills}
+          filteredIntegrations={filteredIntegrations}
+          filteredWorkspaceMcpServers={filteredWorkspaceMcpServers}
+          filteredCommunitySkills={filteredCommunitySkills}
+          skillHandlers={skillHandlers}
+          connectedIntegrations={connectedIntegrations}
+          isMobile={isMobile}
+          integrationConnectErrors={integrationConnectErrors}
+          communitySkillToggles={communitySkillToggles}
+        />
       )}
 
       <ToolboxPreviewModal
