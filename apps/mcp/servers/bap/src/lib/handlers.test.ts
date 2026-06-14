@@ -3,11 +3,14 @@ import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@bap/core/lib/chat-model-defaul
 import {
   handleChatRun,
   handleCoworkerCreate,
+  handleCoworkerDeleteDocument,
   handleCoworkerGet,
   handleCoworkerList,
   handleCoworkerLogs,
   handleCoworkerRun,
   handleCoworkerRuns,
+  handleCoworkerUpdate,
+  handleCoworkerUpdateDocument,
   handleCoworkerUploadDocument,
   handleSkillAdd,
 } from "./handlers";
@@ -343,6 +346,203 @@ describe("MCP handlers", () => {
       status: "completed",
       coworkerId: "cw-1",
       documents: [{ id: "doc-1", filename: "brief.txt" }],
+    });
+  });
+
+  it("updates a coworker by username reference and returns updated details", async () => {
+    const updatedCoworker = {
+      id: "cw-1",
+      name: "Daily updated",
+      description: "Updated description",
+      username: "daily",
+      documents: [],
+      runs: [],
+    };
+    const client = {
+      coworker: {
+        list: vi.fn().mockResolvedValue([{ id: "cw-1", name: "Daily", username: "daily" }]),
+        update: vi.fn().mockResolvedValue({ success: true }),
+        get: vi.fn().mockResolvedValue(updatedCoworker),
+      },
+    };
+
+    const result = await handleCoworkerUpdate({
+      client: client as never,
+      reference: "@daily",
+      name: "Daily updated",
+      description: null,
+      trigger: "schedule",
+      prompt: "Summarize the day.",
+      promptDo: "Use bullets.",
+      promptDont: null,
+      autoApprove: false,
+      isPinned: true,
+      model: "openai/gpt-5.5",
+      authSource: "shared",
+      toolAccessMode: "selected",
+      integrations: ["slack"],
+      customIntegrations: ["custom-1"],
+      workspaceMcpServerIds: ["server-1"],
+      skillSlugs: ["weekly-report"],
+      schedule: { type: "daily", time: "09:00", timezone: "UTC" },
+      requiresUserInput: true,
+      userInputPrompt: "What should I summarize?",
+    });
+
+    expect(client.coworker.update).toHaveBeenCalledWith({
+      id: "cw-1",
+      name: "Daily updated",
+      description: null,
+      triggerType: "schedule",
+      prompt: "Summarize the day.",
+      promptDo: "Use bullets.",
+      promptDont: null,
+      autoApprove: false,
+      isPinned: true,
+      model: "openai/gpt-5.5",
+      authSource: "shared",
+      toolAccessMode: "selected",
+      allowedIntegrations: ["slack"],
+      allowedCustomIntegrations: ["custom-1"],
+      allowedWorkspaceMcpServerIds: ["server-1"],
+      allowedSkillSlugs: ["weekly-report"],
+      schedule: { type: "daily", time: "09:00", timezone: "UTC" },
+      requiresUserInput: true,
+      userInputPrompt: "What should I summarize?",
+    });
+    expect(client.coworker.get).toHaveBeenCalledWith({ id: "cw-1" });
+    expect(result).toEqual({
+      status: "completed",
+      coworker: updatedCoworker,
+    });
+  });
+
+  it("rejects empty coworker updates", async () => {
+    const client = {
+      coworker: {
+        update: vi.fn(),
+        get: vi.fn(),
+      },
+    };
+
+    await expect(
+      handleCoworkerUpdate({
+        client: client as never,
+        reference: "cw-1",
+      }),
+    ).rejects.toThrow("Coworker update must include at least one field.");
+
+    expect(client.coworker.update).not.toHaveBeenCalled();
+  });
+
+  it("updates coworker document metadata after checking coworker ownership", async () => {
+    const client = {
+      coworker: {
+        list: vi.fn().mockResolvedValue([{ id: "cw-1", name: "Daily", username: "daily" }]),
+        get: vi.fn().mockResolvedValue({
+          id: "cw-1",
+          documents: [{ id: "doc-1", filename: "brief.txt" }],
+        }),
+        updateDocument: vi.fn().mockResolvedValue({
+          id: "doc-1",
+          filename: "brief-v2.txt",
+          mimeType: "text/plain",
+          sizeBytes: 5,
+          description: null,
+        }),
+      },
+    };
+
+    const result = await handleCoworkerUpdateDocument({
+      client: client as never,
+      reference: "@daily",
+      documentId: "doc-1",
+      filename: "brief-v2.txt",
+      description: null,
+    });
+
+    expect(client.coworker.updateDocument).toHaveBeenCalledWith({
+      id: "doc-1",
+      filename: "brief-v2.txt",
+      mimeType: undefined,
+      content: undefined,
+      description: null,
+    });
+    expect(result).toMatchObject({
+      status: "completed",
+      coworkerId: "cw-1",
+      document: { id: "doc-1", filename: "brief-v2.txt", description: null },
+    });
+  });
+
+  it("requires complete file fields when replacing a coworker document", async () => {
+    const client = {
+      coworker: {
+        get: vi.fn(),
+        updateDocument: vi.fn(),
+      },
+    };
+
+    await expect(
+      handleCoworkerUpdateDocument({
+        client: client as never,
+        reference: "cw-1",
+        documentId: "doc-1",
+        contentBase64: "aGVsbG8=",
+      }),
+    ).rejects.toThrow("File replacement requires filename, mimeType, and contentBase64.");
+
+    expect(client.coworker.updateDocument).not.toHaveBeenCalled();
+  });
+
+  it("rejects coworker document mutations when the document belongs to another coworker", async () => {
+    const client = {
+      coworker: {
+        get: vi.fn().mockResolvedValue({
+          id: "cw-1",
+          documents: [{ id: "doc-other", filename: "other.txt" }],
+        }),
+        deleteDocument: vi.fn(),
+      },
+    };
+
+    await expect(
+      handleCoworkerDeleteDocument({
+        client: client as never,
+        reference: "cw-1",
+        documentId: "doc-1",
+      }),
+    ).rejects.toThrow("Document does not belong to the referenced coworker.");
+
+    expect(client.coworker.deleteDocument).not.toHaveBeenCalled();
+  });
+
+  it("deletes a coworker document after checking coworker ownership", async () => {
+    const client = {
+      coworker: {
+        get: vi.fn().mockResolvedValue({
+          id: "cw-1",
+          documents: [{ id: "doc-1", filename: "brief.txt" }],
+        }),
+        deleteDocument: vi.fn().mockResolvedValue({
+          success: true,
+          filename: "brief.txt",
+        }),
+      },
+    };
+
+    const result = await handleCoworkerDeleteDocument({
+      client: client as never,
+      reference: "cw-1",
+      documentId: "doc-1",
+    });
+
+    expect(client.coworker.deleteDocument).toHaveBeenCalledWith({ id: "doc-1" });
+    expect(result).toEqual({
+      status: "completed",
+      coworkerId: "cw-1",
+      success: true,
+      filename: "brief.txt",
     });
   });
 

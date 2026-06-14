@@ -57,7 +57,7 @@ A Bap-owned MCP server that is present in every **Generation** unconditionally. 
 _Avoid_: built-in integration, default tool, hidden server
 
 **Bap MCP Server**:
-The **Platform MCP Server** that exposes Bap's own capabilities — running chats, listing, creating, and running **Coworkers**, uploading documents, and adding skills — so a **Generation** can operate Bap itself. Calls through the **Bap MCP Server** act as the **Generation**'s acting user (the chat **User**, or the **Coworker**'s owner) and are recorded as runtime-originated, not user-originated. Its public hosted endpoint is `https://mcp.heybap.com/bap`; the old `/bap` hosted path is not part of the public contract.
+The **Platform MCP Server** that exposes Bap's own capabilities — running chats, listing, creating, and running **Coworkers**, managing **Coworker Documents**, and adding skills — so a **Generation** can operate Bap itself. Calls through the **Bap MCP Server** act as the **Generation**'s acting user (the chat **User**, or the **Coworker**'s owner) and are recorded as runtime-originated, not user-originated. Its public hosted endpoint is `https://mcp.heybap.com/bap`; the old `/bap` hosted path is not part of the public contract.
 _Avoid_: self MCP, management API, internal tools
 
 **Runtime-Originated Run**:
@@ -107,6 +107,10 @@ _Avoid_: bot, automation, worker
 **Coworker Avatar**:
 The visual identity shown for a **Coworker** in Bap surfaces.
 _Avoid_: agent avatar, profile picture, icon
+
+**Coworker Document**:
+A file a **User** attaches to a **Coworker** so future **Coworker** **Generations** can use it as persistent reference material. A **Coworker Document** belongs to exactly one **Coworker** and is managed separately from the **Coworker**'s instructions, trigger, and **Toolbox**.
+_Avoid_: doc, attachment, file upload
 
 **Start Message**:
 A free-text message a **User** provides before a **Coworker** starts a **Generation** so the **Generation** has the task-specific context it needs before work begins.

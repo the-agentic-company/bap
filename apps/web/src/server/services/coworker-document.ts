@@ -79,6 +79,144 @@ export async function uploadCoworkerDocument(params: {
   };
 }
 
+export async function updateCoworkerDocument(params: {
+  database: Database;
+  userId: string;
+  documentId: string;
+  filename?: string | undefined;
+  mimeType?: string | undefined;
+  contentBase64?: string | undefined;
+  description?: string | null | undefined;
+}): Promise<{
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  description: string | null;
+}> {
+  const hasFilename = params.filename !== undefined;
+  const hasMimeType = params.mimeType !== undefined;
+  const hasContent = params.contentBase64 !== undefined;
+  const hasDescription = params.description !== undefined;
+  const isFileReplacement = hasContent || hasMimeType;
+
+  if (!hasFilename && !hasDescription && !isFileReplacement) {
+    throw new ORPCError("BAD_REQUEST", { message: "Document update must include a change" });
+  }
+
+  if (isFileReplacement && (!params.filename || !params.mimeType || !params.contentBase64)) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "File replacement requires filename, mimeType, and content",
+    });
+  }
+
+  if (!isFileReplacement && hasMimeType) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "mimeType can only be changed when replacing file content",
+    });
+  }
+
+  if (hasFilename && (!params.filename || params.filename.length > 256)) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Filename is required and must be under 256 characters",
+    });
+  }
+
+  const existingDocument = await params.database.query.coworkerDocument.findFirst({
+    where: eq(coworkerDocument.id, params.documentId),
+    columns: {
+      id: true,
+      coworkerId: true,
+      filename: true,
+      mimeType: true,
+      sizeBytes: true,
+      storageKey: true,
+      description: true,
+    },
+  });
+
+  if (!existingDocument) {
+    throw new ORPCError("NOT_FOUND", { message: "Document not found" });
+  }
+
+  const existingCoworker = await params.database.query.coworker.findFirst({
+    where: and(eq(coworker.id, existingDocument.coworkerId), eq(coworker.ownerId, params.userId)),
+    columns: {
+      id: true,
+    },
+  });
+
+  if (!existingCoworker) {
+    throw new ORPCError("NOT_FOUND", { message: "Document not found" });
+  }
+
+  let replacementStorageKey: string | undefined;
+  const updates: Partial<typeof coworkerDocument.$inferInsert> = {};
+
+  if (hasFilename) {
+    updates.filename = params.filename;
+  }
+  if (hasDescription) {
+    updates.description = params.description;
+  }
+
+  if (isFileReplacement) {
+    const filename = params.filename!;
+    const mimeType = params.mimeType!;
+    const fileBuffer = Buffer.from(params.contentBase64!, "base64");
+    const sizeBytes = fileBuffer.length;
+
+    // Replacement does not increase the number of documents, so skip the count-limit branch.
+    validateFileUpload(filename, mimeType, sizeBytes, 0);
+
+    await ensureBucket();
+    replacementStorageKey = generateCoworkerDocumentStorageKey(
+      params.userId,
+      existingDocument.coworkerId,
+      filename,
+    );
+    await uploadToS3(replacementStorageKey, fileBuffer, mimeType);
+
+    updates.filename = filename;
+    updates.mimeType = mimeType;
+    updates.sizeBytes = sizeBytes;
+    updates.storageKey = replacementStorageKey;
+  }
+
+  let updatedDocument: typeof coworkerDocument.$inferSelect | undefined;
+  try {
+    [updatedDocument] = await params.database
+      .update(coworkerDocument)
+      .set(updates)
+      .where(eq(coworkerDocument.id, existingDocument.id))
+      .returning();
+  } catch (error) {
+    if (replacementStorageKey) {
+      await deleteFromS3(replacementStorageKey).catch(() => undefined);
+    }
+    throw error;
+  }
+
+  if (!updatedDocument) {
+    if (replacementStorageKey) {
+      await deleteFromS3(replacementStorageKey).catch(() => undefined);
+    }
+    throw new ORPCError("NOT_FOUND", { message: "Document not found" });
+  }
+
+  if (replacementStorageKey) {
+    await deleteFromS3(existingDocument.storageKey);
+  }
+
+  return {
+    id: updatedDocument.id,
+    filename: updatedDocument.filename,
+    mimeType: updatedDocument.mimeType,
+    sizeBytes: updatedDocument.sizeBytes,
+    description: updatedDocument.description ?? null,
+  };
+}
+
 export async function deleteCoworkerDocument(params: {
   database: Database;
   userId: string;

@@ -27,6 +27,7 @@ const {
   normalizeAndEnsureUniqueCoworkerUsernameMock,
   applyCoworkerEditMock,
   uploadCoworkerDocumentMock,
+  updateCoworkerDocumentMock,
   deleteCoworkerDocumentMock,
   downloadFromS3Mock,
   ensureBucketMock,
@@ -44,6 +45,7 @@ const {
   normalizeAndEnsureUniqueCoworkerUsernameMock: vi.fn<VitestProcedure>(),
   applyCoworkerEditMock: vi.fn<VitestProcedure>(),
   uploadCoworkerDocumentMock: vi.fn<VitestProcedure>(),
+  updateCoworkerDocumentMock: vi.fn<VitestProcedure>(),
   deleteCoworkerDocumentMock: vi.fn<VitestProcedure>(),
   downloadFromS3Mock: vi.fn<VitestProcedure>(),
   ensureBucketMock: vi.fn<VitestProcedure>(),
@@ -85,6 +87,7 @@ vi.mock("@bap/core/server/services/coworker-builder-service", async () => {
 
 vi.mock("@/server/services/coworker-document", () => ({
   deleteCoworkerDocument: deleteCoworkerDocumentMock,
+  updateCoworkerDocument: updateCoworkerDocumentMock,
   uploadCoworkerDocument: uploadCoworkerDocumentMock,
 }));
 
@@ -295,6 +298,13 @@ describe("coworkerRouter", () => {
       filename: "brief.pdf",
       mimeType: "application/pdf",
       sizeBytes: 4,
+    });
+    updateCoworkerDocumentMock.mockResolvedValue({
+      id: "doc-1",
+      filename: "brief-v2.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+      description: null,
     });
     deleteCoworkerDocumentMock.mockResolvedValue({
       success: true,
@@ -1224,6 +1234,38 @@ describe("coworkerRouter", () => {
     expect(result).toEqual({
       success: true,
       filename: "brief.pdf",
+    });
+  });
+
+  it("updates a document for a coworker", async () => {
+    const context = createContext();
+
+    const result = await coworkerRouterAny.updateDocument({
+      input: {
+        id: "doc-1",
+        filename: "brief-v2.pdf",
+        mimeType: "application/pdf",
+        content: Buffer.from("updated").toString("base64"),
+        description: null,
+      },
+      context,
+    });
+
+    expect(updateCoworkerDocumentMock).toHaveBeenCalledWith({
+      database: context.db,
+      userId: "user-1",
+      documentId: "doc-1",
+      filename: "brief-v2.pdf",
+      mimeType: "application/pdf",
+      contentBase64: Buffer.from("updated").toString("base64"),
+      description: null,
+    });
+    expect(result).toEqual({
+      id: "doc-1",
+      filename: "brief-v2.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+      description: null,
     });
   });
 

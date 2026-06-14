@@ -340,6 +340,30 @@ export type CoworkerCreateInput = {
   userInputPrompt?: string | null;
 };
 
+export type CoworkerUpdateInput = {
+  id: string;
+  name?: string;
+  description?: string | null;
+  username?: string | null;
+  status?: "on" | "off";
+  triggerType?: string;
+  prompt?: string;
+  model?: string;
+  authSource?: ProviderAuthSource | null;
+  promptDo?: string | null;
+  promptDont?: string | null;
+  autoApprove?: boolean;
+  isPinned?: boolean;
+  toolAccessMode?: string;
+  allowedIntegrations?: string[];
+  allowedCustomIntegrations?: string[];
+  allowedWorkspaceMcpServerIds?: string[];
+  allowedSkillSlugs?: string[];
+  schedule?: CoworkerSchedule;
+  requiresUserInput?: boolean;
+  userInputPrompt?: string | null;
+};
+
 export type CoworkerCreateResult = {
   id: string;
   name: string;
@@ -361,6 +385,22 @@ export type CoworkerDocumentUploadResult = {
   filename: string;
   mimeType: string;
   sizeBytes: number;
+};
+
+export type CoworkerDocumentUpdateInput = {
+  id: string;
+  filename?: string;
+  mimeType?: string;
+  content?: string;
+  description?: string | null;
+};
+
+export type CoworkerDocumentUpdateResult = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  description: string | null;
 };
 
 export type CoworkerFolder = {
@@ -510,7 +550,10 @@ export interface BapApiClient {
     list(): Promise<CoworkerSummary[]>;
     get(input: { id: string }): Promise<CoworkerDetails>;
     create(input: CoworkerCreateInput): Promise<CoworkerCreateResult>;
+    update(input: CoworkerUpdateInput): Promise<{ success: true }>;
     uploadDocument(input: CoworkerDocumentUploadInput): Promise<CoworkerDocumentUploadResult>;
+    updateDocument(input: CoworkerDocumentUpdateInput): Promise<CoworkerDocumentUpdateResult>;
+    deleteDocument(input: { id: string }): Promise<{ success: true; filename: string }>;
     getOrCreateBuilderConversation(input: { id: string }): Promise<{ conversationId: string }>;
     trigger(input: {
       id: string;

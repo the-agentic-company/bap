@@ -65,6 +65,7 @@ import { getOperationLabel } from "@/lib/integration-icons";
 import { parseCliCommand } from "@/lib/parse-cli-command";
 import {
   deleteCoworkerDocument,
+  updateCoworkerDocument,
   uploadCoworkerDocument,
 } from "@/server/services/coworker-document";
 import { requireAppAdminActor } from "../app-admin-access";
@@ -1648,6 +1649,38 @@ const deleteDocument = protectedProcedure
     });
   });
 
+const updateDocument = protectedProcedure
+  .input(
+    z.object({
+      id: z.string(),
+      filename: z.string().min(1).max(256).optional(),
+      mimeType: z.string().min(1).optional(),
+      content: z.string().min(1).optional(),
+      description: z.string().max(1024).nullish(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    const existingDocument = await context.db.query.coworkerDocument.findFirst({
+      where: eq(coworkerDocument.id, input.id),
+      columns: { coworkerId: true },
+    });
+
+    if (!existingDocument) {
+      throw new ORPCError("NOT_FOUND", { message: "Document not found" });
+    }
+
+    await requireOwnedCoworkerInActiveWorkspace(context, existingDocument.coworkerId);
+    return updateCoworkerDocument({
+      database: context.db as typeof import("@bap/db/client").db,
+      userId: context.user.id,
+      documentId: input.id,
+      filename: input.filename,
+      mimeType: input.mimeType,
+      contentBase64: input.content,
+      description: input.description,
+    });
+  });
+
 const getDocumentUrl = protectedProcedure
   .input(
     z.object({
@@ -3071,6 +3104,7 @@ export const coworkerRouter = {
   update,
   edit,
   uploadDocument,
+  updateDocument,
   getDocumentUrl,
   deleteDocument,
   delete: del,

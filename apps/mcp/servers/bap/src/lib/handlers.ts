@@ -3,7 +3,9 @@ import {
   createCoworkerRunner,
   runChatSession,
   type BapApiClient,
+  type CoworkerSchedule,
   type CoworkerRunStatus,
+  type CoworkerUpdateInput,
 } from "@bap/client";
 
 export async function handleChatRun(params: {
@@ -114,6 +116,70 @@ export async function handleCoworkerCreate(params: {
   };
 }
 
+export async function handleCoworkerUpdate(params: {
+  client: BapApiClient;
+  reference: string;
+  name?: string;
+  description?: string | null;
+  username?: string | null;
+  status?: "on" | "off";
+  trigger?: string;
+  prompt?: string;
+  promptDo?: string | null;
+  promptDont?: string | null;
+  autoApprove?: boolean;
+  isPinned?: boolean;
+  model?: string;
+  authSource?: "user" | "shared" | null;
+  toolAccessMode?: string;
+  integrations?: string[];
+  customIntegrations?: string[];
+  workspaceMcpServerIds?: string[];
+  skillSlugs?: string[];
+  schedule?: CoworkerSchedule;
+  requiresUserInput?: boolean;
+  userInputPrompt?: string | null;
+}) {
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  const updates: Omit<CoworkerUpdateInput, "id"> = {};
+
+  if (params.name !== undefined) updates.name = params.name;
+  if (params.description !== undefined) updates.description = params.description;
+  if (params.username !== undefined) updates.username = params.username;
+  if (params.status !== undefined) updates.status = params.status;
+  if (params.trigger !== undefined) updates.triggerType = params.trigger;
+  if (params.prompt !== undefined) updates.prompt = params.prompt;
+  if (params.promptDo !== undefined) updates.promptDo = params.promptDo;
+  if (params.promptDont !== undefined) updates.promptDont = params.promptDont;
+  if (params.autoApprove !== undefined) updates.autoApprove = params.autoApprove;
+  if (params.isPinned !== undefined) updates.isPinned = params.isPinned;
+  if (params.model !== undefined) updates.model = params.model;
+  if (params.authSource !== undefined) updates.authSource = params.authSource;
+  if (params.toolAccessMode !== undefined) updates.toolAccessMode = params.toolAccessMode;
+  if (params.integrations !== undefined) updates.allowedIntegrations = params.integrations;
+  if (params.customIntegrations !== undefined) {
+    updates.allowedCustomIntegrations = params.customIntegrations;
+  }
+  if (params.workspaceMcpServerIds !== undefined) {
+    updates.allowedWorkspaceMcpServerIds = params.workspaceMcpServerIds;
+  }
+  if (params.skillSlugs !== undefined) updates.allowedSkillSlugs = params.skillSlugs;
+  if (params.schedule !== undefined) updates.schedule = params.schedule;
+  if (params.requiresUserInput !== undefined) updates.requiresUserInput = params.requiresUserInput;
+  if (params.userInputPrompt !== undefined) updates.userInputPrompt = params.userInputPrompt;
+
+  if (Object.keys(updates).length === 0) {
+    throw new Error("Coworker update must include at least one field.");
+  }
+
+  await params.client.coworker.update({ id: coworkerId, ...updates });
+  return {
+    status: "completed" as const,
+    coworker: await params.client.coworker.get({ id: coworkerId }),
+  };
+}
+
 export async function handleCoworkerRun(params: {
   client: BapApiClient;
   reference: string;
@@ -128,6 +194,85 @@ export async function handleCoworkerRun(params: {
       trustedUserInput:
         trustedUserInput && trustedUserInput.length > 0 ? trustedUserInput : undefined,
     }),
+  };
+}
+
+async function requireCoworkerDocument(params: {
+  client: BapApiClient;
+  coworkerId: string;
+  documentId: string;
+}) {
+  const coworker = await params.client.coworker.get({ id: params.coworkerId });
+  const document = coworker.documents.find((candidate) => candidate.id === params.documentId);
+  if (!document) {
+    throw new Error("Document does not belong to the referenced coworker.");
+  }
+  return { coworker, document };
+}
+
+export async function handleCoworkerUpdateDocument(params: {
+  client: BapApiClient;
+  reference: string;
+  documentId: string;
+  filename?: string;
+  mimeType?: string;
+  contentBase64?: string;
+  description?: string | null;
+}) {
+  const hasFilename = params.filename !== undefined;
+  const hasMimeType = params.mimeType !== undefined;
+  const hasContent = params.contentBase64 !== undefined;
+  const hasDescription = params.description !== undefined;
+  const isFileReplacement = hasContent || hasMimeType;
+
+  if (!hasFilename && !hasDescription && !isFileReplacement) {
+    throw new Error("Document update must include at least one field.");
+  }
+  if (isFileReplacement && (!params.filename || !params.mimeType || !params.contentBase64)) {
+    throw new Error("File replacement requires filename, mimeType, and contentBase64.");
+  }
+
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  await requireCoworkerDocument({
+    client: params.client,
+    coworkerId,
+    documentId: params.documentId,
+  });
+
+  const document = await params.client.coworker.updateDocument({
+    id: params.documentId,
+    filename: params.filename,
+    mimeType: params.mimeType,
+    content: params.contentBase64,
+    description: params.description,
+  });
+
+  return {
+    status: "completed" as const,
+    coworkerId,
+    document,
+  };
+}
+
+export async function handleCoworkerDeleteDocument(params: {
+  client: BapApiClient;
+  reference: string;
+  documentId: string;
+}) {
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  await requireCoworkerDocument({
+    client: params.client,
+    coworkerId,
+    documentId: params.documentId,
+  });
+  const result = await params.client.coworker.deleteDocument({ id: params.documentId });
+
+  return {
+    status: "completed" as const,
+    coworkerId,
+    ...result,
   };
 }
 
