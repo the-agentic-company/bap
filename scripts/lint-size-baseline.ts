@@ -28,39 +28,70 @@ type Failure = {
   reason: string;
 };
 
+type JsonRecord = Record<string, unknown>;
+type Location = {
+  line: number;
+  column: number;
+};
+type FailureCheck = {
+  reason: string;
+  baselineCount?: number;
+};
+
 const baselineUrl = new URL("../lint-baselines/size.json", import.meta.url);
+const countPatterns: Record<string, RegExp> = {
+  "eslint(max-lines)": /File has too many lines \((\d+)\)\./,
+  "local(max-mocked-modules)": /This test mocks (\d+) distinct modules/,
+};
 
 function fail(message: string): never {
   console.error(`[lint:size] ${message}`);
   process.exit(1);
 }
 
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requireJsonRecord(value: unknown, label: string): JsonRecord {
+  if (isJsonRecord(value)) {
+    return value;
+  }
+
+  fail(`Invalid lint baseline: ${label} must be an object.`);
+}
+
+function requireBaselineCount(value: unknown, label: string): number {
+  if (typeof value === "number" && Number.isInteger(value) && value >= 0) {
+    return value;
+  }
+
+  fail(`Invalid lint baseline: ${label} must be a non-negative integer.`);
+}
+
+function readRuleBaseline(ruleName: string, value: unknown): Record<string, number> {
+  const entries = requireJsonRecord(value, `${ruleName} entries`);
+
+  return Object.fromEntries(
+    Object.entries(entries).map(([filename, count]) => [
+      filename,
+      requireBaselineCount(count, `${ruleName} entry ${filename}`),
+    ]),
+  );
+}
+
 async function readBaseline(): Promise<Baseline> {
-  const baseline = (await Bun.file(baselineUrl).json()) as unknown;
+  const baseline = requireJsonRecord(await Bun.file(baselineUrl).json(), "root");
+  const rules = requireJsonRecord(baseline.rules, "rules");
 
-  if (typeof baseline !== "object" || baseline === null || !("rules" in baseline)) {
-    fail("Invalid lint baseline: missing rules object.");
-  }
-
-  const rules = (baseline as { rules: unknown }).rules;
-  if (typeof rules !== "object" || rules === null || Array.isArray(rules)) {
-    fail("Invalid lint baseline: rules must be an object.");
-  }
-
-  for (const [ruleName, entries] of Object.entries(rules)) {
-    if (typeof entries !== "object" || entries === null || Array.isArray(entries)) {
-      fail(`Invalid lint baseline: ${ruleName} entries must be an object.`);
-    }
-    for (const [filename, count] of Object.entries(entries)) {
-      if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
-        fail(
-          `Invalid lint baseline: ${ruleName} entry ${filename} must be a non-negative integer.`,
-        );
-      }
-    }
-  }
-
-  return { rules: rules as Record<string, Record<string, number>> };
+  return {
+    rules: Object.fromEntries(
+      Object.entries(rules).map(([ruleName, entries]) => [
+        ruleName,
+        readRuleBaseline(ruleName, entries),
+      ]),
+    ),
+  };
 }
 
 async function runOxlint(
@@ -96,101 +127,121 @@ async function runOxlint(
   };
 }
 
-function parseOxlintOutput(stdout: string, stderr: string, exitCode: number): OxlintOutput {
-  const trimmed = stdout.trim();
-  if (!trimmed) {
-    if (exitCode === 0) {
-      return { diagnostics: [] };
-    }
-    if (stderr.trim()) {
-      console.error(stderr.trim());
-    }
-    fail(`Oxlint exited with ${exitCode} and did not produce JSON output.`);
+function writeIfPresent(value: string): void {
+  const trimmed = value.trim();
+  if (trimmed) {
+    console.error(trimmed);
   }
+}
 
+function parseJsonOutput(stdout: string, stderr: string): OxlintOutput {
   try {
-    return JSON.parse(trimmed) as OxlintOutput;
+    return JSON.parse(stdout) as OxlintOutput;
   } catch (error) {
-    if (stdout.trim()) {
-      console.error(stdout.trim());
-    }
-    if (stderr.trim()) {
-      console.error(stderr.trim());
-    }
+    writeIfPresent(stdout);
+    writeIfPresent(stderr);
     fail(`Could not parse Oxlint JSON output: ${(error as Error).message}`);
   }
 }
 
+function parseOxlintOutput(stdout: string, stderr: string, exitCode: number): OxlintOutput {
+  const trimmed = stdout.trim();
+  if (trimmed) {
+    return parseJsonOutput(trimmed, stderr);
+  }
+
+  if (exitCode === 0) {
+    return { diagnostics: [] };
+  }
+
+  writeIfPresent(stderr);
+  fail(`Oxlint exited with ${exitCode} and did not produce JSON output.`);
+}
+
 function getCurrentCount(diagnostic: Diagnostic): number | null {
-  if (diagnostic.code === "eslint(max-lines)") {
-    const match = diagnostic.message.match(/File has too many lines \((\d+)\)\./);
-    return match ? Number(match[1]) : null;
+  const match = countPatterns[diagnostic.code]?.exec(diagnostic.message);
+
+  return match ? Number(match[1]) : null;
+}
+
+function formatCountDetails(failure: Failure): string {
+  if (failure.currentCount === null) {
+    return "";
   }
 
-  if (diagnostic.code === "local(max-mocked-modules)") {
-    const match = diagnostic.message.match(/This test mocks (\d+) distinct modules/);
-    return match ? Number(match[1]) : null;
+  if (failure.baselineCount === undefined) {
+    return ` current=${failure.currentCount}`;
   }
 
-  return null;
+  return ` current=${failure.currentCount} baseline=${failure.baselineCount}`;
+}
+
+function getPrimarySpan(diagnostic: Diagnostic): { line?: number; column?: number } {
+  return diagnostic.labels?.[0]?.span ?? {};
+}
+
+function toLocation(span: { line?: number; column?: number }): Location {
+  return {
+    line: span.line ?? 1,
+    column: span.column ?? 1,
+  };
 }
 
 function formatDiagnostic(failure: Failure): string {
   const { diagnostic } = failure;
-  const span = diagnostic.labels?.[0]?.span;
-  const line = span?.line ?? 1;
-  const column = span?.column ?? 1;
-  const countDetails =
-    failure.currentCount === null
-      ? ""
-      : failure.baselineCount === undefined
-        ? ` current=${failure.currentCount}`
-        : ` current=${failure.currentCount} baseline=${failure.baselineCount}`;
+  const { line, column } = toLocation(getPrimarySpan(diagnostic));
 
   return [
     `${diagnostic.filename}:${line}:${column}: ${diagnostic.severity} ${diagnostic.code}: ${diagnostic.message}`,
-    `  ${failure.reason}${countDetails}`,
+    `  ${failure.reason}${formatCountDetails(failure)}`,
   ].join("\n");
 }
 
-function classifyDiagnostics(diagnostics: Diagnostic[], baseline: Baseline): Failure[] {
-  const failures: Failure[] = [];
+function createFailure(
+  diagnostic: Diagnostic,
+  currentCount: number | null,
+  reason: string,
+  baselineCount?: number,
+): Failure {
+  return { diagnostic, currentCount, baselineCount, reason };
+}
 
-  for (const diagnostic of diagnostics) {
-    const ruleBaseline = baseline.rules[diagnostic.code];
-    const baselineCount = ruleBaseline?.[diagnostic.filename];
-    const currentCount = getCurrentCount(diagnostic);
+function getBaselineCount(diagnostic: Diagnostic, baseline: Baseline): number | undefined {
+  const ruleBaseline = baseline.rules[diagnostic.code];
 
-    if (baselineCount === undefined) {
-      failures.push({
-        diagnostic,
-        currentCount,
-        reason: "not present in lint baseline",
-      });
-      continue;
-    }
+  return ruleBaseline?.[diagnostic.filename];
+}
 
-    if (currentCount === null) {
-      failures.push({
-        diagnostic,
-        currentCount,
-        baselineCount,
-        reason: "could not read current count from diagnostic",
-      });
-      continue;
-    }
-
-    if (currentCount > baselineCount) {
-      failures.push({
-        diagnostic,
-        currentCount,
-        baselineCount,
-        reason: "exceeds lint baseline",
-      });
-    }
+function checkDiagnostic(
+  currentCount: number | null,
+  baselineCount: number | undefined,
+): FailureCheck | null {
+  if (baselineCount === undefined) {
+    return { reason: "not present in lint baseline" };
   }
 
-  return failures;
+  if (currentCount === null) {
+    return { reason: "could not read current count from diagnostic", baselineCount };
+  }
+
+  return currentCount > baselineCount ? { reason: "exceeds lint baseline", baselineCount } : null;
+}
+
+function classifyDiagnostic(diagnostic: Diagnostic, baseline: Baseline): Failure | null {
+  const baselineCount = getBaselineCount(diagnostic, baseline);
+  const currentCount = getCurrentCount(diagnostic);
+  const failure = checkDiagnostic(currentCount, baselineCount);
+
+  return failure
+    ? createFailure(diagnostic, currentCount, failure.reason, failure.baselineCount)
+    : null;
+}
+
+function classifyDiagnostics(diagnostics: Diagnostic[], baseline: Baseline): Failure[] {
+  return diagnostics.flatMap((diagnostic) => {
+    const failure = classifyDiagnostic(diagnostic, baseline);
+    return failure ? [failure] : [];
+  });
 }
 
 const baseline = await readBaseline();
