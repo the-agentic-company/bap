@@ -3,14 +3,21 @@ import type { RouterClient } from "@orpc/server";
 import { resolveDefaultChatModel } from "@bap/core/lib/chat-model-defaults";
 import { parseModelReference } from "@bap/core/lib/model-reference";
 import { listOpencodeFreeModels } from "@bap/core/server/ai/opencode-models";
-import { spawn } from "node:child_process";
-import { createReadStream, createWriteStream, existsSync, readFileSync } from "node:fs";
-import { basename, resolve, extname } from "node:path";
+import { basename } from "node:path";
 import readline from "node:readline";
-import type { StatusChangeMetadata } from "@/lib/generation-stream";
 import type { AppRouter } from "@/server/orpc";
 import { createGenerationRuntime } from "@/lib/generation-runtime";
 import { runGenerationStream } from "@/lib/generation-stream";
+import { createApprovalPrompt, collectQuestionApprovalAnswers } from "./lib/chat-approval";
+import { authenticate, openUrlInBrowser } from "./lib/chat-auth-flow";
+import {
+  fileToAttachment,
+  formatClockTime,
+  formatDurationMs,
+  formatStatusMetadata,
+  formatToolResult,
+  validatePersistedAssistantMessage,
+} from "./lib/chat-format";
 import {
   formatModelSelection,
   parseInteractiveModelCommand,
@@ -24,13 +31,10 @@ import {
   createRpcClient,
   loadConfig,
   saveConfig,
-  type ChatConfig,
 } from "./lib/cli-shared";
 import {
   collectScriptedQuestionAnswers,
   parseQuestionApprovalInput,
-  resolveQuestionSelection,
-  type QuestionApprovalItem,
 } from "./lib/question-approval";
 import { resolveCliToolMetadata } from "./lib/tool-metadata";
 
@@ -54,7 +58,6 @@ type Args = {
   validatePersistence: boolean;
 };
 
-const DEFAULT_CLIENT_ID = "bap-cli";
 const AUTH_INTEGRATION_TYPES = [
   "google_gmail",
   "google_calendar",
@@ -209,263 +212,8 @@ function printHelp(): void {
   console.log("  /models                   List chat model options\n");
 }
 
-function formatToolResult(result: unknown): string {
-  if (typeof result === "string") {
-    return result;
-  }
-  try {
-    return JSON.stringify(result);
-  } catch {
-    return String(result);
-  }
-}
-
-function formatDurationMs(ms: number): string {
-  if (ms < 1000) {
-    return `${Math.round(ms)}ms`;
-  }
-  return `${(ms / 1000).toFixed(2)}s`;
-}
-
-function formatClockTime(ms: number): string {
-  const date = new Date(ms);
-  return date.toISOString().replace("T", " ").replace("Z", " UTC");
-}
-
-function formatStatusMetadata(metadata: StatusChangeMetadata | undefined): string | null {
-  if (!metadata) {
-    return null;
-  }
-
-  const parts = [
-    metadata.sandboxProvider ? `provider=${metadata.sandboxProvider}` : null,
-    metadata.runtimeHarness ? `harness=${metadata.runtimeHarness}` : null,
-    metadata.runtimeProtocolVersion ? `protocol=${metadata.runtimeProtocolVersion}` : null,
-    metadata.sandboxId ? `sandbox_id=${metadata.sandboxId}` : null,
-    metadata.sessionId ? `session_id=${metadata.sessionId}` : null,
-  ].filter((value): value is string => value !== null);
-
-  return parts.length > 0 ? parts.join(" ") : null;
-}
-
 function isAuthIntegrationType(integration: string): integration is AuthIntegrationType {
   return (AUTH_INTEGRATION_TYPES as readonly string[]).includes(integration);
-}
-
-function openUrlInBrowser(url: string): boolean {
-  try {
-    const commandByPlatform: Record<string, { cmd: string; args: string[] }> = {
-      darwin: { cmd: "open", args: [url] },
-      linux: { cmd: "xdg-open", args: [url] },
-      win32: { cmd: "cmd", args: ["/c", "start", "", url] },
-    };
-    const command = commandByPlatform[process.platform];
-    if (!command) {
-      return false;
-    }
-    const child = spawn(command.cmd, command.args, {
-      detached: true,
-      stdio: "ignore",
-    });
-    child.unref();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function authenticate(
-  serverUrl: string,
-  options: { open: boolean },
-): Promise<ChatConfig | null> {
-  console.log(`\nAuthenticating with ${serverUrl}\n`);
-
-  let deviceCode: string;
-  let userCode: string;
-  let verificationUri: string;
-  let interval = 5;
-  let expiresIn = 1800;
-
-  try {
-    const res = await fetch(`${serverUrl}/api/auth/device/code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: process.env.BAP_CLI_CLIENT_ID || DEFAULT_CLIENT_ID,
-      }),
-    });
-
-    if (!res.ok) {
-      console.error(`Failed to request device code: ${res.status}`);
-      return null;
-    }
-
-    const data = await res.json();
-    deviceCode = data.device_code;
-    userCode = data.user_code;
-    verificationUri = data.verification_uri_complete || data.verification_uri;
-    interval = data.interval || 5;
-    expiresIn = data.expires_in || 1800;
-  } catch (err) {
-    console.error("Could not connect to server:", err);
-    return null;
-  }
-
-  console.log("Visit the following URL and enter the code:\n");
-  console.log(`  ${verificationUri}\n`);
-  console.log(`  Code: ${userCode}\n`);
-  if (options.open && openUrlInBrowser(verificationUri)) {
-    console.log("Opened the browser for you.\n");
-  }
-  console.log("Waiting for approval...\n");
-
-  let pollingInterval = interval * 1000;
-  const deadline = Date.now() + expiresIn * 1000;
-
-  const pollForToken = async (): Promise<ChatConfig | null> => {
-    if (Date.now() >= deadline) {
-      console.error("Code expired. Please try again.");
-      return null;
-    }
-
-    await sleep(pollingInterval);
-
-    try {
-      const res = await fetch(`${serverUrl}/api/auth/device/token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-          device_code: deviceCode,
-          client_id: process.env.BAP_CLI_CLIENT_ID || DEFAULT_CLIENT_ID,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.access_token) {
-        const config: ChatConfig = {
-          serverUrl,
-          token: data.access_token,
-        };
-        saveConfig(config);
-        console.log("Authenticated successfully.\n");
-        return config;
-      }
-
-      if (data.error) {
-        switch (data.error) {
-          case "authorization_pending":
-            break;
-          case "slow_down":
-            pollingInterval += 5000;
-            break;
-          case "expired_token":
-            console.error("Code expired. Please try again.");
-            return null;
-          case "access_denied":
-            console.error("Authentication denied.");
-            return null;
-          default:
-            console.error(`Unexpected error: ${data.error}`);
-            break;
-        }
-      }
-    } catch {
-      // retry
-    }
-
-    return pollForToken();
-  };
-
-  return pollForToken();
-}
-
-async function collectQuestionApprovalAnswers(
-  rl: readline.Interface,
-  questions: QuestionApprovalItem[],
-): Promise<string[][]> {
-  const collectOne = async (index: number): Promise<string[][]> => {
-    if (index >= questions.length) {
-      return [];
-    }
-
-    const question = questions[index]!;
-    process.stdout.write(`\n[question] ${question.header}\n`);
-    process.stdout.write(`${question.question}\n`);
-
-    question.options.forEach((option, optionIndex) => {
-      const suffix = option.description ? ` - ${option.description}` : "";
-      process.stdout.write(`  ${optionIndex + 1}. ${option.label}${suffix}\n`);
-    });
-
-    if (question.custom) {
-      process.stdout.write("  t. Type your own answer\n");
-    }
-
-    const prompt =
-      question.options.length > 0
-        ? question.multiple
-          ? "Select option(s) comma-separated (default 1): "
-          : "Select an option (default 1): "
-        : "Answer: ";
-    const rawSelection = (await ask(rl, prompt)).trim();
-
-    let selectedAnswers: string[];
-    if (question.custom && rawSelection.toLowerCase() === "t") {
-      const typedPrompt = question.multiple
-        ? "Type your answer(s) (comma-separated): "
-        : "Type your answer: ";
-      const typedAnswer = await ask(rl, typedPrompt);
-      selectedAnswers = resolveQuestionSelection(question, typedAnswer);
-    } else {
-      selectedAnswers = resolveQuestionSelection(question, rawSelection);
-    }
-
-    const remaining = await collectOne(index + 1);
-    return [selectedAnswers, ...remaining];
-  };
-
-  return collectOne(0);
-}
-
-function isReadlineOpen(rl: readline.Interface | null): rl is readline.Interface {
-  if (!rl) {
-    return false;
-  }
-  return !(rl as readline.Interface & { closed?: boolean }).closed;
-}
-
-function createApprovalPrompt(rl: readline.Interface | null): {
-  rl: readline.Interface;
-  close: () => void;
-} | null {
-  if (isReadlineOpen(rl) && process.stdin.isTTY && process.stdout.isTTY) {
-    return {
-      rl,
-      close: () => {},
-    };
-  }
-
-  if (!process.stdout.isTTY) {
-    return null;
-  }
-
-  try {
-    const input = createReadStream("/dev/tty");
-    const output = createWriteStream("/dev/tty");
-    const ttyRl = readline.createInterface({ input, output });
-    return {
-      rl: ttyRl,
-      close: () => {
-        ttyRl.close();
-        input.close();
-        output.end();
-      },
-    };
-  } catch {
-    return null;
-  }
 }
 
 async function runChatLoop(
@@ -1143,87 +891,6 @@ async function printAvailableModels(
   } catch (error) {
     console.error(
       `Failed to list models: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const MIME_MAP: Record<string, string> = {
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".webp": "image/webp",
-  ".svg": "image/svg+xml",
-  ".pdf": "application/pdf",
-  ".txt": "text/plain",
-  ".json": "application/json",
-  ".csv": "text/csv",
-};
-
-function fileToAttachment(filePath: string): {
-  name: string;
-  mimeType: string;
-  dataUrl: string;
-} {
-  const resolved = resolve(filePath);
-  if (!existsSync(resolved)) {
-    throw new Error(`File not found: ${resolved}`);
-  }
-  const ext = extname(resolved).toLowerCase();
-  const mimeType = MIME_MAP[ext] || "application/octet-stream";
-  const data = readFileSync(resolved);
-  const base64 = data.toString("base64");
-  return {
-    name: basename(resolved),
-    mimeType,
-    dataUrl: `data:${mimeType};base64,${base64}`,
-  };
-}
-
-function normalizeText(input: string): string {
-  return input.replace(/\s+/g, " ").trim();
-}
-
-async function validatePersistedAssistantMessage(
-  client: RouterClient<AppRouter>,
-  conversationId: string,
-  messageId: string,
-  expected: { content: string; parts: Array<{ type: string }> },
-): Promise<void> {
-  const conv = await client.conversation.get({ id: conversationId });
-  const savedMessage = conv.messages.find((m) => m.id === messageId);
-
-  if (!savedMessage) {
-    throw new Error(
-      `Validation failed: assistant message ${messageId} was not saved in conversation ${conversationId}`,
-    );
-  }
-  if (savedMessage.role !== "assistant") {
-    throw new Error(
-      `Validation failed: message ${messageId} saved with role ${savedMessage.role}, expected assistant`,
-    );
-  }
-
-  const persistedParts = Array.isArray(savedMessage.contentParts) ? savedMessage.contentParts : [];
-  if (expected.parts.length > 0 && persistedParts.length === 0) {
-    throw new Error(
-      "Validation failed: stream produced activity/text but saved message has no contentParts",
-    );
-  }
-
-  const normalizedStream = normalizeText(expected.content);
-  if (normalizedStream.length === 0) {
-    return;
-  }
-
-  const normalizedPersisted = normalizeText(savedMessage.content ?? "");
-  if (!normalizedPersisted.includes(normalizedStream)) {
-    throw new Error(
-      "Validation failed: streamed assistant text does not match saved message content",
     );
   }
 }
