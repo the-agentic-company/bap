@@ -18,14 +18,12 @@
       "packages/core/src/server/runtime/opencode/opencode-runtime-driver.ts": 1231,
       "packages/core/src/server/sandbox/e2b.ts": 1270,
       "packages/core/src/server/sandbox/opencode-session.ts": 1748,
-      "packages/core/src/server/services/generation-manager.test.ts": 7236,
       "packages/core/src/server/services/generation/decisions/decision-flow.ts": 1876,
       "packages/core/src/server/services/generation/generation-manager.ts": 1104,
       "packages/core/src/server/services/memory-service.ts": 1078
     },
     "local(max-mocked-modules)": {
-      "apps/web/src/components/chat/chat-area.test.tsx": 32,
-      "packages/core/src/server/services/generation-manager.test.ts": 25
+      "apps/web/src/components/chat/chat-area.test.tsx": 32
     }
   }
 }

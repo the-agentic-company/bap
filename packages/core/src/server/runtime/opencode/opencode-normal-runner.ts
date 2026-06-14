@@ -936,7 +936,9 @@ export class OpenCodeNormalRunner {
       }
       this.callbacks.markPhase(ctx, "prompt_sent");
       if (startPostPromptCacheWrite !== null) {
-        void (startPostPromptCacheWrite as () => Promise<void>)();
+        void (startPostPromptCacheWrite as () => Promise<void>)().catch((error) => {
+          console.error("[GenerationManager] Failed to write post-prompt cache:", error);
+        });
       }
       const promptSentAtMs = Date.now();
       const remainingRunTimeMs = this.callbacks.getRemainingRunTimeMs(ctx);
@@ -1212,8 +1214,17 @@ export class OpenCodeNormalRunner {
         eventLoopConsumePromise,
         runtimeNoProgressPromise,
       ]);
+      let deferredSessionError: Error | null = null;
       if (eventLoopConsumeOutcome.type === "event_loop_error" && !runtimeNoProgressTriggered) {
-        throw eventLoopConsumeOutcome.error;
+        const sessionErrorMessage = eventLoop.snapshot().sessionErrorMessage;
+        if (sessionErrorMessage && !ctx.abortController.signal.aborted && !promptTimeoutTriggered) {
+          deferredSessionError =
+            eventLoopConsumeOutcome.error instanceof Error
+              ? eventLoopConsumeOutcome.error
+              : new Error(sessionErrorMessage);
+        } else {
+          throw eventLoopConsumeOutcome.error;
+        }
       }
 
       if (runtimeNoProgressTriggered) {
@@ -1306,7 +1317,7 @@ export class OpenCodeNormalRunner {
       const observedTerminalIdle = eventLoop.snapshot().sawSessionIdle || reconciledTerminalIdle;
       const sessionErrorMessage = eventLoop.snapshot().sessionErrorMessage;
       if (sessionErrorMessage) {
-        throw new Error(sessionErrorMessage);
+        throw deferredSessionError ?? new Error(sessionErrorMessage);
       }
       const promptElapsedMs = Date.now() - promptSentAtMs;
       if (promptElapsedMs >= remainingRunTimeMs) {
