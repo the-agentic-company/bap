@@ -43,15 +43,16 @@ describe("createRuntimeHarnessClientFromOpencodeClient", () => {
     });
   });
 
-  it("forwards structured model references without flattening provider and model", async () => {
+  it("forwards structured model references through session.prompt without flattening provider and model", async () => {
     const promptMock = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
+    const promptAsyncMock = vi.fn().mockResolvedValue({ data: null, error: null });
     const client = {
       event: {
         subscribe: vi.fn(),
       },
       session: {
-        promptAsync: promptMock,
-        prompt: vi.fn(),
+        promptAsync: promptAsyncMock,
+        prompt: promptMock,
         abort: vi.fn(),
         messages: vi.fn(),
         get: vi.fn(),
@@ -87,6 +88,7 @@ describe("createRuntimeHarnessClientFromOpencodeClient", () => {
         modelID: "gpt-5.4-mini",
       },
     });
+    expect(promptAsyncMock).not.toHaveBeenCalled();
   });
 
   it("forwards updatePart to client.part.update", async () => {
