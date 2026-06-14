@@ -6,7 +6,6 @@ import { handleCoworkerLogs } from "../lib/handlers";
 
 export const schema = {
   runId: z.string().describe("Coworker run ID"),
-  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {
@@ -23,7 +22,7 @@ export default async function coworkerLogs(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra, params.serverUrl);
+  const clientState = createMcpClient(extra);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

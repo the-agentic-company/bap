@@ -61,7 +61,6 @@ export const schema = {
   schedule: scheduleSchema.describe("Coworker schedule, or null to clear it"),
   requiresUserInput: z.boolean().optional().describe("Require a Start Message before running"),
   userInputPrompt: z.string().max(1000).nullable().optional().describe("User Input Prompt"),
-  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {
@@ -78,7 +77,7 @@ export default async function coworkerUpdate(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra, params.serverUrl);
+  const clientState = createMcpClient(extra);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

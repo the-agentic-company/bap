@@ -1,12 +1,12 @@
 import type { ToolExtraArguments } from "xmcp";
 import { createRpcClient, DEFAULT_SERVER_URL } from "@bap/client";
 
-function resolveServerUrl(serverUrl?: string): string {
-  return serverUrl || process.env.APP_SERVER_URL || DEFAULT_SERVER_URL;
+function resolveServerUrl(): string {
+  return process.env.APP_SERVER_URL || DEFAULT_SERVER_URL;
 }
 
-export function createMcpClient(extra?: ToolExtraArguments, serverUrl?: string) {
-  const resolvedServerUrl = resolveServerUrl(serverUrl);
+export function createMcpClient(extra?: ToolExtraArguments) {
+  const resolvedServerUrl = resolveServerUrl();
   const token = extra?.authInfo?.token;
   const authClaims = extra?.authInfo?.extra as
     | { audience?: string; authType?: string; issuer?: string }

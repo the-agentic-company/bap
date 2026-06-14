@@ -22,7 +22,6 @@ export const schema = {
     .describe(
       "Skill folder files to import. Include SKILL.md with name and description frontmatter.",
     ),
-  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {
@@ -39,7 +38,7 @@ export default async function skillAdd(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra, params.serverUrl);
+  const clientState = createMcpClient(extra);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

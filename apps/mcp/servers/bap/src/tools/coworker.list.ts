@@ -1,12 +1,9 @@
-import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
 import { toMcpToolResult } from "../../../../shared/tool-result";
 import { createMcpClient } from "../lib/client";
 import { handleCoworkerList } from "../lib/handlers";
 
-export const schema = {
-  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
-};
+export const schema = {};
 
 export const metadata: ToolMetadata = {
   name: "coworker.list",
@@ -22,7 +19,7 @@ export default async function coworkerList(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra, params.serverUrl);
+  const clientState = createMcpClient(extra);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

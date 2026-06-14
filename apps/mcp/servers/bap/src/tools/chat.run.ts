@@ -11,7 +11,6 @@ export const schema = {
   authSource: z.enum(["user", "shared"]).optional().describe("Model auth source"),
   sandbox: z.enum(["e2b", "daytona", "docker"]).optional().describe("Sandbox provider"),
   autoApprove: z.boolean().optional().describe("Auto-approve tool calls"),
-  serverUrl: z.string().url().optional().describe("Override the Bap server URL"),
 };
 
 export const metadata: ToolMetadata = {
@@ -28,7 +27,7 @@ export default async function chatRun(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra, params.serverUrl);
+  const clientState = createMcpClient(extra);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }
