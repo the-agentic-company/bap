@@ -3,9 +3,18 @@
   "categories": {
     "correctness": "off"
   },
+  "jsPlugins": ["./oxlint-plugins/local.mjs"],
   "rules": {
     "max-lines": ["error", { "max": 1000 }]
   },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.e2e.test.ts", "**/*.e2e.test.tsx"],
+      "rules": {
+        "local/max-mocked-modules": ["error", { "max": 10 }]
+      }
+    }
+  ],
   "ignorePatterns": [
     "**/node_modules/**",
     "**/dist/**",
