@@ -23,7 +23,7 @@
 #   as S3 or R2 and set `AWS_ENDPOINT_URL`/credentials from the production
 #   environment group instead of running production object storage on Render.
 # - Create the environment-specific document buckets once after the first deploy
-#   (`bap-documents` for staging, `bap-documents-prod` for production).
+#   (`cmdclaw-documents` for staging, `cmdclaw-documents-prod` for production).
 # - The observability services stay on the private network. Operators reach the
 #   Render private `10.0.0.0/8` range through the Tailscale subnet router defined
 #   below. Grafana and the Victoria backends are exposed through one
@@ -432,8 +432,6 @@ projects:
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
-              - key: AWS_S3_BUCKET_NAME
-                value: bap-documents
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: APP_VECTOR_HOST
@@ -480,8 +478,6 @@ projects:
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
-              - key: AWS_S3_BUCKET_NAME
-                value: bap-documents
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: MCP_GATEWAY_MANAGED_CHILDREN
@@ -517,8 +513,6 @@ projects:
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
-              - key: AWS_S3_BUCKET_NAME
-                value: bap-documents
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: APP_VECTOR_HOST
@@ -940,8 +934,6 @@ projects:
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
-              - key: AWS_S3_BUCKET_NAME
-                value: bap-documents-prod
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: APP_VECTOR_HOST
@@ -988,8 +980,6 @@ projects:
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
-              - key: AWS_S3_BUCKET_NAME
-                value: bap-documents-prod
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: MCP_GATEWAY_MANAGED_CHILDREN
@@ -1025,8 +1015,6 @@ projects:
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
-              - key: AWS_S3_BUCKET_NAME
-                value: bap-documents-prod
               - key: AWS_S3_FORCE_PATH_STYLE
                 value: "true"
               - key: APP_VECTOR_HOST
