@@ -125,14 +125,14 @@ description: Build a weekly report
       name: "weekly-report",
       displayName: "weekly-report",
       description: "Build a weekly report",
-      enabled: false,
+      enabled: true,
     });
     expect(database.insertedSkills[0]).toMatchObject({
       workspaceId: "ws-1",
       name: "weekly-report",
       displayName: "weekly-report",
       visibility: "private",
-      enabled: false,
+      enabled: true,
     });
     expect(database.insertedFiles[0]).toEqual(
       expect.arrayContaining([

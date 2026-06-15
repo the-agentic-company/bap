@@ -493,7 +493,7 @@ export async function importSkill(
         description: parsedMetadata.description,
         icon: null,
         visibility: "private",
-        enabled: false,
+        enabled: true,
       })
       .returning({
         id: skill.id,
@@ -548,7 +548,7 @@ export async function importSkill(
       name: createdSkill.name,
       displayName: createdSkill.displayName,
       description: createdSkill.description,
-      enabled: false,
+      enabled: true,
     };
   });
 }
