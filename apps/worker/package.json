@@ -14,6 +14,7 @@
   "dependencies": {
     "@bap/core": "workspace:*",
     "@bap/db": "workspace:*",
-    "@bap/sandbox": "workspace:*"
+    "@bap/sandbox": "workspace:*",
+    "form-data": "^4.0.5"
   }
 }
