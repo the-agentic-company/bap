@@ -7,6 +7,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware, APIError } from "better-auth/api";
 import { admin, bearer, lastLoginMethod, magicLink } from "better-auth/plugins";
+import { defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
@@ -83,6 +84,23 @@ const socialProviders = isSelfHostedEdition()
         : {}),
     };
 
+const adminAc = defaultAc.newRole({
+  user: [
+    "create",
+    "list",
+    "set-role",
+    "ban",
+    "impersonate",
+    "impersonate-admins",
+    "delete",
+    "set-password",
+    "set-email",
+    "get",
+    "update",
+  ],
+  session: ["list", "revoke", "delete"],
+});
+
 export const auth = betterAuth({
   appName: "Bap",
   baseURL: {
@@ -146,6 +164,10 @@ export const auth = betterAuth({
     admin({
       defaultRole: "user",
       adminRoles: ["admin"],
+      roles: {
+        admin: adminAc,
+        user: userAc,
+      },
     }),
     lastLoginMethod(),
     ...(!isSelfHostedEdition()
