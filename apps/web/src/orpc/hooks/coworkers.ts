@@ -98,10 +98,10 @@ export function useWorkspaceUsageDashboard() {
   });
 }
 
-type CoworkerHistoryPage = Awaited<ReturnType<typeof client.coworker.getHistory>>;
-export type CoworkerHistoryEntry = CoworkerHistoryPage["entries"][number];
+type RunHistoryPage = Awaited<ReturnType<typeof client.coworker.getHistory>>;
+export type RunHistoryEntry = RunHistoryPage["entries"][number];
 
-export function useCoworkerHistory(dateRange?: { from?: Date; to?: Date }) {
+export function useRunHistory(dateRange?: { from?: Date; to?: Date }) {
   return useInfiniteQuery({
     queryKey: ["coworker", "history", dateRange?.from?.toISOString(), dateRange?.to?.toISOString()],
     initialPageParam: undefined as string | undefined,
@@ -523,7 +523,7 @@ export function useRotateCoworkerForwardingAlias() {
   });
 }
 
-export function useGetOrCreateBuilderConversation() {
+export function useGetOrCreateBuilderChat() {
   return useMutation({
     mutationFn: (id: string) => client.coworker.getOrCreateBuilderConversation({ id }),
   });

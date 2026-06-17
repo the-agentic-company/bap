@@ -33,11 +33,11 @@ import {
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { INTEGRATION_DISPLAY_NAMES, INTEGRATION_LOGOS } from "@/lib/integration-icons";
 import { cn } from "@/lib/utils";
-import { type CoworkerHistoryEntry, useCoworkerHistory } from "@/orpc/hooks/coworkers";
+import { type RunHistoryEntry, useRunHistory } from "@/orpc/hooks/coworkers";
 import { AppImage as Image } from "../-lib/app-image";
 import { AppLink as Link } from "../-lib/app-link";
 
-type HistoryEntryStatus = CoworkerHistoryEntry["status"];
+type HistoryEntryStatus = RunHistoryEntry["status"];
 
 function formatRelativeTime(value?: Date | string | null) {
   if (!value) {
@@ -174,7 +174,7 @@ function IntegrationLogo({
   );
 }
 
-function HistoryCard({ entry, isLast }: { entry: CoworkerHistoryEntry; isLast: boolean }) {
+function RunActivityCard({ entry, isLast }: { entry: RunHistoryEntry; isLast: boolean }) {
   const integration = entry.integration as IntegrationType;
 
   return (
@@ -235,7 +235,7 @@ function HistoryCard({ entry, isLast }: { entry: CoworkerHistoryEntry; isLast: b
   );
 }
 
-export default function CoworkerHistoryPage() {
+export default function RunHistoryPage() {
   const t = useGT();
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -249,7 +249,7 @@ export default function CoworkerHistoryPage() {
     return { from: dateRange.from, to: endOfDay };
   }, [dateRange]);
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useCoworkerHistory(queryRange);
+    useRunHistory(queryRange);
   const entries = useMemo(() => data?.pages.flatMap((page) => page.entries) ?? [], [data]);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [search, setSearch] = useState("");
@@ -320,7 +320,7 @@ export default function CoworkerHistoryPage() {
     today.setHours(0, 0, 0, 0);
 
     return {
-      actionsToday: entries.filter((entry) => new Date(entry.timestamp) >= today).length,
+      runActivityToday: entries.filter((entry) => new Date(entry.timestamp) >= today).length,
       integrations: new Set(entries.map((entry) => entry.integration)).size,
       denied: entries.filter((entry) => entry.status === "denied").length,
       activeCoworkers: new Set(entries.map((entry) => entry.coworker.id)).size,
@@ -367,10 +367,10 @@ export default function CoworkerHistoryPage() {
           <ArrowLeft className="size-5" />
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">
-          <T>Coworker History</T>
+          <T>Run History</T>
         </h1>
         <div className="ml-auto flex flex-wrap gap-2">
-          <StatPill label={t("actions today")} value={stats.actionsToday} />
+          <StatPill label={t("run activity today")} value={stats.runActivityToday} />
           <StatPill label={t("integrations")} value={stats.integrations} />
           <StatPill label={t("denied")} value={stats.denied} accent="red" />
           <StatPill label={t("active coworkers")} value={stats.activeCoworkers} />
@@ -383,7 +383,7 @@ export default function CoworkerHistoryPage() {
           <Input
             value={search}
             onChange={handleSearchChange}
-            placeholder={t('Search actions... (e.g. "#general", "john@", "CSV export")')}
+            placeholder={t('Search run activity... (e.g. "#general", "john@", "CSV export")')}
             className="h-9 pl-9 text-sm"
           />
         </div>
@@ -508,17 +508,21 @@ export default function CoworkerHistoryPage() {
             <div className="flex flex-col items-center justify-center py-16">
               <Search className="text-muted-foreground/30 mb-3 size-10" />
               <p className="text-muted-foreground text-sm font-medium">
-                <T>No matching actions found</T>
+                <T>No matching run activity found</T>
               </p>
               <p className="text-muted-foreground/60 mt-1 text-xs">
                 {hasNextPage || isFetchingNextPage
-                  ? "Loading older actions..."
+                  ? "Loading older run activity..."
                   : "Try adjusting your search or filters."}
               </p>
             </div>
           ) : (
             filtered.map((entry, index) => (
-              <HistoryCard key={entry.id} entry={entry} isLast={index === filtered.length - 1} />
+              <RunActivityCard
+                key={entry.id}
+                entry={entry}
+                isLast={index === filtered.length - 1}
+              />
             ))
           )}
 
@@ -528,7 +532,7 @@ export default function CoworkerHistoryPage() {
                 <Loader2 className="text-muted-foreground size-5 animate-spin" />
               ) : (
                 <span className="text-muted-foreground text-xs">
-                  <T>Scroll to load older actions</T>
+                  <T>Scroll to load older run activity</T>
                 </span>
               )}
             </div>

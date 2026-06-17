@@ -1,0 +1,442 @@
+import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
+import { T, useGT } from "gt-react";
+import { Loader2, Play, Trash2, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback } from "react";
+import type { IntegrationType } from "@/lib/integration-icons";
+import type { ProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import type {
+  AvailableSkillEntry,
+  CoworkerDocumentRecord,
+  CoworkerForwardingAlias,
+  CoworkerRunListItem,
+  CoworkerScheduleType,
+  CoworkerTab,
+  IntegrationEntry,
+  WorkspaceMcpServerEntry,
+} from "./types";
+import { CoworkerDocumentsPanel } from "./coworker-documents-panel";
+import { DeleteCoworkerDialog } from "./coworker-editor-layout";
+import { CoworkerInstructionsPanel } from "./coworker-instructions-panel";
+import { CoworkerRunsPanel } from "./coworker-runs-panel";
+import { CoworkerToolboxPanel } from "./coworker-toolbox-panel";
+
+const statusTextMotionInitial = { opacity: 0, y: -4 } as const;
+const statusTextMotionAnimate = { opacity: 1, y: 0 } as const;
+const statusTextMotionExit = { opacity: 0, y: 4 } as const;
+const statusTextMotionTransition = { duration: 0.15 } as const;
+
+type CoworkerSettingsPanelProps = {
+  coworkerId?: string;
+  coworkerRouteSlug?: string;
+  name: string;
+  description: string;
+  username: string;
+  isSaving: boolean;
+  status: "on" | "off";
+  autoApprove: boolean;
+  requiresUserInput: boolean;
+  userInputPrompt: string;
+  prompt: string;
+  model: string;
+  modelAuthSource: ProviderAuthSource | null;
+  providerAvailability: ProviderAuthAvailabilityByProvider;
+  availableSkills: AvailableSkillEntry[];
+  selectedSkillKeys: string[];
+  executorSourceEntries: WorkspaceMcpServerEntry[];
+  selectedWorkspaceMcpServerIds: string[];
+  isSkillsLoading: boolean;
+  restrictTools: boolean;
+  allowedIntegrations: IntegrationType[];
+  allIntegrationTypes: IntegrationType[];
+  integrationEntries: IntegrationEntry[];
+  triggerType: string;
+  triggers: readonly { value: string; label: string }[];
+  scheduleType: CoworkerScheduleType;
+  intervalMinutes: number;
+  scheduleTime: string;
+  scheduleDaysOfWeek: number[];
+  scheduleDayOfMonth: number;
+  localTimezone: string;
+  hasActiveForwardingAlias: boolean;
+  coworkerForwardingAddress: string | null;
+  coworkerForwardingAlias: CoworkerForwardingAlias | undefined;
+  isEmailTriggerPersisted: boolean;
+  copiedForwardingField: "coworkerAlias" | "invokeHandle" | null;
+  documents: CoworkerDocumentRecord[];
+  runs: CoworkerRunListItem[] | undefined;
+  activeTab: CoworkerTab;
+  selectedRunId: string | null;
+  isRunDisabled: boolean;
+  isRunning: boolean;
+  isUploadingDocuments: boolean;
+  deletingDocumentIds: string[];
+  downloadingDocumentIds: string[];
+  createForwardingAlias: { isPending: boolean };
+  disableForwardingAlias: { isPending: boolean };
+  rotateForwardingAlias: { isPending: boolean };
+  onUploadDocuments: (files: FileList | File[]) => void | Promise<void>;
+  onDownloadDocument: (document: CoworkerDocumentRecord) => void | Promise<void>;
+  onDeleteDocument: (document: CoworkerDocumentRecord) => void | Promise<void>;
+  onTabChange: (tab: CoworkerTab) => void;
+  onRun: (event: React.MouseEvent) => void;
+  onSelectRun: (runId: string) => void;
+  onBackToRuns: () => void;
+  onNameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onDescriptionChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onUsernameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onStatusChange: (checked: boolean) => void;
+  onAutoApproveChange: (checked: boolean) => void;
+  onRequiresUserInputChange: (checked: boolean) => void;
+  onUserInputPromptChange: (value: string) => void;
+  onPromptChange: (value: string) => void;
+  onSaveInstructions: () => void | Promise<void>;
+  onModelChange: (input: { model: string; authSource?: ProviderAuthSource | null }) => void;
+  onClearSkills: () => void;
+  onToggleSkillChecked: (skillKey: string) => void;
+  onClearWorkspaceMcpServers: () => void;
+  onToggleWorkspaceMcpServerChecked: (sourceId: string) => void;
+  onRestrictToolsChange: (checked: boolean) => void;
+  onSelectAllIntegrations: () => void;
+  onClearIntegrations: () => void;
+  onToggleIntegrationChecked: (type: IntegrationType) => void;
+  onTriggerTypeChange: (value: string) => void;
+  onScheduleTypeChange: (value: string) => void;
+  onIntervalHoursChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onScheduleTimeChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onToggleWeekDay: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onScheduleDayOfMonthChange: (value: string) => void;
+  onCopyCoworkerAlias: () => void;
+  onRotateCoworkerAlias: () => void;
+  onDisableCoworkerAlias: () => void;
+  onCreateCoworkerAlias: () => void;
+  onClose: () => void;
+  showCloseButton?: boolean;
+  showDeleteDialog: boolean;
+  onShowDeleteDialogChange: (open: boolean) => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+  hideHeader?: boolean;
+  showAdminTab?: boolean;
+  renderAdminContent?: () => React.ReactNode;
+};
+
+export function CoworkerSettingsPanel({
+  coworkerId,
+  coworkerRouteSlug,
+  name,
+  description,
+  username,
+  isSaving,
+  status,
+  autoApprove,
+  requiresUserInput,
+  userInputPrompt,
+  prompt,
+  model,
+  modelAuthSource,
+  providerAvailability,
+  availableSkills,
+  selectedSkillKeys,
+  executorSourceEntries,
+  selectedWorkspaceMcpServerIds,
+  isSkillsLoading,
+  restrictTools,
+  allowedIntegrations,
+  allIntegrationTypes,
+  integrationEntries,
+  triggerType,
+  triggers,
+  scheduleType,
+  intervalMinutes,
+  scheduleTime,
+  scheduleDaysOfWeek,
+  scheduleDayOfMonth,
+  localTimezone,
+  hasActiveForwardingAlias,
+  coworkerForwardingAddress,
+  coworkerForwardingAlias,
+  isEmailTriggerPersisted,
+  copiedForwardingField,
+  documents,
+  runs,
+  activeTab,
+  selectedRunId,
+  isRunDisabled,
+  isRunning,
+  isUploadingDocuments,
+  deletingDocumentIds,
+  downloadingDocumentIds,
+  createForwardingAlias,
+  disableForwardingAlias,
+  rotateForwardingAlias,
+  onUploadDocuments,
+  onDownloadDocument,
+  onDeleteDocument,
+  onTabChange,
+  onRun,
+  onSelectRun,
+  onBackToRuns,
+  onNameChange,
+  onDescriptionChange,
+  onUsernameChange,
+  onStatusChange,
+  onAutoApproveChange,
+  onRequiresUserInputChange,
+  onUserInputPromptChange,
+  onPromptChange,
+  onSaveInstructions,
+  onModelChange,
+  onClearSkills,
+  onToggleSkillChecked,
+  onClearWorkspaceMcpServers,
+  onToggleWorkspaceMcpServerChecked,
+  onRestrictToolsChange,
+  onSelectAllIntegrations,
+  onClearIntegrations,
+  onToggleIntegrationChecked,
+  onTriggerTypeChange,
+  onScheduleTypeChange,
+  onIntervalHoursChange,
+  onScheduleTimeChange,
+  onToggleWeekDay,
+  onScheduleDayOfMonthChange,
+  onCopyCoworkerAlias,
+  onRotateCoworkerAlias,
+  onDisableCoworkerAlias,
+  onCreateCoworkerAlias,
+  onClose,
+  showCloseButton = true,
+  showDeleteDialog,
+  onShowDeleteDialogChange,
+  onDelete,
+  isDeleting,
+  hideHeader,
+  showAdminTab = false,
+  renderAdminContent,
+}: CoworkerSettingsPanelProps) {
+  const t = useGT();
+
+  const handleOpenDeleteDialog = useCallback(() => {
+    onShowDeleteDialogChange(true);
+  }, [onShowDeleteDialogChange]);
+
+  const handleTabChange = useCallback(
+    (key: string) => {
+      onTabChange(key as CoworkerTab);
+    },
+    [onTabChange],
+  );
+  const adminContent = renderAdminContent?.();
+
+  return (
+    <div className="flex h-full flex-col">
+      {!hideHeader && (
+        <div className="flex items-center justify-between gap-3 px-3 py-1.5">
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
+              <AnimatedTab value="instruction">
+                <T>Instruction</T>
+              </AnimatedTab>
+              <AnimatedTab value="runs">
+                <T>Runs</T>
+              </AnimatedTab>
+              <AnimatedTab value="docs">
+                <T>Docs</T>
+              </AnimatedTab>
+              <AnimatedTab value="toolbox">
+                <T>Toolbox</T>
+              </AnimatedTab>
+              {showAdminTab ? (
+                <AnimatedTab value="admin">
+                  <T>Admin</T>
+                </AnimatedTab>
+              ) : null}
+            </AnimatedTabs>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {isSaving ? (
+              <span className="text-muted-foreground shrink-0 text-xs">
+                <T>Saving...</T>
+              </span>
+            ) : null}
+            <div className="flex items-center gap-1.5">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={status}
+                  initial={statusTextMotionInitial}
+                  animate={statusTextMotionAnimate}
+                  exit={statusTextMotionExit}
+                  transition={statusTextMotionTransition}
+                  className={cn(
+                    "text-xs font-medium",
+                    status === "on"
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {status === "on" ? "On" : "Off"}
+                </motion.span>
+              </AnimatePresence>
+              <Switch checked={status === "on"} onCheckedChange={onStatusChange} />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 px-3 text-xs font-medium"
+              onClick={onRun}
+              disabled={isRunDisabled}
+            >
+              {isRunning ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Play className="h-3 w-3" />
+              )}
+              <T>Run now</T>
+            </Button>
+            <button
+              type="button"
+              onClick={handleOpenDeleteDialog}
+              className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+              aria-label={t("Delete coworker")}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            {showCloseButton ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                aria-label={t("Close panel")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+            <DeleteCoworkerDialog
+              open={showDeleteDialog}
+              isDeleting={isDeleting}
+              onOpenChange={onShowDeleteDialogChange}
+              onDelete={onDelete}
+            />
+          </div>
+        </div>
+      )}
+      <div
+        className={cn(
+          "min-h-0 flex-1",
+          activeTab === "runs" && selectedRunId
+            ? "flex flex-col overflow-hidden"
+            : "overflow-y-auto",
+        )}
+      >
+        {activeTab === "instruction" ? (
+          <CoworkerInstructionsPanel
+            coworkerId={coworkerId}
+            hideHeader={hideHeader}
+            name={name}
+            username={username}
+            description={description}
+            prompt={prompt}
+            model={model}
+            modelAuthSource={modelAuthSource}
+            providerAvailability={providerAvailability}
+            isSaving={isSaving}
+            autoApprove={autoApprove}
+            requiresUserInput={requiresUserInput}
+            userInputPrompt={userInputPrompt}
+            triggerType={triggerType}
+            triggers={triggers}
+            scheduleType={scheduleType}
+            intervalMinutes={intervalMinutes}
+            scheduleTime={scheduleTime}
+            scheduleDaysOfWeek={scheduleDaysOfWeek}
+            scheduleDayOfMonth={scheduleDayOfMonth}
+            localTimezone={localTimezone}
+            hasActiveForwardingAlias={hasActiveForwardingAlias}
+            coworkerForwardingAddress={coworkerForwardingAddress}
+            coworkerForwardingAlias={coworkerForwardingAlias}
+            isEmailTriggerPersisted={isEmailTriggerPersisted}
+            copiedForwardingField={copiedForwardingField}
+            createForwardingAlias={createForwardingAlias}
+            disableForwardingAlias={disableForwardingAlias}
+            rotateForwardingAlias={rotateForwardingAlias}
+            onNameChange={onNameChange}
+            onDescriptionChange={onDescriptionChange}
+            onUsernameChange={onUsernameChange}
+            onAutoApproveChange={onAutoApproveChange}
+            onRequiresUserInputChange={onRequiresUserInputChange}
+            onUserInputPromptChange={onUserInputPromptChange}
+            onPromptChange={onPromptChange}
+            onSaveInstructions={onSaveInstructions}
+            onModelChange={onModelChange}
+            onTriggerTypeChange={onTriggerTypeChange}
+            onScheduleTypeChange={onScheduleTypeChange}
+            onIntervalHoursChange={onIntervalHoursChange}
+            onScheduleTimeChange={onScheduleTimeChange}
+            onToggleWeekDay={onToggleWeekDay}
+            onScheduleDayOfMonthChange={onScheduleDayOfMonthChange}
+            onCopyCoworkerAlias={onCopyCoworkerAlias}
+            onRotateCoworkerAlias={onRotateCoworkerAlias}
+            onDisableCoworkerAlias={onDisableCoworkerAlias}
+            onCreateCoworkerAlias={onCreateCoworkerAlias}
+          />
+        ) : null}
+        {activeTab === "runs" ? (
+          <CoworkerRunsPanel
+            runs={runs}
+            selectedRunId={selectedRunId}
+            coworkerId={coworkerId}
+            coworkerRouteSlug={coworkerRouteSlug}
+            onSelectRun={onSelectRun}
+            onBackToRuns={onBackToRuns}
+          />
+        ) : null}
+        {activeTab === "docs" ? (
+          <CoworkerDocumentsPanel
+            documents={documents}
+            isUploadingDocuments={isUploadingDocuments}
+            deletingDocumentIds={deletingDocumentIds}
+            downloadingDocumentIds={downloadingDocumentIds}
+            onUploadDocuments={onUploadDocuments}
+            onDownloadDocument={onDownloadDocument}
+            onDeleteDocument={onDeleteDocument}
+          />
+        ) : null}
+        {activeTab === "toolbox" ? (
+          <CoworkerToolboxPanel
+            restrictTools={restrictTools}
+            allowedIntegrations={allowedIntegrations}
+            allIntegrationTypes={allIntegrationTypes}
+            integrationEntries={integrationEntries}
+            availableSkills={availableSkills}
+            selectedSkillKeys={selectedSkillKeys}
+            workspaceMcpServerEntries={executorSourceEntries}
+            selectedWorkspaceMcpServerIds={selectedWorkspaceMcpServerIds}
+            isSkillsLoading={isSkillsLoading}
+            onRestrictToolsChange={onRestrictToolsChange}
+            onSelectAllIntegrations={onSelectAllIntegrations}
+            onClearIntegrations={onClearIntegrations}
+            onToggleIntegrationChecked={onToggleIntegrationChecked}
+            onClearSkills={onClearSkills}
+            onToggleSkillChecked={onToggleSkillChecked}
+            onClearWorkspaceMcpServers={onClearWorkspaceMcpServers}
+            onToggleWorkspaceMcpServerChecked={onToggleWorkspaceMcpServerChecked}
+          />
+        ) : null}
+        {activeTab === "admin" ? (
+          <div className="px-4 py-3">
+            {adminContent ?? (
+              <p className="text-xs">
+                <T>No admin actions.</T>
+              </p>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

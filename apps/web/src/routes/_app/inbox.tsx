@@ -16,7 +16,7 @@ import { InboxList } from "@/components/inbox/inbox-list";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { client } from "@/orpc/client";
-import { useCoworkerList, useGetOrCreateBuilderConversation } from "@/orpc/hooks/coworkers";
+import { useCoworkerList, useGetOrCreateBuilderChat } from "@/orpc/hooks/coworkers";
 import {
   useCancelGeneration,
   useEnqueueConversationMessage,
@@ -129,7 +129,7 @@ function InboxPageContent() {
   const cancelGeneration = useCancelGeneration();
   const enqueueConversationMessage = useEnqueueConversationMessage();
   const getAuthUrl = useGetAuthUrl();
-  const getOrCreateBuilderConversation = useGetOrCreateBuilderConversation();
+  const getOrCreateBuilderChat = useGetOrCreateBuilderChat();
   const editApprovalAndResend = useInboxEditApprovalAndResend();
   const markInboxItemAsRead = useInboxMarkAsRead();
 
@@ -453,14 +453,14 @@ function InboxPageContent() {
   const handleOpenBuilder = useCallback(
     async (item: InboxCoworkerItem) => {
       await runItemAction(item.id, async () => {
-        await getOrCreateBuilderConversation.mutateAsync(item.coworkerId);
+        await getOrCreateBuilderChat.mutateAsync(item.coworkerId);
         const coworker = (
           (coworkersQuery.data ?? []) as Array<{ id: string; username?: string | null }>
         ).find((candidate) => candidate.id === item.coworkerId);
         void navigate({ to: getCoworkerEditHref(coworker ?? { id: item.coworkerId }) });
       });
     },
-    [coworkersQuery.data, getOrCreateBuilderConversation, navigate, runItemAction],
+    [coworkersQuery.data, getOrCreateBuilderChat, navigate, runItemAction],
   );
   const handleMarkAsRead = useCallback(
     async (item: InboxItem) => {

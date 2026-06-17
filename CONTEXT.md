@@ -101,36 +101,60 @@ One agent execution lifecycle for a conversation turn, including preparation, mo
 _Avoid_: run, request
 
 **Coworker**:
-A user-configured agent that can start a **Generation** from a manual, scheduled, email, or webhook trigger.
+A user-configured agent that can start a **Coworker Run** from a manual, scheduled, email, or webhook trigger.
 _Avoid_: bot, automation, worker
+
+**Coworker Run**:
+One attempt by a **Coworker** to handle a manual or automated trigger. A **Coworker Run** may be actively running, waiting for human input, waiting for a continuation, or terminal; it may expose a **Generation** when the user is inspecting the underlying execution lifecycle.
+_Avoid_: request, job
+
+**Coworker Run Backlog**:
+The non-terminal **Coworker Runs** for one **Coworker** that are waiting for a **Start Message**, approval, authentication, or continuation rather than actively running. Backlog is pressure on automated triggers, but it is not an active execution conflict for a manual **Run Now**.
+_Avoid_: active runs, failed runs
+
+**Auto-Disabled Coworker**:
+A **Coworker** that Bap has turned off because automated triggers repeatedly produced **Coworker Run Backlog** that needs human attention. A **User** can still start a manual **Run Now** for an auto-disabled **Coworker**.
+_Avoid_: failed coworker, broken coworker
+
+**Coworker Run Reset**:
+An explicit **User** action that cancels non-terminal **Coworker Runs** so an **Auto-Disabled Coworker** can receive automated triggers again. A **Coworker Run Reset** discards waiting or running work; it is not performed silently when a **User** views or edits a **Coworker**.
+_Avoid_: cleanup, retry, silent reset, backlog reset
+
+**Cancelling Coworker Run**:
+A non-terminal **Coworker Run** for which a **User** has requested cancellation, while Bap is still settling the linked **Generation** or runtime cleanup. A cancelling run should not block new manual or automated starts.
+_Avoid_: cancelled run, running run
 
 **Coworker Avatar**:
 The visual identity shown for a **Coworker** in Bap surfaces.
 _Avoid_: agent avatar, profile picture, icon
 
-**Coworker Builder Conversation**:
-A conversation attached to one **Coworker** that a **User** uses to iteratively edit that **Coworker**. A **Coworker Builder Conversation** is distinct from a conversation created by running the **Coworker**.
-_Avoid_: builder chat, editor chat
+**Builder Chat**:
+A chat attached to one **Coworker** that a **User** uses to iteratively edit that **Coworker**. A **Builder Chat** is distinct from a chat created by running the **Coworker**.
+_Avoid_: coworker builder conversation, builder conversation, editor chat
 
 **Coworker Document**:
 A file a **User** attaches to a **Coworker** so future **Coworker** **Generations** can use it as persistent reference material. A **Coworker Document** belongs to exactly one **Coworker** and is managed separately from the **Coworker**'s instructions, trigger, and **Toolbox**.
 _Avoid_: doc, attachment, file upload
 
 **Coworker Definition**:
-A portable serialized description of a **Coworker**, including instructions, trigger settings, **Toolbox**, optional **Coworker Documents**, and generated artifacts. A **Coworker Definition** does not include runtime state such as **Generations**, **Pending Starts**, or **Coworker History**.
+A portable serialized description of a **Coworker**, including instructions, trigger settings, **Toolbox**, optional **Coworker Documents**, and generated artifacts. A **Coworker Definition** does not include runtime state such as **Generations**, **Pending Starts**, or **Run History**.
 _Avoid_: JSON, template, backup
 
-**Coworker History**:
-The user-facing history of write actions performed by **Coworker** **Generations**, derived from coworker run events. **Coworker History** is distinct from an **Audit Trail** and from raw run history: one coworker run can produce zero, one, or many history entries.
-_Avoid_: audit log, run history
+**Run History**:
+The user-facing history of **Coworker Runs**, their outcomes, and the run activity they produced for one or more **Coworkers**. **Run History** is distinct from an **Audit Trail**.
+_Avoid_: coworker history, audit log
 
 **Coworker Forwarding Alias**:
 An email address that routes forwarded email to one **Coworker** configured with the `email.forwarded` trigger. A **Coworker Forwarding Alias** is distinct from user-level forwarded email routing.
 _Avoid_: email alias, forwarding address
 
 **Start Message**:
-A free-text message a **User** provides before a **Coworker** starts a **Generation** so the **Generation** has the task-specific context it needs before work begins.
+A free-text message a **User** provides before a **Coworker Run** starts so the linked **Generation** has the task-specific context it needs before work begins.
 _Avoid_: launch payload, run prompt, parameter form, initial message
+
+**Parameter**:
+A specific value a **User** provides before a **Coworker Run** starts in response to a **Parameter Prompt**. A **Parameter** may be carried as the **Start Message** for that run.
+_Avoid_: user input, field value
 
 **Pending Start**:
 A waiting state for a **Coworker** trigger where Bap has created the user-facing conversation and asked for a **Start Message**, but no **Generation** has started yet.
@@ -140,9 +164,9 @@ _Avoid_: paused generation, pending run, pre-run
 The inbox-facing status for a **Pending Start**, shown to the **User** as “Needs your input.”
 _Avoid_: awaiting start message, paused, approval
 
-**User Input Prompt**:
-The coworker-authored question shown during a **Pending Start** to ask for the **Start Message**.
-_Avoid_: start prompt, first-run prompt, parameter prompt
+**Parameter Prompt**:
+The coworker-authored question shown during a **Pending Start** to ask for a **Parameter**. A **Parameter Prompt** names the context the **Coworker** needs before it can start the **Coworker Run**.
+_Avoid_: user input prompt, start prompt, first-run prompt
 
 **SLO Journey**:
 A low-cardinality, user-facing reliability slice whose success is measured by one authoritative terminal outcome, including failures that prevent the user from completing the workflow at all. **SLO Journey** values describe real product workflows such as chat, coworker builder, and coworker run; global SLO reporting is a rollup across journeys, not a separate journey.
@@ -241,7 +265,7 @@ Use **Connected Account** for an external provider identity. Use **User** for th
 Use **Workspace MCP Server** for an MCP endpoint exposed to agent runtimes. Do not use "source" as a product term for integration runtime configuration.
 
 **start**:
-Use **Start Message** only for the user-provided context required before a **Coworker** starts a **Generation**. Use “trigger a coworker run” when referring to asking an existing **Coworker** to execute.
+Use **Start Message** only for the user-provided context required before a **Coworker Run** starts. Use “trigger a coworker run” when referring to asking an existing **Coworker** to execute.
 
 **client**:
 Use **Client Observation** for browser-originated telemetry. Use **Modulr Customer** for a customer record from Modulr; Modulr's API may still expose that entity as `clients`.

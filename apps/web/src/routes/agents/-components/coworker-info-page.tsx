@@ -1,23 +1,6 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Download,
-  FileCode2,
-  FileText,
-  History,
-  Info,
-  Loader2,
-  Maximize2,
-  MessageSquareText,
-  Pencil,
-  Play,
-  RefreshCw,
-  Timer,
-  Wrench,
-} from "lucide-react";
+import { AlertCircle, History, Info, Loader2, Pencil, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   type PointerEvent as ReactPointerEvent,
@@ -27,9 +10,7 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import type { Message, MessagePart, SandboxFileData } from "@/components/chat/message-list";
 import { ChatArea } from "@/components/chat/chat-area";
-import { MessageBubble } from "@/components/chat/message-bubble";
 import { findLatestAgenticAppFile } from "@/components/chat/agentic-app-selection";
 import { mapPersistedMessagesToChatMessages } from "@/components/chat/persisted-message-mapper";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
@@ -39,18 +20,12 @@ import {
 } from "@/components/coworkers/remote-run-source-banner";
 import { RunDebugDetails } from "@/components/coworkers/run-debug-details";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
-import {
-  useConversation,
-  useDownloadSandboxFile,
-  useAgenticAppHtml,
-} from "@/orpc/hooks/conversation";
+import { useConversation } from "@/orpc/hooks/conversation";
 import {
   useCoworker,
   useCoworkerList,
@@ -59,615 +34,26 @@ import {
   useTriggerCoworker,
 } from "@/orpc/hooks/coworkers";
 import { AppLink as Link } from "../-lib/app-link";
+import {
+  getAdjacentMobilePanel,
+  getInfoTab,
+  getMobilePanel,
+  HistoryRunButton,
+  isUuidRouteSlug,
+  LoadingState,
+  MOBILE_PANEL_ORDER,
+  MOBILE_PANEL_SWIPE_THRESHOLD,
+  MOBILE_PANEL_TRANSITION,
+  MOBILE_PANEL_VARIANTS,
+  OutputPanel,
+  RunDetailsPanel,
+  RunSummaryPanel,
+  type MobilePanel,
+} from "./coworker-info-panels";
 
 type Props = {
   coworkerSlug: string;
 };
-
-type InfoTab = "summary" | "chat";
-type MobilePanel = "app" | InfoTab;
-
-const MOBILE_PANEL_ORDER: MobilePanel[] = ["summary", "app", "chat"];
-const MOBILE_PANEL_SWIPE_THRESHOLD = 48;
-const MOBILE_PANEL_TRANSITION = { duration: 0.18, ease: [0.22, 1, 0.36, 1] } as const;
-const MOBILE_PANEL_VARIANTS = {
-  enter: (direction: number) => ({
-    opacity: 0,
-    x: direction >= 0 ? 32 : -32,
-  }),
-  center: {
-    opacity: 1,
-    x: 0,
-  },
-  exit: (direction: number) => ({
-    opacity: 0,
-    x: direction >= 0 ? -32 : 32,
-  }),
-} as const;
-
-type HistoryRunItem = {
-  id: string;
-  status: string;
-  startedAt?: Date | string | null;
-};
-
-type RunEventSummary = {
-  type: string;
-  payload: unknown;
-};
-
-type ToolSummaryItem = {
-  name: string;
-  count: number;
-};
-
-function formatRunDate(value?: Date | string | null) {
-  if (!value) {
-    return "not started";
-  }
-
-  const date = typeof value === "string" ? new Date(value) : value;
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.max(0, Math.floor(diffMs / 60_000));
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  const diffWeeks = Math.floor(diffDays / 7);
-
-  if (diffMinutes < 1) {
-    return "just now";
-  }
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
-  }
-  if (diffHours < 24) {
-    return `${diffHours}h ago`;
-  }
-  if (diffDays < 7) {
-    return `${diffDays}d ago`;
-  }
-  if (diffWeeks < 8) {
-    return `${diffWeeks}w ago`;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
-}
-
-function isCompletedStatus(status?: string | null) {
-  return status === "completed" || status === "success";
-}
-
-function getInfoTab(value: string | null): InfoTab {
-  return value === "chat" ? "chat" : "summary";
-}
-
-function getMobilePanel(value: string): MobilePanel {
-  return value === "summary" || value === "chat" ? value : "app";
-}
-
-function getAdjacentMobilePanel(current: MobilePanel, direction: "next" | "previous") {
-  const currentIndex = MOBILE_PANEL_ORDER.indexOf(current);
-  const nextIndex =
-    direction === "next"
-      ? Math.min(MOBILE_PANEL_ORDER.length - 1, currentIndex + 1)
-      : Math.max(0, currentIndex - 1);
-
-  return MOBILE_PANEL_ORDER[nextIndex] ?? current;
-}
-
-function isUuidRouteSlug(value: string | undefined): value is string {
-  return Boolean(
-    value &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value),
-  );
-}
-
-function toDate(value?: Date | string | null) {
-  if (!value) {
-    return null;
-  }
-  const date = typeof value === "string" ? new Date(value) : value;
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDuration(startedAt?: Date | string | null, finishedAt?: Date | string | null) {
-  const start = toDate(startedAt);
-  if (!start) {
-    return "Not available";
-  }
-
-  const finish = toDate(finishedAt) ?? new Date();
-  const durationMs = Math.max(0, finish.getTime() - start.getTime());
-  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-  return `${seconds}s`;
-}
-
-function formatFileSize(sizeBytes?: number | null) {
-  if (!sizeBytes) {
-    return "size unknown";
-  }
-  if (sizeBytes < 1024) {
-    return `${sizeBytes} B`;
-  }
-  if (sizeBytes < 1024 * 1024) {
-    return `${(sizeBytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function readableToolName(part: MessagePart) {
-  if (part.type === "tool_call") {
-    if (part.integration && part.operation) {
-      return `${part.integration}.${part.operation}`;
-    }
-    return part.name;
-  }
-  if (part.type === "approval") {
-    if (part.integration && part.operation) {
-      return `${part.integration}.${part.operation}`;
-    }
-    return part.toolName;
-  }
-  return null;
-}
-
-function getPayloadRecord(payload: unknown) {
-  return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
-}
-
-function getEventToolName(event: RunEventSummary) {
-  if (event.type !== "tool_use" && event.type !== "tool_result") {
-    return null;
-  }
-
-  const payload = getPayloadRecord(event.payload);
-  if (!payload) {
-    return null;
-  }
-
-  const toolName = payload.toolName ?? payload.tool_name ?? payload.name;
-  return typeof toolName === "string" && toolName.trim() ? toolName.trim() : null;
-}
-
-function collectToolSummary(messages: Message[], events?: RunEventSummary[]): ToolSummaryItem[] {
-  const counts = new Map<string, number>();
-
-  for (const message of messages) {
-    for (const part of message.parts ?? []) {
-      const name = readableToolName(part);
-      if (name) {
-        counts.set(name, (counts.get(name) ?? 0) + 1);
-      }
-    }
-  }
-
-  if (counts.size === 0) {
-    for (const event of events ?? []) {
-      const name = getEventToolName(event);
-      if (name) {
-        counts.set(name, (counts.get(name) ?? 0) + 1);
-      }
-    }
-  }
-
-  return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .toSorted((left, right) => right.count - left.count || left.name.localeCompare(right.name));
-}
-
-function collectSandboxFiles(messages: Message[]) {
-  const files = new Map<string, SandboxFileData>();
-
-  for (const message of messages) {
-    for (const file of message.sandboxFiles ?? []) {
-      files.set(file.fileId, file);
-    }
-  }
-
-  return Array.from(files.values()).toSorted((left, right) =>
-    left.filename.localeCompare(right.filename),
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="flex min-h-[24rem] items-center justify-center">
-      <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
-    </div>
-  );
-}
-
-function EmptyPreview({ latestMessage }: { latestMessage?: string }) {
-  if (latestMessage?.trim()) {
-    return (
-      <div className="bg-background h-full overflow-auto p-5">
-        <div className="mx-auto max-w-3xl">
-          <div className="border-border/70 mb-4 flex h-11 items-center gap-2 border-b">
-            <MessageSquareText className="text-muted-foreground h-4 w-4" />
-            <p className="text-sm font-medium">
-              <T>Latest coworker message</T>
-            </p>
-          </div>
-          <MessageBubble role="assistant" content={latestMessage} />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-muted/25 flex h-full min-h-[22rem] items-center justify-center p-6">
-      <div className="max-w-sm text-center">
-        <FileCode2 className="text-muted-foreground mx-auto mb-3 h-6 w-6" />
-        <p className="text-sm font-medium">
-          <T>No output.html found</T>
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-          <T>The linked conversation has not produced an output.html artifact yet.</T>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function AgenticAppFrame({
-  outputFile,
-  showToolbar = true,
-}: {
-  outputFile: SandboxFileData;
-  showToolbar?: boolean;
-}) {
-  const t = useGT();
-
-  const preview = useAgenticAppHtml(outputFile.fileId);
-  const { mutateAsync: downloadSandboxFile, isPending: isDownloading } = useDownloadSandboxFile();
-  const [fullscreenOpen, setFullscreenOpen] = useState(false);
-
-  const handleRefresh = useCallback(() => {
-    void preview.refetch();
-  }, [preview]);
-
-  const handleDownload = useCallback(async () => {
-    const result = await downloadSandboxFile(outputFile.fileId);
-    const link = document.createElement("a");
-    link.href = result.url;
-    link.download = outputFile.filename;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, [downloadSandboxFile, outputFile.fileId, outputFile.filename]);
-  const handleOpenFullscreen = useCallback(() => {
-    setFullscreenOpen(true);
-  }, []);
-
-  return (
-    <div className="bg-background flex h-full min-h-0 flex-col">
-      {showToolbar ? (
-        <div className="border-border/70 flex h-11 shrink-0 items-center gap-2 border-b px-3">
-          <FileCode2 className="text-muted-foreground h-4 w-4" />
-          <p className="min-w-0 flex-1 truncate text-sm font-medium">
-            <T>output.html</T>
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleRefresh}
-            disabled={preview.isFetching}
-            aria-label={t("Refresh Agentic-App")}
-          >
-            {preview.isFetching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleDownload}
-            disabled={isDownloading}
-            aria-label={t("Download output.html")}
-          >
-            {isDownloading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      ) : null}
-      <div className="bg-muted/30 relative min-h-0 flex-1">
-        {preview.isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
-          </div>
-        ) : preview.isError ? (
-          <div className="flex h-full items-center justify-center p-6 text-center">
-            <div className="max-w-sm space-y-2">
-              <p className="text-sm font-medium">
-                <T>Agentic-App unavailable</T>
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {showToolbar
-                  ? "Download output.html to inspect the generated file."
-                  : "The generated Agentic-App could not be loaded."}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              className="bg-background/90 absolute top-3 right-3 z-10 hidden h-8 w-8 border shadow-sm md:inline-flex"
-              onClick={handleOpenFullscreen}
-              aria-label={t("Open Agentic-App fullscreen")}
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-            <iframe
-              title={t("output.html Agentic-App")}
-              className="bg-background h-full w-full border-0"
-              sandbox="allow-scripts allow-forms"
-              srcDoc={preview.data?.html ?? ""}
-            />
-          </>
-        )}
-      </div>
-      <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
-        <DialogContent
-          className="h-[calc(100dvh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none gap-0 overflow-hidden p-0 sm:rounded-xl"
-          showCloseButton
-        >
-          <DialogTitle className="sr-only">
-            <T>output.html Agentic-App fullscreen</T>
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            <T>Fullscreen view of the generated output.html file.</T>
-          </DialogDescription>
-          <iframe
-            title={t("output.html Agentic-App fullscreen")}
-            className="bg-background h-full w-full border-0"
-            sandbox="allow-scripts allow-forms"
-            srcDoc={preview.data?.html ?? ""}
-          />
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function HistoryRunButton({
-  run,
-  selected,
-  onSelect,
-}: {
-  run: HistoryRunItem;
-  selected: boolean;
-  onSelect: (runId: string) => void;
-}) {
-  const handleClick = useCallback(() => {
-    onSelect(run.id);
-  }, [onSelect, run.id]);
-
-  return (
-    <button
-      type="button"
-      className={cn(
-        "hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition-colors",
-        selected ? "bg-muted text-foreground" : "text-muted-foreground",
-      )}
-      onClick={handleClick}
-    >
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-medium">{formatRunDate(run.startedAt)}</span>
-        <span className="block truncate text-xs">{run.status}</span>
-      </span>
-      {selected ? <span className="bg-brand h-1.5 w-1.5 shrink-0 rounded-full" /> : null}
-    </button>
-  );
-}
-
-function RunSummaryPanel({
-  status,
-  startedAt,
-  finishedAt,
-  events,
-  messages,
-}: {
-  status?: string | null;
-  startedAt?: Date | string | null;
-  finishedAt?: Date | string | null;
-  events?: RunEventSummary[];
-  messages: Message[];
-}) {
-  const completed = isCompletedStatus(status);
-  const tools = useMemo(() => collectToolSummary(messages, events), [events, messages]);
-  const files = useMemo(() => collectSandboxFiles(messages), [messages]);
-  const duration = useMemo(() => formatDuration(startedAt, finishedAt), [finishedAt, startedAt]);
-  const launched = useMemo(() => formatRunDate(startedAt), [startedAt]);
-
-  return (
-    <div className="space-y-5 p-4">
-      <div className="grid grid-cols-3 gap-2">
-        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-            <CheckCircle2 className={cn("h-3 w-3", completed && "text-emerald-600")} />
-            <T>Status</T>
-          </div>
-          <p className={cn("mt-0.5 truncate text-sm font-medium", completed && "text-emerald-700")}>
-            {completed ? "Completed" : (status ?? "Unknown")}
-          </p>
-        </div>
-        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-            <Clock className="h-3 w-3" />
-            <T>Launched</T>
-          </div>
-          <p className="mt-0.5 truncate text-sm font-medium">{launched}</p>
-        </div>
-        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-            <Timer className="h-3 w-3" />
-            <T>Time taken</T>
-          </div>
-          <p className="mt-0.5 truncate text-sm font-medium">{duration}</p>
-        </div>
-      </div>
-
-      <section className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Wrench className="text-muted-foreground h-4 w-4" />
-          <h2 className="text-sm font-medium">
-            <T>Tools used</T>
-          </h2>
-        </div>
-        {tools.length > 0 ? (
-          <div className="space-y-1.5">
-            {tools.map((tool) => (
-              <div
-                key={tool.name}
-                className="border-border/70 flex items-center justify-between gap-3 rounded-md border px-2.5 py-2"
-              >
-                <span className="min-w-0 truncate font-mono text-xs">{tool.name}</span>
-                <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[11px]">
-                  {tool.count}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
-            <T>No tool usage recorded for this Generation.</T>
-          </p>
-        )}
-      </section>
-
-      <section className="space-y-2">
-        <div className="flex items-center gap-2">
-          <FileText className="text-muted-foreground h-4 w-4" />
-          <h2 className="text-sm font-medium">
-            <T>Output files</T>
-          </h2>
-        </div>
-        {files.length > 0 ? (
-          <div className="space-y-1.5">
-            {files.map((file) => (
-              <div key={file.fileId} className="border-border/70 rounded-md border px-2.5 py-2">
-                <p className="truncate text-xs font-medium">{file.filename}</p>
-                <p className="text-muted-foreground mt-1 truncate text-[11px]">
-                  {formatFileSize(file.sizeBytes)} · {file.path}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
-            <T>No output files were created by this Generation.</T>
-          </p>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function OutputPanel({
-  outputFile,
-  latestCoworkerMessage,
-  showOutputToolbar = true,
-}: {
-  outputFile?: SandboxFileData | null;
-  latestCoworkerMessage?: string;
-  showOutputToolbar?: boolean;
-}) {
-  return outputFile ? (
-    <AgenticAppFrame outputFile={outputFile} showToolbar={showOutputToolbar} />
-  ) : (
-    <EmptyPreview latestMessage={latestCoworkerMessage} />
-  );
-}
-
-function RunDetailsPanel({
-  activeTab,
-  onTabChange,
-  isFetchingConversation,
-  run,
-  messages,
-  conversationId,
-}: {
-  activeTab: InfoTab;
-  onTabChange: (nextTab: string) => void;
-  isFetchingConversation: boolean;
-  run: {
-    status?: string | null;
-    startedAt?: Date | string | null;
-    finishedAt?: Date | string | null;
-    events?: RunEventSummary[];
-  };
-  messages: Message[];
-  conversationId?: string;
-}) {
-  return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex min-h-12 shrink-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-        <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange}>
-          <AnimatedTab value="summary">
-            <T>Summary</T>
-          </AnimatedTab>
-          <AnimatedTab value="chat">
-            <T>Chat</T>
-          </AnimatedTab>
-        </AnimatedTabs>
-        {activeTab === "chat" && isFetchingConversation ? (
-          <div className="text-muted-foreground flex items-center gap-1.5 px-1 text-xs">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <T>Updating</T>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {activeTab === "summary" ? (
-          <div className="h-full overflow-auto">
-            <RunSummaryPanel
-              status={run.status}
-              startedAt={run.startedAt}
-              finishedAt={run.finishedAt}
-              events={run.events}
-              messages={messages}
-            />
-          </div>
-        ) : conversationId ? (
-          <div className="flex h-full min-h-0 overflow-hidden">
-            <ChatArea conversationId={conversationId} compact />
-          </div>
-        ) : (
-          <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">
-            <T>No linked chat messages.</T>
-          </div>
-        )}
-      </div>
-    </aside>
-  );
-}
 
 export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const t = useGT();
@@ -877,7 +263,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         id: resolvedCoworkerId,
         payload: {},
       });
-      toast.success(result.generationId ? "Generation started." : "Needs your input.");
+      toast.success(result.generationId ? "Run started." : "Needs your input.");
       void navigate({ to: "/agents/info/$slug", params: { slug: resolvedCoworkerSlug } });
     } catch (error) {
       toast.error(normalizeGenerationError(error, "start_rpc").message);
@@ -1023,10 +409,10 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
               <PopoverContent align="end" className="w-72 p-2">
                 <div className="px-2 py-1.5">
                   <p className="text-sm font-medium">
-                    <T>Previous Generations</T>
+                    <T>Previous Runs</T>
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    <T>Switch this page to an older Generation.</T>
+                    <T>Switch this page to an older run.</T>
                   </p>
                 </div>
                 <div className="mt-1 max-h-80 space-y-1 overflow-auto">
@@ -1069,8 +455,8 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           <section className="border-border bg-card rounded-xl border p-4">
             <p className="text-muted-foreground text-sm">
               {run.data.status === "cancelled"
-                ? (run.data.errorMessage ?? "Generation cancelled.")
-                : (run.data.errorMessage ?? "Generation failed.")}
+                ? (run.data.errorMessage ?? "Run cancelled.")
+                : (run.data.errorMessage ?? "Run failed.")}
             </p>
             <RunDebugDetails
               debugInfo={run.data.debugInfo}
@@ -1241,10 +627,10 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                           <PopoverContent align="center" className="w-72 p-2">
                             <div className="px-2 py-1.5">
                               <p className="text-sm font-medium">
-                                <T>Previous Generations</T>
+                                <T>Previous Runs</T>
                               </p>
                               <p className="text-muted-foreground text-xs">
-                                <T>Switch this page to an older Generation.</T>
+                                <T>Switch this page to an older run.</T>
                               </p>
                             </div>
                             <div className="mt-1 max-h-80 space-y-1 overflow-auto">
