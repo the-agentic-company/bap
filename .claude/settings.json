@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/scripts/claude-hooks/worktree-session-start.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.agents/skills/worktree/hooks/worktree-session-start.sh"
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/scripts/claude-hooks/worktree-remove.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.agents/skills/worktree/hooks/worktree-remove.sh"
           }
         ]
       }

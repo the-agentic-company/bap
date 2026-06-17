@@ -1,6 +1,8 @@
-# Worktrees
+# Repository Worktree Setup
 
-This repo has a dedicated worktree flow for running isolated app processes with a shared local Docker model:
+This file captures the repository-specific worktree setup for the CLI bundled with this skill. Keep generic agent guidance in [SKILL.md](SKILL.md); keep concrete commands, ports, environment variables, and service topology here.
+
+This repository has a dedicated worktree flow for running isolated app processes with a shared local Docker model:
 
 - shared stateful services for Postgres, Redis, and MinIO
 - one shared observability stack for Vector, VictoriaMetrics, VictoriaLogs, VictoriaTraces, Grafana, Alertmanager, and vmalert
@@ -8,14 +10,14 @@ This repo has a dedicated worktree flow for running isolated app processes with 
 
 ## When to use it
 
-Use a worktree when you want to run multiple copies of Bap side by side without port collisions between:
+Use a worktree when you want to run multiple copies of the application stack side by side without port collisions between:
 
 - the web app
 - the worker
 - the WS runtime
 - Daytona ports when that profile is enabled
 
-The worktree lifecycle enforces a cap of five running worktree web development servers. Starting a sixth worktree web server fails fast and tells you to stop another worktree first.
+The worktree lifecycle enforces a cap of ten running worktree web development servers. Starting an eleventh worktree web server fails fast and tells you to stop another worktree first.
 
 ## Main idea
 
@@ -40,14 +42,14 @@ Example:
 From inside the worktree:
 
 ```bash
-bun run worktree:setup
+bun .agents/skills/worktree/cli/src/cli.ts setup
 ```
 
 This fails fast if Docker is not installed or the Docker daemon is not running. Otherwise it reuses the repo-global `bap-local` shared infrastructure (starting the missing shared services there only when needed), provisions the worktree-specific Postgres, Redis, and MinIO credentials, writes the generated `.env`, and starts the web, worker, and WS processes for that worktree.
 
-If ten other worktree web servers are already running, `worktree:setup` fails before launching another web dev process.
+If ten worktree web servers are already running, `setup` fails before launching another web dev process.
 
-Each worktree writes a computed `.env` file at the repo root. That file is the authoritative runtime env for worktree commands and normal repo scripts inside that worktree, including `worktree:setup`, `worktree:dev`, and `bun run cli ...`.
+Each worktree writes a computed `.env` file at the repo root. That file is the authoritative runtime env for worktree commands and normal repo scripts inside that worktree, including `setup`, `dev`, and `bun run cli ...`.
 
 Per-worktree state no longer lives inside the repo checkout. Metadata, process tracking, logs, and runtime artifacts now live under `~/.bap/worktrees/instances/<instanceId>`, which prevents Turbopack from watching a repo-local `.worktrees` directory and recompiling whenever worktree state changes.
 
@@ -56,7 +58,7 @@ Per-worktree state no longer lives inside the repo checkout. Metadata, process t
 If you only want Docker without starting the app processes:
 
 ```bash
-bun run worktree:docker-up
+bun .agents/skills/worktree/cli/src/cli.ts docker-up
 ```
 
 This reuses the repo-global `bap-local` shared stateful services and shared observability services for the current worktree.
@@ -68,7 +70,7 @@ There is no longer a `docker/compose/worktree-observability.yml` flow. Worktrees
 Keep using the worktree-aware Docker teardown command instead of plain `docker compose down`:
 
 ```bash
-bun run worktree:docker-down
+bun .agents/skills/worktree/cli/src/cli.ts docker-down
 ```
 
 This does not stop a worktree-local Docker stack because there is no longer one. The command stays in place so the command surface remains stable; it prints that observability is shared and that there is nothing worktree-scoped to stop.
@@ -78,29 +80,29 @@ This does not stop a worktree-local Docker stack because there is no longer one.
 To see the current worktree assignment:
 
 ```bash
-bun run worktree:status
-bun run worktree:processes
-bun run worktree:env
+bun .agents/skills/worktree/cli/src/cli.ts status
+bun .agents/skills/worktree/cli/src/cli.ts processes
+bun .agents/skills/worktree/cli/src/cli.ts env
 ```
 
-`worktree:status` shows the instance id, stack slot, app URL, database name, the shared Docker project, and the derived local addresses for shared stateful services and shared observability endpoints.
+`status` shows the instance id, stack slot, app URL, database name, the shared Docker project, and the derived local addresses for shared stateful services and shared observability endpoints.
 
 It also shows the exact `.env` path currently backing the worktree, plus the shared instance root under `~/.bap/worktrees/instances/<instanceId>`.
 
-`worktree:env` prints the full derived environment for the worktree, including the worktree-scoped `DATABASE_URL`, `REDIS_URL`, `AWS_ENDPOINT_URL`, the shared Vector and Victoria URLs, and the worktree identity labels used to filter telemetry.
+`env` prints the full derived environment for the worktree, including the worktree-scoped `DATABASE_URL`, `REDIS_URL`, `AWS_ENDPOINT_URL`, the shared Vector and Victoria URLs, and the worktree identity labels used to filter telemetry.
 
-`worktree:processes` can be run from the main checkout or a worktree. It groups running worktree app processes by worktree, summarizes discovered web dev descendants, and prints the exact command to stop each worktree. Use `bun run worktree:processes list --verbose` to include full process command lines.
+`processes` can be run from the main checkout or a worktree. It groups running worktree app processes by worktree, summarizes discovered web dev descendants, and prints the exact command to stop each worktree. Use `bun .agents/skills/worktree/cli/src/cli.ts processes list --verbose` to include full process command lines.
 
 To stop every running worktree app process from the list:
 
 ```bash
-bun run worktree:processes stop all
+bun .agents/skills/worktree/cli/src/cli.ts processes stop all
 ```
 
 To stop one directly from the list, pass its instance id, slot, app port, or repo path:
 
 ```bash
-bun run worktree:processes stop <all|instance-id|slot|app-port|repo-root>
+bun .agents/skills/worktree/cli/src/cli.ts processes stop <all|instance-id|slot|app-port|repo-root>
 ```
 
 ## Important rule
@@ -114,18 +116,19 @@ docker compose -f docker/compose/dev.yml up -d
 For a worktree checkout, use:
 
 ```bash
-bun run worktree:setup
+bun .agents/skills/worktree/cli/src/cli.ts setup
 ```
 
 Otherwise the worktree runtime will not be provisioned correctly and you can still get port collisions.
 
 ## Implementation location
 
-The worktree lifecycle implementation lives in `apps/worktree`:
+The worktree lifecycle implementation is bundled with this skill:
 
-- `apps/worktree/src/cli.ts` handles the worktree lifecycle commands
-- `apps/worktree/src/stack.ts` defines the shared and per-worktree port and volume assignments
-- `apps/worktree/src/proxy.ts` runs the local proxy from the main checkout
+- `.agents/skills/worktree/cli/src/cli.ts` handles the worktree lifecycle commands
+- `.agents/skills/worktree/cli/src/stack.ts` defines the shared and per-worktree port and volume assignments
+- `.agents/skills/worktree/cli/src/proxy.ts` runs the local proxy from the main checkout
+- `.agents/skills/worktree/hooks/` contains lifecycle hook scripts used by external tools
 
 ## Run the CLI in a worktree
 
@@ -134,6 +137,6 @@ When you run the root CLI script from inside a worktree, the generated root `.en
 Example:
 
 ```bash
-bun run worktree:setup
+bun .agents/skills/worktree/cli/src/cli.ts setup
 bun run cli chat --message "hi" --model openai/gpt-5.4-mini
 ```

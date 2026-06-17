@@ -98,7 +98,7 @@ More setup guides:
 - [Quickstart](https://docs.heybap.com/quickstart)
 - [Self-hosting](https://docs.heybap.com/self-hosting)
 - [Integrations](https://docs.heybap.com/integrations/overview)
-- [Worktrees](docs/worktree.md)
+- [Worktrees](.agents/skills/worktree/worktree_setup.md)
 
 ## Repo Structure
 

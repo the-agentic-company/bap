@@ -8,10 +8,10 @@ For a worktree checkout, use the worktree command surface instead of starting a
 separate Compose project:
 
 ```bash
-bun run worktree:docker-up
+bun .agents/skills/worktree/cli/src/cli.ts docker-up
 ```
 
-In the current worktree flow, `worktree:docker-up` reuses the repo-global
+In the current worktree flow, `docker-up` reuses the repo-global
 `bap-local` services from `docker/compose/dev.yml` for Postgres, Redis,
 MinIO, Grafana, Alertmanager, Vector, VictoriaMetrics, VictoriaLogs,
 VictoriaTraces, and vmalert. It does not start a separate observability Compose

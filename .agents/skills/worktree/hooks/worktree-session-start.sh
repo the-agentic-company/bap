@@ -21,7 +21,7 @@ fi
 
 echo "[claude-hook] worktree detected, running setup..." >&2
 bun install
-bun run worktree:setup
+bun .agents/skills/worktree/cli/src/cli.ts setup
 
 mkdir -p .claude
 touch "$sentinel"

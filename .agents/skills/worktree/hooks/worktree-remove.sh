@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs on WorktreeRemove. Reads the worktree path from the hook JSON input
-# on stdin and runs `bun run worktree:destroy` inside it.
+# on stdin and runs the bundled worktree destroy command inside it.
 #
 # WorktreeRemove fires when:
 #   - a subagent with isolation:"worktree" finishes, or
@@ -38,7 +38,7 @@ fi
 echo "[claude-hook] cleaning up worktree at $wt..." >&2
 echo "$(ts) START $wt" >> "$log_file"
 
-if ( cd "$wt" && bun run worktree:destroy ) >>"$log_file" 2>&1; then
+if ( cd "$wt" && bun .agents/skills/worktree/cli/src/cli.ts destroy ) >>"$log_file" 2>&1; then
   echo "$(ts) OK    $wt" >> "$log_file"
   exit 0
 fi
@@ -48,5 +48,5 @@ echo "$(ts) FAIL  $wt (exit $rc)" >> "$log_file"
 echo "[claude-hook] !! worktree:destroy FAILED for $wt (exit $rc)" >&2
 echo "[claude-hook] !! see $log_file for full output" >&2
 echo "[claude-hook] !! you may need to clean up manually:" >&2
-echo "[claude-hook] !!   cd $wt && bun run worktree:destroy" >&2
+echo "[claude-hook] !!   cd $wt && bun .agents/skills/worktree/cli/src/cli.ts destroy" >&2
 exit "$rc"

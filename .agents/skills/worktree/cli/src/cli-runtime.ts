@@ -15,7 +15,7 @@ import {
 } from "./stack";
 import { MAX_RUNNING_WORKTREE_WEB_PROCESSES } from "./start-guard";
 
-export const require = createRequire(new URL("../../web/package.json", import.meta.url));
+export const require = createRequire(new URL("../../../../../apps/web/package.json", import.meta.url));
 export const { Client } = require("pg") as typeof import("pg");
 export const { serializeSignedCookie } = require("better-call") as typeof import("better-call");
 export const dotenv = require("dotenv") as typeof import("dotenv");
@@ -87,8 +87,10 @@ export const COMMENTED_WORKTREE_ENV_KEYS = [
 export const DEFAULT_BASE_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/postgres";
 export const PROCESS_NAMES = ["web", "worker", "ws"] as const;
 export const DEV_START_TIMEOUT_MS = 120_000;
-export const GENERATED_WORKTREE_ENV_HEADER = "# Auto-generated for worktree by apps/worktree/src/cli.ts.";
+export const GENERATED_WORKTREE_ENV_HEADER =
+  "# Auto-generated for worktree by .agents/skills/worktree/cli/src/cli.ts.";
 export const GENERATED_WORKTREE_ENV_NOTICE = "# Do not edit manually; re-run a worktree command to refresh it.";
+export const WORKTREE_CLI_COMMAND = "bun .agents/skills/worktree/cli/src/cli.ts";
 export const WORKTREE_START_LIMIT_ERROR =
   `You already have ${MAX_RUNNING_WORKTREE_WEB_PROCESSES} worktree web servers running, you cannot start another one, please talk to the user first for him to stop one of the worktrees`;
 export type ProcessName = (typeof PROCESS_NAMES)[number];
@@ -96,7 +98,7 @@ export type ProcessName = (typeof PROCESS_NAMES)[number];
 let sharedStackRuntimeCache: SharedStackConfig | null = null;
 
 export function printHelp(): void {
-  console.log("Usage: bun run worktree <command>");
+  console.log(`Usage: ${WORKTREE_CLI_COMMAND} <command>`);
   console.log("");
   console.log("Commands:");
   console.log("  create   Create or update the isolated worktree instance");

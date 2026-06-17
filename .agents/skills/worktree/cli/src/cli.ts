@@ -26,6 +26,7 @@ import {
   resolveSharedWorktreeLocksPath,
   type CommandName,
   type InstanceMetadata,
+  WORKTREE_CLI_COMMAND,
 } from "./cli-runtime";
 import {
   buildPostgresAdminUrl,
@@ -377,7 +378,7 @@ function resolveProcessTarget(metadataList: InstanceMetadata[], target: string):
 
   if (matches.length === 0) {
     fail(
-      `No worktree matched "${target}". Use "bun run worktree:processes" to list instance ids, slots, ports, and repo paths.`,
+      `No worktree matched "${target}". Use "${WORKTREE_CLI_COMMAND} processes" to list instance ids, slots, ports, and repo paths.`,
     );
   }
 
@@ -507,7 +508,7 @@ async function cleanupWorktreeServiceProcesses(args: string[]): Promise<void> {
 
   if (unknownArgs.length > 0) {
     fail(
-      `Unknown cleanup option "${unknownArgs[0]}". Usage: bun run worktree:processes cleanup [--dry-run] [--all] [--verbose]`,
+      `Unknown cleanup option "${unknownArgs[0]}". Usage: ${WORKTREE_CLI_COMMAND} processes cleanup [--dry-run] [--all] [--verbose]`,
     );
   }
 
@@ -561,13 +562,13 @@ async function showProcesses(args: string[]): Promise<void> {
     const targets = commandArgs[0] === "slot" ? commandArgs.slice(1) : commandArgs;
     if (targets.length === 0) {
       fail(
-        'Usage: bun run worktree:processes stop <all|slot|instance-id|app-port|repo-root> [...]',
+        `Usage: ${WORKTREE_CLI_COMMAND} processes stop <all|slot|instance-id|app-port|repo-root> [...]`,
       );
     }
 
     if (targets.includes("all")) {
       if (targets.length > 1) {
-        fail('Usage: "all" must be the only target: bun run worktree:processes stop all');
+        fail(`Usage: "all" must be the only target: ${WORKTREE_CLI_COMMAND} processes stop all`);
       }
 
       await stopAllProcessTargets();
@@ -598,7 +599,7 @@ async function showProcesses(args: string[]): Promise<void> {
   console.log(
     `[worktree] running web servers: ${summary.totalRunning}/${MAX_RUNNING_WORKTREE_WEB_PROCESSES}`,
   );
-  console.log("  stop all: bun run worktree:processes stop all");
+  console.log(`  stop all: ${WORKTREE_CLI_COMMAND} processes stop all`);
 
   if (metadataList.length === 0) {
     console.log("[worktree] processes none");
@@ -623,7 +624,7 @@ async function showProcesses(args: string[]): Promise<void> {
     console.log(`  app:  ${metadata.appUrl}`);
     console.log(`  repo: ${metadata.repoRoot}`);
     console.log(
-      `  stop: bun run worktree:processes stop ${formatWorktreeStackSlot(metadata.stackSlot)}`,
+      `  stop: ${WORKTREE_CLI_COMMAND} processes stop ${formatWorktreeStackSlot(metadata.stackSlot)}`,
     );
 
     if (entries.length === 0) {

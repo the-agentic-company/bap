@@ -223,21 +223,6 @@
         "form-data": "^4.0.5",
       },
     },
-    "apps/worktree": {
-      "name": "@bap/worktree",
-      "version": "0.1.0",
-      "dependencies": {
-        "@bap/core": "workspace:*",
-        "better-call": "1.3.6",
-        "dotenv": "^17.2.3",
-        "pg": "^8.16.3",
-      },
-      "devDependencies": {
-        "@types/bun": "^1.3.6",
-        "@types/node": "^20",
-        "@types/pg": "^8.15.6",
-      },
-    },
     "apps/ws": {
       "name": "@bap/ws",
       "version": "0.1.0",
@@ -496,6 +481,30 @@
 
     "@balena/dockerignore": ["@balena/dockerignore@1.0.2", "", {}, "sha512-wMue2Sy4GAVTk6Ic4tJVcnfdau+gx2EnG7S+uAEe+TWJFqE4YoWN4/H8MSLj4eYJKxGg26lZwboEniNiNwZQ6Q=="],
 
+    "@bap/cli": ["@bap/cli@workspace:apps/cli"],
+
+    "@bap/client": ["@bap/client@workspace:packages/client"],
+
+    "@bap/config": ["@bap/config@workspace:packages/config"],
+
+    "@bap/core": ["@bap/core@workspace:packages/core"],
+
+    "@bap/db": ["@bap/db@workspace:packages/db"],
+
+    "@bap/docs": ["@bap/docs@workspace:apps/docs"],
+
+    "@bap/mcp": ["@bap/mcp@workspace:apps/mcp"],
+
+    "@bap/message-format": ["@bap/message-format@workspace:packages/message-format"],
+
+    "@bap/sandbox": ["@bap/sandbox@workspace:apps/sandbox"],
+
+    "@bap/web": ["@bap/web@workspace:apps/web"],
+
+    "@bap/worker": ["@bap/worker@workspace:apps/worker"],
+
+    "@bap/ws": ["@bap/ws@workspace:apps/ws"],
+
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@1.0.2", "", {}, "sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA=="],
 
     "@better-auth/core": ["@better-auth/core@1.6.16", "", { "dependencies": { "@opentelemetry/semantic-conventions": "^1.39.0", "@standard-schema/spec": "^1.1.0", "zod": "^4.3.6" }, "peerDependencies": { "@better-auth/utils": "0.4.1", "@better-fetch/fetch": "1.2.2", "@cloudflare/workers-types": ">=4", "@opentelemetry/api": "^1.9.0", "better-call": "1.3.6", "jose": "^6.1.0", "kysely": "^0.28.5 || ^0.29.0", "nanostores": "^1.0.1" }, "optionalPeers": ["@cloudflare/workers-types", "@opentelemetry/api"] }, "sha512-a0+ZNaaYYxOdFXFXmOE36TgtYN8QDzSYDozaAH0zsiWB0oyljsENyCxHJSekysISftb0rFpVXNdw525aEAOa6w=="],
@@ -523,32 +532,6 @@
     "@clack/core": ["@clack/core@1.0.0-alpha.6", "", { "dependencies": { "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-eG5P45+oShFG17u9I1DJzLkXYB1hpUgTLi32EfsMjSHLEqJUR8BOBCVFkdbUX2g08eh/HCi6UxNGpPhaac1LAA=="],
 
     "@clack/prompts": ["@clack/prompts@1.0.0-alpha.6", "", { "dependencies": { "@clack/core": "1.0.0-alpha.6", "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-75NCtYOgDHVBE2nLdKPTDYOaESxO0GLAKC7INREp5VbS988Xua1u+588VaGlcvXiLc/kSwc25Cd+4PeTSpY6QQ=="],
-
-    "@bap/cli": ["@bap/cli@workspace:apps/cli"],
-
-    "@bap/client": ["@bap/client@workspace:packages/client"],
-
-    "@bap/config": ["@bap/config@workspace:packages/config"],
-
-    "@bap/core": ["@bap/core@workspace:packages/core"],
-
-    "@bap/db": ["@bap/db@workspace:packages/db"],
-
-    "@bap/docs": ["@bap/docs@workspace:apps/docs"],
-
-    "@bap/mcp": ["@bap/mcp@workspace:apps/mcp"],
-
-    "@bap/message-format": ["@bap/message-format@workspace:packages/message-format"],
-
-    "@bap/sandbox": ["@bap/sandbox@workspace:apps/sandbox"],
-
-    "@bap/web": ["@bap/web@workspace:apps/web"],
-
-    "@bap/worker": ["@bap/worker@workspace:apps/worker"],
-
-    "@bap/worktree": ["@bap/worktree@workspace:apps/worktree"],
-
-    "@bap/ws": ["@bap/ws@workspace:apps/ws"],
 
     "@codemirror/autocomplete": ["@codemirror/autocomplete@6.20.2", "", { "dependencies": { "@codemirror/language": "^6.0.0", "@codemirror/state": "^6.0.0", "@codemirror/view": "^6.17.0", "@lezer/common": "^1.0.0" } }, "sha512-G5FPkgIiLjOgZMjqVjvuKQ1rGPtHogLldJr33eFJdVLtmwY+giGrlv/ewljLz6b9BSQLkjxuwBc6g6omDM+YxQ=="],
 

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { matchWorktreePublicRoute } from "../../../packages/core/src/lib/worktree-routing";
+import { matchWorktreePublicRoute } from "../../../../../packages/core/src/lib/worktree-routing";
 import {
   resolveConfiguredSharedWorktreeRoot,
   resolveSharedWorktreeInstanceRoot,

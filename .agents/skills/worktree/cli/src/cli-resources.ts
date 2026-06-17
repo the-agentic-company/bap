@@ -7,7 +7,7 @@ import {
   buildWorktreeStackConfig,
   formatWorktreeStackSlot,
 } from "./stack";
-import { buildWorktreePublicCallbackBaseUrl } from "../../../packages/core/src/lib/worktree-routing";
+import { buildWorktreePublicCallbackBaseUrl } from "../../../../../packages/core/src/lib/worktree-routing";
 import {
   agentBrowserSessionName,
   buildDatabaseUrlForMetadata,
@@ -21,6 +21,7 @@ import {
   redactConnectionString,
   resolveRuntimeSharedStackConfig,
   runtimeDir,
+  WORKTREE_CLI_COMMAND,
   type DerivedEnv,
   type InstanceMetadata,
 } from "./cli-runtime";
@@ -60,7 +61,7 @@ export async function withAdminClient<T>(
   } catch (error) {
     if (isDatabaseConnectionError(error)) {
       fail(
-        `database is unavailable at ${redactConnectionString(connectionString)}. Run 'bun run worktree:setup' to start the Docker stack and retry.`,
+        `database is unavailable at ${redactConnectionString(connectionString)}. Run '${WORKTREE_CLI_COMMAND} setup' to start the Docker stack and retry.`,
       );
     }
     throw error;
