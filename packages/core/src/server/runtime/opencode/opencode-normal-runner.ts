@@ -51,6 +51,7 @@ import type { OpenCodeTurnEventBridge } from "./opencode-turn-events";
 import { captureRuntimeNoProgressDiagnosticSnapshot } from "../../services/runtime-diagnostic-snapshot-service";
 import { resolveWorkspaceMcpServersForGeneration } from "../../executor/workspace-sources";
 import { resolveBapPlatformMcpServer } from "../../sandbox/platform-mcp-server";
+import { buildOpenCodeRuntimeModelConfig } from "./model-config";
 
 const OPENCODE_EARLY_STREAM_REATTACH_ATTEMPTS = 2;
 const OPENCODE_EARLY_STREAM_REATTACH_WAIT_MS = 8_000;
@@ -851,13 +852,7 @@ export class OpenCodeNormalRunner {
       );
       const eventStream = eventResult.stream;
 
-      const parsedModel = parseModelReference(ctx.model);
-
-      // Resolve provider from model reference
-      const modelConfig = {
-        providerID: parsedModel.providerID,
-        modelID: parsedModel.modelID,
-      };
+      const modelConfig = buildOpenCodeRuntimeModelConfig(ctx.model);
 
       const promptParts: RuntimePromptPart[] = [{ type: "text", text: ctx.userMessageContent }];
       const stagedPromptAttachments = await stageRuntimePromptAttachments({
