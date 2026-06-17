@@ -26,15 +26,7 @@ This repository is organized into several top-level folders. Each folder can hav
 - Do not change lint rules or lint configuration without explicit user approval, if you think this would lead to an imporvement in the codebase surface it to the user (teach him).
 
 ## Commit policy
--  Do not commit unless the user explicitly asks.
--  Create commits with `scripts/committer "<msg>" <file...>`; avoid manual `git add`/`git commit` so staging stays scoped.
--  Follow concise, action-oriented commit messages (e.g., `CLI: add verbose flag to send`).
--  Group related changes; avoid bundling unrelated refactors.
--  **Multi-agent safety:** When the user says "commit," scope to your changes only. When the user says "commit all," commit everything in grouped chunks.
--  **Multi-agent safety:** when you see unrecognized files, keep going; focus on your changes and commit only those.
-- in case you have issue with lefthook, you can bypass it is there is no issue in the files you edited
-
-Always prefer Big Bang Rewrite when doing a big refactoring do not get backward compatibility or add fallback logic.
+use the commit skill
 
 ## Agent skills
 
