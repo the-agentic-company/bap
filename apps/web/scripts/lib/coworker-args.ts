@@ -22,8 +22,6 @@ export type ParsedArgs = {
   name?: string;
   triggerType?: string;
   prompt?: string;
-  promptDo?: string;
-  promptDont?: string;
   integrations?: string[];
   customIntegrations?: string[];
   autoApprove?: boolean;
@@ -168,14 +166,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case "--prompt":
       case "-p":
         args.prompt = argv[i + 1];
-        i += 1;
-        break;
-      case "--prompt-do":
-        args.promptDo = argv[i + 1];
-        i += 1;
-        break;
-      case "--prompt-dont":
-        args.promptDont = argv[i + 1];
         i += 1;
         break;
       case "--integrations":

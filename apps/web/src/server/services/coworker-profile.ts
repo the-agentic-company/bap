@@ -128,8 +128,6 @@ type CoworkerCreateInput = {
   prompt: string;
   model: string;
   authSource?: ProviderAuthSource | null;
-  promptDo?: string | null;
-  promptDont?: string | null;
   autoApprove?: boolean;
   toolAccessMode: CoworkerToolAccessMode;
   allowedIntegrations: IntegrationType[];
@@ -193,8 +191,6 @@ export async function createCoworkerProfile(input: {
       prompt: input.payload.prompt,
       model: input.payload.model,
       authSource: resolvedAuthSource,
-      promptDo: input.payload.promptDo,
-      promptDont: input.payload.promptDont,
       autoApprove: input.payload.autoApprove ?? true,
       allowedIntegrations: input.payload.allowedIntegrations,
       allowedCustomIntegrations: input.payload.allowedCustomIntegrations,
@@ -231,8 +227,6 @@ type CoworkerUpdateInput = Partial<CoworkerCreateInput> & {
   id: string;
   status?: "on" | "off";
   isPinned?: boolean;
-  promptDo?: string | null;
-  promptDont?: string | null;
   schedule?: typeof coworker.$inferInsert.schedule | null;
 };
 
@@ -345,12 +339,6 @@ export async function updateCoworkerProfile(input: {
   } else if (input.payload.authSource !== undefined) {
     updates.authSource = resolveCoworkerAuthSource(existing.model, input.payload.authSource);
   }
-  if (input.payload.promptDo !== undefined) {
-    updates.promptDo = input.payload.promptDo ?? null;
-  }
-  if (input.payload.promptDont !== undefined) {
-    updates.promptDont = input.payload.promptDont ?? null;
-  }
   if (input.payload.autoApprove !== undefined) {
     updates.autoApprove = input.payload.autoApprove;
   }
@@ -397,8 +385,6 @@ export async function updateCoworkerProfile(input: {
       allowedCustomIntegrations: existing.allowedCustomIntegrations,
       schedule: existing.schedule ?? null,
       autoApprove: existing.autoApprove,
-      promptDo: existing.promptDo ?? null,
-      promptDont: existing.promptDont ?? null,
     },
     next: {
       id: existing.id,
@@ -413,12 +399,6 @@ export async function updateCoworkerProfile(input: {
       schedule:
         input.payload.schedule === undefined ? existing.schedule : (input.payload.schedule ?? null),
       autoApprove: input.payload.autoApprove ?? existing.autoApprove,
-      promptDo:
-        input.payload.promptDo === undefined ? existing.promptDo : (input.payload.promptDo ?? null),
-      promptDont:
-        input.payload.promptDont === undefined
-          ? existing.promptDont
-          : (input.payload.promptDont ?? null),
     },
   });
   Object.assign(updates, metadataUpdates);

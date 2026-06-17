@@ -154,8 +154,6 @@ export function useCreateCoworker() {
       prompt: string;
       model?: string;
       authSource?: ProviderAuthSource | null;
-      promptDo?: string;
-      promptDont?: string;
       autoApprove?: boolean;
       toolAccessMode?: CoworkerToolAccessMode;
       allowedIntegrations: (
@@ -207,8 +205,6 @@ export function useUpdateCoworker() {
       prompt?: string;
       model?: string;
       authSource?: ProviderAuthSource | null;
-      promptDo?: string | null;
-      promptDont?: string | null;
       autoApprove?: boolean;
       isPinned?: boolean;
       toolAccessMode?: CoworkerToolAccessMode;

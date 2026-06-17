@@ -201,8 +201,6 @@ export async function getCoworkerCatalogDetails(input: {
     authSource: wf.authSource,
     triggerType: wf.triggerType,
     prompt: wf.prompt,
-    promptDo: wf.promptDo,
-    promptDont: wf.promptDont,
     toolAccessMode,
     allowedIntegrations: wf.allowedIntegrations,
     allowedCustomIntegrations: wf.allowedCustomIntegrations,

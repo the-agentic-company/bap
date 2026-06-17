@@ -111,8 +111,6 @@ export type CoworkerDetails = {
   authSource: string | null;
   triggerType: string;
   prompt: string;
-  promptDo: string | null;
-  promptDont: string | null;
   requiresUserInput?: boolean;
   userInputPrompt?: string | null;
   toolAccessMode: string;
@@ -181,12 +179,6 @@ export function formatCoworkerDetailsMarkdown(details: CoworkerDetails): string 
     details.prompt || "(empty)",
   ];
 
-  if (details.promptDo) {
-    lines.push("", "## Prompt Do", "", details.promptDo);
-  }
-  if (details.promptDont) {
-    lines.push("", "## Prompt Don't", "", details.promptDont);
-  }
   if (details.userInputPrompt) {
     lines.push("", "## User Input Prompt", "", details.userInputPrompt);
   }
@@ -238,12 +230,6 @@ export function printCoworkerDetails(
   console.log(`  custom integrations: ${details.allowedCustomIntegrations.join(", ") || "-"}`);
   console.log(`  allowed skills: ${details.allowedSkillSlugs.join(", ") || "-"}`);
   console.log(`  prompt: ${details.prompt || "(empty)"}`);
-  if (details.promptDo) {
-    console.log(`  prompt do: ${details.promptDo}`);
-  }
-  if (details.promptDont) {
-    console.log(`  prompt don't: ${details.promptDont}`);
-  }
   if (details.schedule) {
     console.log(`  schedule: ${JSON.stringify(details.schedule)}`);
   }

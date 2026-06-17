@@ -59,8 +59,6 @@ type LinkedCoworkerRecord = Pick<
   | "allowedWorkspaceMcpServerIds"
   | "allowedSkillSlugs"
   | "prompt"
-  | "promptDo"
-  | "promptDont"
   | "autoApprove"
 >;
 
@@ -203,8 +201,6 @@ export class TurnRunnerContextLoader {
         loaded.linkedCoworkerAllowedSkillSlugs ??
         undefined,
       coworkerPrompt: undefined,
-      coworkerPromptDo: undefined,
-      coworkerPromptDont: undefined,
       triggerPayload: undefined,
       builderCoworkerContext: loaded.builderCoworkerContext,
       selectedPlatformSkillSlugs:
@@ -258,8 +254,6 @@ export class TurnRunnerContextLoader {
             allowedWorkspaceMcpServerIds: true,
             allowedSkillSlugs: true,
             prompt: true,
-            promptDo: true,
-            promptDont: true,
             autoApprove: true,
           },
         })

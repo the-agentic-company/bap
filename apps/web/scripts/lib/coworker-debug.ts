@@ -52,14 +52,6 @@ export function printDebugCoworkerSnapshot(details: CoworkerDetails): void {
   console.log(`[debug] allowed skills: ${details.allowedSkillSlugs.join(", ") || "-"}`);
   console.log("[debug] prompt:");
   printPrefixedBlock("[debug]", details.prompt || "(empty)");
-  if (details.promptDo) {
-    console.log("[debug] prompt do:");
-    printPrefixedBlock("[debug]", details.promptDo);
-  }
-  if (details.promptDont) {
-    console.log("[debug] prompt don't:");
-    printPrefixedBlock("[debug]", details.promptDont);
-  }
   console.log("");
 }
 

@@ -288,8 +288,6 @@ export type CoworkerDetails = {
   prompt: string;
   model: string;
   authSource: ProviderAuthSource | null;
-  promptDo: string | null;
-  promptDont: string | null;
   autoApprove: boolean;
   toolAccessMode: string;
   allowedIntegrations: string[];
@@ -327,8 +325,6 @@ export type CoworkerCreateInput = {
   prompt: string;
   model?: string;
   authSource?: ProviderAuthSource | null;
-  promptDo?: string;
-  promptDont?: string;
   autoApprove?: boolean;
   toolAccessMode?: string;
   allowedIntegrations?: string[];
@@ -350,8 +346,6 @@ export type CoworkerUpdateInput = {
   prompt?: string;
   model?: string;
   authSource?: ProviderAuthSource | null;
-  promptDo?: string | null;
-  promptDont?: string | null;
   autoApprove?: boolean;
   isPinned?: boolean;
   toolAccessMode?: string;

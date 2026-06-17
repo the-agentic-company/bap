@@ -302,8 +302,6 @@ export interface GenerationContext {
   allowedSkillSlugs?: string[];
   remoteIntegrationSource?: RemoteIntegrationSource;
   coworkerPrompt?: string;
-  coworkerPromptDo?: string;
-  coworkerPromptDont?: string;
   triggerPayload?: unknown;
   builderCoworkerContext?: CoworkerBuilderContext | null;
   selectedPlatformSkillSlugs?: string[];

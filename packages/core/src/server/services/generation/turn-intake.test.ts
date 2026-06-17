@@ -305,8 +305,6 @@ describe("TurnIntake.startGeneration", () => {
       allowedCustomIntegrations: [],
       schedule: null,
       autoApprove: false,
-      promptDo: null,
-      promptDont: null,
     });
     generateCoworkerMetadataOnFirstPromptFillMock.mockResolvedValueOnce({
       name: "Follow up with new inbound leads after every sales call",

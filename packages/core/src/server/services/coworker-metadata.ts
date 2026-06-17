@@ -26,8 +26,6 @@ export type CoworkerMetadataState = {
   allowedCustomIntegrations: string[];
   schedule: unknown;
   autoApprove: boolean;
-  promptDo?: string | null;
-  promptDont?: string | null;
 };
 
 export type CoworkerMetadataUpdate = Partial<Record<"name" | "description" | "username", string>>;
@@ -224,8 +222,6 @@ async function generateCoworkerMetadataWithGemini(params: {
           allowedCustomIntegrations: params.current.allowedCustomIntegrations,
           schedule: params.current.schedule,
           autoApprove: params.current.autoApprove,
-          promptDo: params.current.promptDo ?? null,
-          promptDont: params.current.promptDont ?? null,
         },
         null,
         2,
@@ -240,8 +236,6 @@ async function generateCoworkerMetadataWithGemini(params: {
           allowedCustomIntegrations: params.next.allowedCustomIntegrations,
           schedule: params.next.schedule,
           autoApprove: params.next.autoApprove,
-          promptDo: params.next.promptDo ?? null,
-          promptDont: params.next.promptDont ?? null,
         },
         null,
         2,

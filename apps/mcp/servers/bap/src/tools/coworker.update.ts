@@ -39,13 +39,6 @@ export const schema = {
   status: z.enum(["on", "off"]).optional().describe("Coworker status"),
   trigger: z.string().min(1).max(128).optional().describe("Trigger type"),
   prompt: z.string().max(20000).optional().describe("Coworker instructions"),
-  promptDo: z.string().max(2000).nullable().optional().describe("Additional do instructions"),
-  promptDont: z
-    .string()
-    .max(2000)
-    .nullable()
-    .optional()
-    .describe("Additional don't instructions"),
   autoApprove: z.boolean().optional().describe("Enable auto-approve"),
   isPinned: z.boolean().optional().describe("Pinned coworker state"),
   model: z.string().optional().describe("Model reference"),
@@ -90,8 +83,6 @@ export default async function coworkerUpdate(
     status: params.status,
     trigger: params.trigger,
     prompt: params.prompt,
-    promptDo: params.promptDo,
-    promptDont: params.promptDont,
     autoApprove: params.autoApprove,
     isPinned: params.isPinned,
     model: params.model,

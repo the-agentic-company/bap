@@ -343,8 +343,6 @@ export class TurnIntake {
           allowedCustomIntegrations: true,
           schedule: true,
           autoApprove: true,
-          promptDo: true,
-          promptDont: true,
         },
       });
 

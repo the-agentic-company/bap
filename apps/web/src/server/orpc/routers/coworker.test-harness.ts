@@ -242,8 +242,6 @@ export function createContext() {
     prompt: "",
     model: DEFAULT_MODEL,
     authSource: null,
-    promptDo: null,
-    promptDont: null,
     autoApprove: true,
     toolAccessMode: "all",
     allowedIntegrations: [],

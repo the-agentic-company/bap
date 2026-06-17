@@ -83,8 +83,6 @@ export const coworker = pgTable(
     authSource: providerAuthSourceEnum("auth_source"),
     description: text("description"),
     username: text("username"),
-    promptDo: text("prompt_do"),
-    promptDont: text("prompt_dont"),
     requiresUserInput: boolean("requires_user_input").default(false).notNull(),
     userInputPrompt: text("user_input_prompt"),
     autoApprove: boolean("auto_approve").default(true).notNull(),
@@ -474,4 +472,3 @@ export const inboxReadState = pgTable(
 );
 
 // ========== INTEGRATION SCHEMA ==========
-

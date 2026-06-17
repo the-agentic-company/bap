@@ -136,20 +136,12 @@ function buildUserInputRunPayload(params: {
 
 function buildCoworkerModelInput(params: {
   coworkerPrompt: string | null;
-  coworkerPromptDo: string | null;
-  coworkerPromptDont: string | null;
   triggerPayload: unknown;
   trustedUserInput?: string | null;
 }): string {
   const coworkerSections = [
     params.coworkerPrompt?.trim()
       ? `## Coworker Instructions\n${sanitizePostgresText(params.coworkerPrompt)}`
-      : null,
-    params.coworkerPromptDo?.trim()
-      ? `## Do\n${sanitizePostgresText(params.coworkerPromptDo)}`
-      : null,
-    params.coworkerPromptDont?.trim()
-      ? `## Don't\n${sanitizePostgresText(params.coworkerPromptDont)}`
       : null,
   ].filter(Boolean);
   const sections = [
@@ -625,8 +617,6 @@ export async function triggerCoworkerRun(params: {
       run,
       content: buildCoworkerModelInput({
         coworkerPrompt: wf.prompt,
-        coworkerPromptDo: wf.promptDo,
-        coworkerPromptDont: wf.promptDont,
         triggerPayload: runPayload,
         trustedUserInput,
       }),
@@ -750,8 +740,6 @@ export async function startPendingCoworkerRun(params: {
 
   const modelInput = buildCoworkerModelInput({
     coworkerPrompt: pendingRun.coworker.prompt,
-    coworkerPromptDo: pendingRun.coworker.promptDo,
-    coworkerPromptDont: pendingRun.coworker.promptDont,
     triggerPayload: runPayload,
     trustedUserInput,
   });

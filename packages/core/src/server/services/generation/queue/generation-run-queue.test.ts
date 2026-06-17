@@ -435,8 +435,6 @@ describe("GenerationRunQueue", () => {
       allowedWorkspaceMcpServerIds: [],
       allowedSkillSlugs: [],
       prompt: "prompt",
-      promptDo: null,
-      promptDont: null,
       autoApprove: false,
     });
     const loader = new TurnRunnerContextLoader({

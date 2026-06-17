@@ -109,8 +109,6 @@ const coworkerDefinitionSchema = z.object({
     prompt: z.string().max(20000),
     model: modelReferenceSchema,
     authSource: providerAuthSourceSchema.nullable(),
-    promptDo: z.string().max(2000).nullable(),
-    promptDont: z.string().max(2000).nullable(),
     autoApprove: z.boolean(),
     toolAccessMode: toolAccessModeSchema,
     allowedIntegrations: z.array(integrationTypeSchema),
@@ -179,15 +177,6 @@ function assertUserInputConfig(input: {
       message: "User input prompt is required when user input is required.",
     });
   }
-}
-
-function normalizeCoworkerInstructionInput(value: string | null | undefined): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
 }
 
 async function resolveCoworkerUsername(params: {
@@ -356,8 +345,6 @@ export async function exportCoworkerDefinition(input: {
       prompt: wf.prompt,
       model: wf.model,
       authSource: wf.authSource,
-      promptDo: wf.promptDo,
-      promptDont: wf.promptDont,
       autoApprove: wf.autoApprove,
       toolAccessMode,
       allowedIntegrations: wf.allowedIntegrations,
@@ -469,8 +456,6 @@ async function importCoworkerDefinition(input: {
       prompt: definition.coworker.prompt,
       model: definition.coworker.model,
       authSource: resolvedAuthSource,
-      promptDo: normalizeCoworkerInstructionInput(definition.coworker.promptDo),
-      promptDont: normalizeCoworkerInstructionInput(definition.coworker.promptDont),
       autoApprove: definition.coworker.autoApprove,
       toolAccessMode: definition.coworker.toolAccessMode,
       allowedIntegrations: definition.coworker.allowedIntegrations,

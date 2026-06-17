@@ -59,8 +59,6 @@ export async function ensureBuilderCoworkerMetadata(params: {
       allowedCustomIntegrations: wf.allowedCustomIntegrations,
       schedule: wf.schedule ?? null,
       autoApprove: wf.autoApprove,
-      promptDo: wf.promptDo ?? null,
-      promptDont: wf.promptDont ?? null,
     },
     next: {
       id: wf.id,
@@ -73,8 +71,6 @@ export async function ensureBuilderCoworkerMetadata(params: {
       allowedCustomIntegrations: wf.allowedCustomIntegrations,
       schedule: wf.schedule ?? null,
       autoApprove: wf.autoApprove,
-      promptDo: wf.promptDo ?? null,
-      promptDont: wf.promptDont ?? null,
     },
   });
 

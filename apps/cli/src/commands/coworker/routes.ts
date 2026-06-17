@@ -75,18 +75,6 @@ const coworkerCreateCommand = buildCommand({
         parse: (input: string) => input,
         brief: "Coworker prompt",
       },
-      promptDo: {
-        kind: "parsed",
-        parse: (input: string) => input,
-        optional: true,
-        brief: "Additional do instructions",
-      },
-      promptDont: {
-        kind: "parsed",
-        parse: (input: string) => input,
-        optional: true,
-        brief: "Additional don't instructions",
-      },
       folder: {
         kind: "parsed",
         parse: (input: string) => input,

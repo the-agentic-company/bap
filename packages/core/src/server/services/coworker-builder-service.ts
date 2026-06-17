@@ -126,8 +126,6 @@ const coworkerBuilderRowSchema = z.object({
   username: z.string().nullable().optional(),
   prompt: z.string(),
   model: z.string(),
-  promptDo: z.string().nullable().optional(),
-  promptDont: z.string().nullable().optional(),
   toolAccessMode: z.enum(COWORKER_TOOL_ACCESS_MODES).nullable().optional(),
   triggerType: z.string(),
   schedule: z.unknown().nullable().optional(),
@@ -463,8 +461,6 @@ export async function applyCoworkerEdit(params: {
       username: true,
       prompt: true,
       model: true,
-      promptDo: true,
-      promptDont: true,
       toolAccessMode: true,
       triggerType: true,
       schedule: true,
@@ -570,8 +566,6 @@ export async function applyCoworkerEdit(params: {
       allowedCustomIntegrations: existing.allowedCustomIntegrations ?? [],
       schedule: existing.schedule ?? null,
       autoApprove: existing.autoApprove ?? true,
-      promptDo: existing.promptDo ?? null,
-      promptDont: existing.promptDont ?? null,
     },
     next: {
       id: existing.id,
@@ -584,8 +578,6 @@ export async function applyCoworkerEdit(params: {
       allowedCustomIntegrations: existing.allowedCustomIntegrations ?? [],
       schedule: nextState.schedule,
       autoApprove: existing.autoApprove ?? true,
-      promptDo: existing.promptDo ?? null,
-      promptDont: existing.promptDont ?? null,
     },
   });
   nextState.name = metadataUpdates.name ?? nextState.name;

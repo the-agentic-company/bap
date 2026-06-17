@@ -80,8 +80,6 @@ describe("composeOpencodePromptSpec", () => {
     const result = composeOpencodePromptSpec({
       kind: "coworker_runner",
       coworkerPrompt: "Fetch unread emails and summarize them.",
-      coworkerPromptDo: "Use Gmail only.",
-      coworkerPromptDont: "Do not send duplicates.",
       triggerPayload: { source: "schedule" },
       memoryInstructions: "Memory instructions",
       userTimezone: "Asia/Tokyo",
@@ -92,8 +90,8 @@ describe("composeOpencodePromptSpec", () => {
     expect(result.systemPrompt).toContain("Asia/Tokyo");
     expect(result.sections.map((section) => section.key)).toContain("coworker_execution");
     expect(result.systemPrompt).toContain("## Coworker Instructions");
-    expect(result.systemPrompt).toContain("## Do");
-    expect(result.systemPrompt).toContain("## Don't");
+    expect(result.systemPrompt).not.toContain("\n## Do\n");
+    expect(result.systemPrompt).not.toContain("\n## Don't\n");
     expect(result.systemPrompt).toContain("## Trigger Payload");
   });
 

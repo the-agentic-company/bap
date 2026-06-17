@@ -238,8 +238,6 @@ async function createCoworker(client: RouterClient<AppRouter>, args: ParsedArgs)
     name: args.name,
     triggerType: args.triggerType,
     prompt: args.prompt,
-    promptDo: args.promptDo,
-    promptDont: args.promptDont,
     autoApprove: args.autoApprove,
     allowedIntegrations,
     allowedCustomIntegrations: args.customIntegrations ?? [],

@@ -38,8 +38,6 @@ type CoworkerBuilderPromptInput = SharedPromptInput & {
 type CoworkerRunnerPromptInput = SharedPromptInput & {
   kind: "coworker_runner";
   coworkerPrompt?: string | null;
-  coworkerPromptDo?: string | null;
-  coworkerPromptDont?: string | null;
   triggerPayload?: unknown;
 };
 
@@ -148,8 +146,6 @@ function buildUserTimezoneSection(userTimezone: string | null | undefined): stri
 function buildCoworkerExecutionSection(input: CoworkerRunnerPromptInput): string | null {
   const sections = [
     input.coworkerPrompt ? `## Coworker Instructions\n${input.coworkerPrompt}` : null,
-    input.coworkerPromptDo ? `## Do\n${input.coworkerPromptDo}` : null,
-    input.coworkerPromptDont ? `## Don't\n${input.coworkerPromptDont}` : null,
     input.triggerPayload !== undefined
       ? `## Trigger Payload\n${JSON.stringify(input.triggerPayload, null, 2)}`
       : null,
