@@ -1,15 +1,19 @@
 import { and, eq, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import {
+  buildCoworkerForwardingAddress,
   EMAIL_FORWARDED_TRIGGER_TYPE,
   extractEmailAddress,
+  generateCoworkerAliasLocalPart,
   parseForwardingTargetFromEmail,
 } from "../../lib/email-forwarding";
 import { db } from "@bap/db/client";
 import { user, coworker, coworkerEmailAlias, coworkerRun } from "@bap/db/schema";
 import { triggerCoworkerRun } from "./coworker-service";
+import { ORPCError } from "@orpc/server";
 
 const RESEND_EMAIL_RECEIVED_EVENT = "email.received";
+const COWORKER_ALIAS_GENERATION_MAX_ATTEMPTS = 32;
 
 function getResendClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -38,6 +42,301 @@ export type ForwardedEmailQueuePayload = {
 function getReceivingDomain(): string | null {
   const value = process.env.RESEND_RECEIVING_DOMAIN?.trim().toLowerCase();
   return value && value.length > 0 ? value : null;
+}
+
+type CoworkerAliasDatabase = {
+  query: {
+    coworkerEmailAlias: {
+      findFirst: (args: unknown) => Promise<{
+        id: string;
+        localPart?: string;
+        domain?: string;
+        status?: "active" | "disabled" | "rotated" | "deleted";
+        createdAt?: Date;
+      } | null>;
+    };
+  };
+  insert: (table: typeof coworkerEmailAlias) => {
+    values: (values: Partial<typeof coworkerEmailAlias.$inferInsert>) => {
+      onConflictDoNothing: (args: unknown) => {
+        returning: (fields: unknown) => Promise<
+          Array<{
+            id: string;
+            localPart: string;
+            domain: string;
+            status: "active" | "disabled" | "rotated" | "deleted";
+            createdAt: Date;
+          }>
+        >;
+      };
+    };
+  };
+  update: (table: typeof coworkerEmailAlias) => {
+    set: (values: Partial<typeof coworkerEmailAlias.$inferInsert>) => {
+      where: (clause: unknown) => Promise<unknown>;
+    };
+  };
+  transaction: <T>(callback: (tx: CoworkerAliasDatabase) => Promise<T>) => Promise<T>;
+};
+
+type CoworkerAliasRow = {
+  id: string;
+  triggerType: string;
+};
+
+type CoworkerAliasRecord = {
+  id: string;
+  localPart: string;
+  domain: string;
+  status: "active" | "disabled" | "rotated" | "deleted";
+  createdAt: Date;
+};
+
+type CoworkerAliasOrderHelpers = {
+  desc: (column: unknown) => unknown;
+};
+
+async function insertUniqueCoworkerAlias(params: {
+  database: CoworkerAliasDatabase;
+  coworkerId: string;
+  domain: string;
+  attempt?: number;
+}): Promise<CoworkerAliasRecord | null> {
+  const attempt = params.attempt ?? 0;
+  if (attempt >= COWORKER_ALIAS_GENERATION_MAX_ATTEMPTS) {
+    return null;
+  }
+
+  const localPart =
+    attempt < COWORKER_ALIAS_GENERATION_MAX_ATTEMPTS / 2
+      ? generateCoworkerAliasLocalPart()
+      : `${generateCoworkerAliasLocalPart()}-${crypto.randomUUID().slice(0, 6)}`;
+  const created = await params.database
+    .insert(coworkerEmailAlias)
+    .values({
+      coworkerId: params.coworkerId,
+      localPart,
+      domain: params.domain,
+      status: "active" as const,
+    })
+    .onConflictDoNothing({
+      target: [coworkerEmailAlias.localPart, coworkerEmailAlias.domain],
+    })
+    .returning({
+      id: coworkerEmailAlias.id,
+      localPart: coworkerEmailAlias.localPart,
+      domain: coworkerEmailAlias.domain,
+      status: coworkerEmailAlias.status,
+      createdAt: coworkerEmailAlias.createdAt,
+    });
+
+  if (created[0]) {
+    return created[0];
+  }
+
+  return insertUniqueCoworkerAlias({
+    ...params,
+    attempt: attempt + 1,
+  });
+}
+
+export async function getCoworkerForwardingAlias(input: {
+  database: CoworkerAliasDatabase;
+  coworker: CoworkerAliasRow;
+}) {
+  const receivingDomain = getReceivingDomain();
+  if (!receivingDomain || input.coworker.triggerType !== EMAIL_FORWARDED_TRIGGER_TYPE) {
+    return {
+      receivingDomain,
+      activeAlias: null,
+      forwardingAddress: null,
+    };
+  }
+
+  const activeAlias = await input.database.query.coworkerEmailAlias.findFirst({
+    where: and(
+      eq(coworkerEmailAlias.coworkerId, input.coworker.id),
+      eq(coworkerEmailAlias.domain, receivingDomain),
+      eq(coworkerEmailAlias.status, "active"),
+    ),
+    columns: {
+      id: true,
+      localPart: true,
+      domain: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: (
+      row: typeof coworkerEmailAlias,
+      { desc }: CoworkerAliasOrderHelpers,
+    ) => [desc(row.createdAt)],
+  });
+
+  return {
+    receivingDomain,
+    activeAlias,
+    forwardingAddress: activeAlias?.localPart
+      ? buildCoworkerForwardingAddress(activeAlias.localPart, receivingDomain)
+      : null,
+  };
+}
+
+export async function createCoworkerForwardingAlias(input: {
+  database: CoworkerAliasDatabase;
+  coworker: CoworkerAliasRow;
+}) {
+  const receivingDomain = getReceivingDomain();
+  if (!receivingDomain) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "RESEND_RECEIVING_DOMAIN is not configured",
+    });
+  }
+
+  if (input.coworker.triggerType !== EMAIL_FORWARDED_TRIGGER_TYPE) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Coworker trigger must be email.forwarded to create an email alias",
+    });
+  }
+
+  const existing = await input.database.query.coworkerEmailAlias.findFirst({
+    where: and(
+      eq(coworkerEmailAlias.coworkerId, input.coworker.id),
+      eq(coworkerEmailAlias.domain, receivingDomain),
+      eq(coworkerEmailAlias.status, "active"),
+    ),
+    columns: {
+      id: true,
+      localPart: true,
+      domain: true,
+      status: true,
+      createdAt: true,
+    },
+    orderBy: (
+      row: typeof coworkerEmailAlias,
+      { desc }: CoworkerAliasOrderHelpers,
+    ) => [desc(row.createdAt)],
+  });
+
+  if (existing?.localPart) {
+    return {
+      alias: existing,
+      forwardingAddress: buildCoworkerForwardingAddress(existing.localPart, receivingDomain),
+    };
+  }
+
+  const created = await insertUniqueCoworkerAlias({
+    database: input.database,
+    coworkerId: input.coworker.id,
+    domain: receivingDomain,
+  });
+
+  if (created) {
+    return {
+      alias: created,
+      forwardingAddress: buildCoworkerForwardingAddress(created.localPart, receivingDomain),
+    };
+  }
+
+  throw new ORPCError("INTERNAL_SERVER_ERROR", {
+    message: "Failed to create unique forwarding alias",
+  });
+}
+
+export async function disableCoworkerForwardingAlias(input: {
+  database: CoworkerAliasDatabase;
+  coworker: CoworkerAliasRow;
+}) {
+  const activeAlias = await input.database.query.coworkerEmailAlias.findFirst({
+    where: and(eq(coworkerEmailAlias.coworkerId, input.coworker.id), eq(coworkerEmailAlias.status, "active")),
+    columns: { id: true },
+    orderBy: (
+      row: typeof coworkerEmailAlias,
+      { desc }: CoworkerAliasOrderHelpers,
+    ) => [desc(row.createdAt)],
+  });
+
+  if (!activeAlias) {
+    return { success: true as const, disabled: false };
+  }
+
+  await input.database
+    .update(coworkerEmailAlias)
+    .set({
+      status: "disabled",
+      disabledAt: new Date(),
+      disabledReason: "manual_disable",
+    })
+    .where(eq(coworkerEmailAlias.id, activeAlias.id));
+
+  return { success: true as const, disabled: true };
+}
+
+export async function rotateCoworkerForwardingAlias(input: {
+  database: CoworkerAliasDatabase;
+  coworker: CoworkerAliasRow;
+}) {
+  const receivingDomain = getReceivingDomain();
+  if (!receivingDomain) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "RESEND_RECEIVING_DOMAIN is not configured",
+    });
+  }
+
+  if (input.coworker.triggerType !== EMAIL_FORWARDED_TRIGGER_TYPE) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Coworker trigger must be email.forwarded to rotate an email alias",
+    });
+  }
+
+  const result = await input.database.transaction(async (tx) => {
+    const currentActive = await tx.query.coworkerEmailAlias.findFirst({
+      where: and(
+        eq(coworkerEmailAlias.coworkerId, input.coworker.id),
+        eq(coworkerEmailAlias.domain, receivingDomain),
+        eq(coworkerEmailAlias.status, "active"),
+      ),
+      columns: { id: true, localPart: true },
+      orderBy: (
+        row: typeof coworkerEmailAlias,
+        { desc }: CoworkerAliasOrderHelpers,
+      ) => [desc(row.createdAt)],
+    });
+
+    const created = await insertUniqueCoworkerAlias({
+      database: tx,
+      coworkerId: input.coworker.id,
+      domain: receivingDomain,
+    });
+
+    if (!created) {
+      return null;
+    }
+
+    if (currentActive) {
+      await tx
+        .update(coworkerEmailAlias)
+        .set({
+          status: "rotated",
+          disabledAt: new Date(),
+          disabledReason: "rotated",
+          replacedByAliasId: created.id,
+        })
+        .where(eq(coworkerEmailAlias.id, currentActive.id));
+    }
+
+    return created;
+  });
+
+  if (!result) {
+    throw new ORPCError("INTERNAL_SERVER_ERROR", {
+      message: "Failed to rotate forwarding alias",
+    });
+  }
+
+  return {
+    alias: result,
+    forwardingAddress: buildCoworkerForwardingAddress(result.localPart, receivingDomain),
+  };
 }
 
 function extractRecipientEmails(to: string[] | undefined): string[] {
