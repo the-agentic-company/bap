@@ -1,6 +1,47 @@
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
+import { parseModelReference } from "../../../lib/model-reference";
 import type { RuntimeHarnessClient } from "../core/types";
 import { mapRuntimeEventStream } from "../adapters/opencode-event-adapter";
+
+type OpenCodePromptModel = {
+  providerID: string;
+  modelID: string;
+};
+
+function parsePromptModelReference(model: string): OpenCodePromptModel | null {
+  try {
+    return parseModelReference(model);
+  } catch {
+    return null;
+  }
+}
+
+function normalizePromptModel(model: unknown): unknown {
+  if (typeof model === "string") {
+    return parsePromptModelReference(model) ?? model;
+  }
+
+  if (!model || typeof model !== "object") {
+    return model;
+  }
+
+  const parsed = model as Record<string, unknown>;
+  const providerID = parsed.providerID;
+  const modelID = parsed.modelID;
+
+  if (typeof modelID === "string" && modelID.includes("/")) {
+    const normalized = parsePromptModelReference(modelID);
+    if (normalized && (typeof providerID !== "string" || providerID === normalized.providerID)) {
+      return normalized;
+    }
+  }
+
+  if (typeof providerID === "string" && typeof modelID === "string") {
+    return { providerID, modelID };
+  }
+
+  return model;
+}
 
 export function createRuntimeHarnessClientFromOpencodeClient(
   client: OpencodeClient,
@@ -17,7 +58,7 @@ export function createRuntimeHarnessClientFromOpencodeClient(
         ...(input.agent ? { agent: input.agent } : {}),
         ...(input.system ? { system: input.system } : {}),
         ...(input.tools ? { tools: input.tools } : {}),
-        ...(input.model ? { model: input.model as never } : {}),
+        ...(input.model ? { model: normalizePromptModel(input.model) as never } : {}),
         ...(input.noReply ? { noReply: input.noReply } : {}),
       });
       if (!result) {
