@@ -21,7 +21,7 @@ const checkSelfHostEdition = createServerFn({ method: "GET" }).handler(() => ({
   selfHost: isSelfHostedEdition(),
 }));
 
-export const Route = createFileRoute("/_marketing/pricing")({
+export const Route = createFileRoute("/_public/pricing")({
   beforeLoad: async () => {
     const { selfHost } = await checkSelfHostEdition();
     if (selfHost) {

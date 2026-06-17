@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { T } from "gt-react";
 
-export const Route = createFileRoute("/_marketing/upload")({
+export const Route = createFileRoute("/_public/upload")({
   head: () => ({
     meta: [{ title: "Upload · Bap" }, { name: "description", content: "Upload tools." }],
   }),

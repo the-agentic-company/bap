@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-export const Route = createFileRoute("/_marketing/avatar")({
+export const Route = createFileRoute("/_public/avatar")({
   head: () => ({
     meta: [
       { title: "Coworker Avatar Playground · Bap" },

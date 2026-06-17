@@ -6,7 +6,7 @@
       "apps/sandbox/scripts/daytona-sandbox.ts": 1174,
       "apps/sandbox/src/common/skills/linkedin/src/linkedin.ts": 1072,
       "apps/web/src/components/chat/chat-area.test.tsx": 1301,
-      "apps/web/src/components/landing/coworker-landing.tsx": 1103,
+      "apps/web/src/components/landing/home-landing.tsx": 1103,
       "apps/web/src/routes/agents/-components/coworker-editor-page.tsx": 4342,
       "apps/web/src/routes/agents/-components/coworker-info-page.tsx": 1320,
       "apps/web/src/routes/agents/-components/coworkers-page.tsx": 1056,

@@ -18,7 +18,7 @@ import { listFeaturedTemplateCatalogEntries } from "@/server/services/template-c
  * landing hero. Runs as a TanStack server function so the same logic executes on SSR and on
  * client navigations to `/`.
  *
- * Returned shape feeds `CoworkerLanding`'s `initialHasSession` / `initialFirstName` /
+ * Returned shape feeds `HomeLanding`'s `initialHasSession` / `initialFirstName` /
  * `featuredTemplates` props, matching the old page's contract exactly.
  */
 export interface LandingData {

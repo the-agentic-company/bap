@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useCallback } from "react";
 import { BugReportForm } from "@/components/bug-report-form";
 
-export const Route = createFileRoute("/_marketing/bug-report")({
+export const Route = createFileRoute("/_public/bug-report")({
   head: () => ({
     meta: [
       { title: "Bug report · Bap" },

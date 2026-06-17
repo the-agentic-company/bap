@@ -5,7 +5,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  * `redirect("/templates")`).
  *
  * The redirect runs in `beforeLoad` so it happens before any render (matching the previous
- * server-component redirect). The `/templates` browser lives under the marketing shell.
+ * server-component redirect). The `/templates` browser lives under the public shell.
  */
 export const Route = createFileRoute("/template/")({
   beforeLoad: () => {

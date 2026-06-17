@@ -3,16 +3,16 @@ import { AppRootShell } from "@/components/app-root-shell";
 import { fetchSessionContext } from "@/lib/route-guards";
 
 /**
- * Pathless layout route for public marketing pages (access = public, no auth).
+ * Pathless layout route for public pages (access = public, no auth).
  *
  * Shell selection is route nesting, not a global pathname switch: every page under
- * `_marketing/*` renders inside this layout while keeping its exact public URL (the
- * `_marketing` segment is pathless, so `/pricing`, `/avatar`, etc. are unchanged).
+ * `_public/*` renders inside this layout while keeping its exact public URL (the
+ * `_public` segment is pathless, so `/pricing`, `/avatar`, etc. are unchanged).
  *
  * Authenticated visitors keep the sidebar chrome on public product-facing pages such as
- * `/` and `/templates`; anonymous visitors get the bare marketing pages.
+ * `/` and `/templates`; anonymous visitors get the bare public pages.
  */
-export const Route = createFileRoute("/_marketing")({
+export const Route = createFileRoute("/_public")({
   loader: async () => {
     const context = await fetchSessionContext();
     return {
@@ -20,10 +20,10 @@ export const Route = createFileRoute("/_marketing")({
       principal: context.principal,
     };
   },
-  component: MarketingLayout,
+  component: PublicLayout,
 });
 
-function MarketingLayout() {
+function PublicLayout() {
   const { hasSession, principal } = Route.useLoaderData();
 
   if (!hasSession) {
