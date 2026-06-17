@@ -11,4 +11,13 @@ describe("OpenCode agent definitions", () => {
     expect(readAgent("bap-chat.md")).toContain("permission:\n  question: allow");
     expect(readAgent("bap-coworker-builder.md")).toContain("permission:\n  question: allow");
   });
+
+  it("teaches the coworker runner the Agentic-App output filename", () => {
+    const runner = readAgent("bap-coworker-runner.md");
+
+    expect(runner).toContain("<agentic_app_output>");
+    expect(runner).toContain("/app/output.html exactly");
+    expect(runner).toContain("custom downloadable HTML filename");
+    expect(runner).toContain("</agentic_app_output>");
+  });
 });
