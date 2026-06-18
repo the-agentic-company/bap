@@ -172,6 +172,82 @@ export async function handleCoworkerUpdate(params: {
   };
 }
 
+export async function handleCoworkerMove(params: {
+  client: BapApiClient;
+  reference: string;
+  folderId?: string;
+  folderPath?: string;
+  folder?: null;
+}) {
+  const destinations = [
+    params.folderId !== undefined,
+    params.folderPath !== undefined,
+    params.folder === null,
+  ].filter(Boolean);
+  if (destinations.length !== 1) {
+    throw new Error("Coworker move must include exactly one destination.");
+  }
+
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  let destinationFolderId: string | null = null;
+  let folder: Awaited<ReturnType<BapApiClient["coworkerFolder"]["createPath"]>> | undefined;
+
+  if (params.folderId !== undefined) {
+    destinationFolderId = params.folderId;
+  }
+  if (params.folderPath !== undefined) {
+    const path = params.folderPath.trim();
+    if (!path) {
+      throw new Error("Coworker move folderPath must not be empty.");
+    }
+    folder = await params.client.coworkerFolder.createPath({ path });
+    if (!folder) {
+      throw new Error("Coworker move destination folder could not be created.");
+    }
+    destinationFolderId = folder.id;
+  }
+
+  await params.client.coworkerFolder.moveCoworker({
+    coworkerId,
+    folderId: destinationFolderId,
+  });
+
+  return {
+    status: "completed" as const,
+    coworker: await params.client.coworker.get({ id: coworkerId }),
+    folder,
+  };
+}
+
+export async function handleCoworkerSetFavorite(params: {
+  client: BapApiClient;
+  reference: string;
+  favorite: boolean;
+}) {
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  await params.client.coworker.update({ id: coworkerId, isPinned: params.favorite });
+  return {
+    status: "completed" as const,
+    coworker: await params.client.coworker.get({ id: coworkerId }),
+  };
+}
+
+export async function handleCoworkerSetStatus(params: {
+  client: BapApiClient;
+  reference: string;
+  status: "on" | "off";
+}) {
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  await params.client.coworker.update({ id: coworkerId, status: params.status });
+  return {
+    status: "completed" as const,
+    coworker: await params.client.coworker.get({ id: coworkerId }),
+  };
+}
+
 export async function handleCoworkerRun(params: {
   client: BapApiClient;
   reference: string;

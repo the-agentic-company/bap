@@ -7,8 +7,11 @@ import {
   handleCoworkerGet,
   handleCoworkerList,
   handleCoworkerLogs,
+  handleCoworkerMove,
   handleCoworkerRun,
   handleCoworkerRuns,
+  handleCoworkerSetFavorite,
+  handleCoworkerSetStatus,
   handleCoworkerUpdate,
   handleCoworkerUpdateDocument,
   handleCoworkerUploadDocument,
@@ -421,6 +424,152 @@ describe("MCP handlers", () => {
     ).rejects.toThrow("Coworker update must include at least one field.");
 
     expect(client.coworker.update).not.toHaveBeenCalled();
+  });
+
+  it("moves a coworker by username reference to a created folder path", async () => {
+    const updatedCoworker = {
+      id: "cw-1",
+      name: "Daily",
+      username: "daily",
+      folderId: "folder-1",
+    };
+    const client = {
+      coworker: {
+        list: vi.fn().mockResolvedValue([{ id: "cw-1", name: "Daily", username: "daily" }]),
+        get: vi.fn().mockResolvedValue(updatedCoworker),
+      },
+      coworkerFolder: {
+        createPath: vi.fn().mockResolvedValue({
+          id: "folder-1",
+          name: "LinkedIn",
+          parentId: null,
+        }),
+        moveCoworker: vi.fn().mockResolvedValue({ id: "cw-1", folderId: "folder-1" }),
+      },
+    };
+
+    const result = await handleCoworkerMove({
+      client: client as never,
+      reference: "@daily",
+      folderPath: " Marketing / LinkedIn ",
+    });
+
+    expect(client.coworkerFolder.createPath).toHaveBeenCalledWith({
+      path: "Marketing / LinkedIn",
+    });
+    expect(client.coworkerFolder.moveCoworker).toHaveBeenCalledWith({
+      coworkerId: "cw-1",
+      folderId: "folder-1",
+    });
+    expect(client.coworker.get).toHaveBeenCalledWith({ id: "cw-1" });
+    expect(result).toMatchObject({
+      status: "completed",
+      coworker: { id: "cw-1", folderId: "folder-1" },
+      folder: { id: "folder-1" },
+    });
+  });
+
+  it("moves a coworker to the top level", async () => {
+    const client = {
+      coworker: {
+        get: vi.fn().mockResolvedValue({ id: "cw-1", folderId: null }),
+      },
+      coworkerFolder: {
+        moveCoworker: vi.fn().mockResolvedValue({ id: "cw-1", folderId: null }),
+      },
+    };
+
+    await handleCoworkerMove({
+      client: client as never,
+      reference: "cw-1",
+      folder: null,
+    });
+
+    expect(client.coworkerFolder.moveCoworker).toHaveBeenCalledWith({
+      coworkerId: "cw-1",
+      folderId: null,
+    });
+  });
+
+  it("rejects coworker move calls without exactly one destination", async () => {
+    const client = {
+      coworkerFolder: {
+        moveCoworker: vi.fn(),
+      },
+    };
+
+    await expect(
+      handleCoworkerMove({
+        client: client as never,
+        reference: "cw-1",
+      }),
+    ).rejects.toThrow("Coworker move must include exactly one destination.");
+    await expect(
+      handleCoworkerMove({
+        client: client as never,
+        reference: "cw-1",
+        folderId: "folder-1",
+        folder: null,
+      }),
+    ).rejects.toThrow("Coworker move must include exactly one destination.");
+
+    expect(client.coworkerFolder.moveCoworker).not.toHaveBeenCalled();
+  });
+
+  it("sets coworker favorite state by username reference", async () => {
+    const updatedCoworker = {
+      id: "cw-1",
+      name: "Daily",
+      username: "daily",
+      isPinned: true,
+    };
+    const client = {
+      coworker: {
+        list: vi.fn().mockResolvedValue([{ id: "cw-1", name: "Daily", username: "daily" }]),
+        update: vi.fn().mockResolvedValue({ success: true }),
+        get: vi.fn().mockResolvedValue(updatedCoworker),
+      },
+    };
+
+    const result = await handleCoworkerSetFavorite({
+      client: client as never,
+      reference: "@daily",
+      favorite: true,
+    });
+
+    expect(client.coworker.update).toHaveBeenCalledWith({ id: "cw-1", isPinned: true });
+    expect(result).toEqual({
+      status: "completed",
+      coworker: updatedCoworker,
+    });
+  });
+
+  it("sets coworker status by username reference", async () => {
+    const updatedCoworker = {
+      id: "cw-1",
+      name: "Daily",
+      username: "daily",
+      status: "off",
+    };
+    const client = {
+      coworker: {
+        list: vi.fn().mockResolvedValue([{ id: "cw-1", name: "Daily", username: "daily" }]),
+        update: vi.fn().mockResolvedValue({ success: true }),
+        get: vi.fn().mockResolvedValue(updatedCoworker),
+      },
+    };
+
+    const result = await handleCoworkerSetStatus({
+      client: client as never,
+      reference: "@daily",
+      status: "off",
+    });
+
+    expect(client.coworker.update).toHaveBeenCalledWith({ id: "cw-1", status: "off" });
+    expect(result).toEqual({
+      status: "completed",
+      coworker: updatedCoworker,
+    });
   });
 
   it("updates coworker document metadata after checking coworker ownership", async () => {
