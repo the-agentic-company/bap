@@ -33,6 +33,7 @@ function getSidebarVisibility(pathname: string | null): SidebarVisibility | null
     pathname.startsWith("/integrations") ||
     pathname.startsWith("/skills") ||
     pathname.startsWith("/toolbox") ||
+    pathname.startsWith("/admin") ||
     pathname.startsWith("/internal") ||
     pathname.startsWith("/instance") ||
     pathname.startsWith("/search") ||

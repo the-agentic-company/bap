@@ -28,7 +28,7 @@ type DeviceFlowState = {
   expiresAt: number;
 };
 
-function AdminSubscriptionsPage() {
+export function AdminSubscriptionsPage() {
   const { data, isLoading, refetch } = useAdminSharedProviderAuthStatus();
   const connectProvider = useConnectAdminSharedProvider();
   const pollProvider = usePollAdminSharedProviderConnection();

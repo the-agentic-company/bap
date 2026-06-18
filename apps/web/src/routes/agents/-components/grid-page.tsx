@@ -1,5 +1,5 @@
 import { T } from "gt-react";
-import { BarChart3, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import { cn } from "@/lib/utils";
 import { useCoworkerList } from "@/orpc/hooks/coworkers";
@@ -119,23 +119,14 @@ export default function CoworkersGridPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            <T>All Coworkers</T>
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {coworkerList.length} <T>coworker</T>
-            {coworkerList.length === 1 ? "" : "s"} <T>in grid view</T>
-          </p>
-        </div>
-        <Link
-          href="/agents/overview"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors"
-        >
-          <BarChart3 className="size-3.5" />
-          <T>Overview</T>
-        </Link>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">
+          <T>All Coworkers</T>
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {coworkerList.length} <T>coworker</T>
+          {coworkerList.length === 1 ? "" : "s"} <T>in grid view</T>
+        </p>
       </div>
 
       {isLoading ? (

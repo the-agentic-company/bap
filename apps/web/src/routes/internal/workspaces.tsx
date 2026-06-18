@@ -433,7 +433,7 @@ function WorkspaceCard({
   );
 }
 
-function AdminWorkspacesPage() {
+export function AdminWorkspacesPage() {
   const { data: workspacesData, isLoading } = useAdminWorkspaces();
   const { data: billingOverview } = useBillingOverview();
   const joinWorkspace = useAdminJoinWorkspace();

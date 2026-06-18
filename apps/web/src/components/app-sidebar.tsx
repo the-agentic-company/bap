@@ -17,6 +17,7 @@ import {
   LayoutTemplate,
   LogOut,
   MessageSquare,
+  ScrollText,
   Settings,
   Shield,
   Toolbox,
@@ -433,7 +434,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   }, []);
 
   const openAdminRoute = useCallback(() => {
-    void navigate({ to: "/internal" });
+    void navigate({ to: "/admin" });
   }, [navigate]);
 
   const enterUserMode = useCallback(() => {
@@ -489,6 +490,9 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     if (href === "/internal") {
       return pathname === "/internal" || pathname === "/internal/";
     }
+    if (href === "/admin") {
+      return pathname === "/admin" || pathname === "/admin/";
+    }
     if (href === "/chat") {
       return pathname === "/chat" || pathname.startsWith("/chat/");
     }
@@ -503,7 +507,9 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   const avatarImage =
     effectiveUser?.image ?? (initialPrincipalActive ? initialPrincipal.image : null);
   const isAdmin = userRole === "admin";
-  const isAdminRoute = pathname?.startsWith("/internal") || pathname?.startsWith("/instance");
+  const isProductAdminRoute = pathname?.startsWith("/admin");
+  const isAdminRoute =
+    isProductAdminRoute || pathname?.startsWith("/internal") || pathname?.startsWith("/instance");
   const activeSidebarMode: SidebarMode = !isAdmin || isAdminRoute ? "admin" : sidebarMode;
   const impersonatedBy = (
     session as (SessionData & { session?: { impersonatedBy?: string | null } }) | null
@@ -537,6 +543,15 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   const adminUsersItems: NavItem[] = [
     { icon: UserCog, label: "User", href: "/internal" },
     { icon: Building2, label: "Workspaces", href: "/internal/workspaces" },
+  ];
+
+  const productAdminItems: NavItem[] = [
+    { icon: UserCog, label: "User Management", href: "/admin" },
+    { icon: Activity, label: "Overview", href: "/admin/overview" },
+    { icon: ScrollText, label: "Audit", href: "/admin/audit-trail" },
+    { icon: Building2, label: "Workspaces", href: "/admin/workspaces" },
+    { icon: CreditCard, label: "AI Subscriptions", href: "/admin/subscriptions" },
+    { icon: BarChart3, label: "Usage", href: "/admin/usage" },
   ];
 
   const adminConfigItems: NavItem[] = [
@@ -602,8 +617,20 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
               <NavGroup>
                 <NavButton icon={Bug} label={t("Bug report")} onClick={openReportDialog} />
                 {isAdmin ? (
-                  <NavButton icon={Shield} label={t("Internal")} onClick={openAdminRoute} />
+                  <NavButton icon={Shield} label={t("Admin")} onClick={openAdminRoute} />
                 ) : null}
+              </NavGroup>
+            </>
+          ) : isProductAdminRoute ? (
+            <>
+              <NavGroup>
+                {productAdminItems.map((item) => (
+                  <NavLink key={item.href} item={item} active={isActive(item.href)} />
+                ))}
+              </NavGroup>
+              <NavDivider />
+              <NavGroup>
+                <NavButton icon={ArrowLeft} label={t("Exit Admin")} onClick={enterUserMode} />
               </NavGroup>
             </>
           ) : clientEditionCapabilities.hasSupportAdmin ? (
@@ -696,6 +723,16 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
                   </span>
                 </AppLink>
               </DropdownMenuItem>
+              {clientEditionCapabilities.hasSupportAdmin && isAdmin ? (
+                <DropdownMenuItem asChild>
+                  <AppLink href="/internal" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    <span>
+                      <T>Internal</T>
+                    </span>
+                  </AppLink>
+                </DropdownMenuItem>
+              ) : null}
               {clientEditionCapabilities.hasBilling ? (
                 <DropdownMenuItem asChild>
                   <AppLink href="/settings/usage" className="flex items-center gap-2">

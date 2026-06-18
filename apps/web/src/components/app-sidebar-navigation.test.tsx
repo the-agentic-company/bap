@@ -122,6 +122,11 @@ function renderWithRouter() {
     path: "/agents",
     component: () => <div>Agents page</div>,
   });
+  const adminLandingRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/admin",
+    component: () => <AppSidebar />,
+  });
   const adminRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/internal",
@@ -141,6 +146,7 @@ function renderWithRouter() {
     routeTree: rootRoute.addChildren([
       indexRoute,
       agentsRoute,
+      adminLandingRoute,
       adminRoute,
       adminWorkspacesRoute,
       adminMcpRoute,
@@ -194,6 +200,49 @@ describe("AppSidebar navigation", () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/agents");
     });
+  });
+
+  it("opens the empty admin landing page from the admin sidebar action", async () => {
+    const router = renderWithRouter();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Admin" }));
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/admin");
+    });
+  });
+
+  it("opens internal tools from the account menu", async () => {
+    const router = renderWithRouter();
+
+    expect(screen.queryByRole("button", { name: "Internal" })).not.toBeInTheDocument();
+
+    fireEvent.pointerDown(await screen.findByTitle("admin@example.com"));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Internal" }));
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/internal");
+    });
+  });
+
+  it("renders the dedicated admin sidebar on admin pages", async () => {
+    renderWithRouterAt("/admin/workspaces");
+
+    const userManagementLink = await screen.findByRole("link", { name: "User Management" });
+    const overviewLink = await screen.findByRole("link", { name: "Overview" });
+    const auditLink = await screen.findByRole("link", { name: "Audit" });
+    const workspacesLink = await screen.findByRole("link", { name: "Workspaces" });
+    const subscriptionsLink = await screen.findByRole("link", { name: "AI Subscriptions" });
+    const usageLink = await screen.findByRole("link", { name: "Usage" });
+
+    expect(userManagementLink).not.toHaveClass("bg-sidebar-primary");
+    expect(overviewLink).toBeInTheDocument();
+    expect(auditLink).toBeInTheDocument();
+    expect(workspacesLink).toHaveClass("bg-sidebar-primary");
+    expect(subscriptionsLink).toBeInTheDocument();
+    expect(usageLink).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "History" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "MCP" })).not.toBeInTheDocument();
   });
 
   it("does not keep the admin user item selected on nested admin pages", async () => {

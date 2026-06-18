@@ -5,13 +5,10 @@ import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@bap/core/lib/chat-model-defaults";
 import { T, msg, useGT, useMessages } from "gt-react";
 import {
-  Activity,
-  BarChart3,
   ChevronRight,
   Clock,
   Filter,
   FolderPlus,
-  History,
   Mail,
   Network,
   Loader2,
@@ -763,33 +760,6 @@ export default function CoworkersPage({
                   {visibleCoworkerCount}
                 </span>
               </h2>
-              <Link
-                href="/agents/overview"
-                className="text-muted-foreground hover:text-foreground ml-1 flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
-              >
-                <Activity className="size-3.5" />
-                <span className="hidden sm:inline">
-                  <T>Overview</T>
-                </span>
-              </Link>
-              <Link
-                href="/agents/history"
-                className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
-              >
-                <History className="size-3.5" />
-                <span className="hidden sm:inline">
-                  <T>History</T>
-                </span>
-              </Link>
-              <Link
-                href="/agents/usage"
-                className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
-              >
-                <BarChart3 className="size-3.5" />
-                <span className="hidden sm:inline">
-                  <T>Usage</T>
-                </span>
-              </Link>
               <Link
                 href="/agents/org-chart"
                 className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"

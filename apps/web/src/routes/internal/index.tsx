@@ -219,7 +219,7 @@ function ImpersonateButton({
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
-function AdminPage() {
+export function AdminPage() {
   // -- Data sources --
   const { data: approvedLoginData, isLoading: isApprovedLoginLoading } =
     useApprovedLoginEmailAllowlist();

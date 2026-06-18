@@ -2,7 +2,6 @@ import type { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { T, useGT } from "gt-react";
 import {
-  ArrowLeft,
   ArrowUpRight,
   CalendarIcon,
   CheckCircle2,
@@ -360,12 +359,6 @@ export default function RunHistoryPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link
-          href="/agents"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
         <h1 className="text-2xl font-semibold tracking-tight">
           <T>Run History</T>
         </h1>
