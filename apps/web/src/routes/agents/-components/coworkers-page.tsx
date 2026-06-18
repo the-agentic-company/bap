@@ -6,9 +6,10 @@ import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@bap/core/lib/chat-model-defaul
 import { T, msg, useGT, useMessages } from "gt-react";
 import {
   ChevronRight,
+  ChevronDown,
   Clock,
   Filter,
-  FolderPlus,
+  Folder,
   Mail,
   Network,
   Loader2,
@@ -17,6 +18,7 @@ import {
   Search,
   Share2,
   Upload,
+  UserPlus,
   Webhook,
   X,
 } from "lucide-react";
@@ -27,6 +29,12 @@ import { ModelSelector } from "@/components/chat/model-selector";
 import { getCoworkerDisplayName } from "@/components/coworkers/coworker-card-content";
 import { startCoworkerBuilderGeneration } from "@/components/landing/start-coworker-builder-generation";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { blobToBase64, useVoiceRecording } from "@/hooks/use-voice-recording";
 import { normalizeChatModelSelection } from "@/lib/chat-model-selection";
@@ -63,6 +71,8 @@ import type { SharedCoworkerItem } from "./shared-coworker-card";
 
 export type CoworkerItem = CoworkerListData[number];
 export type CoworkerFolderItem = CoworkerFolderListData[number];
+type DraggedCoworker = { id: string; name?: string | null; folderId?: string | null };
+type DraggedFolder = CoworkerFolderItem;
 export type MoveTarget =
   | { type: "coworker"; id: string; name: string; currentFolderId: string | null }
   | { type: "folder"; id: string; name: string; currentFolderId: string | null };
@@ -140,6 +150,9 @@ export default function CoworkersPage({
   const [folderPendingDelete, setFolderPendingDelete] = useState<CoworkerFolderItem | null>(null);
   const [folderPendingVisibilityChange, setFolderPendingVisibilityChange] =
     useState<CoworkerFolderItem | null>(null);
+  const [draggedCoworker, setDraggedCoworker] = useState<DraggedCoworker | null>(null);
+  const [draggedFolder, setDraggedFolder] = useState<DraggedFolder | null>(null);
+  const [activeDropFolderId, setActiveDropFolderId] = useState<string | null>(null);
   const handleToggleTriggerType = useCallback((triggerType: string) => {
     setSelectedTriggerTypes((prev) => {
       const next = new Set(prev);
@@ -293,6 +306,28 @@ export default function CoworkersPage({
     },
     [folderById, moveTarget],
   );
+  const isFolderDescendant = useCallback(
+    (folder: CoworkerFolderItem, ancestorId: string) => {
+      let cursor: CoworkerFolderItem | null = folder;
+      const seen = new Set<string>();
+      while (cursor && !seen.has(cursor.id)) {
+        if (cursor.parentId === ancestorId) {
+          return true;
+        }
+        seen.add(cursor.id);
+        cursor = cursor.parentId ? (folderById.get(cursor.parentId) ?? null) : null;
+      }
+      return false;
+    },
+    [folderById],
+  );
+  const canDropFolderIntoFolder = useCallback(
+    (source: CoworkerFolderItem, destination: CoworkerFolderItem) =>
+      source.id !== destination.id &&
+      source.parentId !== destination.id &&
+      !isFolderDescendant(destination, source.id),
+    [isFolderDescendant],
+  );
   const isGlobalSearch = searchQuery.trim().length > 0;
   const displayedFolderList = useMemo(() => {
     if (isGlobalSearch) {
@@ -346,7 +381,7 @@ export default function CoworkersPage({
         ? t("Moving into this folder will share the coworker with the workspace.")
         : t("Moving into this folder will make the coworker private.");
     }
-    const currentVisibility = getFolderEffectiveVisibility(moveTarget.currentFolderId);
+    const currentVisibility = getFolderEffectiveVisibility(moveTarget.id);
     const destinationVisibility = getFolderEffectiveVisibility(destinationFolderId);
     if (
       !currentVisibility ||
@@ -451,6 +486,127 @@ export default function CoworkersPage({
       setMoveDestinationId(coworker.folderId ?? "top");
     },
     [],
+  );
+  const handleCoworkerDragStart = useCallback(
+    (coworker: DraggedCoworker, event: React.DragEvent<HTMLDivElement>) => {
+      setDraggedCoworker(coworker);
+      setDraggedFolder(null);
+      setActiveDropFolderId(null);
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("application/x-bap-coworker-id", coworker.id);
+      event.dataTransfer.setData("text/plain", coworker.id);
+    },
+    [],
+  );
+  const handleCoworkerDragEnd = useCallback(() => {
+    setDraggedCoworker(null);
+    setActiveDropFolderId(null);
+  }, []);
+  const handleFolderCardDragStart = useCallback(
+    (folder: CoworkerFolderItem, event: React.DragEvent<HTMLDivElement>) => {
+      setDraggedFolder(folder);
+      setDraggedCoworker(null);
+      setActiveDropFolderId(null);
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("application/x-bap-folder-id", folder.id);
+      event.dataTransfer.setData("text/plain", folder.id);
+    },
+    [],
+  );
+  const handleFolderCardDragEnd = useCallback(() => {
+    setDraggedFolder(null);
+    setActiveDropFolderId(null);
+  }, []);
+  const handleFolderDragEnter = useCallback(
+    (folder: CoworkerFolderItem) => {
+      if (draggedCoworker && draggedCoworker.folderId !== folder.id) {
+        setActiveDropFolderId(folder.id);
+        return;
+      }
+      if (draggedFolder && canDropFolderIntoFolder(draggedFolder, folder)) {
+        setActiveDropFolderId(folder.id);
+        return;
+      }
+    },
+    [canDropFolderIntoFolder, draggedCoworker, draggedFolder],
+  );
+  const handleFolderDragLeave = useCallback((folder: CoworkerFolderItem) => {
+    setActiveDropFolderId((current) => (current === folder.id ? null : current));
+  }, []);
+  const handleFolderDragOver = useCallback(
+    (folder: CoworkerFolderItem, event: React.DragEvent<HTMLDivElement>) => {
+      const canDropCoworker = Boolean(draggedCoworker && draggedCoworker.folderId !== folder.id);
+      const canDropFolder = Boolean(
+        draggedFolder && canDropFolderIntoFolder(draggedFolder, folder),
+      );
+      if (!canDropCoworker && !canDropFolder) {
+        event.dataTransfer.dropEffect = "none";
+        return;
+      }
+      setActiveDropFolderId(folder.id);
+    },
+    [canDropFolderIntoFolder, draggedCoworker, draggedFolder],
+  );
+  const handleFolderDropCoworker = useCallback(
+    async (folder: CoworkerFolderItem, event: React.DragEvent<HTMLDivElement>) => {
+      if (draggedFolder) {
+        if (!canDropFolderIntoFolder(draggedFolder, folder)) {
+          setDraggedFolder(null);
+          setActiveDropFolderId(null);
+          return;
+        }
+        const currentVisibility = getFolderEffectiveVisibility(draggedFolder.id);
+        const destinationVisibility = getFolderEffectiveVisibility(folder.id);
+        setDraggedFolder(null);
+        setActiveDropFolderId(null);
+        if (
+          currentVisibility &&
+          destinationVisibility &&
+          currentVisibility !== destinationVisibility
+        ) {
+          setMoveTarget({
+            type: "folder",
+            id: draggedFolder.id,
+            name: draggedFolder.name,
+            currentFolderId: draggedFolder.parentId,
+          });
+          setMoveDestinationId(folder.id);
+          return;
+        }
+        try {
+          await moveFolder.mutateAsync({ folderId: draggedFolder.id, parentId: folder.id });
+          toast.success(t("Folder moved."));
+        } catch {
+          toast.error(t("Failed to move folder."));
+        }
+        return;
+      }
+      const coworkerId =
+        draggedCoworker?.id || event.dataTransfer.getData("application/x-bap-coworker-id");
+      if (!coworkerId || draggedCoworker?.folderId === folder.id) {
+        setDraggedCoworker(null);
+        setActiveDropFolderId(null);
+        return;
+      }
+      try {
+        await moveCoworkerToFolder.mutateAsync({ coworkerId, folderId: folder.id });
+        toast.success(t("Coworker moved."));
+      } catch {
+        toast.error(t("Failed to move coworker."));
+      } finally {
+        setDraggedCoworker(null);
+        setActiveDropFolderId(null);
+      }
+    },
+    [
+      canDropFolderIntoFolder,
+      draggedCoworker,
+      draggedFolder,
+      getFolderEffectiveVisibility,
+      moveCoworkerToFolder,
+      moveFolder,
+      t,
+    ],
   );
   const handleMoveFolder = useCallback((folder: CoworkerFolderItem) => {
     setMoveTarget({
@@ -770,22 +926,47 @@ export default function CoworkersPage({
                 </span>
               </Link>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="border-border bg-background hover:bg-muted inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors"
+                >
+                  <T>Create</T>
+                  <ChevronDown className="size-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem asChild>
+                  <Link href="/" className="flex items-center gap-2">
+                    <UserPlus className="size-4" />
+                    <T>Create coworker</T>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleOpenCreateFolderDialog}>
+                  <Folder className="size-4" />
+                  <T>Create folder</T>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:max-w-sm">
+              <Search className="text-muted-foreground/60 pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
+              <Input
+                value={searchQuery}
+                onChange={handleSearchChange}
+                placeholder={t("Search folders and coworkers...")}
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
             <div className="flex items-center gap-1.5">
-              <div className="relative w-full sm:w-64">
-                <Search className="text-muted-foreground/60 pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
-                <Input
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  placeholder={t("Search folders and coworkers...")}
-                  className="h-8 pl-8 text-xs"
-                />
-              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
                     className={cn(
-                      "border-border/60 hover:border-border inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+                      "border-border/60 hover:border-border inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
                       selectedTriggerTypes.size > 0
                         ? "border-foreground/20 bg-foreground text-background"
                         : "text-muted-foreground hover:text-foreground",
@@ -835,97 +1016,88 @@ export default function CoworkersPage({
                   })}
                 </PopoverContent>
               </Popover>
+              {sharedByMeCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleToggleFilterShared}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                    filterShared
+                      ? "border-foreground/20 bg-foreground text-background"
+                      : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
+                  )}
+                >
+                  <Share2 className="size-3" />
+                  <T>Shared with workspace</T>
+                  <span
+                    className={cn(
+                      "tabular-nums rounded-full px-1.5 text-[10px]",
+                      filterShared ? "bg-background/20" : "bg-muted",
+                    )}
+                  >
+                    {sharedByMeCount}
+                  </span>
+                </button>
+              ) : null}
+              <input
+                ref={importFileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                aria-label={t("Import coworker JSON file")}
+                onChange={handleImportCoworkerFileChange}
+              />
+              <button
+                type="button"
+                onClick={handleImportCoworkerClick}
+                disabled={importCoworkerDefinition.isPending}
+                className="border-border/60 text-muted-foreground hover:border-border hover:text-foreground inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50"
+              >
+                {importCoworkerDefinition.isPending ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Upload className="size-3" />
+                )}
+                <T>Import coworker</T>
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleOpenCreateFolderDialog}
-              className="border-border/60 text-muted-foreground hover:border-border hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors"
-            >
-              <FolderPlus className="size-3" />
-              <T>New folder</T>
-            </button>
-            {sharedByMeCount > 0 ? (
-              <button
-                type="button"
-                onClick={handleToggleFilterShared}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                  filterShared
-                    ? "border-foreground/20 bg-foreground text-background"
-                    : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground",
-                )}
-              >
-                <Share2 className="size-3" />
-                <T>Shared with workspace</T>
-                <span
-                  className={cn(
-                    "tabular-nums rounded-full px-1.5 text-[10px]",
-                    filterShared ? "bg-background/20" : "bg-muted",
-                  )}
-                >
-                  {sharedByMeCount}
-                </span>
-              </button>
-            ) : null}
-            <input
-              ref={importFileInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              aria-label={t("Import coworker JSON file")}
-              onChange={handleImportCoworkerFileChange}
-            />
-            <button
-              type="button"
-              onClick={handleImportCoworkerClick}
-              disabled={importCoworkerDefinition.isPending}
-              className="border-border/60 text-muted-foreground hover:border-border hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50"
-            >
-              {importCoworkerDefinition.isPending ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <Upload className="size-3" />
-              )}
-              <T>Import coworker</T>
-            </button>
-          </div>
 
-          <div className="flex items-center gap-1 overflow-x-auto text-xs">
-            <Link
-              href="/agents"
-              className={cn(
-                "text-muted-foreground hover:text-foreground rounded-md px-2 py-1 font-medium",
-                !currentFolderId && "bg-muted text-foreground",
-              )}
-            >
-              <T>Top level</T>
-            </Link>
-            {breadcrumbs.map((folder) => (
-              <div key={folder.id} className="flex items-center gap-1">
-                <ChevronRight className="text-muted-foreground/60 size-3" />
+          {currentFolderId || hasActiveFilters ? (
+            <div className="flex items-center gap-1 overflow-x-auto text-xs">
+              {currentFolderId ? (
                 <Link
-                  href={`/agents/folders/${encodeURIComponent(folder.id)}`}
-                  className={cn(
-                    "text-muted-foreground hover:text-foreground rounded-md px-2 py-1 font-medium whitespace-nowrap",
-                    folder.id === currentFolderId && "bg-muted text-foreground",
-                  )}
+                  href="/agents"
+                  className="text-muted-foreground hover:text-foreground rounded-md px-2 py-1 font-medium whitespace-nowrap"
                 >
-                  {folder.name}
+                  <T>All coworkers</T>
                 </Link>
-              </div>
-            ))}
-            {hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={handleClearAllFilters}
-                className="text-muted-foreground hover:text-foreground ml-2 rounded-md px-2 py-1 text-xs font-medium"
-              >
-                <T>Clear filters</T>
-              </button>
-            ) : null}
-          </div>
+              ) : null}
+              {breadcrumbs.map((folder) => (
+                <div key={folder.id} className="flex items-center gap-1">
+                  <ChevronRight className="text-muted-foreground/60 size-3" />
+                  <Link
+                    href={`/agents/folders/${encodeURIComponent(folder.id)}`}
+                    className={cn(
+                      "text-muted-foreground hover:text-foreground rounded-md px-2 py-1 font-medium whitespace-nowrap",
+                      folder.id === currentFolderId && "bg-muted text-foreground",
+                    )}
+                  >
+                    {folder.name}
+                  </Link>
+                </div>
+              ))}
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={handleClearAllFilters}
+                  className="text-muted-foreground hover:text-foreground ml-2 rounded-md px-2 py-1 text-xs font-medium"
+                >
+                  <T>Clear filters</T>
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           {displayedCoworkerList.length === 0 &&
           displayedFolderList.length === 0 &&
@@ -949,6 +1121,7 @@ export default function CoworkersPage({
               displayedCoworkerList={displayedCoworkerList}
               displayedFolderList={displayedFolderList}
               displayedSharedCoworkerList={displayedSharedCoworkerList}
+              activeDropFolderId={activeDropFolderId}
               canManageFolder={canManageFolder}
               getFolderPathLabel={getFolderPathLabel}
               handleDeleteFolderRequest={handleDeleteFolderRequest}
@@ -956,6 +1129,14 @@ export default function CoworkersPage({
               handleMoveCoworker={handleMoveCoworker}
               handleMoveFolder={handleMoveFolder}
               handleOpenCreateChildFolderDialog={handleOpenCreateChildFolderDialog}
+              handleCoworkerDragEnd={handleCoworkerDragEnd}
+              handleCoworkerDragStart={handleCoworkerDragStart}
+              handleFolderCardDragEnd={handleFolderCardDragEnd}
+              handleFolderCardDragStart={handleFolderCardDragStart}
+              handleFolderDragEnter={handleFolderDragEnter}
+              handleFolderDragLeave={handleFolderDragLeave}
+              handleFolderDragOver={handleFolderDragOver}
+              handleFolderDropCoworker={handleFolderDropCoworker}
               handleToggleFolderVisibilityRequest={handleToggleFolderVisibilityRequest}
               importingSharedCoworkerId={importingSharedCoworkerId}
               isGlobalSearch={isGlobalSearch}

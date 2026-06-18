@@ -169,7 +169,7 @@ export function CoworkerFolderDialogs({
               onChange={onMoveDestinationChange}
               className="border-input bg-background text-foreground h-9 w-full rounded-md border px-3 text-sm"
             >
-              <option value="top">{t("Top level")}</option>
+              <option value="top">{t("All coworkers")}</option>
               {folderList.map((folder) => (
                 <option
                   key={folder.id}

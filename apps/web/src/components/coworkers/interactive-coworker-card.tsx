@@ -9,10 +9,9 @@ import {
   Loader2,
   Move,
   PenLine,
-  Pin,
-  PinOff,
   Play,
   Share2,
+  Star,
   Trash2,
 } from "lucide-react";
 import { startTransition, useCallback, useMemo, useState } from "react";
@@ -186,6 +185,8 @@ export function InteractiveCoworkerCard({
   coworker,
   className,
   onClick,
+  onDragEnd,
+  onDragStart,
   onMove,
   nounLabel = "Coworker",
   sharingLocked = false,
@@ -193,6 +194,11 @@ export function InteractiveCoworkerCard({
   coworker: InteractiveCoworkerCardData;
   className?: string;
   onClick?: () => void;
+  onDragEnd?: () => void;
+  onDragStart?: (
+    coworker: InteractiveCoworkerCardData,
+    event: React.DragEvent<HTMLDivElement>,
+  ) => void;
   onMove?: (coworker: InteractiveCoworkerCardData) => void;
   nounLabel?: string;
   sharingLocked?: boolean;
@@ -347,11 +353,19 @@ export function InteractiveCoworkerCard({
   const handleTogglePin = useCallback(async () => {
     try {
       await updateCoworker.mutateAsync({ id: coworker.id, isPinned: !coworker.isPinned });
-      toast.success(coworker.isPinned ? "Unpinned." : "Pinned.");
+      toast.success(coworker.isPinned ? "Removed from favorites." : "Added to favorites.");
     } catch {
-      toast.error(t("Failed to update pin."));
+      toast.error(t("Failed to update favorite."));
     }
   }, [updateCoworker, coworker.id, coworker.isPinned, t]);
+  const handleFavoriteClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void handleTogglePin();
+    },
+    [handleTogglePin],
+  );
 
   const handleRequestDelete = useCallback(() => {
     setPendingDelete(true);
@@ -359,6 +373,20 @@ export function InteractiveCoworkerCard({
   const handleMove = useCallback(() => {
     onMove?.(coworker);
   }, [coworker, onMove]);
+  const handleDragStart = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest("button,a,input,textarea,select,[role='menuitem']")
+      ) {
+        event.preventDefault();
+        return;
+      }
+      onDragStart?.(coworker, event);
+    },
+    [coworker, onDragStart],
+  );
 
   const handleRunsTriggerClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -455,13 +483,13 @@ export function InteractiveCoworkerCard({
         <DropdownMenuItem onSelect={handleTogglePin}>
           {coworker.isPinned ? (
             <>
-              <PinOff className="size-4" />
-              <T>Unpin</T>
+              <Star className="size-4 fill-current" />
+              <T>Remove favorite</T>
             </>
           ) : (
             <>
-              <Pin className="size-4" />
-              <T>Pin to top</T>
+              <Star className="size-4" />
+              <T>Add favorite</T>
             </>
           )}
         </DropdownMenuItem>
@@ -499,6 +527,25 @@ export function InteractiveCoworkerCard({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+  const cardActions = (
+    <>
+      <button
+        type="button"
+        onClick={handleFavoriteClick}
+        disabled={isDeleting || updateCoworker.isPending}
+        className={cn(
+          "hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-50",
+          coworker.isPinned
+            ? "text-brand"
+            : "text-muted-foreground/30 hover:text-foreground group-hover:text-muted-foreground",
+        )}
+        title={coworker.isPinned ? t("Remove favorite") : t("Add favorite")}
+      >
+        <Star className={cn("size-3.5", coworker.isPinned && "fill-current")} />
+      </button>
+      {actionsMenu}
+    </>
   );
 
   // oxlint-disable-next-line react-perf/jsx-no-jsx-as-prop -- slot pattern
@@ -631,17 +678,21 @@ export function InteractiveCoworkerCard({
     <>
       <div
         tabIndex={0}
+        draggable={Boolean(onDragStart)}
         onClick={handleOpen}
+        onDragEnd={onDragEnd}
+        onDragStart={handleDragStart}
         onKeyDown={handleKeyDown}
         className={cn(
           "border-border bg-card hover:border-foreground/30 hover:bg-muted/30 group flex h-full min-h-[180px] cursor-pointer flex-col gap-3 rounded-xl border p-5 transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+          onDragStart && "active:cursor-grabbing",
           className,
         )}
       >
         <CoworkerCardContent
           coworker={coworker}
           statusSlot={statusButton}
-          actionsSlot={actionsMenu}
+          actionsSlot={cardActions}
           badgesSlot={toolBadges}
           runsSlot={runsSection}
           footerSlot={footer}

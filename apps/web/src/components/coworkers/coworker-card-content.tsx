@@ -1,5 +1,5 @@
 import { T } from "gt-react";
-import { Pin } from "lucide-react";
+import { Star } from "lucide-react";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import { cn } from "@/lib/utils";
@@ -100,9 +100,7 @@ export function CoworkerCardContent({
           />
           <div className="min-w-0 space-y-1">
             <p className="flex items-center gap-1 truncate text-sm leading-tight font-medium">
-              {coworker.isPinned && (
-                <Pin className="text-muted-foreground size-3 shrink-0 rotate-45" />
-              )}
+              {coworker.isPinned && <Star className="text-brand size-3 shrink-0 fill-current" />}
               {getCoworkerDisplayName(coworker.name)}
             </p>
             {coworker.username ? (
