@@ -13,6 +13,7 @@ type UseCoworkerEditorNavigationInput = {
   coworkerRouteSlug?: string;
   embedded: boolean;
   isMobile: boolean;
+  isNestedRunsRoute: boolean;
   isRunsRoute: boolean;
   routeBaseTab: CoworkerTab | null;
   remoteTargetEnv: RemoteIntegrationTargetEnv | null;
@@ -32,6 +33,7 @@ export function useCoworkerEditorNavigation({
   coworkerRouteSlug,
   embedded,
   isMobile,
+  isNestedRunsRoute,
   isRunsRoute,
   routeBaseTab,
   remoteTargetEnv,
@@ -63,22 +65,32 @@ export function useCoworkerEditorNavigation({
       }
 
       if (!tab || tab === "instruction") {
+        if (isNestedRunsRoute) {
+          void navigate({
+            to: "/agents/edit/$id",
+            params: { id: coworkerRouteSlug ?? coworkerId },
+            replace: options?.replace,
+          });
+          return;
+        }
+
+        void navigate({ to: ".", search: {}, replace: options?.replace });
+        return;
+      }
+
+      if (isNestedRunsRoute) {
         void navigate({
           to: "/agents/edit/$id",
           params: { id: coworkerRouteSlug ?? coworkerId },
+          search: { tab },
           replace: options?.replace,
         });
         return;
       }
 
-      void navigate({
-        to: "/agents/edit/$id",
-        params: { id: coworkerRouteSlug ?? coworkerId },
-        search: { tab },
-        replace: options?.replace,
-      });
+      void navigate({ to: ".", search: { tab }, replace: options?.replace });
     },
-    [coworkerId, coworkerRouteSlug, embedded, navigate],
+    [coworkerId, coworkerRouteSlug, embedded, isNestedRunsRoute, navigate],
   );
 
   const navigateToCoworkerPanel = useCallback(
@@ -98,23 +110,37 @@ export function useCoworkerEditorNavigation({
       }
 
       if (options?.runId) {
+        if (isNestedRunsRoute) {
+          void navigate({
+            to: "/agents/edit/$id",
+            params: { id: coworkerRouteSlug ?? coworkerId },
+            search: { tab: "runs", run: options.runId },
+            replace: options.replace,
+          });
+          return;
+        }
+
         void navigate({
-          to: "/agents/edit/$id",
-          params: { id: coworkerRouteSlug ?? coworkerId },
+          to: ".",
           search: { tab: "runs", run: options.runId },
           replace: options.replace,
         });
         return;
       }
 
-      void navigate({
-        to: "/agents/edit/$id",
-        params: { id: coworkerRouteSlug ?? coworkerId },
-        search: { tab: "runs" },
-        replace: options?.replace,
-      });
+      if (isNestedRunsRoute) {
+        void navigate({
+          to: "/agents/edit/$id",
+          params: { id: coworkerRouteSlug ?? coworkerId },
+          search: { tab: "runs" },
+          replace: options?.replace,
+        });
+        return;
+      }
+
+      void navigate({ to: ".", search: { tab: "runs" }, replace: options?.replace });
     },
-    [coworkerId, coworkerRouteSlug, embedded, navigate],
+    [coworkerId, coworkerRouteSlug, embedded, isNestedRunsRoute, navigate],
   );
 
   const handleRunClick = useCallback(

@@ -304,9 +304,9 @@ export default function CoworkerEditorPage({
     return runId.length > 0 ? runId : null;
   }, [coworkerId, embedded, pathname, routeCoworkerSlug, routeSearchRunId]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(routeRunId);
-  const isRunsRoute =
-    routeBaseTab === "runs" ||
-    (!embedded && (pathname?.startsWith(`/agents/edit/${routeCoworkerSlug}/runs`) ?? false));
+  const isNestedRunsRoute =
+    !embedded && (pathname?.startsWith(`/agents/edit/${routeCoworkerSlug}/runs`) ?? false);
+  const isRunsRoute = routeBaseTab === "runs" || isNestedRunsRoute;
   const currentRoutePath = useMemo(() => {
     if (embedded && coworkerId) {
       return `/agents?agent=${encodeURIComponent(coworkerId)}`;
@@ -809,6 +809,7 @@ export default function CoworkerEditorPage({
     coworkerRouteSlug,
     embedded,
     isMobile,
+    isNestedRunsRoute,
     isRunsRoute,
     routeBaseTab,
     remoteTargetEnv,
