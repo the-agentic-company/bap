@@ -12,5 +12,8 @@
   },
   "dependencies": {
     "@bap/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5"
   }
 }
