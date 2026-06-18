@@ -179,7 +179,7 @@ function RunsList({ runs }: { runs: RunEntry[] }) {
 /**
  * Fully interactive coworker card with all controls.
  * Self-contained — manages its own mutations for run, status toggle, share, delete.
- * Used in both the main coworkers page and the org chart canvas.
+ * Used in the main coworkers page.
  */
 export function InteractiveCoworkerCard({
   coworker,

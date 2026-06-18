@@ -11,7 +11,6 @@ import {
   Filter,
   Folder,
   Mail,
-  Network,
   Loader2,
   Menu,
   Play,
@@ -916,15 +915,6 @@ export default function CoworkersPage({
                   {visibleCoworkerCount}
                 </span>
               </h2>
-              <Link
-                href="/agents/org-chart"
-                className="text-muted-foreground hover:text-foreground flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
-              >
-                <Network className="size-3.5" />
-                <span className="hidden sm:inline">
-                  <T>Org Chart</T>
-                </span>
-              </Link>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -31,7 +31,6 @@ import {
   memorySettings,
   message,
   messageAttachment,
-  orgChartNode,
   providerAuth,
   sandboxFile,
   session,
@@ -318,17 +317,6 @@ export const coworkerFolderRelations = relations(coworkerFolder, ({ one, many })
   }),
   children: many(coworkerFolder, { relationName: "coworkerFolderChildren" }),
   coworkers: many(coworker),
-}));
-
-export const orgChartNodeRelations = relations(orgChartNode, ({ one }) => ({
-  workspace: one(workspace, {
-    fields: [orgChartNode.workspaceId],
-    references: [workspace.id],
-  }),
-  coworker: one(coworker, {
-    fields: [orgChartNode.coworkerId],
-    references: [coworker.id],
-  }),
 }));
 
 export const coworkerRunRelations = relations(coworkerRun, ({ one, many }) => ({

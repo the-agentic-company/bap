@@ -60,7 +60,7 @@ export function getCoworkerDisplayName(name?: string | null) {
 
 /**
  * Shared visual content for coworker cards.
- * Used by both the main coworkers page and the org chart canvas node.
+ * Used by the main coworkers page card.
  * Does NOT render a wrapper element — the caller provides the container (div, Link, etc.)
  * along with any interactive controls (dropdown menu, status toggle, action buttons).
  */

@@ -71,7 +71,6 @@ import { Route as ApiLiveRouteImport } from './routes/api/live'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AgentsUsageRouteImport } from './routes/agents/usage'
 import { Route as AgentsOverviewRouteImport } from './routes/agents/overview'
-import { Route as AgentsOrgChartRouteImport } from './routes/agents/org-chart'
 import { Route as AgentsNewRouteImport } from './routes/agents/new'
 import { Route as AgentsHistoryRouteImport } from './routes/agents/history'
 import { Route as AgentsGridRouteImport } from './routes/agents/grid'
@@ -487,11 +486,6 @@ const AgentsUsageRoute = AgentsUsageRouteImport.update({
 const AgentsOverviewRoute = AgentsOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
-  getParentRoute: () => AgentsRouteRoute,
-} as any)
-const AgentsOrgChartRoute = AgentsOrgChartRouteImport.update({
-  id: '/org-chart',
-  path: '/org-chart',
   getParentRoute: () => AgentsRouteRoute,
 } as any)
 const AgentsNewRoute = AgentsNewRouteImport.update({
@@ -1111,7 +1105,6 @@ export interface FileRoutesByFullPath {
   '/agents/grid': typeof AgentsGridRoute
   '/agents/history': typeof AgentsHistoryRoute
   '/agents/new': typeof AgentsNewRoute
-  '/agents/org-chart': typeof AgentsOrgChartRoute
   '/agents/overview': typeof AgentsOverviewRoute
   '/agents/usage': typeof AgentsUsageRoute
   '/api/health': typeof ApiHealthRoute
@@ -1272,7 +1265,6 @@ export interface FileRoutesByTo {
   '/agents/grid': typeof AgentsGridRoute
   '/agents/history': typeof AgentsHistoryRoute
   '/agents/new': typeof AgentsNewRoute
-  '/agents/org-chart': typeof AgentsOrgChartRoute
   '/agents/overview': typeof AgentsOverviewRoute
   '/agents/usage': typeof AgentsUsageRoute
   '/api/health': typeof ApiHealthRoute
@@ -1443,7 +1435,6 @@ export interface FileRoutesById {
   '/agents/grid': typeof AgentsGridRoute
   '/agents/history': typeof AgentsHistoryRoute
   '/agents/new': typeof AgentsNewRoute
-  '/agents/org-chart': typeof AgentsOrgChartRoute
   '/agents/overview': typeof AgentsOverviewRoute
   '/agents/usage': typeof AgentsUsageRoute
   '/api/health': typeof ApiHealthRoute
@@ -1616,7 +1607,6 @@ export interface FileRouteTypes {
     | '/agents/grid'
     | '/agents/history'
     | '/agents/new'
-    | '/agents/org-chart'
     | '/agents/overview'
     | '/agents/usage'
     | '/api/health'
@@ -1777,7 +1767,6 @@ export interface FileRouteTypes {
     | '/agents/grid'
     | '/agents/history'
     | '/agents/new'
-    | '/agents/org-chart'
     | '/agents/overview'
     | '/agents/usage'
     | '/api/health'
@@ -1947,7 +1936,6 @@ export interface FileRouteTypes {
     | '/agents/grid'
     | '/agents/history'
     | '/agents/new'
-    | '/agents/org-chart'
     | '/agents/overview'
     | '/agents/usage'
     | '/api/health'
@@ -2613,13 +2601,6 @@ declare module '@tanstack/react-router' {
       path: '/overview'
       fullPath: '/agents/overview'
       preLoaderRoute: typeof AgentsOverviewRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/agents/org-chart': {
-      id: '/agents/org-chart'
-      path: '/org-chart'
-      fullPath: '/agents/org-chart'
-      preLoaderRoute: typeof AgentsOrgChartRouteImport
       parentRoute: typeof AgentsRouteRoute
     }
     '/agents/new': {
@@ -3448,7 +3429,6 @@ interface AgentsRouteRouteChildren {
   AgentsGridRoute: typeof AgentsGridRoute
   AgentsHistoryRoute: typeof AgentsHistoryRoute
   AgentsNewRoute: typeof AgentsNewRoute
-  AgentsOrgChartRoute: typeof AgentsOrgChartRoute
   AgentsOverviewRoute: typeof AgentsOverviewRoute
   AgentsUsageRoute: typeof AgentsUsageRoute
   AgentsIndexRoute: typeof AgentsIndexRoute
@@ -3463,7 +3443,6 @@ const AgentsRouteRouteChildren: AgentsRouteRouteChildren = {
   AgentsGridRoute: AgentsGridRoute,
   AgentsHistoryRoute: AgentsHistoryRoute,
   AgentsNewRoute: AgentsNewRoute,
-  AgentsOrgChartRoute: AgentsOrgChartRoute,
   AgentsOverviewRoute: AgentsOverviewRoute,
   AgentsUsageRoute: AgentsUsageRoute,
   AgentsIndexRoute: AgentsIndexRoute,

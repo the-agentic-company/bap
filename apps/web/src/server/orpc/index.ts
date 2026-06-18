@@ -12,7 +12,6 @@ import { inboxRouter } from "./routers/inbox";
 import { integrationRouter } from "./routers/integration";
 import { integrationSkillRouter } from "./routers/integration-skill";
 import { modulrRouter } from "./routers/modulr";
-import { orgChartRouter } from "./routers/org-chart";
 import { providerAuthRouter } from "./routers/provider-auth";
 import { skillRouter } from "./routers/skill";
 import { templateRouter } from "./routers/template";
@@ -43,7 +42,6 @@ export const appRouter = {
   voice: voiceRouter,
   coworker: coworkerRouter,
   coworkerFolder: coworkerFolderRouter,
-  orgChart: orgChartRouter,
   health: { ping },
 };
 

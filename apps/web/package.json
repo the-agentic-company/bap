@@ -91,7 +91,6 @@
     "@tanstack/react-start": "^1.168.19",
     "@tanstack/react-table": "^8.21.3",
     "@types/yauzl": "^2.10.3",
-    "@xyflow/react": "^12.10.2",
     "atmn": "^0.0.33",
     "autumn-js": "^1.2.28",
     "better-auth": "^1.6.16",

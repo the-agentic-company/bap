@@ -51,7 +51,6 @@ function AgentsLayout() {
     ? (resolvedPathname ?? lastStablePathnameRef.current)
     : pathname;
   const isRunsRoute = visualPathname.startsWith("/agents/runs");
-  const isOrgChartRoute = visualPathname === "/agents/org-chart";
   const isCoworkerEditorRoute = visualPathname.startsWith("/agents/edit/");
   const isCoworkerInfoRoute = visualPathname.startsWith("/agents/info/");
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -89,7 +88,7 @@ function AgentsLayout() {
 
   return (
     <AuthenticatedAppRootShell initialPrincipal={sessionContext.principal}>
-      {isRunsRoute || isOrgChartRoute || isCoworkerInfoRoute ? (
+      {isRunsRoute || isCoworkerInfoRoute ? (
         isPendingNewPath ? (
           <AgentsRoutePending className="h-full min-h-screen" />
         ) : (

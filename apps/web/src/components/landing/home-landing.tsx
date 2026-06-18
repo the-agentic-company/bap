@@ -18,7 +18,6 @@ import { VoiceIndicator } from "@/components/chat/voice-indicator";
 import { useAppLocale } from "@/components/general-translation-provider";
 import { AnimatedHowItWorksSection } from "@/components/landing/animated-how-it-works";
 import { BentoFeaturesSection } from "@/components/landing/bento-features";
-import { OrgChartShowcaseSection } from "@/components/landing/org-chart-showcase";
 import {
   clearPendingCoworkerPrompt,
   getPendingCoworkerGenerationContent,
@@ -953,7 +952,6 @@ export function HomeLanding({
         <>
           <BentoFeaturesSection />
           <AnimatedHowItWorksSection />
-          <OrgChartShowcaseSection />
           <TeamShowcaseSection />
 
           {/* ── CTA ── */}

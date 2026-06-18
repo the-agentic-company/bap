@@ -5,7 +5,6 @@ export * from "./hooks/coworkers";
 export * from "./hooks/generation";
 export * from "./hooks/inbox";
 export * from "./hooks/integrations";
-export * from "./hooks/org-chart";
 export * from "./hooks/provider-auth";
 export * from "./hooks/skills";
 export * from "./hooks/user";

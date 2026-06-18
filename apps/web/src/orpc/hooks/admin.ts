@@ -121,7 +121,7 @@ export function useGrantAdminAccessByEmail() {
 }
 
 // ---------------------------------------------------------------------------
-// Org Chart
+// Admin sandboxes
 // ---------------------------------------------------------------------------
 
 export function useAdminListSandboxes() {

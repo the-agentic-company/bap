@@ -124,32 +124,6 @@ export const coworker = pgTable(
   ],
 );
 
-export const orgChartNode = pgTable(
-  "org_chart_node",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .references(() => workspace.id, { onDelete: "cascade" }),
-    type: text("type").notNull(), // "coworker" | "label"
-    coworkerId: text("coworker_id").references(() => coworker.id, { onDelete: "cascade" }),
-    label: text("label"),
-    positionX: integer("position_x").notNull().default(0),
-    positionY: integer("position_y").notNull().default(0),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index("org_chart_node_workspace_id_idx").on(table.workspaceId),
-    uniqueIndex("org_chart_node_workspace_coworker_idx").on(table.workspaceId, table.coworkerId),
-  ],
-);
-
 export const coworkerRun = pgTable(
   "coworker_run",
   {
