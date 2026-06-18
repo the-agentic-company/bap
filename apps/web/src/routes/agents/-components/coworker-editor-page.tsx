@@ -48,6 +48,7 @@ import {
   useDeleteCoworker,
   useCoworkerRuns,
   useTriggerCoworker,
+  useResetCoworkerRunsAndEnable,
   useRemoteIntegrationTargets,
   useSearchRemoteIntegrationUsers,
 } from "@/orpc/hooks/coworkers";
@@ -81,6 +82,13 @@ const BASE_TRIGGERS = [
 ];
 
 const LEGACY_HIDDEN_TRIGGERS = [{ value: "gmail.new_email", label: msg("New Gmail email") }];
+const COWORKER_RUN_BACKLOG_LIMIT = 5;
+const COWORKER_RUN_BACKLOG_STATUSES = new Set([
+  "needs_user_input",
+  "awaiting_approval",
+  "awaiting_auth",
+  "paused",
+]);
 
 type CoworkerEditorPageProps = {
   coworkerIdOverride?: string;
@@ -137,6 +145,7 @@ export default function CoworkerEditorPage({
   const disableForwardingAlias = useDisableCoworkerForwardingAlias();
   const rotateForwardingAlias = useRotateCoworkerForwardingAlias();
   const triggerCoworker = useTriggerCoworker();
+  const resetCoworkerRuns = useResetCoworkerRunsAndEnable();
   const deleteCoworker = useDeleteCoworker();
 
   const integrationEntries = useMemo(
@@ -258,6 +267,14 @@ export default function CoworkerEditorPage({
       enabled: remoteUserSearchEnabled,
       limit: 12,
     });
+  const requiresResetBeforeEnable = useMemo(() => {
+    const backlogRunCount =
+      runs?.filter((run) => COWORKER_RUN_BACKLOG_STATUSES.has(run.status)).length ?? 0;
+    return (
+      coworker?.disabledReason === "run_backlog_limit" ||
+      backlogRunCount >= COWORKER_RUN_BACKLOG_LIMIT
+    );
+  }, [coworker?.disabledReason, runs]);
   const baseTabParam = searchParams.get("tab");
   const routeBaseTab: CoworkerTab | null =
     baseTabParam === "chat" ||
@@ -464,13 +481,6 @@ export default function CoworkerEditorPage({
   useEffect(() => {
     setSelectedSkillSlugs(skillSelectionScopeKey, allowedSkillSlugs);
   }, [allowedSkillSlugs, setSelectedSkillSlugs, skillSelectionScopeKey]);
-
-  const handleStatusChange = useCallback(
-    (checked: boolean) => {
-      setStatusFromChecked(checked);
-    },
-    [setStatusFromChecked],
-  );
 
   const handleAutoApproveChange = useCallback(
     (checked: boolean) => {
@@ -707,6 +717,59 @@ export default function CoworkerEditorPage({
     [isStartingRun, persistCoworker, refetchRuns, triggerCoworker, coworkerId, t],
   );
 
+  const executeResetRunsAndEnable = useCallback(async () => {
+    if (!coworkerId || resetCoworkerRuns.isPending) {
+      return;
+    }
+
+    try {
+      await resetCoworkerRuns.mutateAsync(coworkerId);
+      setStatusFromChecked(true);
+      await Promise.all([refetchCoworker(), refetchRuns()]);
+      toast.success(t("Runs reset and automation enabled."));
+    } catch (error) {
+      console.error("Failed to reset coworker runs:", error);
+      toast.error(t("Failed to reset coworker runs."));
+    }
+  }, [coworkerId, refetchCoworker, refetchRuns, resetCoworkerRuns, setStatusFromChecked, t]);
+
+  const handleResetRunsAndEnable = useCallback(() => {
+    if (!coworkerId || resetCoworkerRuns.isPending) {
+      return;
+    }
+
+    const toastId = toast.warning(t("Cancel previous runs?"), {
+      description: t("This will cancel every unfinished run and turn automated triggers back on."),
+      duration: Infinity,
+      closeButton: true,
+      action: {
+        label: t("Cancel runs"),
+        onClick: () => {
+          toast.dismiss(toastId);
+          void executeResetRunsAndEnable();
+        },
+      },
+      cancel: {
+        label: t("Keep runs"),
+        onClick: () => {
+          toast.dismiss(toastId);
+        },
+      },
+    });
+  }, [coworkerId, executeResetRunsAndEnable, resetCoworkerRuns.isPending, t]);
+
+  const handleStatusChange = useCallback(
+    (checked: boolean) => {
+      if (checked && requiresResetBeforeEnable) {
+        handleResetRunsAndEnable();
+        return;
+      }
+
+      setStatusFromChecked(checked);
+    },
+    [handleResetRunsAndEnable, requiresResetBeforeEnable, setStatusFromChecked],
+  );
+
   const handleSaveInstructions = useCallback(async () => {
     const saveSucceeded = await persistCoworker({ force: true });
     if (saveSucceeded) {
@@ -826,6 +889,8 @@ export default function CoworkerEditorPage({
         username,
         isSaving,
         status,
+        disabledReason: coworker?.disabledReason ?? null,
+        disabledAt: coworker?.disabledAt ?? null,
         autoApprove,
         requiresUserInput,
         userInputPrompt,
@@ -861,6 +926,7 @@ export default function CoworkerEditorPage({
         selectedRunId,
         isRunDisabled,
         isRunning,
+        isResettingRuns: resetCoworkerRuns.isPending,
         isUploadingDocuments,
         deletingDocumentIds,
         downloadingDocumentIds,
@@ -872,6 +938,7 @@ export default function CoworkerEditorPage({
         onDeleteDocument: handleDeleteDocument,
         onTabChange: handleTabChange,
         onRun: handleRunClick,
+        onResetRunsAndEnable: handleResetRunsAndEnable,
         onSelectRun: handleSelectRun,
         onBackToRuns: handleBackToRuns,
         onNameChange: handleNameChange,
@@ -917,6 +984,8 @@ export default function CoworkerEditorPage({
       allIntegrationTypes,
       autoApprove,
       availableSkills,
+      coworker?.disabledAt,
+      coworker?.disabledReason,
       copiedForwardingField,
       coworker?.documents,
       coworkerForwardingAddress,
@@ -950,6 +1019,7 @@ export default function CoworkerEditorPage({
       handleRestrictToolsChange,
       handleRotateCoworkerAlias,
       handleRunClick,
+      handleResetRunsAndEnable,
       handleSaveInstructions,
       handleScheduleDayOfMonthChange,
       handleScheduleTimeChange,
@@ -973,6 +1043,7 @@ export default function CoworkerEditorPage({
       isPlatformSkillsLoading,
       isRunDisabled,
       isRunning,
+      resetCoworkerRuns.isPending,
       isSaving,
       isUploadingDocuments,
       model,

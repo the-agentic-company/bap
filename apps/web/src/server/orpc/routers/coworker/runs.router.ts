@@ -1,11 +1,13 @@
 import { coworkerRun } from "@bap/db/schema";
+import { resetCoworkerRunsAndEnable } from "@bap/core/server/services/coworker-run-reset";
+import { syncCoworkerScheduleJob } from "@bap/core/server/services/coworker-scheduler";
 import { ORPCError } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAppAdminActor } from "../../app-admin-access";
 import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
-import { requireOwnedCoworkerInActiveWorkspace } from "./access";
+import { requireCoworkerInActiveWorkspace, requireOwnedCoworkerInActiveWorkspace } from "./access";
 import {
   getCoworkerRunView,
   listCoworkerRunViews,
@@ -118,6 +120,7 @@ const listWorkspaceRuns = protectedProcedure
           "awaiting_approval",
           "awaiting_auth",
           "paused",
+          "cancelling",
           "completed",
           "error",
           "cancelled",
@@ -140,9 +143,29 @@ const listWorkspaceRuns = protectedProcedure
     });
   });
 
+const resetRunsAndEnable = protectedProcedure
+  .input(z.object({ coworkerId: z.string() }))
+  .handler(async ({ input, context }) => {
+    const { coworker: wf } = await requireCoworkerInActiveWorkspace(context, input.coworkerId);
+    const result = await resetCoworkerRunsAndEnable({
+      coworkerId: wf.id,
+      resetByUserId: context.user.id,
+    });
+    try {
+      await syncCoworkerScheduleJob({ ...wf, status: "on" });
+    } catch (error) {
+      console.error(`[coworker] failed to sync scheduler after reset (${wf.id})`, error);
+      throw new ORPCError("INTERNAL_SERVER_ERROR", {
+        message: "Coworker reset but failed to sync schedule job",
+      });
+    }
+    return result;
+  });
+
 export const coworkerRunProcedures = {
   getRun,
   getRunImpersonationTarget,
   listRuns,
   listWorkspaceRuns,
+  resetRunsAndEnable,
 };

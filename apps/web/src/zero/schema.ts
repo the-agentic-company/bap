@@ -98,6 +98,8 @@ export const coworkerTable = table("coworker")
     workspaceId: string().from("workspace_id").optional(),
     folderId: string().from("folder_id").optional(),
     status: string<"on" | "off">(),
+    disabledReason: string<"run_backlog_limit">().from("disabled_reason").optional(),
+    disabledAt: number().from("disabled_at").optional(),
     triggerType: string().from("trigger_type"),
     model: string(),
     authSource: string<"user" | "shared">().from("auth_source").optional(),

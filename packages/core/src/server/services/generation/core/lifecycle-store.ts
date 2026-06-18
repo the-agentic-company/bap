@@ -16,6 +16,10 @@ import { conversationRuntimeService } from "../../conversation-runtime-service";
 import { generateConversationTitle } from "../../../utils/generate-title";
 import { sanitizeJsonForPostgres, sanitizePostgresText } from "../../../utils/postgres-json";
 import type { ProviderAuthSource } from "../../../../lib/provider-auth-source";
+import {
+  finalizeCancelledGenerationRows,
+  type FinalizeCancelledGenerationsInput,
+} from "./cancelled-generation-finalizer";
 import type {
   AppendProgressInput,
   LoadTurnInput,
@@ -237,7 +241,9 @@ export class GenerationLifecycleStore {
           : {}),
         suspendedAt: input.suspendedAt ?? null,
         resumeInterruptId: input.resumeInterruptId ?? null,
-        ...(input.recoveryAttempts !== undefined ? { recoveryAttempts: input.recoveryAttempts } : {}),
+        ...(input.recoveryAttempts !== undefined
+          ? { recoveryAttempts: input.recoveryAttempts }
+          : {}),
         completionReason: input.completionReason ?? null,
         debugInfo: debugInfo as Record<string, unknown> | null,
       })
@@ -858,7 +864,10 @@ export class GenerationLifecycleStore {
       input.userMessageContent
     ) {
       try {
-        const title = await generateConversationTitle(input.userMessageContent, input.assistantContent);
+        const title = await generateConversationTitle(
+          input.userMessageContent,
+          input.assistantContent,
+        );
         if (title) {
           await db
             .update(conversation)
@@ -925,7 +934,11 @@ export class GenerationLifecycleStore {
         .where(inArray(generation.id, input.auth.ids));
     }
 
-    await this.finalizeStaleProductRows(input.running.ids, input.running.message, input.completedAt);
+    await this.finalizeStaleProductRows(
+      input.running.ids,
+      input.running.message,
+      input.completedAt,
+    );
     await this.finalizeStaleProductRows(
       input.approval.ids,
       input.approval.message,
@@ -937,6 +950,10 @@ export class GenerationLifecycleStore {
         emitPersistedTerminalGenerationEvent(generationId),
       ),
     );
+  }
+
+  async finalizeCancelledGenerations(input: FinalizeCancelledGenerationsInput): Promise<void> {
+    await finalizeCancelledGenerationRows(input, emitPersistedTerminalGenerationEvent);
   }
 
   private async finalizeStaleProductRows(

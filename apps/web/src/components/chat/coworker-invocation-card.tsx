@@ -19,6 +19,7 @@ type CoworkerInvocationCardProps = {
     | "awaiting_approval"
     | "awaiting_auth"
     | "paused"
+    | "cancelling"
     | "completed"
     | "error"
     | "cancelled";
@@ -32,6 +33,7 @@ const ACTIVE_STATUSES = new Set([
   "awaiting_approval",
   "awaiting_auth",
   "paused",
+  "cancelling",
 ]);
 
 function getStatusLabel(status: CoworkerInvocationCardProps["status"]): string {
@@ -46,6 +48,8 @@ function getStatusLabel(status: CoworkerInvocationCardProps["status"]): string {
       return "Awaiting auth";
     case "paused":
       return "Paused";
+    case "cancelling":
+      return "Cancelling";
     case "completed":
       return "Completed";
     case "error":
@@ -64,6 +68,7 @@ function getStatusClassName(status: CoworkerInvocationCardProps["status"]): stri
     case "cancelled":
       return "bg-stone-500/10 text-stone-700";
     case "paused":
+    case "cancelling":
       return "bg-amber-500/10 text-amber-700";
     case "needs_user_input":
       return "bg-emerald-500/10 text-emerald-700";

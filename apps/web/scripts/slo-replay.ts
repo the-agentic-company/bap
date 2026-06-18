@@ -620,6 +620,7 @@ async function executeReplayCandidate(
       const { generationManager } = await import("@bap/core/server/services/generation-manager");
       const result = await triggerCoworkerRun({
         coworkerId: candidate.coworkerId,
+        startKind: "user_intent",
         triggerPayload: { source: "slo_replay" },
         userRole: "admin",
         remoteIntegrationSource,

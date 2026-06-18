@@ -7,6 +7,7 @@ export type CoworkerRuntimeRunStatus =
   | "awaiting_approval"
   | "awaiting_auth"
   | "paused"
+  | "cancelling"
   | "completed"
   | "error"
   | "cancelled";

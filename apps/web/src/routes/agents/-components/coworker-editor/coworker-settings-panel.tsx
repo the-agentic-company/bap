@@ -1,6 +1,6 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { T, useGT } from "gt-react";
-import { Loader2, Play, Trash2, X } from "lucide-react";
+import { AlertTriangle, Loader2, Play, RotateCcw, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
 import type { IntegrationType } from "@/lib/integration-icons";
@@ -29,6 +29,13 @@ const statusTextMotionInitial = { opacity: 0, y: -4 } as const;
 const statusTextMotionAnimate = { opacity: 1, y: 0 } as const;
 const statusTextMotionExit = { opacity: 0, y: 4 } as const;
 const statusTextMotionTransition = { duration: 0.15 } as const;
+const COWORKER_RUN_BACKLOG_LIMIT = 5;
+const COWORKER_RUN_BACKLOG_STATUSES = new Set([
+  "needs_user_input",
+  "awaiting_approval",
+  "awaiting_auth",
+  "paused",
+]);
 
 type CoworkerSettingsPanelProps = {
   coworkerId?: string;
@@ -38,6 +45,8 @@ type CoworkerSettingsPanelProps = {
   username: string;
   isSaving: boolean;
   status: "on" | "off";
+  disabledReason: "run_backlog_limit" | null;
+  disabledAt: Date | string | null;
   autoApprove: boolean;
   requiresUserInput: boolean;
   userInputPrompt: string;
@@ -73,6 +82,7 @@ type CoworkerSettingsPanelProps = {
   selectedRunId: string | null;
   isRunDisabled: boolean;
   isRunning: boolean;
+  isResettingRuns: boolean;
   isUploadingDocuments: boolean;
   deletingDocumentIds: string[];
   downloadingDocumentIds: string[];
@@ -84,6 +94,7 @@ type CoworkerSettingsPanelProps = {
   onDeleteDocument: (document: CoworkerDocumentRecord) => void | Promise<void>;
   onTabChange: (tab: CoworkerTab) => void;
   onRun: (event: React.MouseEvent) => void;
+  onResetRunsAndEnable: () => void | Promise<void>;
   onSelectRun: (runId: string) => void;
   onBackToRuns: () => void;
   onNameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -133,6 +144,8 @@ export function CoworkerSettingsPanel({
   username,
   isSaving,
   status,
+  disabledReason,
+  disabledAt,
   autoApprove,
   requiresUserInput,
   userInputPrompt,
@@ -168,6 +181,7 @@ export function CoworkerSettingsPanel({
   selectedRunId,
   isRunDisabled,
   isRunning,
+  isResettingRuns,
   isUploadingDocuments,
   deletingDocumentIds,
   downloadingDocumentIds,
@@ -179,6 +193,7 @@ export function CoworkerSettingsPanel({
   onDeleteDocument,
   onTabChange,
   onRun,
+  onResetRunsAndEnable,
   onSelectRun,
   onBackToRuns,
   onNameChange,
@@ -232,6 +247,22 @@ export function CoworkerSettingsPanel({
     [onTabChange],
   );
   const adminContent = renderAdminContent?.();
+  const backlogRunCount =
+    runs?.filter((run) => COWORKER_RUN_BACKLOG_STATUSES.has(run.status)).length ?? 0;
+  const shouldShowRunBacklogNotice =
+    disabledReason === "run_backlog_limit" || backlogRunCount >= COWORKER_RUN_BACKLOG_LIMIT;
+  const disabledAtLabel = disabledAt ? new Date(disabledAt).toLocaleString() : null;
+  const handleStatusSwitchChange = useCallback(
+    (checked: boolean) => {
+      if (checked && shouldShowRunBacklogNotice) {
+        void onResetRunsAndEnable();
+        return;
+      }
+
+      onStatusChange(checked);
+    },
+    [onResetRunsAndEnable, onStatusChange, shouldShowRunBacklogNotice],
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -282,7 +313,11 @@ export function CoworkerSettingsPanel({
                   {status === "on" ? "On" : "Off"}
                 </motion.span>
               </AnimatePresence>
-              <Switch checked={status === "on"} onCheckedChange={onStatusChange} />
+              <Switch
+                checked={status === "on"}
+                onCheckedChange={handleStatusSwitchChange}
+                disabled={isResettingRuns}
+              />
             </div>
             <Button
               variant="outline"
@@ -325,6 +360,44 @@ export function CoworkerSettingsPanel({
           </div>
         </div>
       )}
+      {shouldShowRunBacklogNotice ? (
+        <div className="border-border bg-muted/40 border-y px-3 py-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <div className="min-w-0">
+                <p className="text-foreground text-xs font-medium">
+                  <T>Automated triggers are disabled</T>
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  <T>Bap stopped this coworker because 5 runs were waiting for human input.</T>
+                </p>
+                {disabledAtLabel ? (
+                  <p className="text-muted-foreground/80 mt-0.5 text-[11px]">
+                    <T>Stopped</T> {disabledAtLabel}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 gap-1.5 px-2 text-xs"
+                onClick={onResetRunsAndEnable}
+                disabled={isResettingRuns}
+              >
+                {isResettingRuns ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3 w-3" />
+                )}
+                <T>Reset and enable</T>
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div
         className={cn(
           "min-h-0 flex-1",

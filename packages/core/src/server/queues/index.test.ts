@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { triggerCoworkerRunMock } = vi.hoisted(() => ({
+const {
+  isCoworkerRunBacklogAutoDisableErrorMock,
+  isDisabledCoworkerTriggerErrorMock,
+  triggerCoworkerRunMock,
+} = vi.hoisted(() => ({
+  isCoworkerRunBacklogAutoDisableErrorMock: vi.fn(() => false),
+  isDisabledCoworkerTriggerErrorMock: vi.fn(() => false),
   triggerCoworkerRunMock: vi.fn(),
 }));
 
 vi.mock("../services/coworker-service", () => ({
+  isCoworkerRunBacklogAutoDisableError: isCoworkerRunBacklogAutoDisableErrorMock,
+  isDisabledCoworkerTriggerError: isDisabledCoworkerTriggerErrorMock,
   triggerCoworkerRun: triggerCoworkerRunMock,
 }));
 
@@ -35,7 +43,7 @@ describe("handleScheduledCoworkerJob", () => {
     ).resolves.toBeUndefined();
 
     expect(warnSpy).toHaveBeenCalledWith(
-      "[worker] skipped scheduled coworker trigger because run is already active for coworker wf-1",
+      "[worker] skipped scheduled coworker trigger for coworker wf-1: Coworker already has an active run",
     );
   });
 

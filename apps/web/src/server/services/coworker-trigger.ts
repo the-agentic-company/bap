@@ -55,6 +55,7 @@ export async function triggerCoworkerFromWeb(input: {
 
   return triggerCoworkerRun({
     coworkerId: input.coworkerId,
+    startKind: "user_intent",
     triggerPayload: input.payload ?? {},
     trustedUserInput: input.trustedUserInput,
     fileAttachments: input.fileAttachments,

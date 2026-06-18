@@ -91,11 +91,13 @@ export function CoworkerRunsPanel({
                           ? "text-blue-500"
                           : run.status === "paused"
                             ? "text-amber-500"
-                            : run.status === "needs_user_input"
-                              ? "text-emerald-500"
-                              : run.status === "error" || run.status === "cancelled"
-                                ? "text-red-500"
-                                : "text-muted-foreground",
+                            : run.status === "cancelling"
+                              ? "text-amber-500"
+                              : run.status === "needs_user_input"
+                                ? "text-emerald-500"
+                                : run.status === "error" || run.status === "cancelled"
+                                  ? "text-red-500"
+                                  : "text-muted-foreground",
                     )}
                   />
                   <span className="text-foreground/70 text-xs">

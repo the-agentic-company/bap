@@ -35,6 +35,7 @@ export const coworkerRouter = {
   getRunImpersonationTarget: coworkerRunProcedures.getRunImpersonationTarget,
   listRuns: coworkerRunProcedures.listRuns,
   listWorkspaceRuns: coworkerRunProcedures.listWorkspaceRuns,
+  resetRunsAndEnable: coworkerRunProcedures.resetRunsAndEnable,
   getForwardingAlias: coworkerForwardingAliasProcedures.getForwardingAlias,
   createForwardingAlias: coworkerForwardingAliasProcedures.createForwardingAlias,
   disableForwardingAlias: coworkerForwardingAliasProcedures.disableForwardingAlias,

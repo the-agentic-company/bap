@@ -9,6 +9,7 @@ import {
   isAuthExpired,
   type GenerationCompletionReason,
 } from "../../lifecycle-policy";
+import type { FinalizeCancelledGenerationsInput } from "../core/cancelled-generation-finalizer";
 import type { FinalizeStaleGenerationsInput } from "../core/lifecycle-store";
 
 const STALE_REAPER_RUNNING_MAX_AGE_MS = 6 * 60 * 60 * 1000;
@@ -23,6 +24,7 @@ export type StaleGenerationReapSummary = {
   stale: number;
   finalizedRunningAsError: number;
   finalizedWaitingAsError: number;
+  finalizedCancellationRequestedAsCancelled: number;
 };
 
 export type GenerationMaintenanceDependencies = {
@@ -43,6 +45,7 @@ export type GenerationMaintenanceDependencies = {
     completionReason: GenerationCompletionReason;
   }): Promise<void>;
   finalizeStaleGenerationsAsError(input: FinalizeStaleGenerationsInput): Promise<void>;
+  finalizeCancelledGenerations(input: FinalizeCancelledGenerationsInput): Promise<void>;
 };
 
 export class GenerationMaintenance {
@@ -229,6 +232,7 @@ export class GenerationMaintenance {
   }
 
   async reapStaleGenerations(): Promise<StaleGenerationReapSummary> {
+    const cancelledSummary = await this.finalizeCancellationRequestedCoworkerRuns();
     const candidates = await db.query.generation.findMany({
       where: and(
         isNull(generation.completedAt),
@@ -273,6 +277,7 @@ export class GenerationMaintenance {
         stale: 0,
         finalizedRunningAsError: 0,
         finalizedWaitingAsError: 0,
+        finalizedCancellationRequestedAsCancelled: cancelledSummary.finalized,
       };
     }
 
@@ -340,7 +345,61 @@ export class GenerationMaintenance {
       stale: staleRows.length,
       finalizedRunningAsError: staleRunningIds.length,
       finalizedWaitingAsError: staleWaitingIds.length,
+      finalizedCancellationRequestedAsCancelled: cancelledSummary.finalized,
     };
+  }
+
+  private async finalizeCancellationRequestedCoworkerRuns(): Promise<{ finalized: number }> {
+    const candidates = await db.query.coworkerRun.findMany({
+      where: eq(coworkerRun.status, "cancelling"),
+      columns: {
+        id: true,
+        generationId: true,
+      },
+      with: {
+        generation: {
+          columns: {
+            id: true,
+            status: true,
+            cancelRequestedAt: true,
+            completedAt: true,
+          },
+        },
+      },
+      limit: 50,
+    });
+
+    const generationIds: string[] = [];
+    for (const row of candidates) {
+      const gen = row.generation;
+      if (!gen) {
+        continue;
+      }
+      if (
+        gen.cancelRequestedAt instanceof Date &&
+        gen.completedAt === null &&
+        ["running", "awaiting_approval", "awaiting_auth", "paused"].includes(gen.status)
+      ) {
+        generationIds.push(gen.id);
+      }
+    }
+
+    if (generationIds.length === 0) {
+      return { finalized: 0 };
+    }
+
+    const completedAt = new Date();
+    await this.deps.finalizeCancelledGenerations({
+      completedAt,
+      generationIds,
+      message: "Coworker run was cancelled by reset.",
+    });
+
+    for (const generationId of generationIds) {
+      this.deps.abortAndEvictActiveGeneration(generationId);
+    }
+
+    return { finalized: generationIds.length };
   }
 
   private async expireGenerationTimeout(input: {

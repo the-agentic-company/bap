@@ -1,7 +1,11 @@
 import { QueueEvents, Worker, type Processor } from "bullmq";
 import { EMAIL_FORWARDED_TRIGGER_TYPE } from "../../lib/email-forwarding";
 import { processForwardedEmailEvent } from "../services/coworker-email-forwarding";
-import { isDisabledCoworkerTriggerError, triggerCoworkerRun } from "../services/coworker-service";
+import {
+  isCoworkerRunBacklogAutoDisableError,
+  isDisabledCoworkerTriggerError,
+  triggerCoworkerRun,
+} from "../services/coworker-service";
 import { syncFailureAlertGroupToLinear } from "../services/failure-alert-linear-sync-service";
 import {
   CHAT_GENERATION_JOB_NAME,
@@ -96,6 +100,27 @@ function isActiveCoworkerRunConflict(error: unknown): boolean {
   );
 }
 
+function isSkippedCoworkerTriggerError(error: unknown): boolean {
+  return (
+    isActiveCoworkerRunConflict(error) ||
+    isDisabledCoworkerTriggerError(error) ||
+    isCoworkerRunBacklogAutoDisableError(error)
+  );
+}
+
+function formatSkippedCoworkerTriggerReason(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (error && typeof error === "object") {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+  return String(error);
+}
+
 const handlers: Record<string, JobHandler> = {
   [SCHEDULED_COWORKER_JOB_NAME]: handleScheduledCoworkerJob,
   [LEGACY_SCHEDULED_COWORKER_JOB_NAME]: handleScheduledCoworkerJob,
@@ -109,17 +134,12 @@ const handlers: Record<string, JobHandler> = {
       return await triggerCoworkerRun({
         coworkerId,
         triggerPayload: job.data?.triggerPayload ?? {},
+        startKind: "external_trigger",
       });
     } catch (error) {
-      if (isActiveCoworkerRunConflict(error)) {
+      if (isSkippedCoworkerTriggerError(error)) {
         console.warn(
-          `[worker] skipped gmail coworker trigger because run is already active for coworker ${coworkerId}`,
-        );
-        return;
-      }
-      if (isDisabledCoworkerTriggerError(error)) {
-        console.warn(
-          `[worker] skipped gmail coworker trigger because trigger type is disabled for coworker ${coworkerId}`,
+          `[worker] skipped gmail coworker trigger for coworker ${coworkerId}: ${formatSkippedCoworkerTriggerReason(error)}`,
         );
         return;
       }
@@ -136,11 +156,12 @@ const handlers: Record<string, JobHandler> = {
       return await triggerCoworkerRun({
         coworkerId,
         triggerPayload: job.data?.triggerPayload ?? {},
+        startKind: "external_trigger",
       });
     } catch (error) {
-      if (isActiveCoworkerRunConflict(error)) {
+      if (isSkippedCoworkerTriggerError(error)) {
         console.warn(
-          `[worker] skipped x dm coworker trigger because run is already active for coworker ${coworkerId}`,
+          `[worker] skipped x dm coworker trigger for coworker ${coworkerId}: ${formatSkippedCoworkerTriggerReason(error)}`,
         );
         return;
       }
@@ -164,9 +185,9 @@ const handlers: Record<string, JobHandler> = {
         job.data as Parameters<typeof processForwardedEmailEvent>[0],
       );
     } catch (error) {
-      if (isActiveCoworkerRunConflict(error)) {
+      if (isSkippedCoworkerTriggerError(error)) {
         console.warn(
-          `[worker] skipped forwarded email trigger because run is already active (source: ${EMAIL_FORWARDED_TRIGGER_TYPE})`,
+          `[worker] skipped forwarded email trigger (source: ${EMAIL_FORWARDED_TRIGGER_TYPE}): ${formatSkippedCoworkerTriggerReason(error)}`,
         );
         return;
       }
@@ -296,6 +317,7 @@ export async function handleScheduledCoworkerJob(job: Parameters<JobHandler>[0])
   try {
     return await triggerCoworkerRun({
       coworkerId,
+      startKind: "external_trigger",
       triggerPayload: {
         source: "schedule",
         coworkerId,
@@ -304,9 +326,9 @@ export async function handleScheduledCoworkerJob(job: Parameters<JobHandler>[0])
       },
     });
   } catch (error) {
-    if (isActiveCoworkerRunConflict(error)) {
+    if (isSkippedCoworkerTriggerError(error)) {
       console.warn(
-        `[worker] skipped scheduled coworker trigger because run is already active for coworker ${coworkerId}`,
+        `[worker] skipped scheduled coworker trigger for coworker ${coworkerId}: ${formatSkippedCoworkerTriggerReason(error)}`,
       );
       return;
     }

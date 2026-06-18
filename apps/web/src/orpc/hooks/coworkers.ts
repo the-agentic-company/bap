@@ -21,6 +21,7 @@ const ACTIVE_COWORKER_RUN_STATUSES = new Set([
   "awaiting_approval",
   "awaiting_auth",
   "paused",
+  "cancelling",
 ]);
 
 export type CoworkerListData = ReturnType<typeof mapZeroCoworkerList>;
@@ -313,6 +314,18 @@ export function useTriggerCoworker() {
         remoteUserId: string;
       };
     }) => client.coworker.trigger(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+    },
+  });
+}
+
+export function useResetCoworkerRunsAndEnable() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (coworkerId: string) => client.coworker.resetRunsAndEnable({ coworkerId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coworker"] });
       queryClient.invalidateQueries({ queryKey: ["inbox"] });

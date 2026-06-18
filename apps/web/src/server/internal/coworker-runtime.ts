@@ -197,7 +197,6 @@ export async function handleCoworkerInvoke(request: Request): Promise<Response> 
     const targetCoworker = await db.query.coworker.findFirst({
       where: and(
         eq(coworker.ownerId, authorized.userId),
-        eq(coworker.status, "on"),
         eq(coworker.username, normalizedUsername),
       ),
       columns: {
@@ -209,11 +208,7 @@ export async function handleCoworkerInvoke(request: Request): Promise<Response> 
 
     if (!targetCoworker?.username) {
       const available = await db.query.coworker.findMany({
-        where: and(
-          eq(coworker.ownerId, authorized.userId),
-          eq(coworker.status, "on"),
-          isNotNull(coworker.username),
-        ),
+        where: and(eq(coworker.ownerId, authorized.userId), isNotNull(coworker.username)),
         columns: {
           username: true,
         },
@@ -234,6 +229,7 @@ export async function handleCoworkerInvoke(request: Request): Promise<Response> 
     const attachments = parsed.data.attachments ?? [];
     const result = await triggerCoworkerRun({
       coworkerId: targetCoworker.id,
+      startKind: "user_intent",
       userId: authorized.userId,
       triggerPayload: {
         source: "chat_mention",
@@ -287,11 +283,7 @@ export async function handleCoworkerList(request: Request): Promise<Response> {
     }
 
     const coworkers = await db.query.coworker.findMany({
-      where: and(
-        eq(coworker.ownerId, authorized.userId),
-        eq(coworker.status, "on"),
-        isNotNull(coworker.username),
-      ),
+      where: and(eq(coworker.ownerId, authorized.userId), isNotNull(coworker.username)),
       orderBy: (row) => [desc(row.updatedAt)],
       columns: {
         id: true,

@@ -404,6 +404,75 @@ describe("coworkerRouter", () => {
     expect(result).toEqual({ success: true });
   });
 
+  it("requires reset before ordinary enable for a backlog-disabled coworker", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "user-1",
+      name: "Coworker",
+      status: "off",
+      disabledReason: "run_backlog_limit",
+      disabledAt: new Date("2026-06-17T21:22:40.000Z"),
+      triggerType: "manual",
+      prompt: "Prompt",
+      autoApprove: true,
+      allowedIntegrations: ["slack"],
+      allowedCustomIntegrations: [],
+      schedule: null,
+    });
+
+    await expect(
+      coworkerRouterAny.update({
+        input: {
+          id: "wf-1",
+          status: "on",
+        },
+        context,
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Reset coworker runs before enabling automated triggers.",
+    });
+
+    expect(context.mocks.updateSetMock).not.toHaveBeenCalled();
+  });
+
+  it("requires reset before ordinary enable when backlog runs are already at the cap", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "user-1",
+      name: "Coworker",
+      status: "off",
+      disabledReason: null,
+      disabledAt: null,
+      triggerType: "manual",
+      prompt: "Prompt",
+      autoApprove: true,
+      allowedIntegrations: ["slack"],
+      allowedCustomIntegrations: [],
+      schedule: null,
+    });
+    context.db.query.coworkerRun.findMany.mockResolvedValue(
+      Array.from({ length: 5 }, (_, index) => ({ id: `run-${index + 1}` })),
+    );
+
+    await expect(
+      coworkerRouterAny.update({
+        input: {
+          id: "wf-1",
+          status: "on",
+        },
+        context,
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Reset coworker runs before enabling automated triggers.",
+    });
+
+    expect(context.mocks.updateSetMock).not.toHaveBeenCalled();
+  });
+
   it("rejects changing a coworker to the Gmail trigger", async () => {
     const context = createContext();
     context.db.query.coworker.findFirst.mockResolvedValue({

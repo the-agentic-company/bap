@@ -46,6 +46,7 @@ const ACTIVE_HISTORY_RUN_STATUSES = new Set([
   "awaiting_approval",
   "awaiting_auth",
   "paused",
+  "cancelling",
 ]);
 const HISTORY_INTEGRATIONS = new Set<string>([
   "google_gmail",

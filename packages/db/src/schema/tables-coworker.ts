@@ -25,6 +25,7 @@ import type {
   SloReplayJourney,
   SloReplayStatus,
   SyntheticTrafficKind,
+  CoworkerDisabledReason,
 } from "./enums";
 import {
   conversation,
@@ -77,6 +78,8 @@ export const coworker = pgTable(
     workspaceId: text("workspace_id").references(() => workspace.id, { onDelete: "set null" }),
     folderId: text("folder_id").references(() => coworkerFolder.id, { onDelete: "set null" }),
     status: coworkerStatusEnum("status").default("on").notNull(),
+    disabledReason: text("disabled_reason").$type<CoworkerDisabledReason>(),
+    disabledAt: timestamp("disabled_at"),
     triggerType: text("trigger_type").notNull(),
     prompt: text("prompt").notNull(),
     model: text("model").default("anthropic/claude-sonnet-4-6").notNull(),

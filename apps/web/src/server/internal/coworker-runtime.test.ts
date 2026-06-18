@@ -349,6 +349,7 @@ describe("coworker runtime handlers", () => {
       expect(response.status).toBe(200);
       expect(triggerCoworkerRunMock).toHaveBeenCalledWith({
         coworkerId: "cw-1",
+        startKind: "user_intent",
         userId: "user-1",
         triggerPayload: {
           source: "chat_mention",

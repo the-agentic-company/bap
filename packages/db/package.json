@@ -21,6 +21,7 @@
     "db:recreate": "bun run db:reset && bun run db:seed",
     "db:reset": "bun --env-file=../../.env src/reset.ts",
     "db:seed": "bun --env-file=../../.env src/seed.ts",
+    "db:seed:coworker-backlog": "bun --env-file=../../.env src/seed-coworker-backlog.ts",
     "db:studio": "bun --env-file=../../.env drizzle-kit studio --config=drizzle.config.ts",
     "db:studio:prod": "bun --env-file=../../.env scripts/db-studio.ts prod",
     "db:studio:staging": "bun --env-file=../../.env scripts/db-studio.ts staging"

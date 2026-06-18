@@ -28,12 +28,15 @@ describe("coworkerRouter", () => {
       conversationId: "conv-1",
     });
 
-    expect(triggerCoworkerRunMock).toHaveBeenCalledWith({
-      coworkerId: "wf-1",
-      triggerPayload: { source: "manual" },
-      userId: "user-1",
-      userRole: "admin",
-    });
+    expect(triggerCoworkerRunMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coworkerId: "wf-1",
+        startKind: "user_intent",
+        triggerPayload: { source: "manual" },
+        userId: "user-1",
+        userRole: "admin",
+      }),
+    );
   });
 
   it("defaults trigger payload to empty object when omitted", async () => {
@@ -45,12 +48,15 @@ describe("coworkerRouter", () => {
       context,
     });
 
-    expect(triggerCoworkerRunMock).toHaveBeenCalledWith({
-      coworkerId: "wf-1",
-      triggerPayload: {},
-      userId: "user-1",
-      userRole: null,
-    });
+    expect(triggerCoworkerRunMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coworkerId: "wf-1",
+        startKind: "user_intent",
+        triggerPayload: {},
+        userId: "user-1",
+        userRole: null,
+      }),
+    );
   });
 
   it("passes remote integration source and actor metadata for admin triggers", async () => {
@@ -72,18 +78,21 @@ describe("coworkerRouter", () => {
       context,
     });
 
-    expect(triggerCoworkerRunMock).toHaveBeenCalledWith({
-      coworkerId: "wf-1",
-      triggerPayload: { source: "manual" },
-      userId: "user-1",
-      userRole: "admin",
-      remoteIntegrationSource: {
-        targetEnv: "prod",
-        remoteUserId: "remote-user-1",
-        requestedByUserId: "user-1",
-        requestedByEmail: "admin@example.com",
-      },
-    });
+    expect(triggerCoworkerRunMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coworkerId: "wf-1",
+        startKind: "user_intent",
+        triggerPayload: { source: "manual" },
+        userId: "user-1",
+        userRole: "admin",
+        remoteIntegrationSource: {
+          targetEnv: "prod",
+          remoteUserId: "remote-user-1",
+          requestedByUserId: "user-1",
+          requestedByEmail: "admin@example.com",
+        },
+      }),
+    );
   });
 
   it("passes manual trigger attachments through to triggerCoworkerRun", async () => {
@@ -105,19 +114,22 @@ describe("coworkerRouter", () => {
       context,
     });
 
-    expect(triggerCoworkerRunMock).toHaveBeenCalledWith({
-      coworkerId: "wf-1",
-      triggerPayload: { source: "manual_inbox", message: "Check this" },
-      fileAttachments: [
-        {
-          name: "notes.txt",
-          mimeType: "text/plain",
-          dataUrl: "data:text/plain;base64,bm90ZXM=",
-        },
-      ],
-      userId: "user-1",
-      userRole: "member",
-    });
+    expect(triggerCoworkerRunMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coworkerId: "wf-1",
+        startKind: "user_intent",
+        triggerPayload: { source: "manual_inbox", message: "Check this" },
+        fileAttachments: [
+          {
+            name: "notes.txt",
+            mimeType: "text/plain",
+            dataUrl: "data:text/plain;base64,bm90ZXM=",
+          },
+        ],
+        userId: "user-1",
+        userRole: "member",
+      }),
+    );
   });
 
   it("rejects remote integration triggers for non-admin users", async () => {

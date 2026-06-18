@@ -25,6 +25,13 @@ import { logger } from "../utils/observability";
 import { sanitizeJsonForPostgres, sanitizePostgresText } from "../utils/postgres-json";
 import { generationManager } from "./generation-manager";
 import { generationInterruptService } from "./generation-interrupt-service";
+import { removeCoworkerScheduleJob } from "./coworker-scheduler";
+import {
+  COWORKER_RUN_BACKLOG_LIMIT,
+  COWORKER_RUN_BACKLOG_STATUSES,
+  decideCoworkerStart,
+  type CoworkerStartKind,
+} from "./coworker-run-policy";
 import { emitPreGenerationCoworkerRunFailureSloEvent } from "./slo-journey";
 
 type CoworkerFileAttachment = {
@@ -36,12 +43,12 @@ type CoworkerFileAttachment = {
 type CoworkerRecord = typeof coworker.$inferSelect;
 type CoworkerRunRecord = typeof coworkerRun.$inferSelect;
 
-const ACTIVE_COWORKER_RUN_STATUSES = [
+const RECONCILABLE_COWORKER_RUN_STATUSES = [
   "running",
-  "awaiting_approval",
-  "awaiting_auth",
-  "paused",
+  ...COWORKER_RUN_BACKLOG_STATUSES,
+  "cancelling",
 ] as const;
+const RUNNING_COWORKER_RUN_STATUS = "running" as const;
 const DISABLED_COWORKER_TRIGGER_TYPES = ["gmail.new_email"] as const;
 const TERMINAL_GENERATION_STATUSES = ["completed", "cancelled", "error"] as const;
 const ORPHAN_RUN_GRACE_MS = 2 * 60 * 1000;
@@ -174,11 +181,32 @@ export function isDisabledCoworkerTriggerError(error: unknown): boolean {
   );
 }
 
+export function isCoworkerRunBacklogAutoDisableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const maybeError = error as {
+    code?: unknown;
+    status?: unknown;
+    message?: unknown;
+  };
+
+  return (
+    maybeError.code === "BAD_REQUEST" &&
+    maybeError.status === 400 &&
+    typeof maybeError.message === "string" &&
+    maybeError.message.includes(
+      "Coworker automatically disabled after reaching the run backlog limit",
+    )
+  );
+}
+
 export async function reconcileStaleCoworkerRunsForCoworker(coworkerId: string): Promise<void> {
   const candidateRuns = await db.query.coworkerRun.findMany({
     where: and(
       eq(coworkerRun.coworkerId, coworkerId),
-      inArray(coworkerRun.status, [...ACTIVE_COWORKER_RUN_STATUSES]),
+      inArray(coworkerRun.status, [...RECONCILABLE_COWORKER_RUN_STATUSES]),
     ),
     with: {
       generation: {
@@ -343,7 +371,9 @@ async function resolveCoworkerExecutionOptions(params: {
           })
         ).map((entry) => entry.id)
       : Array.isArray(wf.allowedWorkspaceMcpServerIds)
-        ? wf.allowedWorkspaceMcpServerIds.filter((value): value is string => typeof value === "string")
+        ? wf.allowedWorkspaceMcpServerIds.filter(
+            (value): value is string => typeof value === "string",
+          )
         : [];
   const allowedSkillSlugs =
     toolAccessMode === "all" ? undefined : normalizeCoworkerAllowedSkillSlugs(wf.allowedSkillSlugs);
@@ -465,6 +495,7 @@ async function startGenerationForCoworkerRun(params: {
 export async function triggerCoworkerRun(params: {
   coworkerId: string;
   triggerPayload: unknown;
+  startKind: CoworkerStartKind;
   trustedUserInput?: string | null;
   userId?: string;
   userRole?: string | null;
@@ -482,8 +513,6 @@ export async function triggerCoworkerRun(params: {
 }> {
   const triggerPayload = normalizeTriggerPayload(params.triggerPayload);
   const trustedUserInput = normalizeTrustedUserInput(params.trustedUserInput);
-  const isManualRun =
-    Object.keys(triggerPayload).length === 0 || triggerPayload.source === "manual";
 
   const wf = await db.query.coworker.findFirst({
     where: params.userId
@@ -493,10 +522,6 @@ export async function triggerCoworkerRun(params: {
 
   if (!wf) {
     throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
-  }
-
-  if (wf.status !== "on" && !isManualRun) {
-    throw new ORPCError("BAD_REQUEST", { message: "Coworker is turned off" });
   }
 
   if (isDisabledCoworkerTriggerType(wf.triggerType)) {
@@ -509,17 +534,60 @@ export async function triggerCoworkerRun(params: {
   // This avoids permanently blocking future triggers for the coworker.
   await reconcileStaleCoworkerRunsForCoworker(wf.id);
 
-  const activeRun = await db.query.coworkerRun.findFirst({
+  const runningRuns = await db.query.coworkerRun.findMany({
     where: and(
       eq(coworkerRun.coworkerId, wf.id),
-      inArray(coworkerRun.status, [...ACTIVE_COWORKER_RUN_STATUSES]),
+      eq(coworkerRun.status, RUNNING_COWORKER_RUN_STATUS),
     ),
-    orderBy: (run, { desc }) => [desc(run.startedAt)],
+    columns: { id: true },
+    limit: 1,
+  });
+  const backlogRuns =
+    params.startKind === "external_trigger"
+      ? await db.query.coworkerRun.findMany({
+          where: and(
+            eq(coworkerRun.coworkerId, wf.id),
+            inArray(coworkerRun.status, [...COWORKER_RUN_BACKLOG_STATUSES]),
+          ),
+          columns: { id: true },
+          limit: COWORKER_RUN_BACKLOG_LIMIT,
+        })
+      : [];
+
+  const startDecision = decideCoworkerStart({
+    startKind: params.startKind,
+    coworkerStatus: wf.status,
+    runningRunCount: runningRuns.length,
+    backlogRunCount: backlogRuns.length,
   });
 
-  if (params.userRole !== "admin" && activeRun) {
+  if (startDecision.type === "blocked_running") {
     throw new ORPCError("BAD_REQUEST", {
       message: "Coworker already has an active run",
+    });
+  }
+  if (startDecision.type === "blocked_off") {
+    throw new ORPCError("BAD_REQUEST", { message: "Coworker is turned off" });
+  }
+  if (startDecision.type === "auto_disable_due_to_backlog") {
+    await db
+      .update(coworker)
+      .set({
+        status: "off",
+        disabledReason: "run_backlog_limit",
+        disabledAt: new Date(),
+      })
+      .where(eq(coworker.id, wf.id));
+    if (wf.triggerType === "schedule") {
+      try {
+        await removeCoworkerScheduleJob(wf.id);
+      } catch (error) {
+        console.error(`[coworker] failed to remove schedule after auto-disable (${wf.id})`, error);
+      }
+    }
+
+    throw new ORPCError("BAD_REQUEST", {
+      message: `Coworker automatically disabled after reaching the run backlog limit (${startDecision.limit}). Reset the coworker runs to enable automated triggers again.`,
     });
   }
 
@@ -708,6 +776,22 @@ export async function startPendingCoworkerRun(params: {
   if (!pendingRun?.coworker) {
     throw new ORPCError("BAD_REQUEST", {
       message: "This coworker has already started or is no longer waiting for input.",
+    });
+  }
+
+  await reconcileStaleCoworkerRunsForCoworker(pendingRun.coworker.id);
+
+  const runningRuns = await db.query.coworkerRun.findMany({
+    where: and(
+      eq(coworkerRun.coworkerId, pendingRun.coworker.id),
+      eq(coworkerRun.status, RUNNING_COWORKER_RUN_STATUS),
+    ),
+    columns: { id: true },
+    limit: 1,
+  });
+  if (runningRuns.length > 0) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Coworker already has an active run",
     });
   }
 

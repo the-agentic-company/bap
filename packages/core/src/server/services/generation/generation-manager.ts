@@ -308,6 +308,8 @@ class GenerationManager {
     finalizeDetachedGenerationError: (input) => this.finalizeDetachedGenerationError(input),
     finalizeStaleGenerationsAsError: (input) =>
       this.lifecycleStore.finalizeStaleGenerationsAsError(input),
+    finalizeCancelledGenerations: (input) =>
+      this.lifecycleStore.finalizeCancelledGenerations(input),
   });
   private readonly eventLog = new GenerationEventLog({
     projectInterruptPendingEvent: (interrupt) => this.projectInterruptPendingEvent(interrupt),
@@ -1091,11 +1093,9 @@ class GenerationManager {
   }
 }
 
-// Stable singleton across dev hot-reloads/module re-evaluation.
 const globalForGenerationManager = globalThis as typeof globalThis & {
   __bapGenerationManager?: GenerationManager;
 };
-
 export const generationManager =
   globalForGenerationManager.__bapGenerationManager ?? new GenerationManager();
 

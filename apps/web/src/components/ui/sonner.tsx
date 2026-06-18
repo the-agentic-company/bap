@@ -5,7 +5,7 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { Toaster as Sonner, type ToastClassnames, type ToasterProps } from "sonner";
 
 const TOASTER_ICONS = {
   success: <CircleCheckIcon className="size-4" />,
@@ -22,6 +22,19 @@ const TOASTER_STYLE = {
   "--border-radius": "var(--radius)",
 } as React.CSSProperties;
 
+const TOASTER_CLASS_NAMES = {
+  toast: "border-border bg-popover text-popover-foreground shadow-lg",
+  title: "text-popover-foreground",
+  description: "!text-muted-foreground",
+  actionButton: "!bg-primary !text-primary-foreground",
+  cancelButton: "!bg-muted !text-foreground",
+  closeButton: "!border-border !bg-popover !text-popover-foreground",
+} satisfies ToastClassnames;
+
+const TOASTER_OPTIONS = {
+  classNames: TOASTER_CLASS_NAMES,
+} satisfies ToasterProps["toastOptions"];
+
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
@@ -29,6 +42,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       icons={TOASTER_ICONS}
       style={TOASTER_STYLE}
+      toastOptions={TOASTER_OPTIONS}
       {...props}
     />
   );

@@ -19,6 +19,9 @@ const workspaceMcpServerFindManyMock = vi.fn();
 const getEnabledIntegrationTypesMock = vi.fn();
 const getRemoteIntegrationCredentialsMock = vi.fn();
 const emitPreGenerationCoworkerRunFailureSloEventMock = vi.fn();
+const getPendingInterruptForGenerationMock = vi.fn();
+const cancelInterruptsForGenerationMock = vi.fn();
+const removeCoworkerScheduleJobMock = vi.fn();
 
 const insertValuesMock = vi.fn();
 const insertMock = vi.fn(() => ({ values: insertValuesMock }));
@@ -60,14 +63,25 @@ vi.mock("./generation-manager", () => ({
   },
 }));
 
+vi.mock("./generation-interrupt-service", () => ({
+  generationInterruptService: {
+    getPendingInterruptForGeneration: getPendingInterruptForGenerationMock,
+    cancelInterruptsForGeneration: cancelInterruptsForGenerationMock,
+  },
+}));
+
+vi.mock("./coworker-scheduler", () => ({
+  removeCoworkerScheduleJob: removeCoworkerScheduleJobMock,
+}));
+
 vi.mock("../integrations/cli-env", () => ({
   getEnabledIntegrationTypes: getEnabledIntegrationTypesMock,
 }));
 
 vi.mock("../integrations/remote-integrations", async () => {
-  const actual = await vi.importActual<
-    typeof import("../integrations/remote-integrations")
-  >("../integrations/remote-integrations");
+  const actual = await vi.importActual<typeof import("../integrations/remote-integrations")>(
+    "../integrations/remote-integrations",
+  );
   return {
     ...actual,
     getRemoteIntegrationCredentials: getRemoteIntegrationCredentialsMock,
@@ -80,10 +94,12 @@ vi.mock("./slo-journey", () => ({
 
 let triggerCoworkerRun: typeof import("./coworker-service").triggerCoworkerRun;
 let startPendingCoworkerRun: typeof import("./coworker-service").startPendingCoworkerRun;
+let resetCoworkerRunsAndEnable: typeof import("./coworker-run-reset").resetCoworkerRunsAndEnable;
 
 describe("triggerCoworkerRun", () => {
   beforeAll(async () => {
     ({ triggerCoworkerRun, startPendingCoworkerRun } = await import("./coworker-service"));
+    ({ resetCoworkerRunsAndEnable } = await import("./coworker-run-reset"));
   });
 
   beforeEach(() => {
@@ -124,6 +140,9 @@ describe("triggerCoworkerRun", () => {
       },
     });
     emitPreGenerationCoworkerRunFailureSloEventMock.mockResolvedValue(true);
+    getPendingInterruptForGenerationMock.mockResolvedValue(null);
+    cancelInterruptsForGenerationMock.mockResolvedValue(undefined);
+    removeCoworkerScheduleJobMock.mockResolvedValue(undefined);
 
     let insertedUserMessageCount = 0;
     insertValuesMock.mockImplementation((values: unknown) => {
@@ -141,9 +160,9 @@ describe("triggerCoworkerRun", () => {
       if ("role" in record && "conversationId" in record) {
         insertedUserMessageCount += 1;
         return {
-          returning: vi.fn().mockResolvedValue([
-            { id: `msg-user-${insertedUserMessageCount}`, ...record },
-          ]),
+          returning: vi
+            .fn()
+            .mockResolvedValue([{ id: `msg-user-${insertedUserMessageCount}`, ...record }]),
         };
       }
       if ("coworkerId" in record && "status" in record) {
@@ -187,7 +206,7 @@ describe("triggerCoworkerRun", () => {
     coworkerFindFirstMock.mockResolvedValue(null);
 
     await expect(
-      triggerCoworkerRun({ coworkerId: "missing", triggerPayload: {} }),
+      triggerCoworkerRun({ coworkerId: "missing", startKind: "user_intent", triggerPayload: {} }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
@@ -209,7 +228,7 @@ describe("triggerCoworkerRun", () => {
     });
 
     await expect(
-      triggerCoworkerRun({ coworkerId: "wf-1", triggerPayload: {} }),
+      triggerCoworkerRun({ coworkerId: "wf-1", startKind: "user_intent", triggerPayload: {} }),
     ).resolves.toEqual({
       coworkerId: "wf-1",
       runId: "run-1",
@@ -238,6 +257,7 @@ describe("triggerCoworkerRun", () => {
     await expect(
       triggerCoworkerRun({
         coworkerId: "wf-1",
+        startKind: "external_trigger",
         triggerPayload: { source: "schedule" },
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -261,7 +281,7 @@ describe("triggerCoworkerRun", () => {
     });
 
     await expect(
-      triggerCoworkerRun({ coworkerId: "wf-1", triggerPayload: {} }),
+      triggerCoworkerRun({ coworkerId: "wf-1", startKind: "external_trigger", triggerPayload: {} }),
     ).rejects.toMatchObject({
       code: "BAD_REQUEST",
       message: "Coworker trigger type is disabled: gmail.new_email",
@@ -273,15 +293,18 @@ describe("triggerCoworkerRun", () => {
   });
 
   it("blocks non-admin users when an active run exists", async () => {
-    coworkerRunFindFirstMock.mockResolvedValue({
-      id: "run-active",
-      status: "running",
-      startedAt: new Date(),
-    });
+    coworkerRunFindManyMock.mockResolvedValue([
+      {
+        id: "run-active",
+        status: "running",
+        startedAt: new Date(),
+      },
+    ]);
 
     await expect(
       triggerCoworkerRun({
         coworkerId: "wf-1",
+        startKind: "user_intent",
         triggerPayload: { source: "manual" },
         userId: "user-1",
         userRole: "member",
@@ -289,48 +312,97 @@ describe("triggerCoworkerRun", () => {
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
-  it("allows admin users to trigger despite an active run", async () => {
-    coworkerRunFindFirstMock.mockResolvedValue({
-      id: "run-active",
-      status: "running",
-      startedAt: new Date(),
-    });
+  it("blocks admin users when a run is actually running", async () => {
+    coworkerRunFindManyMock.mockResolvedValue([
+      {
+        id: "run-active",
+        status: "running",
+        startedAt: new Date(),
+      },
+    ]);
 
-    const result = await triggerCoworkerRun({
-      coworkerId: "wf-1",
-      triggerPayload: { source: "manual" },
-      userId: "user-1",
-      userRole: "admin",
-    });
+    await expect(
+      triggerCoworkerRun({
+        coworkerId: "wf-1",
+        startKind: "user_intent",
+        triggerPayload: { source: "manual" },
+        userId: "user-1",
+        userRole: "admin",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 
-    expect(result).toEqual({
-      coworkerId: "wf-1",
+  it("does not count backlog runs for user-intent starts", async () => {
+    await expect(
+      triggerCoworkerRun({
+        coworkerId: "wf-1",
+        startKind: "user_intent",
+        triggerPayload: { source: "manual" },
+        userId: "user-1",
+        userRole: "member",
+      }),
+    ).resolves.toMatchObject({
       runId: "run-1",
       generationId: "gen-1",
-      conversationId: "conv-1",
     });
 
-    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
-      expect.objectContaining({
+    expect(coworkerRunFindManyMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("auto-disables external triggers at the backlog limit before creating a run", async () => {
+    coworkerFindFirstMock.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "user-1",
+      workspaceId: "ws-1",
+      status: "on",
+      triggerType: "schedule",
+      autoApprove: true,
+      toolAccessMode: "all",
+      allowedIntegrations: [],
+      allowedCustomIntegrations: [],
+      allowedWorkspaceMcpServerIds: [],
+      allowedSkillSlugs: [],
+      model: "anthropic/claude-sonnet-4-6",
+      prompt: "",
+      requiresUserInput: false,
+      userInputPrompt: null,
+    });
+    coworkerRunFindManyMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce(
+        Array.from({ length: 5 }, (_, index) => ({
+          id: `run-backlog-${index + 1}`,
+        })),
+      );
+
+    await expect(
+      triggerCoworkerRun({
         coworkerId: "wf-1",
-        coworkerRunId: "run-1",
-        model: "anthropic/claude-sonnet-4-6",
-        userId: "user-1",
-        allowedIntegrations: ["slack"],
-        allowedCustomIntegrations: [],
+        startKind: "external_trigger",
+        triggerPayload: { source: "schedule" },
       }),
-    );
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining("Coworker automatically disabled"),
+    });
+
     expect(updateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        generationId: "gen-1",
-        conversationId: "conv-1",
+        status: "off",
+        disabledReason: "run_backlog_limit",
+        disabledAt: expect.any(Date),
       }),
     );
+    expect(removeCoworkerScheduleJobMock).toHaveBeenCalledWith("wf-1");
+    expect(insertMock).not.toHaveBeenCalled();
+    expect(startCoworkerGenerationMock).not.toHaveBeenCalled();
   });
 
   it("includes saved coworker instructions in the generation user prompt", async () => {
     await triggerCoworkerRun({
       coworkerId: "wf-1",
+      startKind: "user_intent",
       triggerPayload: { source: "manual", reason: "live click" },
       userId: "user-1",
       userRole: "admin",
@@ -354,6 +426,7 @@ describe("triggerCoworkerRun", () => {
   it("uses remote enabled integrations for all-tools manual runs", async () => {
     await triggerCoworkerRun({
       coworkerId: "wf-1",
+      startKind: "user_intent",
       triggerPayload: { source: "manual" },
       userId: "user-1",
       userRole: "admin",
@@ -390,6 +463,7 @@ describe("triggerCoworkerRun", () => {
   it("passes forwarded file attachments into the child coworker generation", async () => {
     await triggerCoworkerRun({
       coworkerId: "wf-1",
+      startKind: "user_intent",
       triggerPayload: { source: "chat_mention", message: "Transcribe this call" },
       userId: "user-1",
       userRole: "admin",
@@ -436,6 +510,7 @@ describe("triggerCoworkerRun", () => {
 
     const result = await triggerCoworkerRun({
       coworkerId: "wf-1",
+      startKind: "external_trigger",
       triggerPayload: {
         source: "schedule",
         scheduledFor: "2026-02-12T12:00:00.000Z",
@@ -507,6 +582,7 @@ describe("triggerCoworkerRun", () => {
 
     await triggerCoworkerRun({
       coworkerId: "wf-1",
+      startKind: "user_intent",
       triggerPayload: {
         source: "manual_inbox",
         userInput: "raw payload value",
@@ -706,6 +782,7 @@ describe("triggerCoworkerRun", () => {
   it("sanitizes NUL bytes from coworker trigger payloads before DB writes and generation prompts", async () => {
     await triggerCoworkerRun({
       coworkerId: "wf-1",
+      startKind: "user_intent",
       triggerPayload: { source: "manual", message: "before\u0000after" },
       userId: "user-1",
       userRole: "admin",
@@ -742,6 +819,7 @@ describe("triggerCoworkerRun", () => {
 
     await triggerCoworkerRun({
       coworkerId: "wf-1",
+      startKind: "user_intent",
       triggerPayload: { source: "manual" },
       userId: "user-1",
       userRole: "admin",
@@ -760,6 +838,7 @@ describe("triggerCoworkerRun", () => {
     await expect(
       triggerCoworkerRun({
         coworkerId: "wf-1",
+        startKind: "user_intent",
         triggerPayload: { source: "manual" },
         userId: "user-1",
         userRole: "admin",
@@ -799,7 +878,7 @@ describe("triggerCoworkerRun", () => {
   });
 
   it("reconciles stale orphan and terminal runs before starting a new run", async () => {
-    coworkerRunFindManyMock.mockResolvedValue([
+    coworkerRunFindManyMock.mockResolvedValueOnce([
       {
         id: "run-orphan",
         status: "running",
@@ -830,6 +909,7 @@ describe("triggerCoworkerRun", () => {
 
     await triggerCoworkerRun({
       coworkerId: "wf-1",
+      startKind: "external_trigger",
       triggerPayload: { source: "scheduler" },
       userId: "user-1",
       userRole: "admin",
@@ -845,6 +925,68 @@ describe("triggerCoworkerRun", () => {
     expect(updateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "completed",
+      }),
+    );
+  });
+
+  it("resets all non-terminal coworker runs and enables the coworker", async () => {
+    coworkerRunFindManyMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      { id: "run-needs-input", status: "needs_user_input", generationId: null, generation: null },
+      {
+        id: "run-running",
+        status: "running",
+        generationId: "gen-running",
+        generation: { id: "gen-running", status: "running", completedAt: null },
+      },
+      {
+        id: "run-paused",
+        status: "paused",
+        generationId: "gen-paused",
+        generation: { id: "gen-paused", status: "paused", completedAt: null },
+      },
+    ]);
+
+    const result = await resetCoworkerRunsAndEnable({
+      coworkerId: "wf-1",
+      resetByUserId: "user-reset",
+    });
+
+    expect(result).toEqual({
+      coworkerId: "wf-1",
+      totalAffectedRuns: 3,
+      cancelledRunCount: 1,
+      cancellingRunCount: 2,
+    });
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "cancelled",
+        finishedAt: expect.any(Date),
+        errorMessage: "Cancelled by coworker run reset.",
+      }),
+    );
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "cancelling",
+        errorMessage: "Cancellation requested by coworker run reset.",
+      }),
+    );
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ cancelRequestedAt: expect.any(Date) }),
+    );
+    expect(cancelInterruptsForGenerationMock).toHaveBeenCalledWith("gen-running");
+    expect(cancelInterruptsForGenerationMock).toHaveBeenCalledWith("gen-paused");
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "on", disabledReason: null, disabledAt: null }),
+    );
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coworkerRunId: "run-needs-input",
+        type: "reset_requested",
+        payload: expect.objectContaining({
+          resetByUserId: "user-reset",
+          previousStatus: "needs_user_input",
+          nextStatus: "cancelled",
+        }),
       }),
     );
   });

@@ -8,6 +8,8 @@ export function getCoworkerRunStatusLabel(status: string): string {
       return "Awaiting auth";
     case "paused":
       return "Needs continuation";
+    case "cancelling":
+      return "Cancelling";
     default:
       return status.replaceAll("_", " ");
   }

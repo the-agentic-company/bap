@@ -113,10 +113,12 @@ export const coworkerRunStatusEnum = pgEnum("coworker_run_status", [
   "awaiting_approval",
   "awaiting_auth",
   "paused",
+  "cancelling",
   "completed",
   "error",
   "cancelled",
 ]);
+export type CoworkerDisabledReason = "run_backlog_limit";
 export type SloReplayJourney = "chat" | "coworker_builder" | "coworker_run";
 export type SloReplayStatus = "pending" | "running" | "completed" | "error" | "setup_failed";
 export const coworkerEmailAliasStatusEnum = pgEnum("coworker_email_alias_status", [
@@ -139,4 +141,3 @@ export const integrationSkillSourceEnum = pgEnum("integration_skill_source", [
 ]);
 
 export const integrationSkillVisibilityEnum = pgEnum("integration_skill_visibility", ["public"]);
-

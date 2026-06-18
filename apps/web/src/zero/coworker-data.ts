@@ -32,6 +32,8 @@ type ZeroCoworkerLike = {
   readonly username?: string | null;
   readonly folderId?: string | null;
   readonly status: "on" | "off";
+  readonly disabledReason?: "run_backlog_limit" | null;
+  readonly disabledAt?: number | string | Date | null;
   readonly triggerType: string;
   readonly model: string;
   readonly authSource?: "user" | "shared" | null;
@@ -109,6 +111,8 @@ export function mapZeroCoworkerList(coworkers: readonly ZeroCoworkerLike[]) {
         username: coworker.username ?? null,
         folderId: coworker.folderId ?? null,
         status: coworker.status,
+        disabledReason: coworker.disabledReason ?? null,
+        disabledAt: dateOrNull(coworker.disabledAt),
         autoApprove: coworker.autoApprove,
         model: coworker.model,
         authSource: coworker.authSource ?? null,

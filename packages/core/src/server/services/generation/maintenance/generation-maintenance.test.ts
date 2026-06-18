@@ -9,6 +9,7 @@ const {
   generationFindFirstMock,
   generationFindManyMock,
   coworkerRunFindFirstMock,
+  coworkerRunFindManyMock,
   getPendingInterruptForGenerationMock,
   resolveInterruptMock,
   cancelInterruptsForGenerationMock,
@@ -19,6 +20,7 @@ const {
   const generationFindFirstMock = vi.fn();
   const generationFindManyMock = vi.fn();
   const coworkerRunFindFirstMock = vi.fn();
+  const coworkerRunFindManyMock = vi.fn();
   const getPendingInterruptForGenerationMock = vi.fn();
   const resolveInterruptMock = vi.fn();
   const cancelInterruptsForGenerationMock = vi.fn();
@@ -33,6 +35,7 @@ const {
       },
       coworkerRun: {
         findFirst: coworkerRunFindFirstMock,
+        findMany: coworkerRunFindManyMock,
       },
     },
   };
@@ -41,6 +44,7 @@ const {
     generationFindFirstMock,
     generationFindManyMock,
     coworkerRunFindFirstMock,
+    coworkerRunFindManyMock,
     getPendingInterruptForGenerationMock,
     resolveInterruptMock,
     cancelInterruptsForGenerationMock,
@@ -81,6 +85,7 @@ function createMaintenance(activeGenerationIds: string[] = []) {
     expireActiveGenerationTimeout: vi.fn().mockResolvedValue(undefined),
     finalizeDetachedGenerationError: vi.fn().mockResolvedValue(undefined),
     finalizeStaleGenerationsAsError: vi.fn().mockResolvedValue(undefined),
+    finalizeCancelledGenerations: vi.fn().mockResolvedValue(undefined),
   };
 
   return {
@@ -114,6 +119,7 @@ describe("GenerationMaintenance", () => {
     generationFindFirstMock.mockResolvedValue(null);
     generationFindManyMock.mockResolvedValue([]);
     coworkerRunFindFirstMock.mockResolvedValue(null);
+    coworkerRunFindManyMock.mockResolvedValue([]);
     getPendingInterruptForGenerationMock.mockResolvedValue(null);
     resolveInterruptMock.mockResolvedValue(undefined);
     cancelInterruptsForGenerationMock.mockResolvedValue(undefined);
@@ -312,6 +318,7 @@ describe("GenerationMaintenance", () => {
       stale: 3,
       finalizedRunningAsError: 1,
       finalizedWaitingAsError: 2,
+      finalizedCancellationRequestedAsCancelled: 0,
     });
     expect(deps.finalizeStaleGenerationsAsError).toHaveBeenCalledWith({
       completedAt: expect.any(Date),
@@ -345,5 +352,61 @@ describe("GenerationMaintenance", () => {
     expect(cancelInterruptsForGenerationMock).toHaveBeenCalledWith("gen-stale-running");
     expect(cancelInterruptsForGenerationMock).toHaveBeenCalledWith("gen-stale-approval");
     expect(cancelInterruptsForGenerationMock).toHaveBeenCalledWith("gen-stale-auth");
+  });
+
+  it("finalizes cancellation-requested cancelling coworker runs as cancelled", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-14T10:00:00.000Z"));
+    coworkerRunFindManyMock.mockResolvedValueOnce([
+      {
+        id: "run-cancelling",
+        generationId: "gen-cancelling",
+        generation: {
+          id: "gen-cancelling",
+          status: "paused",
+          cancelRequestedAt: new Date("2026-06-14T09:59:00.000Z"),
+          completedAt: null,
+        },
+      },
+      {
+        id: "run-cancelling-active",
+        generationId: "gen-cancelling-active",
+        generation: {
+          id: "gen-cancelling-active",
+          status: "running",
+          cancelRequestedAt: new Date("2026-06-14T09:59:00.000Z"),
+          completedAt: null,
+        },
+      },
+      {
+        id: "run-not-requested",
+        generationId: "gen-not-requested",
+        generation: {
+          id: "gen-not-requested",
+          status: "paused",
+          cancelRequestedAt: null,
+          completedAt: null,
+        },
+      },
+    ]);
+
+    const { maintenance, deps } = createMaintenance(["gen-cancelling-active"]);
+    const summary = await maintenance.reapStaleGenerations();
+
+    expect(summary).toEqual({
+      scanned: 0,
+      stale: 0,
+      finalizedRunningAsError: 0,
+      finalizedWaitingAsError: 0,
+      finalizedCancellationRequestedAsCancelled: 2,
+    });
+    expect(deps.finalizeCancelledGenerations).toHaveBeenCalledWith({
+      completedAt: expect.any(Date),
+      generationIds: ["gen-cancelling", "gen-cancelling-active"],
+      message: "Coworker run was cancelled by reset.",
+    });
+    expect(deps.abortAndEvictActiveGeneration).toHaveBeenCalledWith("gen-cancelling");
+    expect(deps.abortAndEvictActiveGeneration).toHaveBeenCalledWith("gen-cancelling-active");
+    expect(deps.abortAndEvictActiveGeneration).not.toHaveBeenCalledWith("gen-not-requested");
   });
 });

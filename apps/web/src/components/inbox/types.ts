@@ -4,6 +4,7 @@ export type InboxItemStatus =
   | "awaiting_approval"
   | "awaiting_auth"
   | "paused"
+  | "cancelling"
   | "completed"
   | "error"
   | "cancelled";

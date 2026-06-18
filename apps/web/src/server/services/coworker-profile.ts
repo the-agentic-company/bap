@@ -4,6 +4,10 @@ import {
   normalizeCoworkerAllowedSkillSlugs,
   type CoworkerToolAccessMode,
 } from "@bap/core/lib/coworker-tool-policy";
+import {
+  COWORKER_RUN_BACKLOG_LIMIT,
+  COWORKER_RUN_BACKLOG_STATUSES,
+} from "@bap/core/server/services/coworker-run-policy";
 import { parseModelReference } from "@bap/core/lib/model-reference";
 import {
   normalizeModelAuthSource,
@@ -17,12 +21,13 @@ import {
   syncCoworkerScheduleJob,
 } from "@bap/core/server/services/coworker-scheduler";
 import type { IntegrationType } from "@bap/core/server/oauth/config";
-import { coworker, user } from "@bap/db/schema";
+import { coworker, coworkerRun, user } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { resolveSelectedWorkspaceMcpServerIds } from "@/server/services/coworker-toolbox";
 
 const DISABLED_TRIGGER_TYPES = ["gmail.new_email"] as const;
+const RESET_REQUIRED_ENABLE_MESSAGE = "Reset coworker runs before enabling automated triggers.";
 
 type ProfileContext = {
   user: { id: string };
@@ -85,6 +90,32 @@ function assertUserInputConfig(input: {
   if (input.requiresUserInput && !normalizeUserInputPromptInput(input.userInputPrompt)) {
     throw new ORPCError("BAD_REQUEST", {
       message: "User input prompt is required when user input is required.",
+    });
+  }
+}
+
+async function assertCanEnableCoworker(input: {
+  context: ProfileContext;
+  existing: typeof coworker.$inferSelect;
+}): Promise<void> {
+  if (input.existing.disabledReason === "run_backlog_limit") {
+    throw new ORPCError("BAD_REQUEST", {
+      message: RESET_REQUIRED_ENABLE_MESSAGE,
+    });
+  }
+
+  const backlogRuns = await input.context.db.query.coworkerRun.findMany({
+    where: and(
+      eq(coworkerRun.coworkerId, input.existing.id),
+      inArray(coworkerRun.status, [...COWORKER_RUN_BACKLOG_STATUSES]),
+    ),
+    columns: { id: true },
+    limit: COWORKER_RUN_BACKLOG_LIMIT,
+  });
+
+  if (backlogRuns.length >= COWORKER_RUN_BACKLOG_LIMIT) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: RESET_REQUIRED_ENABLE_MESSAGE,
     });
   }
 }
@@ -319,6 +350,12 @@ export async function updateCoworkerProfile(input: {
     updates.username = nextUsername;
   }
   if (input.payload.status !== undefined) {
+    if (input.payload.status === "on" && existing.status !== "on") {
+      await assertCanEnableCoworker({
+        context: input.context,
+        existing,
+      });
+    }
     updates.status = input.payload.status;
   }
   if (input.payload.triggerType !== undefined) {

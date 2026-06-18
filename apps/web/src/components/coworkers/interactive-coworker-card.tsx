@@ -105,7 +105,7 @@ function getRunStatusColor(status: string) {
   if (status === "running" || status === "awaiting_approval" || status === "awaiting_auth") {
     return "text-blue-500";
   }
-  if (status === "paused") {
+  if (status === "paused" || status === "cancelling") {
     return "text-amber-500";
   }
   if (status === "error" || status === "cancelled") {

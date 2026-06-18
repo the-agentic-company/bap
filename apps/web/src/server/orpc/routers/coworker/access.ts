@@ -34,6 +34,27 @@ export async function requireOwnedCoworkerInActiveWorkspace(
   };
 }
 
+export async function requireCoworkerInActiveWorkspace(
+  context: CoworkerRouterContext,
+  coworkerId: string,
+) {
+  const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
+  const workspaceId = access.workspace.id;
+  const coworkerRow = await context.db.query.coworker.findFirst({
+    where: and(eq(coworker.id, coworkerId), eq(coworker.workspaceId, workspaceId)),
+  });
+
+  if (!coworkerRow) {
+    throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+  }
+
+  return {
+    coworker: coworkerRow,
+    workspaceId,
+    membershipRole: access.membership.role,
+  };
+}
+
 export async function requireAdminUser(context: {
   user: { id: string };
   db: typeof import("@bap/db/client").db;

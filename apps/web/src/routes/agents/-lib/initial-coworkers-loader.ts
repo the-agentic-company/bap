@@ -38,6 +38,8 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
     description: typeof row.description === "string" ? row.description : null,
     folderId: typeof row.folderId === "string" ? row.folderId : null,
     status: row.status === "off" ? "off" : "on",
+    disabledReason: row.disabledReason === "run_backlog_limit" ? "run_backlog_limit" : null,
+    disabledAt: serializeDate(row.disabledAt),
     autoApprove: row.autoApprove === true,
     model: typeof row.model === "string" ? row.model : "",
     authSource: row.authSource === "user" || row.authSource === "shared" ? row.authSource : null,

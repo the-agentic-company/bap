@@ -35,6 +35,7 @@ export type ContentPart =
         | "awaiting_approval"
         | "awaiting_auth"
         | "paused"
+        | "cancelling"
         | "completed"
         | "error"
         | "cancelled";
@@ -206,4 +207,3 @@ export type GenerationInterruptResponsePayload = {
   tokens?: Record<string, string>;
   integration?: string;
 };
-

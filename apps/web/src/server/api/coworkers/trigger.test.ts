@@ -49,6 +49,7 @@ describe("triggerCoworker (POST /api/coworkers/trigger)", () => {
     expect(await response.json()).toEqual({ runId: "run-1" });
     expect(triggerCoworkerRunMock).toHaveBeenCalledWith({
       coworkerId: "cw-1",
+      startKind: "external_trigger",
       triggerPayload: { source: "test" },
     });
   });
@@ -60,6 +61,7 @@ describe("triggerCoworker (POST /api/coworkers/trigger)", () => {
 
     expect(triggerCoworkerRunMock).toHaveBeenCalledWith({
       coworkerId: "cw-2",
+      startKind: "external_trigger",
       triggerPayload: {},
     });
   });

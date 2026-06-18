@@ -607,6 +607,7 @@ export async function processForwardedEmailEvent(
 
   await triggerCoworkerRun({
     coworkerId: target.coworkerId,
+    startKind: "external_trigger",
     triggerPayload: {
       source: EMAIL_FORWARDED_TRIGGER_TYPE,
       routingMode: target.routingMode,

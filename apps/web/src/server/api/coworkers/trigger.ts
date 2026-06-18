@@ -27,6 +27,7 @@ export async function triggerCoworker(request: Request): Promise<Response> {
 
     const result = await triggerCoworkerRun({
       coworkerId,
+      startKind: "external_trigger",
       triggerPayload: payload,
     });
 
