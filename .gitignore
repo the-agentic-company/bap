@@ -35,3 +35,5 @@ plans/*
 
 customers
 tmp
+
+.playwright-mcp
