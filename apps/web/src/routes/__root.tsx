@@ -37,6 +37,22 @@ const TANSTACK_DEVTOOLS_PLUGINS: Array<TanStackDevtoolsReactPlugin> = [
     render: <TanStackRouterDevtoolsPanel />,
   },
 ];
+const CRITICAL_MOUNT_STYLE = `
+:root {
+  --border: oklch(0.922 0 0);
+}
+.dark {
+  --border: oklch(1 0 0 / 10%);
+}
+*,
+::before,
+::after,
+::backdrop,
+::file-selector-button {
+  border-color: var(--border, oklch(0.922 0 0));
+}
+`;
+const CRITICAL_MOUNT_STYLE_HTML = { __html: CRITICAL_MOUNT_STYLE };
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
@@ -90,6 +106,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
     <html lang={getInitialAppLocale()}>
       {/* TanStack Start owns the full document; a real <head> element is required here. */}
       <head>
+        <style dangerouslySetInnerHTML={CRITICAL_MOUNT_STYLE_HTML} />
         <HeadContent />
       </head>
       <body className="antialiased" data-edition={edition}>

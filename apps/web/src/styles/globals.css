@@ -177,8 +177,12 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, oklch(0.922 0 0));
   }
   body {
     @apply bg-background text-foreground;
