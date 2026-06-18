@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 0001: Vocabulary for Shared Workspaces</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17201c;
+      --muted: #59645f;
+      --paper: #fbfaf6;
+      --panel: #ffffff;
+      --line: #d7ddd7;
+      --blue: #315f9b;
+      --green: #356c55;
+      --rust: #955334;
+      --bad: #9b3d31;
+      --shadow: 0 16px 36px rgba(30, 38, 34, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 17px/1.55 ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 52px 26px 72px;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 28px;
+      margin-bottom: 34px;
+    }
+    h1, h2, h3, button, select, .kicker, .callout, .feedback {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    h1 {
+      font-size: 42px;
+      line-height: 1.1;
+      margin: 0;
+      max-width: 780px;
+    }
+    h2 {
+      font-size: 23px;
+      line-height: 1.2;
+      margin: 38px 0 12px;
+    }
+    h3 {
+      font-size: 17px;
+      margin: 0 0 6px;
+    }
+    p { margin: 10px 0 0; }
+    a { color: var(--blue); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    .kicker {
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 12px;
+    }
+    .lede {
+      color: var(--muted);
+      font-size: 19px;
+      max-width: 760px;
+      margin-top: 16px;
+    }
+    .goal {
+      margin-top: 20px;
+      padding: 14px 18px;
+      border-left: 4px solid var(--green);
+      background: #f0f5ef;
+      max-width: 760px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .card strong {
+      display: inline-block;
+      color: var(--rust);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 4px;
+    }
+    ol, ul { padding-left: 22px; }
+    li + li { margin-top: 8px; }
+    .model {
+      margin: 18px 0 0;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      background: #fffdf8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 15px;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+    .practice {
+      margin-top: 20px;
+      display: grid;
+      gap: 12px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 180px;
+      gap: 14px;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid #aab4ad;
+      border-radius: 6px;
+      background: white;
+      color: var(--ink);
+      font-size: 15px;
+      padding: 8px 10px;
+    }
+    button {
+      margin-top: 14px;
+      min-height: 42px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--ink);
+      color: white;
+      padding: 10px 14px;
+      font-size: 15px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .feedback {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: white;
+      min-height: 54px;
+      color: var(--muted);
+    }
+    .feedback.good { color: var(--green); border-color: #a7c7b8; background: #f1f8f4; }
+    .feedback.bad { color: var(--bad); border-color: #d8aaa3; background: #fff4f1; }
+    .callout {
+      margin-top: 24px;
+      padding: 18px;
+      background: #eef3f8;
+      border-left: 4px solid var(--blue);
+    }
+    .sources {
+      font-size: 15px;
+      color: var(--muted);
+    }
+    @media (max-width: 720px) {
+      body { font-size: 16px; }
+      main { padding: 34px 18px 56px; }
+      h1 { font-size: 32px; }
+      .grid, .row { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: white; color: black; }
+      main { max-width: none; padding: 0; }
+      .card, .row, .feedback { box-shadow: none; }
+      button, select { display: none; }
+      a { color: black; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="kicker">Lesson 0001</div>
+      <h1>Vocabulary for Shared Workspaces</h1>
+      <p class="lede">A first pass at the nouns you need before designing groups of users inside your app.</p>
+      <p class="goal"><strong>Win for this lesson:</strong> you can look at a collaboration feature and decide whether it is an organization, workspace, team, group, department, role, or resource.</p>
+    </header>
+
+    <h2>The mental model</h2>
+    <p>Established collaboration tools tend to separate three ideas:</p>
+    <ol>
+      <li><strong>Containers</strong> hold work and policy: organization, workspace, teamspace.</li>
+      <li><strong>Membership sets</strong> collect people: team, group, department.</li>
+      <li><strong>Permission scopes</strong> define what people can do: role, access level, visibility.</li>
+    </ol>
+    <p>Linear says a workspace contains the company work model, and teams sit inside it. Notion uses teamspaces as dedicated areas for teams. Slack separates Enterprise organizations, workspaces, channels, and user groups. Google Workspace separates a hierarchical organizational unit tree from other group-like access concepts.</p>
+
+    <section class="grid" aria-label="Vocabulary cards">
+      <article class="card">
+        <strong>Organization</strong>
+        <h3>The company or customer boundary.</h3>
+        <p>Billing, security policy, SSO, audit logs, and top-level admins usually live here.</p>
+      </article>
+      <article class="card">
+        <strong>Workspace</strong>
+        <h3>The shared product home.</h3>
+        <p>This is where day-to-day work happens. In a small app, organization and workspace may appear as one user-facing thing.</p>
+      </article>
+      <article class="card">
+        <strong>Team</strong>
+        <h3>A visible group that works together.</h3>
+        <p>Engineering, Design, Support, Growth. Teams are durable and understandable to members.</p>
+      </article>
+      <article class="card">
+        <strong>Group</strong>
+        <h3>A membership set for access or notifications.</h3>
+        <p>Groups can be less social and more mechanical: approvers, beta testers, incident responders.</p>
+      </article>
+      <article class="card">
+        <strong>Department</strong>
+        <h3>A formal org-chart function.</h3>
+        <p>Use this only when your app needs to mirror company structure or reporting lines.</p>
+      </article>
+      <article class="card">
+        <strong>Role</strong>
+        <h3>A capability at a scope.</h3>
+        <p>Owner, admin, member, guest, viewer, editor. Roles say what a person can do.</p>
+      </article>
+    </section>
+
+    <h2>A practical naming convention</h2>
+    <p>For your app, start conservative:</p>
+    <div class="model" aria-label="Starter product model">
+      Organization<br>
+      &nbsp;&nbsp;Workspace<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;Team<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;Group<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;Resource<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Role assignment
+    </div>
+    <p>If your first customers are small teams, you can hide <strong>Organization</strong> in the UI and show <strong>Workspace</strong>. If enterprise customers matter, keep both in the internal model: organization for policy and workspace for collaboration.</p>
+
+    <h2>Practice</h2>
+    <p>Choose the noun that best fits each product case. The point is not perfection; it is to learn what each noun is for.</p>
+
+    <div class="practice" id="practice">
+      <label class="row">
+        <span>Acme Inc owns billing, SSO, and audit policy for everyone.</span>
+        <select data-answer="Organization">
+          <option value="">Choose</option>
+          <option>Organization</option>
+          <option>Workspace</option>
+          <option>Department</option>
+          <option>Team</option>
+          <option>Group</option>
+          <option>Role</option>
+          <option>Resource</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>Product, sales, and support all collaborate in the main shared app home.</span>
+        <select data-answer="Workspace">
+          <option value="">Choose</option>
+          <option>Organization</option>
+          <option>Workspace</option>
+          <option>Department</option>
+          <option>Team</option>
+          <option>Group</option>
+          <option>Role</option>
+          <option>Resource</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>Finance is a formal function in the company org chart.</span>
+        <select data-answer="Department">
+          <option value="">Choose</option>
+          <option>Organization</option>
+          <option>Workspace</option>
+          <option>Department</option>
+          <option>Team</option>
+          <option>Group</option>
+          <option>Role</option>
+          <option>Resource</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>The mobile engineers work together every week and own a backlog.</span>
+        <select data-answer="Team">
+          <option value="">Choose</option>
+          <option>Organization</option>
+          <option>Workspace</option>
+          <option>Department</option>
+          <option>Team</option>
+          <option>Group</option>
+          <option>Role</option>
+          <option>Resource</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>Incident responders should be mentionable and auto-added to alert channels.</span>
+        <select data-answer="Group">
+          <option value="">Choose</option>
+          <option>Organization</option>
+          <option>Workspace</option>
+          <option>Department</option>
+          <option>Team</option>
+          <option>Group</option>
+          <option>Role</option>
+          <option>Resource</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>Someone can invite members, manage billing, and change security settings.</span>
+        <select data-answer="Role">
+          <option value="">Choose</option>
+          <option>Organization</option>
+          <option>Workspace</option>
+          <option>Department</option>
+          <option>Team</option>
+          <option>Group</option>
+          <option>Role</option>
+          <option>Resource</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>A private project board has its own viewers and editors.</span>
+        <select data-answer="Resource">
+          <option value="">Choose</option>
+          <option>Organization</option>
+          <option>Workspace</option>
+          <option>Department</option>
+          <option>Team</option>
+          <option>Group</option>
+          <option>Role</option>
+          <option>Resource</option>
+        </select>
+      </label>
+    </div>
+
+    <button type="button" id="check">Check answers</button>
+    <div class="feedback" id="feedback" aria-live="polite">Answer the cases, then check yourself.</div>
+
+    <div class="callout">
+      <strong>Rule of thumb:</strong> do not model the company chart and the permission system as the same thing. Departments explain where people sit. Groups and roles explain what access they have.
+    </div>
+
+    <h2>Use this in your app</h2>
+    <p>When naming a feature, ask two questions:</p>
+    <ol>
+      <li>Is this thing a <strong>place</strong>, a <strong>set of people</strong>, or a <strong>permission</strong>?</li>
+      <li>Is this thing user-facing product language, or internal implementation language?</li>
+    </ol>
+    <p>That prevents common naming mistakes such as calling an admin role a group, calling every team a workspace, or using tenant in the UI.</p>
+
+    <h2>Review</h2>
+    <p>Keep the <a href="../reference/workspace-collaboration-glossary.html">Workspace Collaboration Glossary</a> open while sketching your app model. Ask the agent follow-up questions when a distinction feels fuzzy; those fuzzy spots are usually where the product model needs sharper boundaries.</p>
+
+    <h2>Primary source to read next</h2>
+    <p>Read <a href="https://linear.app/docs/conceptual-model">Linear's conceptual model</a>. It is short and especially useful because it explains workspace, teams, and work resources without drowning you in enterprise identity details.</p>
+
+    <h2>Sources</h2>
+    <ul class="sources">
+      <li><a href="https://linear.app/docs/conceptual-model">Linear: Concepts</a></li>
+      <li><a href="https://linear.app/docs/teams">Linear: Teams</a></li>
+      <li><a href="https://www.notion.com/help/intro-to-teamspaces">Notion: Intro to teamspaces</a></li>
+      <li><a href="https://docs.slack.dev/enterprise/">Slack: Enterprise organizations</a></li>
+      <li><a href="https://slack.com/help/articles/360017938993-What-is-a-channel">Slack: What is a channel?</a></li>
+      <li><a href="https://slack.com/help/articles/212906697-Create-and-edit-user-groups">Slack: User groups</a></li>
+      <li><a href="https://developers.google.com/workspace/admin/directory/v1/guides/manage-org-units">Google Workspace: Organizational units</a></li>
+      <li><a href="https://docs.github.com/en/organizations/organizing-members-into-teams/about-teams">GitHub: Organization teams</a></li>
+      <li><a href="https://www.figma.com/best-practices/workspaces-in-figma-enterprise/">Figma: Enterprise workspaces</a></li>
+    </ul>
+  </main>
+
+  <script>
+    const check = document.querySelector("#check");
+    const feedback = document.querySelector("#feedback");
+    const selects = Array.from(document.querySelectorAll("select[data-answer]"));
+
+    check.addEventListener("click", () => {
+      const unanswered = selects.filter((select) => !select.value).length;
+      if (unanswered) {
+        feedback.className = "feedback bad";
+        feedback.textContent = `Answer ${unanswered} more case${unanswered === 1 ? "" : "s"} before checking.`;
+        return;
+      }
+
+      const wrong = selects.filter((select) => select.value !== select.dataset.answer);
+      if (!wrong.length) {
+        feedback.className = "feedback good";
+        feedback.textContent = "Correct. You separated company boundary, work home, people sets, permissions, and resources.";
+        return;
+      }
+
+      feedback.className = "feedback bad";
+      feedback.textContent = `${wrong.length} to revisit. Look for whether the case describes a place, a set of people, a formal org-chart function, a permission, or a work object.`;
+    });
+  </script>
+</body>
+</html>

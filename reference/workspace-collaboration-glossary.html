@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workspace Collaboration Glossary</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18201d;
+      --muted: #5e6863;
+      --paper: #fbfaf6;
+      --line: #d9ded7;
+      --blue: #315f9b;
+      --green: #3f6f58;
+      --rust: #9b5731;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 17px/1.55 ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 56px 28px 72px;
+    }
+    h1, h2, h3 {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.12;
+      margin: 0;
+      letter-spacing: 0;
+    }
+    h1 { font-size: 42px; max-width: 760px; }
+    h2 { font-size: 22px; margin-top: 42px; padding-top: 22px; border-top: 1px solid var(--line); }
+    h3 { font-size: 17px; margin: 0 0 4px; }
+    p { margin: 10px 0 0; }
+    a { color: var(--blue); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    .lede {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 19px;
+      margin-top: 16px;
+    }
+    .rule {
+      margin: 28px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--green);
+      background: #f1f5ef;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .terms {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px 22px;
+      margin-top: 20px;
+    }
+    .term {
+      border-top: 2px solid var(--line);
+      padding-top: 12px;
+      break-inside: avoid;
+    }
+    .term strong {
+      color: var(--rust);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 15px;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      border-top: 1px solid var(--line);
+      padding: 10px 8px;
+    }
+    th {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--muted);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .9em;
+      background: #ecefeb;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    ul { padding-left: 20px; }
+    li + li { margin-top: 6px; }
+    @media (max-width: 720px) {
+      body { font-size: 16px; }
+      main { padding: 36px 18px 56px; }
+      h1 { font-size: 32px; }
+      .terms { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: white; color: black; }
+      main { max-width: none; padding: 0; }
+      a { color: black; }
+      .rule { border: 1px solid #999; background: white; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Workspace Collaboration Glossary</h1>
+    <p class="lede">A compact noun set for designing shared workspaces, teams, departments, groups, and access inside a SaaS app.</p>
+
+    <div class="rule">
+      Recommended default: use <strong>Organization</strong> for the customer/company boundary, <strong>Workspace</strong> for a shared product home, <strong>Team</strong> for a durable human working group, <strong>Group</strong> for access or notification membership, and <strong>Role</strong> for permissions.
+    </div>
+
+    <h2>Core Terms</h2>
+    <section class="terms" aria-label="Core terms">
+      <article class="term">
+        <strong>Organization</strong>
+        <h3>The customer or company container.</h3>
+        <p>Usually the billing, compliance, identity, and administration boundary. GitHub organizations and Slack Enterprise organizations both use this idea for managing many people and shared work.</p>
+      </article>
+      <article class="term">
+        <strong>Tenant</strong>
+        <h3>The internal isolation boundary.</h3>
+        <p>Often an engineering synonym for organization. It is useful in schemas and infrastructure, but usually too technical for user-facing navigation.</p>
+      </article>
+      <article class="term">
+        <strong>Workspace</strong>
+        <h3>A shared product home.</h3>
+        <p>A workspace is where members collaborate. Linear describes a workspace as the container for company work concepts; Figma uses workspaces to group related teams and members inside an organization.</p>
+      </article>
+      <article class="term">
+        <strong>Team</strong>
+        <h3>A durable group of people who work together.</h3>
+        <p>Teams are usually visible and human-readable: Engineering, Design, Support. Linear and GitHub both use teams to reflect working groups and access patterns.</p>
+      </article>
+      <article class="term">
+        <strong>Department</strong>
+        <h3>An org-chart function.</h3>
+        <p>A department is a kind of team when you mirror the company chart: Engineering, Sales, Finance. Use it only if the product cares about the formal org chart.</p>
+      </article>
+      <article class="term">
+        <strong>Group</strong>
+        <h3>A membership set for access, mentions, or provisioning.</h3>
+        <p>Groups are more mechanical than teams. Slack user groups have names, handles, members, and default channels; GitHub teams can also function as access and mention groups.</p>
+      </article>
+      <article class="term">
+        <strong>Role</strong>
+        <h3>A permission level at a scope.</h3>
+        <p>Owner, admin, member, guest, viewer, editor, and maintainer are roles. A role says what someone can do; it does not say where they belong socially.</p>
+      </article>
+      <article class="term">
+        <strong>Membership</strong>
+        <h3>The join record between a person and a container.</h3>
+        <p>A membership connects a user to an organization, workspace, team, group, or resource. It often carries role, state, invite source, and timestamps.</p>
+      </article>
+      <article class="term">
+        <strong>Resource</strong>
+        <h3>The thing people work on or access.</h3>
+        <p>Examples: channel, project, document, issue, file, board, database, or thread. Resources may belong to a workspace or team and can have their own permissions.</p>
+      </article>
+      <article class="term">
+        <strong>Space</strong>
+        <h3>A content or collaboration area.</h3>
+        <p>Use space when the object is more about content location than people. Notion's teamspace is a good example: a dedicated area for a team with its own access mode.</p>
+      </article>
+    </section>
+
+    <h2>Useful Distinctions</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Distinction</th>
+          <th>Use this when...</th>
+          <th>Avoid this mistake</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Organization vs workspace</td>
+          <td>The organization owns billing, identity, and policy; the workspace is where work happens.</td>
+          <td>Do not expose both if your product has only one meaningful shared home per company.</td>
+        </tr>
+        <tr>
+          <td>Team vs group</td>
+          <td>A team is human and durable; a group is a membership mechanism for access, mentions, or provisioning.</td>
+          <td>Do not call every permission list a team.</td>
+        </tr>
+        <tr>
+          <td>Department vs team</td>
+          <td>A department follows the formal org chart; a team may be cross-functional or temporary.</td>
+          <td>Do not force cross-functional work into a department tree.</td>
+        </tr>
+        <tr>
+          <td>Role vs group</td>
+          <td>A role defines capabilities; a group collects people.</td>
+          <td>Do not create groups named <code>admins</code> if the real concept is an admin role.</td>
+        </tr>
+        <tr>
+          <td>Resource vs container</td>
+          <td>A channel, page, project, or file is something people access inside a wider container.</td>
+          <td>Do not use workspace for every shareable object.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Starter Model</h2>
+    <p>For an app that lets companies share work, start with this conceptual model before adding complexity:</p>
+    <ul>
+      <li><code>Organization</code> owns billing, policies, identity, and top-level administration.</li>
+      <li><code>Workspace</code> is the shared home where day-to-day app resources live.</li>
+      <li><code>User</code> joins through <code>Membership</code> records.</li>
+      <li><code>Team</code> represents visible working groups inside a workspace or organization.</li>
+      <li><code>Group</code> represents access, notification, or provisioning sets.</li>
+      <li><code>Role</code> is assigned at a scope: organization, workspace, team, group, or resource.</li>
+    </ul>
+
+    <h2>Primary Sources</h2>
+    <ul>
+      <li><a href="https://linear.app/docs/conceptual-model">Linear conceptual model</a></li>
+      <li><a href="https://linear.app/docs/teams">Linear teams</a></li>
+      <li><a href="https://www.notion.com/help/intro-to-teamspaces">Notion teamspaces</a></li>
+      <li><a href="https://docs.slack.dev/enterprise/">Slack Enterprise organizations</a></li>
+      <li><a href="https://slack.com/help/articles/212906697-Create-and-edit-user-groups">Slack user groups</a></li>
+      <li><a href="https://developers.google.com/workspace/admin/directory/v1/guides/manage-org-units">Google Workspace organizational units</a></li>
+      <li><a href="https://docs.github.com/en/organizations/organizing-members-into-teams/about-teams">GitHub organization teams</a></li>
+      <li><a href="https://www.figma.com/best-practices/workspaces-in-figma-enterprise/">Figma Enterprise workspaces</a></li>
+    </ul>
+  </main>
+</body>
+</html>

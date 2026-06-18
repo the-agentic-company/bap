@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 0002: Bap Workspace Models</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #121815;
+      --muted: #59635e;
+      --soft: #f7f4ed;
+      --paper: #fcfbf7;
+      --panel: #ffffff;
+      --line: #d8ddd4;
+      --green: #2d6b52;
+      --blue: #245f8f;
+      --rust: #9a5537;
+      --yellow: #d7a43a;
+      --violet: #6759a6;
+      --shadow: 0 16px 42px rgba(24, 31, 27, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(18, 24, 21, .035) 1px, transparent 1px),
+        linear-gradient(rgba(18, 24, 21, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 34px 34px;
+      font: 16px/1.55 ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 42px 24px 72px;
+    }
+
+    h1, h2, h3, h4, .eyebrow, .tag, button, .node, .sidebar, .caption, .label, .legend {
+      font-family: Avenir Next, Avenir, Helvetica Neue, Helvetica, sans-serif;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 860px;
+      font-size: clamp(34px, 5vw, 64px);
+      line-height: .98;
+    }
+
+    h2 {
+      margin: 52px 0 14px;
+      font-size: 25px;
+      line-height: 1.12;
+    }
+
+    h3 {
+      margin: 0 0 6px;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    h4 {
+      margin: 0 0 6px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+    }
+
+    p { margin: 9px 0 0; }
+
+    a {
+      color: var(--blue);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+      gap: 28px;
+      align-items: stretch;
+      min-height: 460px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .eyebrow {
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 14px;
+    }
+
+    .lede {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 20px;
+      margin-top: 18px;
+    }
+
+    .principle {
+      max-width: 820px;
+      margin-top: 24px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--green);
+      background: #edf5ef;
+      font-family: Avenir Next, Avenir, Helvetica Neue, Helvetica, sans-serif;
+    }
+
+    .interface-shell {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 420px;
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      background: #18211d;
+      color: #f5f2ea;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: #f5f2ea;
+      color: #18211d;
+      font-weight: 900;
+    }
+
+    .nav-group {
+      border-top: 1px solid rgba(245, 242, 234, .16);
+      padding-top: 10px;
+    }
+
+    .nav-title {
+      color: rgba(245, 242, 234, .55);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      min-height: 30px;
+      border-radius: 6px;
+      padding: 6px 8px;
+      color: rgba(245, 242, 234, .84);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .nav-item.active {
+      background: rgba(245, 242, 234, .13);
+      color: #fff;
+    }
+
+    .mock-main {
+      padding: 18px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .org-pill {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: Avenir Next, Avenir, Helvetica Neue, Helvetica, sans-serif;
+      font-size: 13px;
+      background: #fffdf8;
+    }
+
+    .mock-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 150px;
+      gap: 14px;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .coworker-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .coworker {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fffdf8;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-family: Avenir Next, Avenir, Helvetica Neue, Helvetica, sans-serif;
+      font-weight: 800;
+    }
+
+    .avatar.green { background: var(--green); }
+    .avatar.blue { background: var(--blue); }
+    .avatar.rust { background: var(--rust); }
+
+    .caption {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .mini-row {
+      min-height: 30px;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+      font-family: Avenir Next, Avenir, Helvetica Neue, Helvetica, sans-serif;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .model-board {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .diagram {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .level {
+      display: grid;
+      grid-template-columns: 138px minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding-top: 12px;
+    }
+
+    .nodes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .node {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffdf8;
+      padding: 10px 12px;
+      min-height: 42px;
+      font-size: 13px;
+      font-weight: 650;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .node.org { border-color: rgba(154, 85, 55, .45); background: #fff5ef; }
+    .node.workspace { border-color: rgba(36, 95, 143, .38); background: #f0f7fc; }
+    .node.team { border-color: rgba(45, 107, 82, .4); background: #eff8f2; }
+    .node.coworker { border-color: rgba(103, 89, 166, .38); background: #f4f1ff; }
+    .node.group { border-color: rgba(215, 164, 58, .5); background: #fff8e6; }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: currentColor;
+      flex: 0 0 auto;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .choice {
+      text-align: left;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 138px;
+      cursor: pointer;
+      box-shadow: none;
+      transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .choice:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .choice[aria-pressed="true"] {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(45, 107, 82, .13);
+    }
+
+    .choice .tag {
+      display: inline-block;
+      color: var(--rust);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 8px;
+    }
+
+    .choice-title {
+      display: block;
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .choice-desc {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .scenario {
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .score {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      font-family: Avenir Next, Avenir, Helvetica Neue, Helvetica, sans-serif;
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 9px;
+      background: #ece8dd;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      width: var(--value);
+      background: var(--green);
+    }
+
+    .structure {
+      background: #18211d;
+      color: #f8f4ea;
+      border-radius: 8px;
+      padding: 18px;
+      min-height: 340px;
+      overflow-x: auto;
+    }
+
+    .structure pre {
+      margin: 0;
+      font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 14px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .principles {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .principle-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .matrix {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      display: table;
+      font-size: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      border-top: 1px solid var(--line);
+      padding: 12px;
+    }
+
+    tr:first-child th { border-top: 0; }
+
+    th {
+      font-family: Avenir Next, Avenir, Helvetica Neue, Helvetica, sans-serif;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      background: #f4f1ea;
+    }
+
+    .sources {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 940px) {
+      .hero,
+      .split,
+      .scenario,
+      .principles {
+        grid-template-columns: 1fr;
+      }
+
+      .choice-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      main { padding: 28px 16px 56px; }
+      .interface-shell { grid-template-columns: 1fr; }
+      .sidebar {
+        min-height: auto;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .mock-grid,
+      .choice-grid,
+      .level {
+        grid-template-columns: 1fr;
+      }
+      .label { padding-top: 0; }
+      .matrix { font-size: 13px; }
+      th, td { padding: 10px; }
+    }
+
+    @media print {
+      body { background: white; color: black; }
+      main { max-width: none; padding: 0; }
+      .interface-shell, .model-board, .principle-card, .choice { box-shadow: none; }
+      .choice-grid { display: none; }
+      a { color: black; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-copy">
+        <div class="eyebrow">Lesson 0002</div>
+        <h1 id="title">Visual Models for Bap Workspaces</h1>
+        <p class="lede">A product sketch for how people, teams, groups, coworkers, integrations, skills, memory, workflows, and chats could fit together.</p>
+        <p class="principle"><strong>Design question:</strong> when Bap acts, is it acting for a person, a team, a coworker, or the whole organization?</p>
+      </div>
+
+      <div class="interface-shell" aria-label="Mock Bap workspace interface">
+        <aside class="sidebar">
+          <div class="brand"><span class="mark">B</span><span>Bap</span></div>
+          <div class="nav-group">
+            <div class="nav-title">Personal</div>
+            <div class="nav-item">Chat</div>
+            <div class="nav-item">My workflows</div>
+            <div class="nav-item">My skills</div>
+          </div>
+          <div class="nav-group">
+            <div class="nav-title">Workspace</div>
+            <div class="nav-item active">Coworkers</div>
+            <div class="nav-item">Shared chats</div>
+            <div class="nav-item">Memory</div>
+            <div class="nav-item">Integrations</div>
+          </div>
+          <div class="nav-group">
+            <div class="nav-title">People</div>
+            <div class="nav-item">Members</div>
+            <div class="nav-item">Teams</div>
+            <div class="nav-item">Groups</div>
+            <div class="nav-item">Roles</div>
+          </div>
+        </aside>
+        <section class="mock-main">
+          <div class="topbar">
+            <div>
+              <h3>Acme workspace</h3>
+              <p class="caption">Organization: Acme Inc</p>
+            </div>
+            <div class="org-pill">Support team</div>
+          </div>
+          <div class="mock-grid">
+            <div class="panel">
+              <h4>Coworkers</h4>
+              <div class="coworker-list">
+                <div class="coworker">
+                  <div class="avatar green">S</div>
+                  <div>
+                    <h3>Support Triage Bap</h3>
+                    <p class="caption">Uses Slack, Gmail, Linear, support memory</p>
+                  </div>
+                </div>
+                <div class="coworker">
+                  <div class="avatar blue">R</div>
+                  <div>
+                    <h3>Revenue Ops Bap</h3>
+                    <p class="caption">Uses HubSpot, Gmail, calendar</p>
+                  </div>
+                </div>
+                <div class="coworker">
+                  <div class="avatar rust">E</div>
+                  <div>
+                    <h3>Engineering Bap</h3>
+                    <p class="caption">Uses GitHub, Linear, incident channels</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <h4>Governance</h4>
+              <div class="mini-list">
+                <div class="mini-row">Approvers: support-leads</div>
+                <div class="mini-row">Visibility: Support team</div>
+                <div class="mini-row">Policy: approve external sends</div>
+                <div class="mini-row">Owner: Workspace admin</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <h2>Recommended Shape</h2>
+    <div class="split">
+      <section class="model-board">
+        <h3>Bap-native hierarchy</h3>
+        <p>Keep the company boundary separate from the AI actor. A team does not act; a coworker acts for a team under a policy.</p>
+        <div class="diagram" aria-label="Recommended Bap hierarchy">
+          <div class="level">
+            <div class="label">Boundary</div>
+            <div class="nodes"><div class="node org"><span class="dot"></span>Organization: Acme Inc</div></div>
+          </div>
+          <div class="level">
+            <div class="label">Home</div>
+            <div class="nodes"><div class="node workspace"><span class="dot"></span>Workspace: Acme</div></div>
+          </div>
+          <div class="level">
+            <div class="label">People</div>
+            <div class="nodes">
+              <div class="node team"><span class="dot"></span>Team: Support</div>
+              <div class="node team"><span class="dot"></span>Team: Sales</div>
+              <div class="node group"><span class="dot"></span>Group: Approvers</div>
+            </div>
+          </div>
+          <div class="level">
+            <div class="label">Actors</div>
+            <div class="nodes">
+              <div class="node coworker"><span class="dot"></span>Support Triage Bap</div>
+              <div class="node coworker"><span class="dot"></span>Revenue Ops Bap</div>
+            </div>
+          </div>
+          <div class="level">
+            <div class="label">Resources</div>
+            <div class="nodes">
+              <div class="node"><span class="dot"></span>Chats</div>
+              <div class="node"><span class="dot"></span>Workflows</div>
+              <div class="node"><span class="dot"></span>Skills</div>
+              <div class="node"><span class="dot"></span>Memory</div>
+              <div class="node"><span class="dot"></span>Integrations</div>
+            </div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><span class="dot" style="color: var(--rust)"></span>organization</span>
+          <span><span class="dot" style="color: var(--blue)"></span>workspace</span>
+          <span><span class="dot" style="color: var(--green)"></span>team</span>
+          <span><span class="dot" style="color: var(--yellow)"></span>group</span>
+          <span><span class="dot" style="color: var(--violet)"></span>coworker</span>
+        </div>
+      </section>
+
+      <section class="model-board">
+        <h3>The ownership question</h3>
+        <p>Every Bap resource should answer these four questions before you expose it in a team product.</p>
+        <table class="matrix">
+          <tr>
+            <th>Question</th>
+            <th>Example answer</th>
+          </tr>
+          <tr>
+            <td>Who can see it?</td>
+            <td>Support team, Revenue team, or only Baptiste.</td>
+          </tr>
+          <tr>
+            <td>Who can change it?</td>
+            <td>Workspace admins and coworker owners.</td>
+          </tr>
+          <tr>
+            <td>Whose account acts?</td>
+            <td>Shared support Gmail, Alice's Slack, or a service account.</td>
+          </tr>
+          <tr>
+            <td>Who approves risk?</td>
+            <td>Specific users, an approver group, or the requester.</td>
+          </tr>
+        </table>
+      </section>
+    </div>
+
+    <h2>Four Ways to Structure It</h2>
+    <p>Click a model to compare how the same Bap product could be organized.</p>
+    <div class="choice-grid" role="group" aria-label="Workspace model choices">
+      <button class="choice" type="button" data-model="personal" aria-pressed="false">
+        <span class="tag">Option 1</span>
+        <span class="choice-title">Personal first</span>
+        <span class="choice-desc">Keep Bap user-owned, then add sharing and publishing later.</span>
+      </button>
+      <button class="choice" type="button" data-model="workspace" aria-pressed="true">
+        <span class="tag">Option 2</span>
+        <span class="choice-title">One workspace</span>
+        <span class="choice-desc">A company has one shared home with teams, groups, and coworkers.</span>
+      </button>
+      <button class="choice" type="button" data-model="coworker" aria-pressed="false">
+        <span class="tag">Option 3</span>
+        <span class="choice-title">Coworker centric</span>
+        <span class="choice-desc">Users mostly manage named AI coworkers and their capabilities.</span>
+      </button>
+      <button class="choice" type="button" data-model="enterprise" aria-pressed="false">
+        <span class="tag">Option 4</span>
+        <span class="choice-title">Enterprise split</span>
+        <span class="choice-desc">A large company has multiple isolated workspaces under one org.</span>
+      </button>
+    </div>
+
+    <section class="scenario" aria-live="polite">
+      <div class="model-board">
+        <h3 id="scenario-title">One workspace</h3>
+        <p id="scenario-summary">Best default for Bap: one company home, with personal work still available and shared coworkers as the team layer.</p>
+        <div class="score" aria-label="Model scores">
+          <div class="score-row">
+            <span>Simplicity</span>
+            <div class="bar"><span id="score-simple" style="--value: 78%"></span></div>
+          </div>
+          <div class="score-row">
+            <span>Team fit</span>
+            <div class="bar"><span id="score-team" style="--value: 86%"></span></div>
+          </div>
+          <div class="score-row">
+            <span>Enterprise fit</span>
+            <div class="bar"><span id="score-enterprise" style="--value: 68%"></span></div>
+          </div>
+          <div class="score-row">
+            <span>Bap fit</span>
+            <div class="bar"><span id="score-bap" style="--value: 92%"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="structure">
+        <pre id="structure-text">Organization: Acme Inc
+  Workspace: Acme
+    Personal
+      My chats
+      My integrations
+      My skills
+    People
+      Members
+      Teams
+      Groups
+      Roles
+    Coworkers
+      Support Triage Bap
+      Revenue Ops Bap
+      Engineering Bap
+    Shared resources
+      Chats
+      Workflows
+      Skills
+      Memory
+      Integration access</pre>
+      </div>
+    </section>
+
+    <h2>Concrete Bap Examples</h2>
+    <section class="principles">
+      <article class="principle-card">
+        <h3>Support Triage Bap</h3>
+        <p><strong>Owned by:</strong> Support team</p>
+        <p><strong>Uses:</strong> Slack, Gmail, Linear, support memory</p>
+        <p><strong>Approvers:</strong> support-approvers group</p>
+        <p><strong>Good UI noun:</strong> Coworker</p>
+      </article>
+      <article class="principle-card">
+        <h3>Finance Admins</h3>
+        <p><strong>Owned by:</strong> Workspace</p>
+        <p><strong>Purpose:</strong> permission and approval set</p>
+        <p><strong>Members:</strong> CFO, ops lead, founder</p>
+        <p><strong>Good UI noun:</strong> Group</p>
+      </article>
+      <article class="principle-card">
+        <h3>Engineering</h3>
+        <p><strong>Owned by:</strong> Organization</p>
+        <p><strong>Purpose:</strong> human working group</p>
+        <p><strong>Resources:</strong> GitHub, Linear, incident workflows</p>
+        <p><strong>Good UI noun:</strong> Team</p>
+      </article>
+    </section>
+
+    <h2>Suggested First Product Cut</h2>
+    <table class="matrix">
+      <tr>
+        <th>Build first</th>
+        <th>Why</th>
+        <th>User-facing name</th>
+      </tr>
+      <tr>
+        <td>Workspace switcher</td>
+        <td>Gives personal and company work a clear boundary.</td>
+        <td>Workspace</td>
+      </tr>
+      <tr>
+        <td>Members and invitations</td>
+        <td>Lets a company share Bap before adding hierarchy.</td>
+        <td>Members</td>
+      </tr>
+      <tr>
+        <td>Teams</td>
+        <td>Maps resources to human working groups.</td>
+        <td>Teams</td>
+      </tr>
+      <tr>
+        <td>Coworkers</td>
+        <td>Makes the AI actor explicit: purpose, tools, memory, workflows, approvals.</td>
+        <td>Coworkers</td>
+      </tr>
+      <tr>
+        <td>Groups</td>
+        <td>Handles approvers and access without confusing them with teams.</td>
+        <td>Groups</td>
+      </tr>
+    </table>
+
+    <h2>Primary Source to Revisit</h2>
+    <p>Read <a href="https://linear.app/docs/teams">Linear's Teams documentation</a> again with one Bap-specific question in mind: where Linear says "team owns work," Bap may need "coworker acts for a team."</p>
+
+    <h2>Related Reference</h2>
+    <p>Use the <a href="../reference/workspace-collaboration-glossary.html">Workspace Collaboration Glossary</a> when deciding whether a Bap concept should be named organization, workspace, team, group, role, coworker, or resource. Ask the agent follow-up questions when the model starts feeling ambiguous; ambiguity here usually means the permission boundary is not explicit yet.</p>
+
+    <h2>Sources</h2>
+    <ul class="sources">
+      <li><a href="https://linear.app/docs/conceptual-model">Linear: Concepts</a></li>
+      <li><a href="https://linear.app/docs/teams">Linear: Teams</a></li>
+      <li><a href="https://www.notion.com/help/intro-to-teamspaces">Notion: Teamspaces</a></li>
+      <li><a href="https://docs.slack.dev/enterprise/">Slack: Enterprise organizations</a></li>
+      <li><a href="https://docs.github.com/en/organizations/organizing-members-into-teams/about-teams">GitHub: Organization teams</a></li>
+      <li><a href="https://www.figma.com/best-practices/workspaces-in-figma-enterprise/">Figma: Enterprise workspaces</a></li>
+    </ul>
+  </main>
+
+  <script>
+    const models = {
+      personal: {
+        title: "Personal first",
+        summary: "Closest to Bap today: every resource starts owned by a user, then gets shared, published, or promoted when collaboration is needed.",
+        scores: { simple: 94, team: 48, enterprise: 32, bap: 72 },
+        structure: `User: Baptiste
+  Personal Bap
+    Chats
+    Workflows
+    Skills
+    Integrations
+    Memory
+
+Sharing layer
+  Share chat with a person
+  Publish skill to workspace
+  Share workflow with a team
+  Invite others later`
+      },
+      workspace: {
+        title: "One workspace",
+        summary: "Best default for Bap: one company home, with personal work still available and shared coworkers as the team layer.",
+        scores: { simple: 78, team: 86, enterprise: 68, bap: 92 },
+        structure: `Organization: Acme Inc
+  Workspace: Acme
+    Personal
+      My chats
+      My integrations
+      My skills
+    People
+      Members
+      Teams
+      Groups
+      Roles
+    Coworkers
+      Support Triage Bap
+      Revenue Ops Bap
+      Engineering Bap
+    Shared resources
+      Chats
+      Workflows
+      Skills
+      Memory
+      Integration access`
+      },
+      coworker: {
+        title: "Coworker centric",
+        summary: "Most Bap-native: the main object users configure is a named coworker with a purpose, tools, memory, workflows, and approval policy.",
+        scores: { simple: 70, team: 78, enterprise: 62, bap: 98 },
+        structure: `Organization: Acme Inc
+  Workspace: Acme
+    Coworker: Support Triage Bap
+      Purpose
+      Members
+      Allowed tools
+      Memory
+      Workflows
+      Approval policy
+      Activity log
+    Coworker: Revenue Ops Bap
+      Purpose
+      Members
+      Allowed tools
+      Memory
+      Workflows
+      Approval policy`
+      },
+      enterprise: {
+        title: "Enterprise split",
+        summary: "Useful later: one organization contains several workspaces with separate admins, resources, policies, and coworker sets.",
+        scores: { simple: 42, team: 82, enterprise: 96, bap: 76 },
+        structure: `Organization: Acme Inc
+  Workspace: Product
+    Teams
+    Coworkers
+    Integrations
+  Workspace: Revenue
+    Teams
+    Coworkers
+    Integrations
+  Workspace: Support
+    Teams
+    Coworkers
+    Integrations
+
+Organization policy
+  SSO
+  Billing
+  Audit log
+  Workspace admins`
+      }
+    };
+
+    const choices = Array.from(document.querySelectorAll(".choice"));
+    const title = document.querySelector("#scenario-title");
+    const summary = document.querySelector("#scenario-summary");
+    const structure = document.querySelector("#structure-text");
+    const scoreSimple = document.querySelector("#score-simple");
+    const scoreTeam = document.querySelector("#score-team");
+    const scoreEnterprise = document.querySelector("#score-enterprise");
+    const scoreBap = document.querySelector("#score-bap");
+
+    function selectModel(key) {
+      const model = models[key];
+      title.textContent = model.title;
+      summary.textContent = model.summary;
+      structure.textContent = model.structure;
+      scoreSimple.style.setProperty("--value", model.scores.simple + "%");
+      scoreTeam.style.setProperty("--value", model.scores.team + "%");
+      scoreEnterprise.style.setProperty("--value", model.scores.enterprise + "%");
+      scoreBap.style.setProperty("--value", model.scores.bap + "%");
+      choices.forEach((choice) => {
+        choice.setAttribute("aria-pressed", String(choice.dataset.model === key));
+      });
+    }
+
+    choices.forEach((choice) => {
+      choice.addEventListener("click", () => selectModel(choice.dataset.model));
+    });
+  </script>
+</body>
+</html>

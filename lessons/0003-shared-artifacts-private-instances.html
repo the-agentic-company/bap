@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 0003: Shared Artifacts, Private Instances</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #141b18;
+      --muted: #5c6761;
+      --paper: #fbfaf6;
+      --panel: #fffef9;
+      --line: #d8ddd4;
+      --blue: #2b628d;
+      --green: #346d53;
+      --rust: #995438;
+      --yellow: #d7a33a;
+      --bad: #9b3d31;
+      --shadow: 0 18px 42px rgba(28, 36, 32, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(20, 27, 24, .035) 1px, transparent 1px),
+        linear-gradient(rgba(20, 27, 24, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 34px 34px;
+      color: var(--ink);
+      font: 16px/1.55 ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 44px 24px 72px;
+    }
+    h1, h2, h3, .eyebrow, .goal, .card, .matrix th, button, select, .feedback, .caption, .pill {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    header {
+      min-height: 430px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, .95fr);
+      gap: 28px;
+      align-items: center;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 {
+      margin: 0;
+      max-width: 780px;
+      font-size: clamp(36px, 5.4vw, 64px);
+      line-height: .98;
+    }
+    h2 {
+      margin: 48px 0 14px;
+      font-size: 24px;
+      line-height: 1.16;
+    }
+    h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+    p { margin: 9px 0 0; }
+    a { color: var(--blue); text-underline-offset: 2px; }
+    .eyebrow {
+      margin-bottom: 14px;
+      color: var(--rust);
+      font-size: 13px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .lede {
+      max-width: 760px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 20px;
+    }
+    .goal {
+      max-width: 800px;
+      margin-top: 24px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--green);
+      background: #eef5ef;
+    }
+    .map {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      min-height: 330px;
+      display: grid;
+      gap: 10px;
+    }
+    .map-row {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+    .map-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .map-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 9px;
+      background: white;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .pill.artifact { border-color: rgba(43, 98, 141, .35); background: #eef5fb; color: #214f73; }
+    .pill.private { border-color: rgba(153, 84, 56, .35); background: #fff4ee; color: #7f432b; }
+    .pill.history { border-color: rgba(52, 109, 83, .35); background: #eff7f2; color: #295944; }
+    .pill.policy { border-color: rgba(215, 163, 58, .42); background: #fff9e8; color: #805d14; }
+    .caption {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .ui-gallery {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .mock-ui {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-width: 0;
+    }
+    .mock-topbar {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #f7f5ef;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .mock-window {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+    .mock-heading {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .mock-title {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .mock-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+    .mock-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #141b18;
+      color: white;
+      padding: 5px 9px;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    .mock-input {
+      min-height: 38px;
+      border: 1px solid #aeb7b0;
+      border-radius: 7px;
+      padding: 9px 10px;
+      color: var(--muted);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      background: #fff;
+    }
+    .mock-row {
+      min-height: 48px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+    .mock-row:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+    .mock-name {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .mock-note {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .mock-select {
+      min-width: 112px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 8px;
+      background: #fffdf8;
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .mock-tabs {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+    .mock-tab {
+      border-radius: 999px;
+      background: #ecefeb;
+      padding: 5px 9px;
+      color: var(--muted);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .mock-tab.active {
+      background: var(--ink);
+      color: white;
+    }
+    .mock-callout {
+      border: 1px solid rgba(43, 98, 141, .28);
+      border-radius: 8px;
+      background: #eef5fb;
+      padding: 10px;
+      color: #214f73;
+      font-size: 12px;
+    }
+    .flow-steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .flow-step {
+      border-top: 2px solid var(--line);
+      padding-top: 10px;
+    }
+    .flow-step strong {
+      color: var(--rust);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+    .card strong {
+      color: var(--rust);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .matrix {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .matrix th, .matrix td {
+      border-top: 1px solid var(--line);
+      padding: 11px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .matrix th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .matrix td:first-child {
+      color: var(--rust);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 750;
+    }
+    .model {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .model article {
+      border-top: 3px solid var(--line);
+      padding-top: 14px;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .9em;
+      background: #ecefeb;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    ol, ul { padding-left: 22px; }
+    li + li { margin-top: 7px; }
+    .practice {
+      margin-top: 18px;
+      display: grid;
+      gap: 12px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 210px;
+      gap: 14px;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+    select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid #aeb7b0;
+      border-radius: 6px;
+      background: white;
+      color: var(--ink);
+      font-size: 15px;
+      padding: 8px 10px;
+    }
+    button {
+      margin-top: 14px;
+      min-height: 42px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--ink);
+      color: white;
+      padding: 10px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .feedback {
+      min-height: 54px;
+      margin-top: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--muted);
+    }
+    .feedback.good { color: var(--green); border-color: #a7c7b8; background: #f1f8f4; }
+    .feedback.bad { color: var(--bad); border-color: #d8aaa3; background: #fff4f1; }
+    .callout {
+      margin-top: 24px;
+      padding: 18px;
+      border-left: 4px solid var(--blue);
+      background: #eef5fb;
+    }
+    .sources {
+      font-size: 15px;
+      color: var(--muted);
+    }
+    @media (max-width: 820px) {
+      main { padding: 34px 18px 56px; }
+      header, .cards, .ui-gallery, .model, .row, .flow-steps { grid-template-columns: 1fr; }
+      header { min-height: 0; }
+      h1 { font-size: 34px; }
+      .map-row { grid-template-columns: 1fr; align-items: start; }
+      .matrix, .matrix thead, .matrix tbody, .matrix tr, .matrix th, .matrix td { display: block; }
+      .matrix th { display: none; }
+      .matrix tr { border-top: 1px solid var(--line); padding: 8px 0; }
+      .matrix td { border-top: 0; padding: 6px 10px; }
+    }
+    @media print {
+      body { background: white; color: black; }
+      main { max-width: none; padding: 0; }
+      header { min-height: 0; display: block; }
+      .map, .card, .matrix, .row { box-shadow: none; }
+      .ui-gallery, .flow-steps { display: block; }
+      .mock-ui { box-shadow: none; margin-top: 14px; break-inside: avoid; }
+      button, select { display: none; }
+      a { color: black; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <div class="eyebrow">Lesson 0003</div>
+        <h1>Shared Artifacts, Private Instances</h1>
+        <p class="lede">Lovable, Figma, and Miro do not think about sharing as one public/private switch. They split ownership, inherited access, direct grants, public links, copies, and runtime/output visibility.</p>
+        <p class="goal"><strong>Win for this lesson:</strong> you can decide which part of a Bap coworker should be shared: the definition, the right to run it, the run history, a copy/remix, or a safe public output.</p>
+      </div>
+
+      <aside class="map" aria-label="Bap coworker sharing map">
+        <div class="map-row">
+          <div class="map-label">Artifact</div>
+          <div class="map-items">
+            <span class="pill artifact">Coworker Definition</span>
+            <span class="pill artifact">Coworker Documents</span>
+            <span class="pill artifact">Toolbox</span>
+          </div>
+        </div>
+        <div class="map-row">
+          <div class="map-label">Access</div>
+          <div class="map-items">
+            <span class="pill private">Owner</span>
+            <span class="pill private">Team</span>
+            <span class="pill private">Workspace</span>
+            <span class="pill private">Guest</span>
+            <span class="pill private">Public link</span>
+          </div>
+        </div>
+        <div class="map-row">
+          <div class="map-label">Runtime</div>
+          <div class="map-items">
+            <span class="pill history">Coworker Run</span>
+            <span class="pill history">Run History</span>
+            <span class="pill history">Start Message</span>
+          </div>
+        </div>
+        <div class="map-row">
+          <div class="map-label">Policy</div>
+          <div class="map-items">
+            <span class="pill policy">External sharing</span>
+            <span class="pill policy">Tool grants</span>
+            <span class="pill policy">Link expiry</span>
+          </div>
+        </div>
+        <p class="caption">A coworker can be shared while a run, conversation, credential, or approval remains private.</p>
+      </aside>
+    </header>
+
+    <h2>The core product pattern</h2>
+    <p>These products separate the durable thing people collaborate on from the sensitive or temporary things around it.</p>
+    <div class="cards">
+      <article class="card">
+        <strong>Lovable</strong>
+        <h3>Project access is not website access.</h3>
+        <p>Lovable says project access controls the editor, source code, chat history, work in progress, and unpublished changes, while website access controls the published URL. Publishing does not change editor access. <a href="https://docs.lovable.dev/features/project-visibility">Source</a></p>
+      </article>
+      <article class="card">
+        <strong>Figma</strong>
+        <h3>Sharing has levels and inheritance.</h3>
+        <p>Figma describes teams or organizations as high-level sharing scopes, and files or prototypes as the most granular. A person invited to one file can get just that file, not the whole team. <a href="https://help.figma.com/hc/en-us/articles/1500007609322-Guide-to-sharing-and-permissions">Source</a></p>
+      </article>
+      <article class="card">
+        <strong>Miro</strong>
+        <h3>A board can have several access paths.</h3>
+        <p>Miro boards can be shared with a team, company, space, specific users, or public link. When several paths apply, the higher access level wins. <a href="https://help.miro.com/hc/en-us/articles/4408888726290-Who-has-access-to-my-board">Source</a></p>
+      </article>
+    </div>
+
+    <h2>How the UI makes the model visible</h2>
+    <p>These are diagrammatic UI views based on the product docs. The useful lesson is where each product places the access decision: in a share dialog, in inherited workspace/team access, in public-link controls, and in copy/remix controls.</p>
+
+    <section class="ui-gallery" aria-label="Product sharing UI models">
+      <article class="mock-ui">
+        <div class="mock-topbar">
+          <span>Lovable project</span>
+          <span class="mock-button">Share</span>
+        </div>
+        <div class="mock-window">
+          <div class="mock-heading">
+            <div>
+              <div class="mock-title">Share project</div>
+              <div class="mock-subtitle">Editor/source access, not published website access.</div>
+            </div>
+            <span class="mock-select">Owner</span>
+          </div>
+          <div class="mock-input">Invite people or workspace groups</div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Workspace: Acme</div>
+              <div class="mock-note">Controls whether workspace members can view, remix, or edit.</div>
+            </div>
+            <span class="mock-select">Can view</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Project invite link</div>
+              <div class="mock-note">Adds the opener as a collaborator. Link expires.</div>
+            </div>
+            <span class="mock-select">View link</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Preview link</div>
+              <div class="mock-note">Public app preview. No editor, chat, or source access.</div>
+            </div>
+            <span class="mock-button">Copy</span>
+          </div>
+          <div class="mock-callout">Bap translation: "share coworker editor" and "share safe output" are different buttons.</div>
+        </div>
+      </article>
+
+      <article class="mock-ui">
+        <div class="mock-topbar">
+          <span>Figma file</span>
+          <span class="mock-button">Share</span>
+        </div>
+        <div class="mock-window">
+          <div class="mock-heading">
+            <div>
+              <div class="mock-title">Share file or prototype</div>
+              <div class="mock-subtitle">Inherited access plus direct file grants.</div>
+            </div>
+            <span class="mock-select">Can edit</span>
+          </div>
+          <div class="mock-input">Search people, teams, or emails</div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Project: Product Design</div>
+              <div class="mock-note">Access may inherit from the team/project container.</div>
+            </div>
+            <span class="mock-select">Inherited</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Anyone at Acme</div>
+              <div class="mock-note">Organization/workspace-level audience.</div>
+            </div>
+            <span class="mock-select">Can view</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Anyone with link</div>
+              <div class="mock-note">Granular link sharing for file or prototype.</div>
+            </div>
+            <span class="mock-select">No access</span>
+          </div>
+          <div class="mock-callout">Bap translation: team-owned coworkers can inherit access, with explicit grants for one coworker.</div>
+        </div>
+      </article>
+
+      <article class="mock-ui">
+        <div class="mock-topbar">
+          <span>Miro board</span>
+          <span class="mock-button">Share</span>
+        </div>
+        <div class="mock-window">
+          <div class="mock-tabs">
+            <span class="mock-tab active">Invite</span>
+            <span class="mock-tab">Embed</span>
+            <span class="mock-tab">Publish</span>
+          </div>
+          <div class="mock-input">Invite people by email or Slack</div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Anyone with the link</div>
+              <div class="mock-note">Visitor access. May be blocked by admin policy.</div>
+            </div>
+            <span class="mock-select">Can comment</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Anyone at Team Atlas</div>
+              <div class="mock-note">Team members can find the board on the dashboard.</div>
+            </div>
+            <span class="mock-select">Can view</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Invite guests</div>
+              <div class="mock-note">Named external collaborators without full team membership.</div>
+            </div>
+            <span class="mock-select">Can edit</span>
+          </div>
+          <div class="mock-callout">Bap translation: distinguish public visitors, named guests, and workspace members.</div>
+        </div>
+      </article>
+
+      <article class="mock-ui">
+        <div class="mock-topbar">
+          <span>Bap coworker</span>
+          <span class="mock-button">Share</span>
+        </div>
+        <div class="mock-window">
+          <div class="mock-heading">
+            <div>
+              <div class="mock-title">Share coworker</div>
+              <div class="mock-subtitle">A proposed UI model for Bap.</div>
+            </div>
+            <span class="mock-select">Draft</span>
+          </div>
+          <div class="mock-input">Add user, team, group, or guest</div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Engineering team</div>
+              <div class="mock-note">Can discover, inspect safe fields, and start runs.</div>
+            </div>
+            <span class="mock-select">Runner</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Reliability group</div>
+              <div class="mock-note">Can change prompt, toolbox, documents, and schedule.</div>
+            </div>
+            <span class="mock-select">Editor</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Run history</div>
+              <div class="mock-note">Visible to runners, excluding private start messages by policy.</div>
+            </div>
+            <span class="mock-select">Team</span>
+          </div>
+          <div class="mock-row">
+            <div>
+              <div class="mock-name">Public demo link</div>
+              <div class="mock-note">Shows safe output only. No prompt, tools, docs, or history.</div>
+            </div>
+            <span class="mock-select">Off</span>
+          </div>
+          <div class="mock-callout">Bap design move: make each row name the object being shared, not only the audience.</div>
+        </div>
+      </article>
+    </section>
+
+    <h2>The interaction pattern</h2>
+    <div class="flow-steps" aria-label="Sharing interaction pattern">
+      <article class="flow-step">
+        <strong>1. Pick audience</strong>
+        <p>User, group, team, workspace, guest, company, or public link.</p>
+      </article>
+      <article class="flow-step">
+        <strong>2. Pick capability</strong>
+        <p>View, run, comment, edit, manage, copy, or administer.</p>
+      </article>
+      <article class="flow-step">
+        <strong>3. Pick object</strong>
+        <p>Definition, run, run history, preview output, published result, or copy/remix.</p>
+      </article>
+      <article class="flow-step">
+        <strong>4. Apply policy</strong>
+        <p>Expiration, SSO, external access, public-link restriction, and sensitive history rules.</p>
+      </article>
+    </div>
+
+    <h2>What each product teaches Bap</h2>
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>How it thinks</th>
+          <th>Useful Bap translation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Lovable</td>
+          <td>Projects belong to a workspace. New project access is workspace-visible by default as of December 2025, Restricted access is for owner plus explicit collaborators, public project visibility was removed on April 22, 2026, and public remixing copies the latest version without editing the original. <a href="https://docs.lovable.dev/features/project-visibility">Source</a></td>
+          <td>Treat the <code>Coworker Definition</code> as the editor artifact. A public demo, published result, or copy/remix should not expose source prompts, documents, tool settings, or run history.</td>
+        </tr>
+        <tr>
+          <td>Figma</td>
+          <td>Drafts are personal and private until explicitly shared or moved to a project. Team access can inherit downward, and explicit file permissions can override inherited access for one file. <a href="https://help.figma.com/hc/en-us/articles/1500005554982-Guide-to-files-and-projects">Source</a> <a href="https://help.figma.com/hc/en-us/articles/360039970673-Team-permissions">Source</a></td>
+          <td>Give coworker authors a private draft mode. Once shared to a team/workspace, use inherited access by default, but allow explicit coworker-level grants for exceptions.</td>
+        </tr>
+        <tr>
+          <td>Miro</td>
+          <td>Private boards are owner-only. Public links create visitor access, guests are named external collaborators for private boards, and members are full team participants. <a href="https://help.miro.com/hc/en-us/articles/360011114519-Public-boards-vs-private-boards">Source</a> <a href="https://help.miro.com/hc/en-us/articles/7045408248594-Visitors-guests-and-members">Source</a></td>
+          <td>Do not put every outsider into the workspace. Bap can have public-link viewers, named guests, and workspace members with different capabilities.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>The Bap mental model</h2>
+    <p>For shareable coworkers, separate four product objects before designing permissions:</p>
+    <div class="model">
+      <article>
+        <h3>1. Coworker Definition</h3>
+        <p>The durable artifact: instructions, trigger settings, toolbox, documents, avatar, and generated artifacts. This is what a teammate edits or copies.</p>
+      </article>
+      <article>
+        <h3>2. Invocation Right</h3>
+        <p>The right to start a <code>Coworker Run</code>. Running should still resolve tool access from workspace policy and acting-user credentials.</p>
+      </article>
+      <article>
+        <h3>3. Run History</h3>
+        <p>The visible history of runs and outcomes. A team may need this for trust and debugging, but it can expose inputs, outputs, or customers.</p>
+      </article>
+      <article>
+        <h3>4. Copy or Remix</h3>
+        <p>A new coworker based on the old one. Copying should carry safe definition fields, not credentials, approvals, private conversations, or original run history.</p>
+      </article>
+    </div>
+
+    <div class="callout">
+      <strong>Practical recommendation:</strong> replace a single <code>sharedAt</code> meaning with access grants: subject <code>user|group|team|workspace|guest|public_link</code>, role <code>viewer|runner|editor|manager</code>, and policy fields such as expiration, external allowed, copy allowed, and history visible.
+    </div>
+
+    <h2>Practice</h2>
+    <p>Classify each Bap design question. This is the retrieval step: you are training yourself to ask "which object is being shared?" before choosing a permission model.</p>
+
+    <div class="practice" id="practice">
+      <label class="row">
+        <span>A teammate should be able to inspect the prompt and documents, but not change them.</span>
+        <select data-answer="Coworker definition">
+          <option value="">Choose</option>
+          <option>Coworker definition</option>
+          <option>Invocation right</option>
+          <option>Public preview</option>
+          <option>Tool permission</option>
+        </select>
+      </label>
+
+      <label class="row">
+        <span>A support agent starts the shared refund coworker for one customer email.</span>
+        <select data-answer="Invocation right">
+          <option value="">Choose</option>
+          <option>Coworker definition</option>
+          <option>Invocation right</option>
+          <option>Public preview</option>
+          <option>Tool permission</option>
+        </select>
+      </label>
+
+      <label class="row">
+        <span>A prospect should see a safe demo output without joining the workspace.</span>
+        <select data-answer="Public preview">
+          <option value="">Choose</option>
+          <option>Coworker definition</option>
+          <option>Invocation right</option>
+          <option>Public preview</option>
+          <option>Tool permission</option>
+        </select>
+      </label>
+
+      <label class="row">
+        <span>A coworker can use Gmail only when the acting user or workspace grant allows it.</span>
+        <select data-answer="Tool permission">
+          <option value="">Choose</option>
+          <option>Coworker definition</option>
+          <option>Invocation right</option>
+          <option>Public preview</option>
+          <option>Tool permission</option>
+        </select>
+      </label>
+    </div>
+    <button type="button" id="check">Check answers</button>
+    <div class="feedback" id="feedback">Choose an answer for each row, then check.</div>
+
+    <h2>Primary sources</h2>
+    <ul class="sources">
+      <li><a href="https://docs.lovable.dev/features/project-visibility">Lovable: Control project access</a></li>
+      <li><a href="https://docs.lovable.dev/features/share-project">Lovable: Share a project</a></li>
+      <li><a href="https://help.figma.com/hc/en-us/articles/1500007609322-Guide-to-sharing-and-permissions">Figma: Guide to sharing and permissions</a></li>
+      <li><a href="https://help.figma.com/hc/en-us/articles/1500005554982-Guide-to-files-and-projects">Figma: Guide to files and projects</a></li>
+      <li><a href="https://help.miro.com/hc/en-us/articles/360017730813-Sharing-boards-and-inviting-collaborators">Miro: Sharing boards and inviting collaborators</a></li>
+      <li><a href="https://help.miro.com/hc/en-us/articles/7045408248594-Visitors-guests-and-members">Miro: Visitors, guests and members</a></li>
+      <li><a href="../reference/sharing-scopes-and-artifacts.html">Reference: Sharing Scopes and Artifacts</a></li>
+      <li><a href="../reference/workspace-collaboration-glossary.html">Reference: Workspace Collaboration Glossary</a></li>
+    </ul>
+
+    <p class="sources">Ask the agent follow-up questions if any distinction feels fuzzy, especially the line between shared coworker definition, shared run history, and public demo output.</p>
+  </main>
+
+  <script>
+    const button = document.querySelector("#check");
+    const feedback = document.querySelector("#feedback");
+    button.addEventListener("click", () => {
+      const selects = Array.from(document.querySelectorAll("select[data-answer]"));
+      const missing = selects.some((select) => !select.value);
+      if (missing) {
+        feedback.className = "feedback bad";
+        feedback.textContent = "Answer each row first. The useful skill is forcing a scope decision before you design the permission.";
+        return;
+      }
+      const wrong = selects.filter((select) => select.value !== select.dataset.answer);
+      if (wrong.length === 0) {
+        feedback.className = "feedback good";
+        feedback.textContent = "Correct. You separated artifact access, runtime access, public output, and tool permission.";
+        return;
+      }
+      feedback.className = "feedback bad";
+      feedback.textContent = `${wrong.length} answer${wrong.length === 1 ? "" : "s"} to revisit. Ask: is this about editing the coworker, running it, showing output, or authorizing tools?`;
+    });
+  </script>
+</body>
+</html>

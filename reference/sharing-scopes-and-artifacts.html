@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sharing Scopes and Artifacts</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17201c;
+      --muted: #5d6761;
+      --paper: #fbfaf6;
+      --panel: #fffef9;
+      --line: #d7ddd4;
+      --blue: #2d5f87;
+      --green: #376c54;
+      --rust: #955236;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.55 ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    h1, h2, h3, th, .rule, .tag {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    h1 {
+      margin: 0;
+      max-width: 780px;
+      font-size: 42px;
+      line-height: 1.08;
+    }
+    h2 {
+      margin: 42px 0 12px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      font-size: 22px;
+      line-height: 1.16;
+    }
+    h3 {
+      margin: 0 0 4px;
+      font-size: 16px;
+    }
+    p { margin: 10px 0 0; }
+    a { color: var(--blue); text-underline-offset: 2px; }
+    .lede {
+      max-width: 760px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 19px;
+    }
+    .rule {
+      margin-top: 22px;
+      max-width: 840px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--green);
+      background: #eef5ef;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      background: var(--panel);
+    }
+    th, td {
+      border-top: 1px solid var(--line);
+      padding: 11px 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    td:first-child {
+      width: 180px;
+      color: var(--rust);
+      font-weight: 700;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .card {
+      border-top: 2px solid var(--line);
+      padding-top: 12px;
+    }
+    .tag {
+      display: inline-block;
+      color: var(--rust);
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .step {
+      border-top: 2px solid var(--line);
+      padding-top: 10px;
+    }
+    .step strong {
+      color: var(--rust);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .9em;
+      background: #ecefeb;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    ul { padding-left: 20px; }
+    li + li { margin-top: 6px; }
+    @media (max-width: 720px) {
+      main { padding: 34px 18px 56px; }
+      h1 { font-size: 32px; }
+      .grid, .flow { grid-template-columns: 1fr; }
+      table, thead, tbody, tr, th, td { display: block; }
+      th { display: none; }
+      td:first-child { width: auto; }
+      td { padding: 8px 0; }
+      tr { border-top: 1px solid var(--line); padding: 10px 0; }
+    }
+    @media print {
+      body { background: white; color: black; }
+      main { max-width: none; padding: 0; }
+      a { color: black; }
+      .rule { background: white; border: 1px solid #999; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Sharing Scopes and Artifacts</h1>
+    <p class="lede">A quick reference for separating private work, shared workspace resources, public links, copies, and runtime history.</p>
+
+    <div class="rule">
+      Do not model sharing as one boolean. Model <strong>what object is being shared</strong>, <strong>who receives access</strong>, <strong>what they can do</strong>, and <strong>whether they see runtime history or only a copy</strong>.
+    </div>
+
+    <h2>Five Axes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Axis</th>
+          <th>Question</th>
+          <th>Bap coworker design implication</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Container</td>
+          <td>Is the object personal, team-owned, workspace-owned, organization-owned, or public-link accessible?</td>
+          <td>A <code>Coworker</code> can start as a private draft, then move to a team or workspace scope.</td>
+        </tr>
+        <tr>
+          <td>Subject</td>
+          <td>Who is the grant for: one user, a group, a team, the workspace, the company, guests, visitors, or anyone with a link?</td>
+          <td>Use access grants with explicit subjects. Avoid encoding everything as <code>sharedAt</code>.</td>
+        </tr>
+        <tr>
+          <td>Capability</td>
+          <td>Can the subject view, comment, run, edit, administer, share, copy, or delete?</td>
+          <td>For coworkers, split <code>view</code>, <code>run</code>, <code>edit</code>, and <code>manage sharing</code>.</td>
+        </tr>
+        <tr>
+          <td>Instance</td>
+          <td>Does access apply to the durable artifact, a one-off run, a public output, or a copied template?</td>
+          <td><code>Coworker Definition</code>, <code>Coworker Run</code>, <code>Run History</code>, and copy/remix should not share one permission flag.</td>
+        </tr>
+        <tr>
+          <td>Policy</td>
+          <td>Can admins disable public links, force passwords, expire links, restrict external collaborators, or require SSO?</td>
+          <td>Workspace policy should constrain coworker links and guest access before individual share dialogs offer them.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Share UI Pattern</h2>
+    <p>The best share dialogs make four decisions visible instead of hiding them behind a single visibility toggle.</p>
+    <div class="flow">
+      <section class="step">
+        <strong>Audience</strong>
+        <p>Person, group, team, workspace, company, guest, visitor, or anyone with a link.</p>
+      </section>
+      <section class="step">
+        <strong>Capability</strong>
+        <p>View, run, comment, edit, manage, administer, or copy/remix.</p>
+      </section>
+      <section class="step">
+        <strong>Object</strong>
+        <p>Definition, run, run history, preview output, published output, or copied template.</p>
+      </section>
+      <section class="step">
+        <strong>Policy</strong>
+        <p>Expiration, external access, SSO, public-link restriction, password, or history visibility.</p>
+      </section>
+    </div>
+
+    <h2>Product Pattern Matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Private starting point</th>
+          <th>Shared workspace mode</th>
+          <th>Public or external mode</th>
+          <th>Lesson for Bap</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Lovable</td>
+          <td>Restricted projects are visible only to owner and invited collaborators on Business and Enterprise.</td>
+          <td>Workspace access lets members view, remix, or edit based on role. Workspace owners retain full project access.</td>
+          <td>Invite links add collaborators; preview links show the app without editor/source access; published app access is separate from project access.</td>
+          <td>Separate coworker editor access from a public demo, published output, or copy/remix.</td>
+        </tr>
+        <tr>
+          <td>Figma</td>
+          <td>Drafts are personal and private until explicitly shared or moved to a project.</td>
+          <td>Teams, projects, and files form a hierarchy; higher-level access usually grants lower-level access, with explicit overrides.</td>
+          <td>Files/prototypes can be shared with anyone, organization, workspace, or invited people, with extra enterprise controls.</td>
+          <td>Use inherited access for team-owned coworkers, but allow explicit coworker-level grants.</td>
+        </tr>
+        <tr>
+          <td>Miro</td>
+          <td>Private boards are owner-only until shared.</td>
+          <td>Boards can be shared with specific users, spaces, teams, or company; the highest applicable access wins.</td>
+          <td>Visitors use public links, guests are registered board-specific collaborators, members belong to the team.</td>
+          <td>Distinguish public-link visitors from named guests and full workspace members.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Bap Starter Model</h2>
+    <div class="grid">
+      <section class="card">
+        <span class="tag">Coworker Definition</span>
+        <h3>The shareable artifact.</h3>
+        <p>Instructions, trigger settings, toolbox, documents, avatar, and generated artifacts. This is closest to a Figma file, Miro board, or Lovable project.</p>
+      </section>
+      <section class="card">
+        <span class="tag">Coworker Run</span>
+        <h3>The runtime instance.</h3>
+        <p>A specific execution with inputs, status, outputs, questions, approvals, and possible sensitive data. It may need narrower visibility than the definition.</p>
+      </section>
+      <section class="card">
+        <span class="tag">Run History</span>
+        <h3>The shared operational memory.</h3>
+        <p>The history a team can inspect to understand what happened. Do not treat it as the same thing as edit access to the coworker.</p>
+      </section>
+      <section class="card">
+        <span class="tag">Copy or Remix</span>
+        <h3>A new artifact, not collaboration.</h3>
+        <p>Copying a coworker should create a new definition without giving access to the original's run history, credentials, approvals, or private conversations.</p>
+      </section>
+    </div>
+
+    <h2>Recommended Role Set</h2>
+    <ul>
+      <li><code>Viewer</code>: can discover the coworker and inspect safe definition fields.</li>
+      <li><code>Runner</code>: can start a <code>Coworker Run</code>, subject to tool and account policy.</li>
+      <li><code>Editor</code>: can change the <code>Coworker Definition</code>, documents, trigger, and toolbox.</li>
+      <li><code>Manager</code>: can change sharing, transfer ownership, archive, delete, and reset run backlog.</li>
+    </ul>
+
+    <h2>Default Rule</h2>
+    <p>Start with private drafts for authoring, team/workspace sharing for production coworkers, explicit grants for exceptions, public preview links only for safe outputs, and copy/remix as a separate capability from editing the original.</p>
+  </main>
+</body>
+</html>
