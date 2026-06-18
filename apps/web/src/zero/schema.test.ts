@@ -61,7 +61,6 @@ describe("Zero schema allowlist", () => {
       "coworker",
       "coworkerRun",
       "coworkerFolder",
-      "coworkerTag",
     ] as const) {
       expect(schema.relationships[tableName].workspaceMembers).toEqual([
         expect.objectContaining({

@@ -34,6 +34,7 @@ const create = protectedProcedure
       allowedCustomIntegrations: z.array(z.string()).default([]),
       allowedWorkspaceMcpServerIds: z.array(z.string()).default([]),
       allowedSkillSlugs: z.array(z.string()).default([]),
+      folderId: z.string().nullable().optional(),
       schedule: scheduleSchema.nullish(),
       requiresUserInput: z.boolean().optional(),
       userInputPrompt: userInputPromptSchema,

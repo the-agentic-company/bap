@@ -21,7 +21,7 @@ import {
   syncCoworkerScheduleJob,
 } from "@bap/core/server/services/coworker-scheduler";
 import type { IntegrationType } from "@bap/core/server/oauth/config";
-import { coworker, coworkerRun, user } from "@bap/db/schema";
+import { coworker, coworkerFolder, coworkerRun, user } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { resolveSelectedWorkspaceMcpServerIds } from "@/server/services/coworker-toolbox";
@@ -120,6 +120,48 @@ async function assertCanEnableCoworker(input: {
   }
 }
 
+async function resolveCreateFolderSharing(input: {
+  context: ProfileContext;
+  workspaceId: string;
+  userId: string;
+  folderId: string | null;
+}) {
+  if (!input.folderId) {
+    return { folderId: null, sharedAt: null };
+  }
+
+  const folders = await input.context.db.query.coworkerFolder.findMany({
+    where: eq(coworkerFolder.workspaceId, input.workspaceId),
+  });
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  let current = foldersById.get(input.folderId);
+  if (!current) {
+    throw new ORPCError("BAD_REQUEST", { message: "Folder not found." });
+  }
+
+  const seen = new Set<string>();
+  while (current.parentId) {
+    if (seen.has(current.id)) {
+      throw new ORPCError("BAD_REQUEST", { message: "Folder tree contains a cycle." });
+    }
+    seen.add(current.id);
+    const parent = foldersById.get(current.parentId);
+    if (!parent) {
+      break;
+    }
+    current = parent;
+  }
+
+  if (current.visibility === "private" && current.ownerId !== input.userId) {
+    throw new ORPCError("BAD_REQUEST", { message: "Folder not found." });
+  }
+
+  return {
+    folderId: input.folderId,
+    sharedAt: current.visibility === "workspace" ? new Date() : null,
+  };
+}
+
 async function resolveCoworkerUsername(params: {
   database: unknown;
   coworkerId: string;
@@ -165,6 +207,7 @@ type CoworkerCreateInput = {
   allowedCustomIntegrations: string[];
   allowedWorkspaceMcpServerIds: string[];
   allowedSkillSlugs: string[];
+  folderId?: string | null;
   schedule?: typeof coworker.$inferInsert.schedule;
   requiresUserInput?: boolean;
   userInputPrompt?: string | null;
@@ -207,6 +250,12 @@ export async function createCoworkerProfile(input: {
     allowedIntegrations: input.payload.allowedIntegrations,
     allowedWorkspaceMcpServerIds: input.payload.allowedWorkspaceMcpServerIds,
   });
+  const initialFolder = await resolveCreateFolderSharing({
+    context: input.context,
+    workspaceId: input.workspaceId,
+    userId: input.context.user.id,
+    folderId: input.payload.folderId ?? null,
+  });
 
   const [created] = await input.context.db
     .insert(coworker)
@@ -217,6 +266,8 @@ export async function createCoworkerProfile(input: {
       username: usernameToSave,
       ownerId: input.context.user.id,
       workspaceId: input.workspaceId,
+      folderId: initialFolder.folderId,
+      sharedAt: initialFolder.sharedAt,
       status: "on",
       triggerType: input.payload.triggerType,
       prompt: input.payload.prompt,

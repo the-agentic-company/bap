@@ -25,6 +25,7 @@ export type SharedCoworkerItem = {
   id: string;
   name?: string | null;
   description?: string | null;
+  folderId?: string | null;
   triggerType: string;
   toolAccessMode: CoworkerToolAccessMode;
   allowedIntegrations?: IntegrationType[];

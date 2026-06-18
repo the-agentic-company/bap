@@ -7,43 +7,28 @@ import { T, msg, useGT, useMessages } from "gt-react";
 import {
   Activity,
   BarChart3,
+  ChevronRight,
   Clock,
   Filter,
+  FolderPlus,
   History,
   Mail,
   Network,
   Loader2,
   Menu,
   Play,
-  Plus,
   Search,
   Share2,
   Upload,
   Webhook,
   X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import { type ChangeEvent, useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { IntegrationType } from "@/lib/integration-icons";
 import { ModelSelector } from "@/components/chat/model-selector";
 import { getCoworkerDisplayName } from "@/components/coworkers/coworker-card-content";
-import { InteractiveCoworkerCard } from "@/components/coworkers/interactive-coworker-card";
-import { ViewTabs } from "@/components/coworkers/view-tabs";
 import { startCoworkerBuilderGeneration } from "@/components/landing/start-coworker-builder-generation";
-// Commented out — prompt bar removed from coworkers page
-// import { VoiceIndicator } from "@/components/chat/voice-indicator";
-// import { PromptBar } from "@/components/prompt-bar";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { blobToBase64, useVoiceRecording } from "@/hooks/use-voice-recording";
@@ -55,23 +40,35 @@ import { buildProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-ava
 import { cn } from "@/lib/utils";
 import {
   useCreateCoworker,
+  useCreateCoworkerFolder,
   type CoworkerListData,
-  type CoworkerTagListData,
+  type CoworkerFolderListData,
+  useCoworkerFolderList,
   useCoworkerList,
-  useCoworkerViewList,
+  useDeleteCoworkerFolder,
   useDeleteCoworker,
   useImportCoworkerDefinition,
   useImportSharedCoworker,
+  useMoveCoworkerFolder,
+  useMoveCoworkerToFolder,
   useSharedCoworkerList,
+  useUpdateCoworkerFolderVisibility,
 } from "@/orpc/hooks/coworkers";
 import { useIntegrationList } from "@/orpc/hooks/integrations";
 import { useProviderAuthStatus } from "@/orpc/hooks/provider-auth";
+import { useCurrentUser } from "@/orpc/hooks/user";
 import { useTranscribe } from "@/orpc/hooks/voice";
 import { AppImage as Image } from "../-lib/app-image";
 import { AppLink as Link } from "../-lib/app-link";
-import { SharedCoworkerCard, type SharedCoworkerItem } from "./shared-coworker-card";
+import { CoworkerBrowserGrid } from "./coworker-browser-grid";
+import { CoworkerFolderDialogs } from "./coworker-folder-dialogs";
+import type { SharedCoworkerItem } from "./shared-coworker-card";
 
 export type CoworkerItem = CoworkerListData[number];
+export type CoworkerFolderItem = CoworkerFolderListData[number];
+export type MoveTarget =
+  | { type: "coworker"; id: string; name: string; currentFolderId: string | null }
+  | { type: "folder"; id: string; name: string; currentFolderId: string | null };
 const EMPTY_INITIAL_COWORKERS: CoworkerListData = [];
 
 const DEFAULT_COWORKER_BUILDER_MODEL = DEFAULT_CONNECTED_CHATGPT_MODEL;
@@ -83,21 +80,14 @@ const TRIGGER_TYPE_OPTIONS = [
   { value: "webhook", label: msg("Webhook"), icon: Webhook },
 ] as const;
 
-const CARD_MOTION = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-  transition: { duration: 0.2, ease: "easeOut" },
-} as const;
-
 export default function CoworkersPage({
+  currentFolderId = null,
   initialCoworkerSharedCount = 0,
-  initialCoworkerTags,
   initialCoworkerTotalCount = 0,
   initialCoworkers,
 }: {
+  currentFolderId?: string | null;
   initialCoworkerSharedCount?: number;
-  initialCoworkerTags?: CoworkerTagListData;
   initialCoworkerTotalCount?: number;
   initialCoworkers?: CoworkerListData;
 }) {
@@ -107,13 +97,20 @@ export default function CoworkersPage({
   const navigate = useNavigate();
   const initialCoworkerList = initialCoworkers ?? EMPTY_INITIAL_COWORKERS;
   const { data: coworkers, isLoading } = useCoworkerList({ initialData: initialCoworkerList });
+  const { data: folders } = useCoworkerFolderList();
   const { data: sharedCoworkers } = useSharedCoworkerList();
   const { data: integrations } = useIntegrationList();
   const { data: providerAuthStatus } = useProviderAuthStatus();
+  const { data: currentUser } = useCurrentUser();
   const createCoworker = useCreateCoworker();
+  const createFolder = useCreateCoworkerFolder();
+  const deleteFolder = useDeleteCoworkerFolder();
   const deleteCoworker = useDeleteCoworker();
   const importCoworkerDefinition = useImportCoworkerDefinition();
   const importSharedCoworker = useImportSharedCoworker();
+  const moveCoworkerToFolder = useMoveCoworkerToFolder();
+  const moveFolder = useMoveCoworkerFolder();
+  const updateFolderVisibility = useUpdateCoworkerFolderVisibility();
   const { isRecording, error: _voiceError, startRecording, stopRecording } = useVoiceRecording();
   const { mutateAsync: transcribe } = useTranscribe();
   const openRecentDrawer = useCallback(() => {
@@ -134,22 +131,18 @@ export default function CoworkersPage({
   const [filterShared, setFilterShared] = useState(false);
   const handleToggleFilterShared = useCallback(() => setFilterShared((v) => !v), []);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
   const [selectedTriggerTypes, setSelectedTriggerTypes] = useState<Set<string>>(new Set());
-  const [activeViewId, setActiveViewId] = useState<string | null>(null);
-  const { data: views } = useCoworkerViewList();
-  const handleToggleTagFilter = useCallback((tagId: string) => {
-    setSelectedTagIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(tagId)) {
-        next.delete(tagId);
-      } else {
-        next.add(tagId);
-      }
-      return next;
-    });
-    setActiveViewId(null);
-  }, []);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [createFolderParentId, setCreateFolderParentId] = useState<string | null>(currentFolderId);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderVisibility, setNewFolderVisibility] = useState<"private" | "workspace">(
+    "private",
+  );
+  const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
+  const [moveDestinationId, setMoveDestinationId] = useState<string>("top");
+  const [folderPendingDelete, setFolderPendingDelete] = useState<CoworkerFolderItem | null>(null);
+  const [folderPendingVisibilityChange, setFolderPendingVisibilityChange] =
+    useState<CoworkerFolderItem | null>(null);
   const handleToggleTriggerType = useCallback((triggerType: string) => {
     setSelectedTriggerTypes((prev) => {
       const next = new Set(prev);
@@ -160,7 +153,6 @@ export default function CoworkersPage({
       }
       return next;
     });
-    setActiveViewId(null);
   }, []);
   const handleTriggerTypeButtonClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -172,27 +164,8 @@ export default function CoworkersPage({
     [handleToggleTriggerType],
   );
   const handleClearAllFilters = useCallback(() => {
-    setSelectedTagIds(new Set());
     setSelectedTriggerTypes(new Set());
-    setActiveViewId(null);
   }, []);
-  const handleSelectView = useCallback(
-    (viewId: string | null) => {
-      setActiveViewId(viewId);
-      if (viewId === null) {
-        setSelectedTagIds(new Set());
-        setSelectedTriggerTypes(new Set());
-      } else {
-        const view = (views ?? []).find((v) => v.id === viewId);
-        if (view) {
-          const filters = view.filters as { tagIds?: string[]; triggerTypes?: string[] };
-          setSelectedTagIds(new Set(filters.tagIds ?? []));
-          setSelectedTriggerTypes(new Set(filters.triggerTypes ?? []));
-        }
-      }
-    },
-    [views],
-  );
   const handleSearchChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value),
     [],
@@ -241,14 +214,97 @@ export default function CoworkersPage({
       Math.max(initialCoworkerSharedCount, coworkerList.filter((c) => c.sharedAt != null).length),
     [coworkerList, initialCoworkerSharedCount],
   );
-  const currentFilters = useMemo(
-    () => ({
-      tagIds: selectedTagIds.size > 0 ? [...selectedTagIds] : undefined,
-      triggerTypes: selectedTriggerTypes.size > 0 ? [...selectedTriggerTypes] : undefined,
-    }),
-    [selectedTagIds, selectedTriggerTypes],
+  const folderList = useMemo(() => (Array.isArray(folders) ? folders : []), [folders]);
+  const folderById = useMemo(
+    () => new Map(folderList.map((folder) => [folder.id, folder])),
+    [folderList],
   );
-  const hasActiveFilters = selectedTagIds.size > 0 || selectedTriggerTypes.size > 0;
+  const getFolderRoot = useCallback(
+    (folderId: string | null | undefined) => {
+      if (!folderId) {
+        return null;
+      }
+      let cursor = folderById.get(folderId) ?? null;
+      const seen = new Set<string>();
+      while (cursor?.parentId && !seen.has(cursor.id)) {
+        seen.add(cursor.id);
+        cursor = folderById.get(cursor.parentId) ?? null;
+      }
+      return cursor;
+    },
+    [folderById],
+  );
+  const getFolderEffectiveVisibility = useCallback(
+    (folderId: string | null | undefined) => getFolderRoot(folderId)?.visibility ?? null,
+    [getFolderRoot],
+  );
+  const canManageFolder = useCallback(
+    (folder: CoworkerFolderItem) => Boolean(currentUser?.id && folder.ownerId === currentUser.id),
+    [currentUser?.id],
+  );
+  const currentFolder = currentFolderId ? (folderById.get(currentFolderId) ?? null) : null;
+  const currentParentId = currentFolderId ?? null;
+  const createFolderParent = createFolderParentId
+    ? (folderById.get(createFolderParentId) ?? null)
+    : null;
+  const breadcrumbs = useMemo(() => {
+    if (!currentFolder) {
+      return [];
+    }
+    const trail: CoworkerFolderItem[] = [];
+    const seen = new Set<string>();
+    let cursor: CoworkerFolderItem | null = currentFolder;
+    while (cursor && !seen.has(cursor.id)) {
+      trail.unshift(cursor);
+      seen.add(cursor.id);
+      cursor = cursor.parentId ? (folderById.get(cursor.parentId) ?? null) : null;
+    }
+    return trail;
+  }, [currentFolder, folderById]);
+  const getFolderPathLabel = useCallback(
+    (folder: CoworkerFolderItem) => {
+      const names: string[] = [];
+      const seen = new Set<string>();
+      let cursor: CoworkerFolderItem | null = folder;
+      while (cursor && !seen.has(cursor.id)) {
+        names.unshift(cursor.name);
+        seen.add(cursor.id);
+        cursor = cursor.parentId ? (folderById.get(cursor.parentId) ?? null) : null;
+      }
+      return names.length > 1 ? names.join(" / ") : undefined;
+    },
+    [folderById],
+  );
+  const isFolderMoveDestinationDisabled = useCallback(
+    (folder: CoworkerFolderItem) => {
+      if (moveTarget?.type !== "folder") {
+        return false;
+      }
+      if (folder.id === moveTarget.id) {
+        return true;
+      }
+      let cursor: CoworkerFolderItem | null = folder;
+      const seen = new Set<string>();
+      while (cursor && !seen.has(cursor.id)) {
+        if (cursor.parentId === moveTarget.id) {
+          return true;
+        }
+        seen.add(cursor.id);
+        cursor = cursor.parentId ? (folderById.get(cursor.parentId) ?? null) : null;
+      }
+      return false;
+    },
+    [folderById, moveTarget],
+  );
+  const isGlobalSearch = searchQuery.trim().length > 0;
+  const displayedFolderList = useMemo(() => {
+    if (isGlobalSearch) {
+      const q = searchQuery.trim().toLowerCase();
+      return folderList.filter((folder) => folder.name.toLowerCase().includes(q));
+    }
+    return folderList.filter((folder) => folder.parentId === currentParentId);
+  }, [currentParentId, folderList, isGlobalSearch, searchQuery]);
+  const hasActiveFilters = selectedTriggerTypes.size > 0;
   const displayedCoworkerList = useMemo(() => {
     let list = filterShared ? coworkerList.filter((c) => c.sharedAt != null) : coworkerList;
     if (searchQuery.trim()) {
@@ -256,24 +312,56 @@ export default function CoworkersPage({
       list = list.filter(
         (c) => c.name?.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q),
       );
-    }
-    if (selectedTagIds.size > 0) {
-      list = list.filter((c) => (c.tags ?? []).some((tag) => selectedTagIds.has(tag.id)));
+    } else {
+      list = list.filter((c) => c.folderId === currentParentId);
     }
     if (selectedTriggerTypes.size > 0) {
       list = list.filter((c) => selectedTriggerTypes.has(c.triggerType));
     }
     return list;
-  }, [coworkerList, filterShared, searchQuery, selectedTagIds, selectedTriggerTypes]);
+  }, [coworkerList, currentParentId, filterShared, searchQuery, selectedTriggerTypes]);
   const displayedSharedCoworkerList = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return sharedCoworkerList;
+    let list = sharedCoworkerList;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (c) => c.name?.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q),
+      );
+    } else {
+      list = list.filter((c) => (c.folderId ?? null) === currentParentId);
     }
-    const q = searchQuery.toLowerCase();
-    return sharedCoworkerList.filter(
-      (c) => c.name?.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q),
-    );
-  }, [sharedCoworkerList, searchQuery]);
+    if (selectedTriggerTypes.size > 0) {
+      list = list.filter((c) => selectedTriggerTypes.has(c.triggerType));
+    }
+    return list;
+  }, [currentParentId, searchQuery, selectedTriggerTypes, sharedCoworkerList]);
+  const moveVisibilityMessage = useMemo(() => {
+    if (!moveTarget) {
+      return null;
+    }
+    const destinationFolderId = moveDestinationId === "top" ? null : moveDestinationId;
+    if (moveTarget.type === "coworker") {
+      const destinationVisibility = getFolderEffectiveVisibility(destinationFolderId);
+      if (!destinationVisibility) {
+        return null;
+      }
+      return destinationVisibility === "workspace"
+        ? t("Moving into this folder will share the coworker with the workspace.")
+        : t("Moving into this folder will make the coworker private.");
+    }
+    const currentVisibility = getFolderEffectiveVisibility(moveTarget.currentFolderId);
+    const destinationVisibility = getFolderEffectiveVisibility(destinationFolderId);
+    if (
+      !currentVisibility ||
+      !destinationVisibility ||
+      currentVisibility === destinationVisibility
+    ) {
+      return null;
+    }
+    return destinationVisibility === "workspace"
+      ? t("Moving this folder will share all contained coworkers with the workspace.")
+      : t("Moving this folder will make all contained coworkers private.");
+  }, [getFolderEffectiveVisibility, moveDestinationId, moveTarget, t]);
 
   const handleImportSharedCoworker = useCallback(
     async (sourceCoworkerId: string) => {
@@ -297,6 +385,159 @@ export default function CoworkersPage({
     }
     importFileInputRef.current?.click();
   }, [importCoworkerDefinition.isPending]);
+  const handleCreateFolderDialogChange = useCallback(
+    (open: boolean) => {
+      setIsCreatingFolder(open);
+      if (!open) {
+        setCreateFolderParentId(currentFolderId);
+        setNewFolderName("");
+        setNewFolderVisibility("private");
+      }
+    },
+    [currentFolderId],
+  );
+  const handleOpenCreateFolderDialog = useCallback(() => {
+    setCreateFolderParentId(currentFolderId);
+    handleCreateFolderDialogChange(true);
+  }, [currentFolderId, handleCreateFolderDialogChange]);
+  const handleOpenCreateChildFolderDialog = useCallback(
+    (folder: CoworkerFolderItem) => {
+      setCreateFolderParentId(folder.id);
+      handleCreateFolderDialogChange(true);
+    },
+    [handleCreateFolderDialogChange],
+  );
+  const handleNewFolderNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setNewFolderName(event.target.value);
+  }, []);
+  const handleNewFolderVisibilityClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const visibility = event.currentTarget.dataset.visibility;
+      if (visibility === "private" || visibility === "workspace") {
+        setNewFolderVisibility(visibility);
+      }
+    },
+    [],
+  );
+  const handleCreateFolder = useCallback(async () => {
+    const name = newFolderName.trim();
+    if (!name) {
+      return;
+    }
+    try {
+      await createFolder.mutateAsync({
+        name,
+        parentId: createFolderParentId,
+        visibility: createFolderParentId ? undefined : newFolderVisibility,
+      });
+      toast.success(t("Folder created."));
+      handleCreateFolderDialogChange(false);
+    } catch {
+      toast.error(t("Failed to create folder."));
+    }
+  }, [
+    createFolder,
+    createFolderParentId,
+    handleCreateFolderDialogChange,
+    newFolderName,
+    newFolderVisibility,
+    t,
+  ]);
+  const handleMoveCoworker = useCallback(
+    (coworker: { id: string; name?: string | null; folderId?: string | null }) => {
+      setMoveTarget({
+        type: "coworker",
+        id: coworker.id,
+        name: getCoworkerDisplayName(coworker.name),
+        currentFolderId: coworker.folderId ?? null,
+      });
+      setMoveDestinationId(coworker.folderId ?? "top");
+    },
+    [],
+  );
+  const handleMoveFolder = useCallback((folder: CoworkerFolderItem) => {
+    setMoveTarget({
+      type: "folder",
+      id: folder.id,
+      name: folder.name,
+      currentFolderId: folder.parentId,
+    });
+    setMoveDestinationId(folder.parentId ?? "top");
+  }, []);
+  const handleDeleteFolderRequest = useCallback((folder: CoworkerFolderItem) => {
+    setFolderPendingDelete(folder);
+  }, []);
+  const handleToggleFolderVisibilityRequest = useCallback((folder: CoworkerFolderItem) => {
+    setFolderPendingVisibilityChange(folder);
+  }, []);
+  const handleMoveDestinationChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+    setMoveDestinationId(event.target.value);
+  }, []);
+  const handleMoveDialogChange = useCallback((open: boolean) => {
+    if (!open) {
+      setMoveTarget(null);
+      setMoveDestinationId("top");
+    }
+  }, []);
+  const handleConfirmMove = useCallback(async () => {
+    if (!moveTarget) {
+      return;
+    }
+    const folderId = moveDestinationId === "top" ? null : moveDestinationId;
+    try {
+      if (moveTarget.type === "coworker") {
+        await moveCoworkerToFolder.mutateAsync({ coworkerId: moveTarget.id, folderId });
+        toast.success(t("Coworker moved."));
+      } else {
+        await moveFolder.mutateAsync({ folderId: moveTarget.id, parentId: folderId });
+        toast.success(t("Folder moved."));
+      }
+      handleMoveDialogChange(false);
+    } catch {
+      toast.error(t("Failed to move."));
+    }
+  }, [handleMoveDialogChange, moveCoworkerToFolder, moveDestinationId, moveFolder, moveTarget, t]);
+  const handleConfirmDeleteFolder = useCallback(async () => {
+    if (!folderPendingDelete) {
+      return;
+    }
+    try {
+      await deleteFolder.mutateAsync(folderPendingDelete.id);
+      toast.success(t("Folder deleted."));
+      setFolderPendingDelete(null);
+    } catch {
+      toast.error(t("Failed to delete folder."));
+    }
+  }, [deleteFolder, folderPendingDelete, t]);
+  const handleFolderDeleteDialogChange = useCallback((open: boolean) => {
+    if (!open) {
+      setFolderPendingDelete(null);
+    }
+  }, []);
+  const handleVisibilityDialogChange = useCallback((open: boolean) => {
+    if (!open) {
+      setFolderPendingVisibilityChange(null);
+    }
+  }, []);
+  const handleConfirmFolderVisibilityChange = useCallback(async () => {
+    if (!folderPendingVisibilityChange) {
+      return;
+    }
+    const visibility =
+      folderPendingVisibilityChange.visibility === "workspace" ? "private" : "workspace";
+    try {
+      await updateFolderVisibility.mutateAsync({
+        id: folderPendingVisibilityChange.id,
+        visibility,
+      });
+      toast.success(
+        visibility === "workspace" ? t("Folder shared with workspace.") : t("Folder made private."),
+      );
+      setFolderPendingVisibilityChange(null);
+    } catch {
+      toast.error(t("Failed to update folder visibility."));
+    }
+  }, [folderPendingVisibilityChange, t, updateFolderVisibility]);
   const handleImportCoworkerFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -441,6 +682,7 @@ export default function CoworkersPage({
         authSource: modelAuthSource,
         toolAccessMode: "all",
         allowedIntegrations: COWORKER_AVAILABLE_INTEGRATION_TYPES,
+        folderId: currentFolderId,
       });
 
       const text = initialMessage?.trim() ?? "";
@@ -455,7 +697,7 @@ export default function CoworkersPage({
 
       void navigate({ to: "/agents/edit/$id", params: { id: result.id } });
     },
-    [createCoworker, model, modelAuthSource, navigate],
+    [createCoworker, currentFolderId, model, modelAuthSource, navigate],
   );
 
   const _handlePromptSubmit = useCallback(
@@ -483,42 +725,11 @@ export default function CoworkersPage({
 
   return (
     <div className="space-y-10">
-      {/* Prompt bar — commented out, kept for future reference
-      <div className="px-4 pt-[12vh] pb-8">
-        <div className="mx-auto max-w-xl">
-          <h1 className="text-foreground mb-2 text-center text-xl font-semibold tracking-tight">
-            What do you want to automate?
-          </h1>
-          <p className="text-muted-foreground mb-6 text-center text-sm">
-            Describe a task and we&apos;ll build it step by step
-          </p>
-          <PromptBar
-            onSubmit={_handlePromptSubmit}
-            isSubmitting={isCreating}
-            disabled={isCreating || isRecording || isProcessingVoice}
-            placeholder="e.g. Every morning, summarize my unread emails and send me a digest…"
-            isRecording={isRecording}
-            onStartRecording={_handleStartRecording}
-            onStopRecording={_stopRecordingAndTranscribe}
-            voiceInteractionMode="toggle"
-            prefillRequest={inputPrefillRequest}
-            renderModelSelector={_modelSelectorNode}
-          />
-          {(isRecording || isProcessingVoice || voiceError) && (
-            <div className="mt-4">
-              <VoiceIndicator
-                isRecording={isRecording}
-                isProcessing={isProcessingVoice}
-                error={voiceError}
-                recordingLabel="Recording... Click the mic again to stop"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-      */}
-
-      {coworkerList.length === 0 && !searchQuery.trim() && !isLoading ? (
+      {coworkerList.length === 0 &&
+      folderList.length === 0 &&
+      !currentFolderId &&
+      !searchQuery.trim() &&
+      !isLoading ? (
         <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
           <Image src="/tools/lobster.svg" alt="" width={64} height={64} className="mb-6" />
           <h2 className="text-foreground mb-1.5 text-center text-xl font-semibold tracking-tight">
@@ -595,7 +806,7 @@ export default function CoworkersPage({
                 <Input
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  placeholder={t("Search coworkers...")}
+                  placeholder={t("Search folders and coworkers...")}
                   className="h-8 pl-8 text-xs"
                 />
               </div>
@@ -657,6 +868,14 @@ export default function CoworkersPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleOpenCreateFolderDialog}
+              className="border-border/60 text-muted-foreground hover:border-border hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors"
+            >
+              <FolderPlus className="size-3" />
+              <T>New folder</T>
+            </button>
             {sharedByMeCount > 0 ? (
               <button
                 type="button"
@@ -703,129 +922,112 @@ export default function CoworkersPage({
             </button>
           </div>
 
-          {/* View tabs with integrated tag filters */}
-          <ViewTabs
-            activeViewId={activeViewId}
-            onSelectView={handleSelectView}
-            currentFilters={currentFilters}
-            hasActiveFilters={hasActiveFilters}
-            initialTags={initialCoworkerTags}
-            selectedTagIds={selectedTagIds}
-            onToggleTag={handleToggleTagFilter}
-            onClearAll={handleClearAllFilters}
-          />
+          <div className="flex items-center gap-1 overflow-x-auto text-xs">
+            <Link
+              href="/agents"
+              className={cn(
+                "text-muted-foreground hover:text-foreground rounded-md px-2 py-1 font-medium",
+                !currentFolderId && "bg-muted text-foreground",
+              )}
+            >
+              <T>Top level</T>
+            </Link>
+            {breadcrumbs.map((folder) => (
+              <div key={folder.id} className="flex items-center gap-1">
+                <ChevronRight className="text-muted-foreground/60 size-3" />
+                <Link
+                  href={`/agents/folders/${encodeURIComponent(folder.id)}`}
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground rounded-md px-2 py-1 font-medium whitespace-nowrap",
+                    folder.id === currentFolderId && "bg-muted text-foreground",
+                  )}
+                >
+                  {folder.name}
+                </Link>
+              </div>
+            ))}
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className="text-muted-foreground hover:text-foreground ml-2 rounded-md px-2 py-1 text-xs font-medium"
+              >
+                <T>Clear filters</T>
+              </button>
+            ) : null}
+          </div>
 
-          {displayedCoworkerList.length === 0 ? (
+          {displayedCoworkerList.length === 0 &&
+          displayedFolderList.length === 0 &&
+          displayedSharedCoworkerList.length === 0 ? (
             <div className="border-border rounded-xl border border-dashed p-10 text-center">
               <p className="text-muted-foreground text-sm">
-                <T>No coworkers match &ldquo;</T>
-                {searchQuery}
-                <T>&rdquo;</T>
+                {searchQuery.trim() ? (
+                  <>
+                    <T>No folders or coworkers match &ldquo;</T>
+                    {searchQuery}
+                    <T>&rdquo;</T>
+                  </>
+                ) : (
+                  <T>This folder is empty.</T>
+                )}
               </p>
             </div>
           ) : (
-            <motion.div layout className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-              <AnimatePresence mode="popLayout">
-                <motion.div
-                  key="create-new"
-                  layout
-                  className="h-full"
-                  initial={CARD_MOTION.initial}
-                  animate={CARD_MOTION.animate}
-                  exit={CARD_MOTION.exit}
-                  transition={CARD_MOTION.transition}
-                >
-                  <Link
-                    href="/"
-                    className="border-foreground/20 hover:border-foreground/30 hover:bg-muted/30 group flex h-full min-h-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed transition-all duration-150"
-                  >
-                    <div className="bg-muted/50 group-hover:bg-muted flex size-10 items-center justify-center rounded-xl transition-colors">
-                      <Plus className="text-muted-foreground size-5" />
-                    </div>
-                    <span className="text-muted-foreground text-sm font-medium">
-                      <T>Create new coworker</T>
-                    </span>
-                  </Link>
-                </motion.div>
-                {displayedCoworkerList.map((wf) => (
-                  <motion.div
-                    key={wf.id}
-                    layout
-                    className="h-full"
-                    initial={CARD_MOTION.initial}
-                    animate={CARD_MOTION.animate}
-                    exit={CARD_MOTION.exit}
-                    transition={CARD_MOTION.transition}
-                  >
-                    <InteractiveCoworkerCard coworker={wf} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+            <CoworkerBrowserGrid
+              connectedIntegrationTypes={connectedIntegrationTypes}
+              displayedCoworkerList={displayedCoworkerList}
+              displayedFolderList={displayedFolderList}
+              displayedSharedCoworkerList={displayedSharedCoworkerList}
+              canManageFolder={canManageFolder}
+              getFolderPathLabel={getFolderPathLabel}
+              handleDeleteFolderRequest={handleDeleteFolderRequest}
+              handleImportSharedCoworker={handleImportSharedCoworker}
+              handleMoveCoworker={handleMoveCoworker}
+              handleMoveFolder={handleMoveFolder}
+              handleOpenCreateChildFolderDialog={handleOpenCreateChildFolderDialog}
+              handleToggleFolderVisibilityRequest={handleToggleFolderVisibilityRequest}
+              importingSharedCoworkerId={importingSharedCoworkerId}
+              isGlobalSearch={isGlobalSearch}
+            />
           )}
         </div>
       )}
-      {displayedSharedCoworkerList.length > 0 ? (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold">
-              <T>Shared by teammates</T>
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              <T>Install a coworker into your own workspace environment.</T>
-            </p>
-          </div>
-          <motion.div layout className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <AnimatePresence mode="popLayout">
-              {displayedSharedCoworkerList.map((coworker) => (
-                <motion.div
-                  key={coworker.id}
-                  layout
-                  className="h-full"
-                  initial={CARD_MOTION.initial}
-                  animate={CARD_MOTION.animate}
-                  exit={CARD_MOTION.exit}
-                  transition={CARD_MOTION.transition}
-                >
-                  <SharedCoworkerCard
-                    coworker={coworker}
-                    connectedIntegrationTypes={connectedIntegrationTypes}
-                    isImporting={importingSharedCoworkerId === coworker.id}
-                    onImport={handleImportSharedCoworker}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        </section>
-      ) : null}
-      <AlertDialog open={coworkerPendingDelete !== null} onOpenChange={handleDeleteDialogChange}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              <T>Delete coworker?</T>
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {coworkerPendingDelete
-                ? `Delete ${getCoworkerDisplayName(coworkerPendingDelete.name)} and its run history? This action cannot be undone.`
-                : "This action cannot be undone."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingCoworkerId !== null}>
-              <T>Cancel</T>
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              disabled={deletingCoworkerId !== null}
-              className="bg-destructive hover:bg-destructive/90 text-white"
-            >
-              {deletingCoworkerId !== null ? <Loader2 className="size-3 animate-spin" /> : null}
-              <T>Delete</T>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CoworkerFolderDialogs
+        isCreatingFolder={isCreatingFolder}
+        onCreateFolderDialogChange={handleCreateFolderDialogChange}
+        createFolderParent={createFolderParent}
+        newFolderName={newFolderName}
+        onNewFolderNameChange={handleNewFolderNameChange}
+        t={t}
+        createFolderParentId={createFolderParentId}
+        newFolderVisibility={newFolderVisibility}
+        onNewFolderVisibilityClick={handleNewFolderVisibilityClick}
+        isCreateFolderPending={createFolder.isPending}
+        onCreateFolder={handleCreateFolder}
+        moveTarget={moveTarget}
+        onMoveDialogChange={handleMoveDialogChange}
+        moveDestinationId={moveDestinationId}
+        onMoveDestinationChange={handleMoveDestinationChange}
+        folderList={folderList}
+        isFolderMoveDestinationDisabled={isFolderMoveDestinationDisabled}
+        getFolderPathLabel={getFolderPathLabel}
+        moveVisibilityMessage={moveVisibilityMessage}
+        isMovePending={moveCoworkerToFolder.isPending || moveFolder.isPending}
+        onConfirmMove={handleConfirmMove}
+        folderPendingVisibilityChange={folderPendingVisibilityChange}
+        onVisibilityDialogChange={handleVisibilityDialogChange}
+        isUpdateFolderVisibilityPending={updateFolderVisibility.isPending}
+        onConfirmFolderVisibilityChange={handleConfirmFolderVisibilityChange}
+        folderPendingDelete={folderPendingDelete}
+        onFolderDeleteDialogChange={handleFolderDeleteDialogChange}
+        isDeleteFolderPending={deleteFolder.isPending}
+        onConfirmDeleteFolder={handleConfirmDeleteFolder}
+        coworkerPendingDelete={coworkerPendingDelete}
+        onDeleteDialogChange={handleDeleteDialogChange}
+        deletingCoworkerId={deletingCoworkerId}
+        onConfirmDelete={handleConfirmDelete}
+      />
     </div>
   );
 }

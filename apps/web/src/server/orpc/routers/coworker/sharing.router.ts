@@ -13,6 +13,9 @@ const share = protectedProcedure
       context,
       input.id,
     );
+    if (wf.folderId) {
+      throw new Error("Folder-contained coworker sharing is controlled by its folder.");
+    }
     const [shared] = await context.db
       .update(coworker)
       .set({ sharedAt: new Date() })
@@ -39,6 +42,9 @@ const unshare = protectedProcedure
       context,
       input.id,
     );
+    if (wf.folderId) {
+      throw new Error("Folder-contained coworker sharing is controlled by its folder.");
+    }
     await context.db
       .update(coworker)
       .set({ sharedAt: null })
@@ -83,6 +89,7 @@ const listShared = protectedProcedure.handler(async ({ context }) => {
         name: wf.name,
         description: wf.description,
         username: wf.username,
+        folderId: wf.folderId,
         triggerType: wf.triggerType,
         toolAccessMode,
         allowedIntegrations: wf.allowedIntegrations,

@@ -4,6 +4,7 @@ import { zeroQueries, type ZeroQueryContext } from "./queries";
 type WhereCondition = {
   readonly type: string;
   readonly op?: string;
+  readonly conditions?: readonly WhereCondition[];
   readonly left?: {
     readonly name?: string;
   };
@@ -49,6 +50,19 @@ function hasSimpleCondition(
       condition.left?.name === column &&
       condition.op === op &&
       condition.right?.value === value,
+  );
+}
+
+function hasNestedSimpleCondition(
+  conditions: readonly WhereCondition[],
+  column: string,
+  op: string,
+  value: unknown,
+) {
+  return conditions.some((condition) =>
+    condition.conditions
+      ? hasSimpleCondition(condition.conditions, column, op, value)
+      : hasSimpleCondition([condition], column, op, value),
   );
 }
 
@@ -100,5 +114,18 @@ describe("Zero queries", () => {
 
     expect(hasSimpleCondition(conditions, "ownerId", "=", queryContext.userId)).toBe(true);
     expect(hasSimpleCondition(conditions, "workspaceId", "=", queryContext.workspaceId)).toBe(true);
+  });
+
+  it("keeps coworker folders scoped to owned or workspace-visible folders", () => {
+    const request = zeroQueries.coworkerInventory.folders();
+    const query = request.query.fn({
+      args: request.args,
+      ctx: queryContext,
+    }) as unknown as QueryWithAst;
+    const conditions = whereConditions(query);
+
+    expect(hasSimpleCondition(conditions, "workspaceId", "=", queryContext.workspaceId)).toBe(true);
+    expect(hasNestedSimpleCondition(conditions, "ownerId", "=", queryContext.userId)).toBe(true);
+    expect(hasNestedSimpleCondition(conditions, "visibility", "=", "workspace")).toBe(true);
   });
 });

@@ -10,21 +10,6 @@ type ZeroRunLike = {
   readonly finishedAt?: number | string | Date | null;
 };
 
-type ZeroTagLike = {
-  readonly id: string;
-  readonly name: string;
-  readonly color?: string | null;
-  readonly assignments?: readonly ZeroTagAssignmentLike[];
-};
-
-type ZeroTagAssignmentLike = {
-  readonly id: string;
-  readonly coworkerId: string;
-  readonly tagId: string;
-  readonly createdAt: number | string | Date;
-  readonly tag?: ZeroTagLike | null;
-};
-
 type ZeroCoworkerLike = {
   readonly id: string;
   readonly name: string;
@@ -50,14 +35,15 @@ type ZeroCoworkerLike = {
   readonly sharedAt?: number | string | Date | null;
   readonly updatedAt: number | string | Date;
   readonly runs?: readonly ZeroRunLike[];
-  readonly tagAssignments?: readonly ZeroTagAssignmentLike[];
 };
 
 type ZeroFolderLike = {
   readonly id: string;
   readonly workspaceId: string;
+  readonly ownerId?: string | null;
   readonly parentId?: string | null;
   readonly name: string;
+  readonly visibility: "private" | "workspace";
   readonly position: number;
   readonly createdAt: number | string | Date;
   readonly updatedAt: number | string | Date;
@@ -98,11 +84,6 @@ export function mapZeroCoworkerList(coworkers: readonly ZeroCoworkerLike[]) {
         .slice(0, 20)
         .map(mapZeroCoworkerRun);
       const lastRun: (typeof recentRuns)[number] | undefined = recentRuns[0];
-      const tags = (coworker.tagAssignments ?? [])
-        .map((assignment) => assignment.tag)
-        .filter((tag): tag is ZeroTagLike => Boolean(tag))
-        .map((tag) => ({ id: tag.id, name: tag.name, color: tag.color ?? null }))
-        .toSorted((left, right) => left.name.localeCompare(right.name));
 
       return {
         id: coworker.id,
@@ -131,7 +112,6 @@ export function mapZeroCoworkerList(coworkers: readonly ZeroCoworkerLike[]) {
         updatedAt: asDate(coworker.updatedAt),
         lastRunStatus: lastRun?.status ?? null,
         lastRunAt: lastRun?.startedAt ?? null,
-        tags,
         recentRuns,
       };
     })
@@ -147,28 +127,12 @@ export function mapZeroCoworkerFolders(folders: readonly ZeroFolderLike[]) {
   return folders.map((folder) => ({
     id: folder.id,
     workspaceId: folder.workspaceId,
+    ownerId: folder.ownerId ?? null,
     parentId: folder.parentId ?? null,
     name: folder.name,
+    visibility: folder.visibility,
     position: folder.position,
     createdAt: asDate(folder.createdAt),
     updatedAt: asDate(folder.updatedAt),
-  }));
-}
-
-export function mapZeroCoworkerTags(tags: readonly ZeroTagLike[]) {
-  return tags.map((tag) => ({
-    id: tag.id,
-    name: tag.name,
-    color: tag.color ?? null,
-    coworkerCount: tag.assignments?.length ?? 0,
-  }));
-}
-
-export function mapZeroCoworkerTagAssignments(assignments: readonly ZeroTagAssignmentLike[]) {
-  return assignments.map((assignment) => ({
-    id: assignment.id,
-    coworkerId: assignment.coworkerId,
-    tagId: assignment.tagId,
-    createdAt: asDate(assignment.createdAt),
   }));
 }

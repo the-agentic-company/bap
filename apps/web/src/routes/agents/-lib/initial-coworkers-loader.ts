@@ -4,14 +4,12 @@ import type { CoworkerItem } from "../-components/coworkers-page";
 export type InitialCoworkersLoaderData = {
   coworkers: CoworkerItem[];
   sharedCount: number;
-  tags: Array<{ id: string; name: string; color: string | null; coworkerCount: number }>;
   totalCount: number;
 };
 
 export const EMPTY_INITIAL_COWORKERS_DATA: InitialCoworkersLoaderData = {
   coworkers: [],
   sharedCount: 0,
-  tags: [],
   totalCount: 0,
 };
 
@@ -29,7 +27,6 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
   const allowedIntegrations = Array.isArray(row.allowedIntegrations) ? row.allowedIntegrations : [];
   const allowedSkillSlugs = Array.isArray(row.allowedSkillSlugs) ? row.allowedSkillSlugs : [];
   const recentRuns = Array.isArray(row.recentRuns) ? row.recentRuns : [];
-  const tags = Array.isArray(row.tags) ? row.tags : [];
 
   return {
     id: String(row.id),
@@ -79,19 +76,6 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
     updatedAt: serializeDate(row.updatedAt) ?? new Date(0),
     lastRunStatus: typeof row.lastRunStatus === "string" ? row.lastRunStatus : "",
     lastRunAt: serializeDate(row.lastRunAt) ?? new Date(0),
-    tags: tags.flatMap((tag) => {
-      if (!tag || typeof tag !== "object") {
-        return [];
-      }
-      const tagRecord = tag as Record<string, unknown>;
-      return [
-        {
-          id: String(tagRecord.id),
-          name: typeof tagRecord.name === "string" ? tagRecord.name : "",
-          color: typeof tagRecord.color === "string" ? tagRecord.color : null,
-        },
-      ];
-    }),
   };
 }
 
@@ -126,7 +110,6 @@ export const loadInitialCoworkers = createServerFn({ method: "GET" }).handler(as
       serializeInitialCoworker(row as Record<string, unknown>),
     ),
     sharedCount: result.sharedCount,
-    tags: result.tags,
     totalCount: result.totalCount,
   };
 });

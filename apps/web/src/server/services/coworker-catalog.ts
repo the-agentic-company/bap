@@ -2,13 +2,7 @@ import {
   reconcileStaleCoworkerRunsForCoworker,
   reconcileStaleCoworkerRunsForCoworkers,
 } from "@bap/core/server/services/coworker-service";
-import {
-  generation,
-  coworkerDocument,
-  coworkerRun,
-  coworkerTag,
-  coworkerTagAssignment,
-} from "@bap/db/schema";
+import { generation, coworkerDocument, coworkerRun } from "@bap/db/schema";
 import { and, desc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { ensureBuilderCoworkerMetadata } from "@/server/services/coworker-builder-metadata";
 import { getResolvedCoworkerToolPolicy } from "@/server/services/coworker-toolbox";
@@ -25,26 +19,6 @@ export async function listCoworkerCatalog(input: {
   const coworkerIds = input.coworkers.map((row) => row.id);
 
   await reconcileStaleCoworkerRunsForCoworkers(coworkerIds);
-
-  const tagAssignments =
-    coworkerIds.length > 0
-      ? await input.context.db
-          .select({
-            coworkerId: coworkerTagAssignment.coworkerId,
-            tagId: coworkerTag.id,
-            tagName: coworkerTag.name,
-            tagColor: coworkerTag.color,
-          })
-          .from(coworkerTagAssignment)
-          .innerJoin(coworkerTag, eq(coworkerTagAssignment.tagId, coworkerTag.id))
-          .where(inArray(coworkerTagAssignment.coworkerId, coworkerIds))
-      : [];
-  const tagsByCoworkerId = new Map<string, { id: string; name: string; color: string | null }[]>();
-  for (const row of tagAssignments) {
-    const tags = tagsByCoworkerId.get(row.coworkerId) ?? [];
-    tags.push({ id: row.tagId, name: row.tagName, color: row.tagColor });
-    tagsByCoworkerId.set(row.coworkerId, tags);
-  }
 
   const rankedCoworkerRuns =
     coworkerIds.length > 0
@@ -153,7 +127,6 @@ export async function listCoworkerCatalog(input: {
         updatedAt: wf.updatedAt,
         lastRunStatus: lastRun?.status ?? null,
         lastRunAt: lastRun?.startedAt ?? null,
-        tags: tagsByCoworkerId.get(wf.id) ?? [],
         recentRuns: runs,
       };
     }),

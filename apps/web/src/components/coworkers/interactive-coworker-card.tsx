@@ -7,12 +7,12 @@ import {
   Download,
   Ellipsis,
   Loader2,
+  Move,
   PenLine,
   Pin,
   PinOff,
   Play,
   Share2,
-  Tag,
   Trash2,
 } from "lucide-react";
 import { startTransition, useCallback, useMemo, useState } from "react";
@@ -60,18 +60,16 @@ import {
   getCoworkerDisplayName,
   type CoworkerCardData,
 } from "./coworker-card-content";
-import { TagBadge } from "./tag-badge";
-import { TagManagerContent } from "./tag-picker";
 
 const MAX_VISIBLE_TOOL_INDICATORS = 3;
 
 export type InteractiveCoworkerCardData = CoworkerCardData & {
   id: string;
+  folderId?: string | null;
   toolAccessMode?: "all" | "selected" | null;
   allowedIntegrations?: IntegrationType[];
   allowedSkillSlugs?: string[];
   isPinned?: boolean;
-  tags?: { id: string; name: string; color: string | null }[];
 };
 
 function formatDate(value?: Date | string | null) {
@@ -188,12 +186,16 @@ export function InteractiveCoworkerCard({
   coworker,
   className,
   onClick,
+  onMove,
   nounLabel = "Coworker",
+  sharingLocked = false,
 }: {
   coworker: InteractiveCoworkerCardData;
   className?: string;
   onClick?: () => void;
+  onMove?: (coworker: InteractiveCoworkerCardData) => void;
   nounLabel?: string;
+  sharingLocked?: boolean;
 }) {
   const t = useGT();
 
@@ -354,6 +356,9 @@ export function InteractiveCoworkerCard({
   const handleRequestDelete = useCallback(() => {
     setPendingDelete(true);
   }, []);
+  const handleMove = useCallback(() => {
+    onMove?.(coworker);
+  }, [coworker, onMove]);
 
   const handleRunsTriggerClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -420,29 +425,13 @@ export function InteractiveCoworkerCard({
     </button>
   );
 
-  const coworkerTags = coworker.tags ?? [];
-  const currentTagIds = useMemo(() => (coworker.tags ?? []).map((tag) => tag.id), [coworker.tags]);
-
-  const [menuPanel, setMenuPanel] = useState<"main" | "tags">("main");
-  const handleMenuOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      setMenuPanel("main");
-    }
-  }, []);
   const handleCloseAutoFocus = useCallback((event: Event) => {
     event.preventDefault();
-  }, []);
-  const handleOpenTagsPanel = useCallback((event: Event) => {
-    event.preventDefault();
-    setMenuPanel("tags");
-  }, []);
-  const handleBackToMainPanel = useCallback(() => {
-    setMenuPanel("main");
   }, []);
 
   // oxlint-disable-next-line react-perf/jsx-no-jsx-as-prop -- slot pattern
   const actionsMenu = (
-    <DropdownMenu onOpenChange={handleMenuOpenChange}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -463,63 +452,51 @@ export function InteractiveCoworkerCard({
         onKeyDown={handleMenuKeyDown}
         onCloseAutoFocus={handleCloseAutoFocus}
       >
-        {menuPanel === "main" ? (
-          <>
-            <DropdownMenuItem onSelect={handleTogglePin}>
-              {coworker.isPinned ? (
-                <>
-                  <PinOff className="size-4" />
-                  <T>Unpin</T>
-                </>
-              ) : (
-                <>
-                  <Pin className="size-4" />
-                  <T>Pin to top</T>
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleOpenTagsPanel}>
-              <Tag className="size-4" />
-              <T>Manage tags</T>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={handleToggleShare}
-              disabled={isUpdatingShare || isDeleting || isUpdatingStatus}
-            >
-              <Share2 className="size-4" />
-              {coworker.sharedAt ? "Unshare from workspace" : "Share with workspace"}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={handleExport}
-              disabled={isExporting || isDeleting || isUpdatingStatus}
-            >
-              <Download className="size-4" />
-              <T>Export as JSON</T>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={handleRequestDelete}
-              disabled={isDeleting || isUpdatingStatus}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="size-4" />
-              <T>Delete coworker</T>
-            </DropdownMenuItem>
-          </>
-        ) : (
-          <div onClick={handleStopPropagation} onKeyDown={handleMenuKeyDown}>
-            <button
-              type="button"
-              onClick={handleBackToMainPanel}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors"
-            >
-              <T>← Back</T>
-            </button>
-            <DropdownMenuSeparator />
-            <TagManagerContent coworkerId={coworker.id} currentTagIds={currentTagIds} />
-          </div>
+        <DropdownMenuItem onSelect={handleTogglePin}>
+          {coworker.isPinned ? (
+            <>
+              <PinOff className="size-4" />
+              <T>Unpin</T>
+            </>
+          ) : (
+            <>
+              <Pin className="size-4" />
+              <T>Pin to top</T>
+            </>
+          )}
+        </DropdownMenuItem>
+        {onMove ? (
+          <DropdownMenuItem onSelect={handleMove}>
+            <Move className="size-4" />
+            <T>Move coworker</T>
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuSeparator />
+        {sharingLocked ? null : (
+          <DropdownMenuItem
+            onSelect={handleToggleShare}
+            disabled={isUpdatingShare || isDeleting || isUpdatingStatus}
+          >
+            <Share2 className="size-4" />
+            {coworker.sharedAt ? "Unshare from workspace" : "Share with workspace"}
+          </DropdownMenuItem>
         )}
+        <DropdownMenuItem
+          onSelect={handleExport}
+          disabled={isExporting || isDeleting || isUpdatingStatus}
+        >
+          <Download className="size-4" />
+          <T>Export as JSON</T>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={handleRequestDelete}
+          disabled={isDeleting || isUpdatingStatus}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="size-4" />
+          <T>Delete coworker</T>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -527,12 +504,6 @@ export function InteractiveCoworkerCard({
   // oxlint-disable-next-line react-perf/jsx-no-jsx-as-prop -- slot pattern
   const toolBadges = (
     <>
-      {coworkerTags.slice(0, 3).map((tag) => (
-        <TagBadge key={tag.id} name={tag.name} color={tag.color} size="sm" />
-      ))}
-      {coworkerTags.length > 3 && (
-        <span className="text-muted-foreground/60 text-[10px]">+{coworkerTags.length - 3}</span>
-      )}
       {toolSummary.visibleIntegrations.length > 0 && (
         <div className="flex items-center gap-1">
           {toolSummary.visibleIntegrations.map((key) => {

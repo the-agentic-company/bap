@@ -49,6 +49,13 @@ function accessibleCoworkers(ctx: ZeroQueryContext) {
     .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId));
 }
 
+function accessibleCoworkerFolders(ctx: ZeroQueryContext) {
+  return zql.coworkerFolder
+    .where("workspaceId", ctx.workspaceId)
+    .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
+    .where(({ cmp, or }) => or(cmp("ownerId", ctx.userId), cmp("visibility", "workspace")));
+}
+
 export const zeroQueries = defineQueries({
   conversations: {
     recent: defineQuery(conversationListInput, ({ args, ctx }) =>
@@ -85,7 +92,6 @@ export const zeroQueries = defineQueries({
             .orderBy("startedAt", "desc")
             .limit(COWORKER_RUNS_PER_COWORKER_LIMIT),
         )
-        .related("tagAssignments", (assignments) => assignments.related("tag"))
         .orderBy("isPinned", "desc")
         .orderBy("updatedAt", "desc")
         .limit(COWORKER_LIMIT),
@@ -101,29 +107,10 @@ export const zeroQueries = defineQueries({
         .limit(args.limit ?? COWORKER_RUNS_PER_COWORKER_LIMIT),
     ),
     folders: defineQuery(({ ctx }) =>
-      zql.coworkerFolder
-        .where("workspaceId", ctx.workspaceId)
-        .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
+      accessibleCoworkerFolders(ctx)
         .orderBy("parentId", "asc")
         .orderBy("position", "asc")
         .orderBy("name", "asc"),
-    ),
-    tags: defineQuery(({ ctx }) =>
-      zql.coworkerTag
-        .where("workspaceId", ctx.workspaceId)
-        .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
-        .related("assignments")
-        .orderBy("name", "asc"),
-    ),
-    tagAssignments: defineQuery(({ ctx }) =>
-      zql.coworkerTagAssignment
-        .whereExists("coworker", (coworker) =>
-          coworker
-            .where("ownerId", ctx.userId)
-            .where("workspaceId", ctx.workspaceId)
-            .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId)),
-        )
-        .orderBy("createdAt", "asc"),
     ),
   },
 });

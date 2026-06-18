@@ -6,7 +6,6 @@ import {
   mapZeroCoworkerFolders,
   mapZeroCoworkerList,
   mapZeroCoworkerRun,
-  mapZeroCoworkerTags,
 } from "@/zero/coworker-data";
 import { useBapZeroRuntime } from "@/zero/provider";
 import { zeroQueries } from "@/zero/queries";
@@ -25,9 +24,8 @@ const ACTIVE_COWORKER_RUN_STATUSES = new Set([
 ]);
 
 export type CoworkerListData = ReturnType<typeof mapZeroCoworkerList>;
-export type CoworkerTagListData = ReturnType<typeof mapZeroCoworkerTags>;
+export type CoworkerFolderListData = ReturnType<typeof mapZeroCoworkerFolders>;
 const coworkerListCache = new Map<string, CoworkerListData>();
-const coworkerTagListCache = new Map<string, CoworkerTagListData>();
 
 function getZeroRuntimeCacheKey(runtime: { userId: string | null; workspaceId: string }) {
   return runtime.userId && runtime.workspaceId ? `${runtime.userId}:${runtime.workspaceId}` : null;
@@ -179,6 +177,7 @@ export function useCreateCoworker() {
       )[];
       allowedWorkspaceMcpServerIds?: string[];
       allowedSkillSlugs?: string[];
+      folderId?: string | null;
     }) => client.coworker.create(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coworker"] });
@@ -542,7 +541,7 @@ export function useGetOrCreateBuilderChat() {
   });
 }
 
-// ========== COWORKER TAG HOOKS ==========
+// ========== COWORKER FOLDER HOOKS ==========
 
 export function useCoworkerFolderList() {
   const zeroRuntime = useBapZeroRuntime();
@@ -574,10 +573,64 @@ export function useCoworkerFolderList() {
 export function useCreateCoworkerFolderPath() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { path: string; parentId?: string | null }) =>
-      client.coworkerFolder.createPath(input),
+    mutationFn: (input: {
+      path: string;
+      parentId?: string | null;
+      visibility?: "private" | "workspace";
+    }) => client.coworkerFolder.createPath(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coworkerFolder"] });
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+    },
+  });
+}
+
+export function useCreateCoworkerFolder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      name: string;
+      parentId?: string | null;
+      visibility?: "private" | "workspace";
+    }) => client.coworkerFolder.create(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworkerFolder"] });
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+    },
+  });
+}
+
+export function useMoveCoworkerFolder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { folderId: string; parentId: string | null }) =>
+      client.coworkerFolder.moveFolder(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworkerFolder"] });
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+    },
+  });
+}
+
+export function useUpdateCoworkerFolderVisibility() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; visibility: "private" | "workspace" }) =>
+      client.coworkerFolder.updateVisibility(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworkerFolder"] });
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+    },
+  });
+}
+
+export function useDeleteCoworkerFolder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => client.coworkerFolder.delete({ id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworkerFolder"] });
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
     },
   });
 }
@@ -589,133 +642,7 @@ export function useMoveCoworkerToFolder() {
       client.coworkerFolder.moveCoworker(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coworkerFolder"] });
-      queryClient.invalidateQueries({ queryKey: ["coworker", "list"] });
-    },
-  });
-}
-
-export function useCoworkerTagList(options?: { initialData?: CoworkerTagListData }) {
-  const zeroRuntime = useBapZeroRuntime();
-  const [tags, details] = useZeroQuery(
-    zeroRuntime.isReady ? zeroQueries.coworkerInventory.tags() : null,
-  );
-  const cacheKey = getZeroRuntimeCacheKey(zeroRuntime);
-  const initialData = options?.initialData;
-  const data = useMemo(() => mapZeroCoworkerTags(tags ?? []), [tags]);
-  useEffect(() => {
-    if (cacheKey && initialData && initialData.length > 0 && !coworkerTagListCache.has(cacheKey)) {
-      coworkerTagListCache.set(cacheKey, initialData);
-    }
-  }, [cacheKey, initialData]);
-  useEffect(() => {
-    if (cacheKey && (data.length > 0 || details.type === "complete")) {
-      coworkerTagListCache.set(cacheKey, data);
-    }
-  }, [cacheKey, data, details.type]);
-  const cachedData = cacheKey ? coworkerTagListCache.get(cacheKey) : undefined;
-  const visibleData =
-    data.length > 0 || details.type === "complete" ? data : (cachedData ?? initialData ?? data);
-  const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
-  const isLoading =
-    !error &&
-    visibleData.length === 0 &&
-    !cachedData &&
-    !(initialData && initialData.length > 0) &&
-    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
-
-  return {
-    data: visibleData,
-    dataUpdatedAt: Date.now(),
-    error,
-    isError: Boolean(error),
-    isFetching:
-      !error &&
-      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
-    isLoading,
-    isPending: isLoading,
-    refetch: async () => ({ data }),
-    status: error ? "error" : isLoading ? "pending" : "success",
-  };
-}
-
-export function useCreateCoworkerTag() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { name: string; color?: string | null }) =>
-      client.coworkerTag.create(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworkerTag"] });
-    },
-  });
-}
-
-export function useAssignCoworkerTag() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { coworkerId: string; tagIds: string[] }) =>
-      client.coworkerTag.assign(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworkerTag"] });
-      queryClient.invalidateQueries({ queryKey: ["coworker", "list"] });
-    },
-  });
-}
-
-export function useUnassignCoworkerTag() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { coworkerId: string; tagIds: string[] }) =>
-      client.coworkerTag.unassign(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworkerTag"] });
-      queryClient.invalidateQueries({ queryKey: ["coworker", "list"] });
-    },
-  });
-}
-
-// ========== COWORKER VIEW HOOKS ==========
-
-export function useCoworkerViewList() {
-  return useQuery({
-    queryKey: ["coworkerView", "list"],
-    queryFn: () => client.coworkerView.list(),
-  });
-}
-
-export function useCreateCoworkerView() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      name: string;
-      filters: { tagIds?: string[]; statuses?: string[]; triggerTypes?: string[] };
-    }) => client.coworkerView.create(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworkerView"] });
-    },
-  });
-}
-
-export function useUpdateCoworkerView() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      id: string;
-      name?: string;
-      filters?: { tagIds?: string[]; statuses?: string[]; triggerTypes?: string[] };
-      position?: number;
-    }) => client.coworkerView.update(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworkerView"] });
-    },
-  });
-}
-
-export function useDeleteCoworkerView() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => client.coworkerView.delete({ id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworkerView"] });
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
     },
   });
 }

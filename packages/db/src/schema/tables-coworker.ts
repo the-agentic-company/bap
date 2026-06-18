@@ -43,10 +43,12 @@ export const coworkerFolder = pgTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id").references(() => user.id, { onDelete: "cascade" }),
     parentId: text("parent_id").references((): AnyPgColumn => coworkerFolder.id, {
       onDelete: "set null",
     }),
     name: text("name").notNull(),
+    visibility: text("visibility").$type<"private" | "workspace">().default("private").notNull(),
     position: integer("position").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
@@ -56,10 +58,14 @@ export const coworkerFolder = pgTable(
   },
   (table) => [
     index("coworker_folder_workspace_id_idx").on(table.workspaceId),
+    index("coworker_folder_owner_id_idx").on(table.ownerId),
+    index("coworker_folder_visibility_idx").on(table.visibility),
     index("coworker_folder_parent_id_idx").on(table.parentId),
     uniqueIndex("coworker_folder_workspace_parent_name_idx").on(
       table.workspaceId,
       table.parentId,
+      table.ownerId,
+      table.visibility,
       table.name,
     ),
   ],
@@ -293,31 +299,6 @@ export const coworkerRunEvent = pgTable(
   (table) => [index("coworker_run_event_run_id_idx").on(table.coworkerRunId)],
 );
 
-// ========== COWORKER TAGS & VIEWS ==========
-
-export const coworkerTag = pgTable(
-  "coworker_tag",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .references(() => workspace.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    color: text("color"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index("coworker_tag_workspace_id_idx").on(table.workspaceId),
-    uniqueIndex("coworker_tag_workspace_name_idx").on(table.workspaceId, table.name),
-  ],
-);
-
 export const failureAlertGroup = pgTable(
   "failure_alert_group",
   {
@@ -393,51 +374,6 @@ export const failureAlertOccurrence = pgTable(
     index("failure_alert_occurrence_group_failed_at_idx").on(table.groupId, table.failedAt),
     index("failure_alert_occurrence_conversation_id_idx").on(table.conversationId),
     index("failure_alert_occurrence_coworker_run_id_idx").on(table.coworkerRunId),
-  ],
-);
-
-export const coworkerTagAssignment = pgTable(
-  "coworker_tag_assignment",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    coworkerId: text("coworker_id")
-      .notNull()
-      .references(() => coworker.id, { onDelete: "cascade" }),
-    tagId: text("tag_id")
-      .notNull()
-      .references(() => coworkerTag.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("coworker_tag_assignment_unique_idx").on(table.coworkerId, table.tagId),
-    index("coworker_tag_assignment_coworker_idx").on(table.coworkerId),
-    index("coworker_tag_assignment_tag_idx").on(table.tagId),
-  ],
-);
-
-export const coworkerView = pgTable(
-  "coworker_view",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .references(() => workspace.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    filters: jsonb("filters").notNull(),
-    position: integer("position").default(0).notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index("coworker_view_workspace_id_idx").on(table.workspaceId),
-    uniqueIndex("coworker_view_workspace_name_idx").on(table.workspaceId, table.name),
   ],
 );
 

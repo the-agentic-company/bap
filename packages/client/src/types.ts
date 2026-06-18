@@ -331,6 +331,7 @@ export type CoworkerCreateInput = {
   allowedCustomIntegrations?: string[];
   allowedWorkspaceMcpServerIds?: string[];
   allowedSkillSlugs?: string[];
+  folderId?: string | null;
   schedule?: CoworkerSchedule;
   requiresUserInput?: boolean;
   userInputPrompt?: string | null;
@@ -400,8 +401,11 @@ export type CoworkerDocumentUpdateResult = {
 export type CoworkerFolder = {
   id: string;
   workspaceId: string;
+  ownerId: string | null;
   parentId: string | null;
   name: string;
+  visibility: "private" | "workspace";
+  effectiveVisibility?: "private" | "workspace";
   position: number;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -567,8 +571,22 @@ export interface BapApiClient {
   };
   coworkerFolder: {
     list(): Promise<CoworkerFolder[]>;
-    createPath(input: { path: string; parentId?: string | null }): Promise<CoworkerFolder | null>;
+    create(input: {
+      name: string;
+      parentId?: string | null;
+      visibility?: "private" | "workspace";
+    }): Promise<CoworkerFolder | null>;
+    createPath(input: {
+      path: string;
+      parentId?: string | null;
+      visibility?: "private" | "workspace";
+    }): Promise<CoworkerFolder | null>;
     moveCoworker(input: { coworkerId: string; folderId: string | null }): Promise<unknown>;
+    moveFolder(input: { folderId: string; parentId: string | null }): Promise<unknown>;
+    updateVisibility(input: {
+      id: string;
+      visibility: "private" | "workspace";
+    }): Promise<CoworkerFolder | null>;
     delete(input: { id: string }): Promise<{ success: boolean }>;
   };
   conversation: {

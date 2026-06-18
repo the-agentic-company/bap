@@ -17,7 +17,6 @@ function AgentsIndexRoute() {
   return (
     <CoworkersPage
       initialCoworkerSharedCount={initialCoworkers.sharedCount}
-      initialCoworkerTags={initialCoworkers.tags}
       initialCoworkerTotalCount={initialCoworkers.totalCount}
       initialCoworkers={initialCoworkers.coworkers}
     />

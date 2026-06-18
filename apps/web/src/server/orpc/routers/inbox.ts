@@ -3,7 +3,6 @@ import {
   conversation,
   coworkerRun,
   coworkerRunEvent,
-  coworkerTagAssignment,
   generation,
   generationInterrupt,
   inboxReadState,
@@ -301,7 +300,6 @@ const list = protectedProcedure
       type: inboxTypeSchema.default("all"),
       statuses: z.array(inboxStatusSchema).default([]),
       sourceCoworkerId: z.string().optional(),
-      tagIds: z.array(z.string()).optional(),
       query: z.string().default(""),
     }),
   )
@@ -322,16 +320,6 @@ const list = protectedProcedure
       const cursor = decodeInboxCursor(input.cursor);
       const historyCutoff = new Date(Date.now() - INBOX_HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-      // If tagIds filter is provided, resolve matching coworker IDs
-      let tagFilteredCoworkerIds: string[] | undefined;
-      if (input.tagIds && input.tagIds.length > 0) {
-        const taggedRows = await context.db
-          .selectDistinct({ coworkerId: coworkerTagAssignment.coworkerId })
-          .from(coworkerTagAssignment)
-          .where(inArray(coworkerTagAssignment.tagId, input.tagIds));
-        tagFilteredCoworkerIds = taggedRows.map((r) => r.coworkerId);
-      }
-
       const coworkerFilters = [
         eq(coworkerRun.ownerId, context.user.id),
         eq(coworkerRun.workspaceId, workspaceId),
@@ -341,15 +329,6 @@ const list = protectedProcedure
       if (input.sourceCoworkerId && input.type !== "chats") {
         coworkerFilters.push(eq(coworkerRun.coworkerId, input.sourceCoworkerId));
       }
-      if (tagFilteredCoworkerIds !== undefined) {
-        if (tagFilteredCoworkerIds.length === 0) {
-          // No coworkers match the tags — skip the query entirely
-          coworkerFilters.push(eq(coworkerRun.coworkerId, "__no_match__"));
-        } else {
-          coworkerFilters.push(inArray(coworkerRun.coworkerId, tagFilteredCoworkerIds));
-        }
-      }
-
       const coworkerRuns =
         input.type === "chats"
           ? []

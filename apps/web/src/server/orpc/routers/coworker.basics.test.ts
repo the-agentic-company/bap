@@ -128,7 +128,6 @@ describe("coworkerRouter", () => {
     ]);
     context.mocks.enqueueSelectResult(
       [],
-      [],
       [
         {
           runId: "run-1",
@@ -168,7 +167,6 @@ describe("coworkerRouter", () => {
         schedule: { type: "daily", time: "09:30", timezone: "UTC" },
         updatedAt: now,
         isPinned: false,
-        tags: [],
         lastRunStatus: "success",
         lastRunAt: startedAt,
         recentRuns: [
@@ -204,7 +202,6 @@ describe("coworkerRouter", () => {
         schedule: null,
         updatedAt: now,
         isPinned: false,
-        tags: [],
         lastRunStatus: null,
         lastRunAt: null,
         recentRuns: [],

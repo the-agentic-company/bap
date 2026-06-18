@@ -82,8 +82,10 @@ export const coworkerFolderTable = table("coworkerFolder")
   .columns({
     id: string(),
     workspaceId: string().from("workspace_id"),
+    ownerId: string().from("owner_id").optional(),
     parentId: string().from("parent_id").optional(),
     name: string(),
+    visibility: string<"private" | "workspace">(),
     position: number(),
     createdAt: number().from("created_at"),
     updatedAt: number().from("updated_at"),
@@ -129,28 +131,6 @@ export const coworkerRunTable = table("coworkerRun")
     startedAt: number().from("started_at"),
     finishedAt: number().from("finished_at").optional(),
     syntheticKind: string().from("synthetic_kind").optional(),
-  })
-  .primaryKey("id");
-
-export const coworkerTagTable = table("coworkerTag")
-  .from("coworker_tag")
-  .columns({
-    id: string(),
-    workspaceId: string().from("workspace_id"),
-    name: string(),
-    color: string().optional(),
-    createdAt: number().from("created_at"),
-    updatedAt: number().from("updated_at"),
-  })
-  .primaryKey("id");
-
-export const coworkerTagAssignmentTable = table("coworkerTagAssignment")
-  .from("coworker_tag_assignment")
-  .columns({
-    id: string(),
-    coworkerId: string().from("coworker_id"),
-    tagId: string().from("tag_id"),
-    createdAt: number().from("created_at"),
   })
   .primaryKey("id");
 
@@ -204,11 +184,6 @@ const coworkerRelationships = relationships(coworkerTable, ({ many, one }) => ({
     destField: ["coworkerId"],
     destSchema: coworkerRunTable,
   }),
-  tagAssignments: many({
-    sourceField: ["id"],
-    destField: ["coworkerId"],
-    destSchema: coworkerTagAssignmentTable,
-  }),
   workspaceMembers: many({
     sourceField: ["workspaceId"],
     destField: ["workspaceId"],
@@ -237,32 +212,6 @@ const coworkerFolderRelationships = relationships(coworkerFolderTable, ({ many }
   }),
 }));
 
-const coworkerTagRelationships = relationships(coworkerTagTable, ({ many }) => ({
-  assignments: many({
-    sourceField: ["id"],
-    destField: ["tagId"],
-    destSchema: coworkerTagAssignmentTable,
-  }),
-  workspaceMembers: many({
-    sourceField: ["workspaceId"],
-    destField: ["workspaceId"],
-    destSchema: workspaceMemberTable,
-  }),
-}));
-
-const coworkerTagAssignmentRelationships = relationships(coworkerTagAssignmentTable, ({ one }) => ({
-  coworker: one({
-    sourceField: ["coworkerId"],
-    destField: ["id"],
-    destSchema: coworkerTable,
-  }),
-  tag: one({
-    sourceField: ["tagId"],
-    destField: ["id"],
-    destSchema: coworkerTagTable,
-  }),
-}));
-
 export const schema = createSchema({
   tables: [
     conversationTable,
@@ -272,8 +221,6 @@ export const schema = createSchema({
     coworkerFolderTable,
     coworkerTable,
     coworkerRunTable,
-    coworkerTagTable,
-    coworkerTagAssignmentTable,
   ],
   relationships: [
     conversationRelationships,
@@ -282,8 +229,6 @@ export const schema = createSchema({
     coworkerRelationships,
     coworkerRunRelationships,
     coworkerFolderRelationships,
-    coworkerTagRelationships,
-    coworkerTagAssignmentRelationships,
   ],
 });
 
@@ -296,5 +241,3 @@ export type ZeroSandboxFileRow = QueryRowType<typeof zql.sandboxFile>;
 export type ZeroCoworkerRow = QueryRowType<typeof zql.coworker>;
 export type ZeroCoworkerRunRow = QueryRowType<typeof zql.coworkerRun>;
 export type ZeroCoworkerFolderRow = QueryRowType<typeof zql.coworkerFolder>;
-export type ZeroCoworkerTagRow = QueryRowType<typeof zql.coworkerTag>;
-export type ZeroCoworkerTagAssignmentRow = QueryRowType<typeof zql.coworkerTagAssignment>;

@@ -15,9 +15,6 @@ import {
   coworkerFolder,
   coworkerRun,
   coworkerRunEvent,
-  coworkerTag,
-  coworkerTagAssignment,
-  coworkerView,
   customIntegration,
   customIntegrationCredential,
   device,
@@ -303,13 +300,16 @@ export const coworkerRelations = relations(coworker, ({ one, many }) => ({
   runs: many(coworkerRun),
   documents: many(coworkerDocument),
   emailAliases: many(coworkerEmailAlias),
-  tagAssignments: many(coworkerTagAssignment),
 }));
 
 export const coworkerFolderRelations = relations(coworkerFolder, ({ one, many }) => ({
   workspace: one(workspace, {
     fields: [coworkerFolder.workspaceId],
     references: [workspace.id],
+  }),
+  owner: one(user, {
+    fields: [coworkerFolder.ownerId],
+    references: [user.id],
   }),
   parent: one(coworkerFolder, {
     fields: [coworkerFolder.parentId],
@@ -378,32 +378,6 @@ export const coworkerEmailAliasRelations = relations(coworkerEmailAlias, ({ one 
     fields: [coworkerEmailAlias.replacedByAliasId],
     references: [coworkerEmailAlias.id],
     relationName: "replacedByAlias",
-  }),
-}));
-
-export const coworkerTagRelations = relations(coworkerTag, ({ one, many }) => ({
-  workspace: one(workspace, {
-    fields: [coworkerTag.workspaceId],
-    references: [workspace.id],
-  }),
-  assignments: many(coworkerTagAssignment),
-}));
-
-export const coworkerTagAssignmentRelations = relations(coworkerTagAssignment, ({ one }) => ({
-  coworker: one(coworker, {
-    fields: [coworkerTagAssignment.coworkerId],
-    references: [coworker.id],
-  }),
-  tag: one(coworkerTag, {
-    fields: [coworkerTagAssignment.tagId],
-    references: [coworkerTag.id],
-  }),
-}));
-
-export const coworkerViewRelations = relations(coworkerView, ({ one }) => ({
-  workspace: one(workspace, {
-    fields: [coworkerView.workspaceId],
-    references: [workspace.id],
   }),
 }));
 
@@ -671,4 +645,3 @@ export const slackConversationRelations = relations(slackConversation, ({ one })
     references: [user.id],
   }),
 }));
-

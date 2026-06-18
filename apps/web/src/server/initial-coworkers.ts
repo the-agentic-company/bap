@@ -3,14 +3,8 @@ import {
   normalizeCoworkerToolAccessMode,
 } from "@bap/core/lib/coworker-tool-policy";
 import { db } from "@bap/db/client";
-import {
-  coworker,
-  coworkerRun,
-  coworkerTag,
-  coworkerTagAssignment,
-  generation,
-} from "@bap/db/schema";
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { coworker, coworkerRun, generation } from "@bap/db/schema";
+import { and, count, desc, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 
 const INITIAL_COWORKER_LIMIT = 36;
 
@@ -24,45 +18,12 @@ export async function queryInitialCoworkers(params: { userId: string; workspaceI
     .select({ value: count() })
     .from(coworker)
     .where(and(where, isNotNull(coworker.sharedAt)));
-  const tags = await db
-    .select({
-      id: coworkerTag.id,
-      name: coworkerTag.name,
-      color: coworkerTag.color,
-      coworkerCount: count(coworkerTagAssignment.id),
-    })
-    .from(coworkerTag)
-    .leftJoin(coworkerTagAssignment, eq(coworkerTagAssignment.tagId, coworkerTag.id))
-    .where(eq(coworkerTag.workspaceId, params.workspaceId))
-    .groupBy(coworkerTag.id, coworkerTag.name, coworkerTag.color)
-    .orderBy(asc(coworkerTag.name));
   const rows = await db.query.coworker.findMany({
     where,
     orderBy: [desc(coworker.isPinned), desc(coworker.updatedAt), desc(coworker.id)],
     limit: INITIAL_COWORKER_LIMIT,
   });
   const coworkerIds = rows.map((row) => row.id);
-  const tagAssignments =
-    coworkerIds.length > 0
-      ? await db
-          .select({
-            coworkerId: coworkerTagAssignment.coworkerId,
-            tagId: coworkerTag.id,
-            tagName: coworkerTag.name,
-            tagColor: coworkerTag.color,
-          })
-          .from(coworkerTagAssignment)
-          .innerJoin(coworkerTag, eq(coworkerTagAssignment.tagId, coworkerTag.id))
-          .where(inArray(coworkerTagAssignment.coworkerId, coworkerIds))
-      : [];
-  const tagsByCoworkerId = new Map<string, { id: string; name: string; color: string | null }[]>();
-
-  for (const row of tagAssignments) {
-    const tags = tagsByCoworkerId.get(row.coworkerId) ?? [];
-    tags.push({ id: row.tagId, name: row.tagName, color: row.tagColor });
-    tagsByCoworkerId.set(row.coworkerId, tags);
-  }
-
   const rankedRuns =
     coworkerIds.length > 0
       ? db
@@ -117,7 +78,6 @@ export async function queryInitialCoworkers(params: { userId: string; workspaceI
 
   return {
     sharedCount: sharedRow?.value ?? 0,
-    tags,
     totalCount: totalRow?.value ?? rows.length,
     coworkers: rows.map((row) => {
       const lastRun = lastRunsByCoworkerId.get(row.id);
@@ -151,7 +111,6 @@ export async function queryInitialCoworkers(params: { userId: string; workspaceI
         updatedAt: row.updatedAt,
         lastRunStatus: lastRun?.status ?? null,
         lastRunAt: lastRun?.startedAt ?? null,
-        tags: tagsByCoworkerId.get(row.id) ?? [],
         recentRuns: lastRun
           ? [
               {

@@ -104,6 +104,18 @@ _Avoid_: run, request
 A user-configured agent that can start a **Coworker Run** from a manual, scheduled, email, or webhook trigger.
 _Avoid_: bot, automation, worker
 
+**Coworker Folder**:
+An exclusive placement and visibility container for **Coworkers** on the coworkers page. A **Coworker Folder** can contain **Coworkers** and child **Coworker Folders**; a **Coworker** or **Coworker Folder** with no parent appears at the top level of the page. Only top-level **Coworker Folders** choose a visibility boundary; nested **Coworker Folders** and contained **Coworkers** inherit it.
+_Avoid_: tag, label, category
+
+**Private Coworker Folder**:
+A top-level **Coworker Folder** visible only to its owning **User**. Child **Coworker Folders** and **Coworkers** inside a **Private Coworker Folder** are private.
+_Avoid_: personal tag, private category
+
+**Workspace Coworker Folder**:
+A top-level **Coworker Folder** visible to the workspace. Child **Coworker Folders** and **Coworkers** inside a **Workspace Coworker Folder** are visible to the workspace.
+_Avoid_: shared tag, public category
+
 **Coworker Run**:
 One attempt by a **Coworker** to handle a manual or automated trigger. A **Coworker Run** may be actively running, waiting for human input, waiting for a continuation, or terminal; it may expose a **Generation** when the user is inspecting the underlying execution lifecycle.
 _Avoid_: request, job
@@ -220,6 +232,10 @@ _Avoid_: local sandbox, local Daytona, local run
 A person authenticated into Bap. A **User** owns the set of **Connected Accounts** available to their CLI and agent runs.
 _Avoid_: account
 
+**Internal User**:
+A **User** who represents Bap staff and is allowed to inspect workspaces across the platform without being a **Workspace Member** of each workspace.
+_Avoid_: admin user, workspace admin, super member
+
 **Modulr Customer**:
 A customer record in Modulr that belongs to one of Bap's customers and can be looked up to gather business context for an agent conversation.
 _Avoid_: client, account, Bap customer
@@ -279,3 +295,7 @@ Domain expert: "Yes. The user has two Connected Identities, `personal` and `work
 Developer: "What happens if the user reconnects work@gmail.com?"
 
 Domain expert: "Because it is the same Provider Identity, Bap refreshes the work Gmail Connected Account instead of creating a duplicate."
+
+Developer: "Where should this new sales coworker appear?"
+
+Domain expert: "If the User creates it inside the Sales Coworker Folder, it appears there and inherits that folder's visibility. If it has no Coworker Folder, it appears at the top level of the coworkers page and uses its own visibility. A Coworker Folder can contain both Coworkers and child Coworker Folders."

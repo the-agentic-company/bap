@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  mapZeroCoworkerFolders,
-  mapZeroCoworkerList,
-  mapZeroCoworkerRun,
-  mapZeroCoworkerTags,
-} from "./coworker-data";
+import { mapZeroCoworkerFolders, mapZeroCoworkerList, mapZeroCoworkerRun } from "./coworker-data";
 
 describe("Zero coworker data adapters", () => {
-  it("maps coworker inventory with pinned ordering, recent runs, and tags", () => {
+  it("maps coworker inventory with pinned ordering and recent runs", () => {
     const coworkers = mapZeroCoworkerList([
       {
         id: "cw-older",
@@ -20,7 +15,6 @@ describe("Zero coworker data adapters", () => {
         isPinned: false,
         updatedAt: 1781130000000,
         runs: [],
-        tagAssignments: [],
       },
       {
         id: "cw-pinned",
@@ -49,15 +43,6 @@ describe("Zero coworker data adapters", () => {
             startedAt: 1781130200000,
           },
         ],
-        tagAssignments: [
-          {
-            id: "assign-1",
-            coworkerId: "cw-pinned",
-            tagId: "tag-1",
-            createdAt: 1781130000000,
-            tag: { id: "tag-1", name: "Ops", color: "#22c55e" },
-          },
-        ],
       },
     ]);
 
@@ -73,7 +58,6 @@ describe("Zero coworker data adapters", () => {
       }),
     );
     expect(coworkers[0]?.recentRuns.map((run) => run.id)).toEqual(["run-newer", "run-older"]);
-    expect(coworkers[0]?.tags).toEqual([{ id: "tag-1", name: "Ops", color: "#22c55e" }]);
   });
 
   it("maps run lists without exposing raw error or trigger payload fields", () => {
@@ -100,14 +84,16 @@ describe("Zero coworker data adapters", () => {
     });
   });
 
-  it("maps folders and tags into existing hook shapes", () => {
+  it("maps folders into existing hook shapes", () => {
     expect(
       mapZeroCoworkerFolders([
         {
           id: "folder-1",
           workspaceId: "ws-1",
+          ownerId: "user-1",
           parentId: null,
           name: "Team",
+          visibility: "private",
           position: 2,
           createdAt: 1781130000000,
           updatedAt: 1781130100000,
@@ -117,25 +103,14 @@ describe("Zero coworker data adapters", () => {
       {
         id: "folder-1",
         workspaceId: "ws-1",
+        ownerId: "user-1",
         parentId: null,
         name: "Team",
+        visibility: "private",
         position: 2,
         createdAt: new Date(1781130000000),
         updatedAt: new Date(1781130100000),
       },
     ]);
-
-    expect(
-      mapZeroCoworkerTags([
-        {
-          id: "tag-1",
-          name: "Ops",
-          color: null,
-          assignments: [
-            { id: "assign-1", coworkerId: "cw-1", tagId: "tag-1", createdAt: 1781130000000 },
-          ],
-        },
-      ]),
-    ).toEqual([{ id: "tag-1", name: "Ops", color: null, coworkerCount: 1 }]);
   });
 });

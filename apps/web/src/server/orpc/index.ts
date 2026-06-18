@@ -5,8 +5,6 @@ import { billingRouter } from "./routers/billing";
 import { conversationRouter } from "./routers/conversation";
 import { coworkerFolderRouter } from "./routers/coworker-folder";
 import { coworkerRouter } from "./routers/coworker";
-import { coworkerTagRouter } from "./routers/coworker-tag";
-import { coworkerViewRouter } from "./routers/coworker-view";
 import { workspaceMcpServerRouter } from "./routers/executor-source";
 import { galienRouter } from "./routers/galien";
 import { generationRouter } from "./routers/generation";
@@ -45,8 +43,6 @@ export const appRouter = {
   voice: voiceRouter,
   coworker: coworkerRouter,
   coworkerFolder: coworkerFolderRouter,
-  coworkerTag: coworkerTagRouter,
-  coworkerView: coworkerViewRouter,
   orgChart: orgChartRouter,
   health: { ping },
 };
