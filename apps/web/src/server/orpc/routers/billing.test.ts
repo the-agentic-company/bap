@@ -25,6 +25,8 @@ var getExistingBillingOwnerForUserMock: ReturnType<typeof vi.fn>;
 var getWorkspaceMembershipForUserMock: ReturnType<typeof vi.fn>;
 var openBillingPortalForOwnerMock: ReturnType<typeof vi.fn>;
 var cancelPlanForOwnerMock: ReturnType<typeof vi.fn>;
+var removeWorkspaceImageMock: ReturnType<typeof vi.fn>;
+var updateWorkspaceImageMock: ReturnType<typeof vi.fn>;
 
 vi.mock("../middleware", () => ({
   protectedProcedure: createProcedureStub(),
@@ -70,6 +72,17 @@ vi.mock("@bap/core/server/billing/service", () => ({
     return openBillingPortalForOwnerMock;
   })(),
   setActiveWorkspace: vi.fn<VitestProcedure>(),
+}));
+
+vi.mock("@bap/core/server/billing/workspace-image", () => ({
+  removeWorkspaceImage: (() => {
+    removeWorkspaceImageMock = vi.fn<VitestProcedure>();
+    return removeWorkspaceImageMock;
+  })(),
+  updateWorkspaceImage: (() => {
+    updateWorkspaceImageMock = vi.fn<VitestProcedure>();
+    return updateWorkspaceImageMock;
+  })(),
 }));
 
 import { billingRouter } from "./billing";
@@ -133,6 +146,14 @@ describe("billingRouter", () => {
       expiresAt: new Date("2027-03-09T00:00:00.000Z"),
     });
     cancelPlanForOwnerMock.mockResolvedValue({ success: true });
+    updateWorkspaceImageMock.mockResolvedValue({
+      id: "ws-1",
+      imageUrl: "/api/workspaces/ws-1/image?v=1",
+    });
+    removeWorkspaceImageMock.mockResolvedValue({
+      id: "ws-1",
+      imageUrl: null,
+    });
     getBillingOverviewForUserMock.mockResolvedValue({
       owner: { ownerType: "workspace", ownerId: "ws-1", planId: "free" },
       plan: { id: "free" },
@@ -317,5 +338,68 @@ describe("billingRouter", () => {
       code: "BAD_REQUEST",
       message: "Selected user does not have an active workspace",
     });
+  });
+
+  it("updates workspace images for workspace members", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValueOnce({
+      role: "member",
+      workspaceId: "ws-1",
+      userId: "user-1",
+    });
+
+    const result = (await billingRouterAny.updateImage({
+      input: {
+        workspaceId: "ws-1",
+        mimeType: "image/png",
+        contentBase64: "cG5n",
+      },
+      context: createContext(),
+    })) as { imageUrl: string | null };
+
+    expect(getWorkspaceMembershipForUserMock).toHaveBeenCalledWith("user-1", "ws-1");
+    expect(updateWorkspaceImageMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      mimeType: "image/png",
+      contentBase64: "cG5n",
+    });
+    expect(result.imageUrl).toBe("/api/workspaces/ws-1/image?v=1");
+  });
+
+  it("blocks workspace image updates for non-members", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValueOnce(null);
+
+    await expect(
+      billingRouterAny.updateImage({
+        input: {
+          workspaceId: "ws-1",
+          mimeType: "image/png",
+          contentBase64: "cG5n",
+        },
+        context: createContext(),
+      }),
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "Workspace not found",
+    });
+    expect(updateWorkspaceImageMock).not.toHaveBeenCalled();
+  });
+
+  it("removes workspace images for workspace members", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValueOnce({
+      role: "member",
+      workspaceId: "ws-1",
+      userId: "user-1",
+    });
+
+    const result = (await billingRouterAny.removeImage({
+      input: {
+        workspaceId: "ws-1",
+      },
+      context: createContext(),
+    })) as { imageUrl: string | null };
+
+    expect(getWorkspaceMembershipForUserMock).toHaveBeenCalledWith("user-1", "ws-1");
+    expect(removeWorkspaceImageMock).toHaveBeenCalledWith("ws-1");
+    expect(result.imageUrl).toBeNull();
   });
 });

@@ -10,7 +10,7 @@ import {
 import { db } from "@bap/db/client";
 import { user as userTable } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { getRequestSession } from "@/server/session-auth";
 
 export type HostedMcpContext = {
   token: string;
@@ -214,9 +214,7 @@ async function resolveRuntimeMcpContext(headers: Headers): Promise<{
 
 export async function createORPCContext(opts: { headers: Headers }): Promise<ORPCContext> {
   // Get session from Better-Auth
-  const sessionData = await auth.api.getSession({
-    headers: opts.headers,
-  });
+  const sessionData = await getRequestSession(opts.headers);
 
   if (sessionData?.session && sessionData.user) {
     return {

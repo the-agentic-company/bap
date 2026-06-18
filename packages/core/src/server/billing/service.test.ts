@@ -1,4 +1,6 @@
+import { randomBytes } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import sharp from "sharp";
 
 process.env.BETTER_AUTH_SECRET ??= "test-better-auth-secret";
 process.env.DATABASE_URL ??= "postgresql://postgres:postgres@localhost:5432/bap";
@@ -21,6 +23,7 @@ var billingTopUpInsertReturningMock: ReturnType<typeof vi.fn>;
 var workspaceInsertValuesMock: ReturnType<typeof vi.fn>;
 var workspaceMemberInsertValuesMock: ReturnType<typeof vi.fn>;
 var billingTopUpInsertValuesMock: ReturnType<typeof vi.fn>;
+var workspaceUpdateReturningMock: ReturnType<typeof vi.fn>;
 var userUpdateWhereMock: ReturnType<typeof vi.fn>;
 var userUpdateSetMock: ReturnType<typeof vi.fn>;
 var selectMock: ReturnType<typeof vi.fn>;
@@ -29,6 +32,9 @@ var selectWhereMock: ReturnType<typeof vi.fn>;
 var balancesCreateMock: ReturnType<typeof vi.fn>;
 var autumnCheckMock: ReturnType<typeof vi.fn>;
 var insertMock: ReturnType<typeof vi.fn>;
+var ensureBucketMock: ReturnType<typeof vi.fn>;
+var uploadToS3Mock: ReturnType<typeof vi.fn>;
+var deleteFromS3Mock: ReturnType<typeof vi.fn>;
 
 vi.mock("@bap/db/client", () => ({
   db: (() => {
@@ -45,6 +51,7 @@ vi.mock("@bap/db/client", () => ({
     billingTopUpInsertValuesMock = vi.fn(() => ({
       returning: billingTopUpInsertReturningMock,
     }));
+    workspaceUpdateReturningMock = vi.fn();
     userUpdateWhereMock = vi.fn();
     selectWhereMock = vi.fn();
     selectFromMock = vi.fn(() => ({
@@ -74,6 +81,22 @@ vi.mock("@bap/db/client", () => ({
   })(),
 }));
 
+vi.mock("../storage/s3-client", () => ({
+  deleteFromS3: (() => {
+    deleteFromS3Mock = vi.fn().mockResolvedValue(undefined);
+    return deleteFromS3Mock;
+  })(),
+  downloadFromS3: vi.fn(),
+  ensureBucket: (() => {
+    ensureBucketMock = vi.fn().mockResolvedValue(undefined);
+    return ensureBucketMock;
+  })(),
+  uploadToS3: (() => {
+    uploadToS3Mock = vi.fn().mockResolvedValue(undefined);
+    return uploadToS3Mock;
+  })(),
+}));
+
 vi.mock("./autumn", () => ({
   getAutumnClient: (() => {
     balancesCreateMock = vi.fn();
@@ -96,11 +119,15 @@ const {
   getExistingBillingOwnerForUser,
   resolveBillingOwnerForUser,
 } = await import("./service");
+const { updateWorkspaceImage } = await import("./workspace-image");
 
 describe("billing service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     insertMock.mockReturnValue({ values: billingTopUpInsertValuesMock });
+    ensureBucketMock.mockResolvedValue(undefined);
+    uploadToS3Mock.mockResolvedValue(undefined);
+    deleteFromS3Mock.mockResolvedValue(undefined);
     balancesCreateMock.mockResolvedValue({ data: { message: "ok" }, error: null });
     autumnCheckMock.mockResolvedValue({
       data: {
@@ -251,6 +278,7 @@ describe("billing service", () => {
       id: "ws-1",
       name: "Alpha",
       slug: "alpha",
+      imageUrl: null,
     });
     expect(result.plan?.id).toBe("pro");
     expect(result.feature).toEqual({
@@ -363,5 +391,69 @@ describe("billing service", () => {
       }),
     );
     expect(result.creditsGranted).toBe(2500);
+  });
+
+  it("converts uploaded workspace images into 128px webp thumbnails", async () => {
+    const sourceImage = await sharp(randomBytes(1024 * 1024 * 3), {
+      raw: { width: 1024, height: 1024, channels: 3 },
+    })
+      .png()
+      .toBuffer();
+    expect(sourceImage.byteLength).toBeGreaterThan(1024 * 1024);
+
+    const updatedAt = new Date("2026-04-05T12:30:00.000Z");
+    workspaceFindFirstMock.mockResolvedValueOnce({
+      id: "ws-1",
+      imageStorageKey: "workspace-images/ws-1/old.webp",
+    });
+    userUpdateWhereMock.mockReturnValueOnce({
+      returning: workspaceUpdateReturningMock,
+    });
+    workspaceUpdateReturningMock.mockResolvedValueOnce([
+      {
+        id: "ws-1",
+        name: "Alpha",
+        slug: "alpha",
+        imageStorageKey: "workspace-images/ws-1/new.webp",
+        updatedAt,
+      },
+    ]);
+
+    const result = await updateWorkspaceImage({
+      workspaceId: "ws-1",
+      mimeType: "image/png",
+      contentBase64: sourceImage.toString("base64"),
+    });
+
+    expect(ensureBucketMock).toHaveBeenCalledTimes(1);
+    expect(uploadToS3Mock).toHaveBeenCalledTimes(1);
+
+    const [storageKey, uploadedBuffer, contentType] = uploadToS3Mock.mock.calls[0] as [
+      string,
+      Buffer,
+      string,
+    ];
+    expect(storageKey).toMatch(/^workspace-images\/ws-1\/.+\.webp$/);
+    expect(contentType).toBe("image/webp");
+
+    const metadata = await sharp(uploadedBuffer).metadata();
+    expect(metadata.format).toBe("webp");
+    expect(metadata.width).toBe(128);
+    expect(metadata.height).toBe(128);
+
+    expect(userUpdateSetMock).toHaveBeenCalledWith({
+      imageStorageKey: storageKey,
+      imageMimeType: "image/webp",
+    });
+    expect(deleteFromS3Mock).toHaveBeenCalledWith("workspace-images/ws-1/old.webp");
+    expect(result.id).toBe("ws-1");
+    expect(result.name).toBe("Alpha");
+    expect(result.slug).toBe("alpha");
+    expect(result.imageUrl).toMatch(/^data:image\/webp;base64,/);
+    expect(result).toMatchObject({
+      id: "ws-1",
+      name: "Alpha",
+      slug: "alpha",
+    });
   });
 });

@@ -1,16 +1,19 @@
 import type { ChangeEvent, FormEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WorkspaceAvatar } from "@/components/workspace-avatar";
 import { clientEditionCapabilities } from "@/lib/edition";
 import { useBillingOverview, useSwitchWorkspace } from "@/orpc/hooks/billing";
 import {
   useInviteWorkspaceMembers,
+  useRemoveWorkspaceImage,
   useRenameWorkspace,
+  useUpdateWorkspaceImage,
   useWorkspaceMembers,
 } from "@/orpc/hooks/workspace";
 
@@ -22,10 +25,44 @@ export const Route = createFileRoute("/settings/workspace")({
 const EMPTY_WORKSPACE_OPTIONS: Array<{
   id: string;
   name: string;
+  imageUrl?: string | null;
   role?: string;
 }> = [];
 
+const WORKSPACE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const WORKSPACE_IMAGE_MIME_TYPES = ["image/gif", "image/jpeg", "image/png", "image/webp"] as const;
+
+type WorkspaceImageMimeType = (typeof WORKSPACE_IMAGE_MIME_TYPES)[number];
+
+function isWorkspaceImageMimeType(value: string): value is WorkspaceImageMimeType {
+  return WORKSPACE_IMAGE_MIME_TYPES.includes(value as WorkspaceImageMimeType);
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener(
+      "error",
+      () => reject(reader.error ?? new Error("Failed to read file.")),
+      {
+        once: true,
+      },
+    );
+    reader.addEventListener(
+      "load",
+      () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        const [, contentBase64 = ""] = result.split(",", 2);
+        resolve(contentBase64);
+      },
+      { once: true },
+    );
+    reader.readAsDataURL(file);
+  });
+}
+
 function WorkspaceRow({
+  imageUrl,
   name,
   role,
   isActive,
@@ -33,6 +70,7 @@ function WorkspaceRow({
   onSwitch,
   workspaceId,
 }: {
+  imageUrl?: string | null;
   name: string;
   role: string;
   isActive: boolean;
@@ -46,9 +84,12 @@ function WorkspaceRow({
 
   return (
     <div className="flex items-center justify-between rounded-lg border px-3 py-3">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{name}</p>
-        <p className="text-muted-foreground truncate text-xs capitalize">{role}</p>
+      <div className="flex min-w-0 items-center gap-3">
+        <WorkspaceAvatar name={name} imageUrl={imageUrl} className="h-9 w-9 rounded-md" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{name}</p>
+          <p className="text-muted-foreground truncate text-xs capitalize">{role}</p>
+        </div>
       </div>
       {isActive ? (
         <span className="text-muted-foreground text-xs font-medium">
@@ -70,18 +111,23 @@ function WorkspaceSettingsPage() {
   const { data, isLoading } = useBillingOverview();
   const inviteMembers = useInviteWorkspaceMembers();
   const renameWorkspace = useRenameWorkspace();
+  const updateWorkspaceImage = useUpdateWorkspaceImage();
+  const removeWorkspaceImage = useRemoveWorkspaceImage();
   const switchWorkspace = useSwitchWorkspace();
+  const workspaceImageInputRef = useRef<HTMLInputElement>(null);
   const [inviteEmailsInput, setInviteEmailsInput] = useState("");
   const [workspaceNameInput, setWorkspaceNameInput] = useState("");
 
   const activeWorkspaceId = data?.owner.ownerId;
   const workspaceOptions = data?.workspaces ?? EMPTY_WORKSPACE_OPTIONS;
-  const activeWorkspaceName =
-    workspaceOptions.find((workspace) => workspace.id === activeWorkspaceId)?.name ?? "Workspace";
+  const activeWorkspace = workspaceOptions.find((workspace) => workspace.id === activeWorkspaceId);
+  const activeWorkspaceName = activeWorkspace?.name ?? "Workspace";
+  const activeWorkspaceImageUrl = activeWorkspace?.imageUrl ?? null;
   const { data: membersData, isLoading: membersLoading } = useWorkspaceMembers(activeWorkspaceId);
 
   const canInviteMembers =
     membersData?.membershipRole === "owner" || membersData?.membershipRole === "admin";
+  const canUpdateWorkspaceImage = Boolean(membersData?.membershipRole);
   const members = membersData?.members ?? [];
   const parsedInviteEmails = useMemo(
     () =>
@@ -118,6 +164,56 @@ function WorkspaceSettingsPage() {
   const handleWorkspaceNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setWorkspaceNameInput(event.target.value);
   }, []);
+
+  const handleTriggerWorkspaceImageUpload = useCallback(() => {
+    workspaceImageInputRef.current?.click();
+  }, []);
+
+  const handleWorkspaceImageChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+
+      if (!file || !activeWorkspaceId) {
+        return;
+      }
+
+      if (!isWorkspaceImageMimeType(file.type)) {
+        toast.error(t("Use a PNG, JPEG, WebP, or GIF image."));
+        return;
+      }
+
+      if (file.size > WORKSPACE_IMAGE_MAX_BYTES) {
+        toast.error(t("Workspace image must be 10 MB or smaller."));
+        return;
+      }
+
+      try {
+        await updateWorkspaceImage.mutateAsync({
+          workspaceId: activeWorkspaceId,
+          mimeType: file.type,
+          contentBase64: await readFileAsBase64(file),
+        });
+        toast.success(t("Workspace picture updated."));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to update workspace picture.");
+      }
+    },
+    [activeWorkspaceId, t, updateWorkspaceImage],
+  );
+
+  const handleRemoveWorkspaceImage = useCallback(async () => {
+    if (!activeWorkspaceId) {
+      return;
+    }
+
+    try {
+      await removeWorkspaceImage.mutateAsync({ workspaceId: activeWorkspaceId });
+      toast.success(t("Workspace picture removed."));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to remove workspace picture.");
+    }
+  }, [activeWorkspaceId, removeWorkspaceImage, t]);
 
   const handleRenameSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -212,6 +308,7 @@ function WorkspaceSettingsPage() {
             {workspaceOptions.map((workspace) => (
               <WorkspaceRow
                 key={workspace.id}
+                imageUrl={workspace.imageUrl}
                 name={workspace.name}
                 role={workspace.role ?? "member"}
                 isActive={workspace.id === activeWorkspaceId}
@@ -223,6 +320,77 @@ function WorkspaceSettingsPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="rounded-lg border p-5">
+        <div>
+          <h3 className="text-sm font-medium">
+            <T>Workspace picture</T>
+          </h3>
+          <p className="text-muted-foreground mt-1 text-sm">
+            <T>Shown in the sidebar and workspace switcher.</T>
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <WorkspaceAvatar
+              name={activeWorkspaceName}
+              imageUrl={activeWorkspaceImageUrl}
+              className="h-14 w-14 rounded-xl text-lg"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{activeWorkspaceName}</p>
+              <p className="text-muted-foreground text-sm">
+                <T>PNG, JPEG, WebP, or GIF. Max 10 MB.</T>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={workspaceImageInputRef}
+              type="file"
+              aria-label={t("Workspace picture")}
+              accept={WORKSPACE_IMAGE_MIME_TYPES.join(",")}
+              className="hidden"
+              onChange={handleWorkspaceImageChange}
+              disabled={!canUpdateWorkspaceImage || updateWorkspaceImage.isPending}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleTriggerWorkspaceImageUpload}
+              disabled={!canUpdateWorkspaceImage || updateWorkspaceImage.isPending}
+            >
+              {updateWorkspaceImage.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
+              <span>
+                <T>Upload</T>
+              </span>
+            </Button>
+            {activeWorkspaceImageUrl ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRemoveWorkspaceImage}
+                disabled={!canUpdateWorkspaceImage || removeWorkspaceImage.isPending}
+              >
+                {removeWorkspaceImage.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                <span>
+                  <T>Remove</T>
+                </span>
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-lg border p-5">
         <div>

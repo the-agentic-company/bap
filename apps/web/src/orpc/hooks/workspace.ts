@@ -1,6 +1,42 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { client } from "../client";
 
+type WorkspaceImageMutationResult = {
+  id: string;
+  imageUrl: string | null;
+};
+
+function updateWorkspaceImageInBillingCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  result: WorkspaceImageMutationResult | undefined,
+) {
+  if (!result) {
+    return;
+  }
+
+  queryClient.setQueryData(["billing", "overview"], (current: unknown) => {
+    if (!current || typeof current !== "object" || !("workspaces" in current)) {
+      return current;
+    }
+
+    const overview = current as {
+      workspaces?: Array<Record<string, unknown> & { id?: unknown; imageUrl?: unknown }>;
+    };
+    if (!Array.isArray(overview.workspaces)) {
+      return current;
+    }
+
+    return {
+      ...overview,
+      workspaces: overview.workspaces.map((workspace) =>
+        workspace.id === result.id
+          ? Object.assign({}, workspace, { imageUrl: result.imageUrl })
+          : workspace,
+      ),
+    };
+  });
+}
+
 export function useAdminWorkspaces() {
   return useQuery({
     queryKey: ["billing", "admin-workspaces"],
@@ -105,6 +141,36 @@ export function useRenameWorkspace() {
       queryClient.invalidateQueries({ queryKey: ["billing"] });
       queryClient.invalidateQueries({ queryKey: ["user", "me"] });
       queryClient.invalidateQueries({ queryKey: ["billing", "members"] });
+    },
+  });
+}
+
+export function useUpdateWorkspaceImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      contentBase64: string;
+      mimeType: "image/gif" | "image/jpeg" | "image/png" | "image/webp";
+    }) => client.billing.updateImage(input),
+    onSuccess: (result) => {
+      updateWorkspaceImageInBillingCache(queryClient, result);
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
+      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
+    },
+  });
+}
+
+export function useRemoveWorkspaceImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { workspaceId: string }) => client.billing.removeImage(input),
+    onSuccess: (result) => {
+      updateWorkspaceImageInBillingCache(queryClient, result);
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
+      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
     },
   });
 }

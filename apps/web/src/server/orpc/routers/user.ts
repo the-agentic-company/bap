@@ -3,6 +3,10 @@ import {
   EMAIL_FORWARDED_TRIGGER_TYPE,
 } from "@bap/core/lib/email-forwarding";
 import { ensureWorkspaceForUser } from "@bap/core/server/billing/service";
+import {
+  convertImageThumbnail,
+  IMAGE_THUMBNAIL_INPUT_EXTENSIONS,
+} from "@bap/core/server/image-thumbnail";
 import { user, coworker } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
@@ -17,6 +21,16 @@ function isValidIanaTimezone(timezone: string): boolean {
     return false;
   }
 }
+
+const userImageInput = z.object({
+  contentBase64: z.string().min(1),
+  mimeType: z.enum(
+    Object.keys(IMAGE_THUMBNAIL_INPUT_EXTENSIONS) as [
+      keyof typeof IMAGE_THUMBNAIL_INPUT_EXTENSIONS,
+      ...(keyof typeof IMAGE_THUMBNAIL_INPUT_EXTENSIONS)[],
+    ],
+  ),
+});
 
 // Get current user with onboardedAt status
 const me = protectedProcedure.handler(async ({ context }) => {
@@ -152,6 +166,20 @@ const setTimezone = protectedProcedure
     return { success: true, timezone: input.timezone };
   });
 
+const updateImage = protectedProcedure.input(userImageInput).handler(async ({ input, context }) => {
+  const image = await convertImageThumbnail(input);
+
+  await context.db.update(user).set({ image: image.dataUrl }).where(eq(user.id, context.user.id));
+
+  return { image: image.dataUrl };
+});
+
+const removeImage = protectedProcedure.handler(async ({ context }) => {
+  await context.db.update(user).set({ image: null }).where(eq(user.id, context.user.id));
+
+  return { image: null };
+});
+
 export const userRouter = {
   me,
   completeOnboarding,
@@ -159,4 +187,6 @@ export const userRouter = {
   forwarding,
   setDefaultForwardedCoworker,
   setTimezone,
+  updateImage,
+  removeImage,
 };

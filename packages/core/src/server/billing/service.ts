@@ -1,5 +1,5 @@
 import { addMonths } from "date-fns";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   BILLING_CREDIT_FEATURE_ID,
   BILLING_PLANS,
@@ -23,7 +23,10 @@ import {
 import { getAutumnClient } from "./autumn";
 import { calculateCredits } from "./credit-calculator";
 import { isSelfHostedEdition } from "../edition";
-import { sql } from "drizzle-orm";
+import {
+  buildWorkspaceImageDataUrl,
+  buildWorkspaceImageUrl,
+} from "./workspace-image";
 
 export type BillingOwner = {
   ownerType: BillingOwnerType;
@@ -66,16 +69,20 @@ type BillingFeatureSnapshot = {
   }>;
 };
 
-function hasNumericBalance(feature: BillingFeatureSnapshot | null): feature is BillingFeatureSnapshot & {
+function hasNumericBalance(
+  feature: BillingFeatureSnapshot | null,
+): feature is BillingFeatureSnapshot & {
   balance: number;
 } {
   return typeof feature?.balance === "number" && Number.isFinite(feature.balance);
 }
 
 function hasNumericOneOffBalance(feature: BillingFeatureSnapshot | null): boolean {
-  return feature?.breakdown?.some(
-    (item) => item.interval === "one_off" && typeof item.balance === "number",
-  ) ?? false;
+  return (
+    feature?.breakdown?.some(
+      (item) => item.interval === "one_off" && typeof item.balance === "number",
+    ) ?? false
+  );
 }
 
 async function getStoredTopUpBalanceForOwner(owner: BillingOwner): Promise<number> {
@@ -141,6 +148,7 @@ export type BillingWorkspaceSummary = {
   id: string;
   name: string;
   slug: string | null;
+  imageUrl: string | null;
 };
 
 export type BillingTargetUserSummary = {
@@ -180,8 +188,11 @@ async function getWorkspaceForUser(userId: string, workspaceId: string) {
           id: true,
           name: true,
           slug: true,
+          imageStorageKey: true,
+          imageMimeType: true,
           billingPlanId: true,
           autumnCustomerId: true,
+          updatedAt: true,
         },
       },
     },
@@ -282,6 +293,7 @@ export async function getExistingBillingOwnerForUser(userId: string): Promise<{
       id: activeWorkspace.id,
       name: activeWorkspace.name,
       slug: activeWorkspace.slug,
+      imageUrl: buildWorkspaceImageUrl(activeWorkspace),
     },
     owner: {
       ownerType: "workspace",
@@ -327,9 +339,13 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
       columns: {
         id: true,
         name: true,
+        slug: true,
+        imageStorageKey: true,
+        imageMimeType: true,
         billingPlanId: true,
         autumnCustomerId: true,
         createdByUserId: true,
+        updatedAt: true,
       },
       orderBy: [desc(workspace.createdAt)],
     });
@@ -446,9 +462,7 @@ export async function requireActiveWorkspaceForUser(userId: string) {
   return activeWorkspace;
 }
 
-async function resolveBillingOwnerForConversation(
-  conversationId: string,
-): Promise<BillingOwner> {
+async function resolveBillingOwnerForConversation(conversationId: string): Promise<BillingOwner> {
   const conv = await db.query.conversation.findFirst({
     where: eq(conversation.id, conversationId),
     columns: {
@@ -513,15 +527,22 @@ export async function createWorkspaceForUser(userId: string, name: string) {
 export async function listWorkspacesForUser(userId: string) {
   if (isSelfHostedEdition()) {
     const ensured = await ensureWorkspaceForUser(userId);
-    const membership = await db.query.workspaceMember.findFirst({
-      where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.workspaceId, ensured.id)),
-      columns: { role: true },
-    });
+    const [membership, ensuredImage] = await Promise.all([
+      db.query.workspaceMember.findFirst({
+        where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.workspaceId, ensured.id)),
+        columns: { role: true },
+      }),
+      db.query.workspace.findFirst({
+        where: eq(workspace.id, ensured.id),
+        columns: { imageMimeType: true, imageStorageKey: true },
+      }),
+    ]);
     return [
       {
         id: ensured.id,
         name: ensured.name,
         slug: "selfhost-workspace",
+        imageUrl: await buildWorkspaceImageDataUrl(ensuredImage ?? {}),
         role: membership?.role ?? "member",
         billingPlanId: ensured.billingPlanId as BillingPlanId,
         active: true,
@@ -542,14 +563,17 @@ export async function listWorkspacesForUser(userId: string) {
     columns: { activeWorkspaceId: true },
   });
 
-  return memberships.map((membership) => ({
-    id: membership.workspace.id,
-    name: membership.workspace.name,
-    slug: membership.workspace.slug,
-    role: membership.role,
-    billingPlanId: membership.workspace.billingPlanId as BillingPlanId,
-    active: membership.workspace.id === dbUser?.activeWorkspaceId,
-  }));
+  return Promise.all(
+    memberships.map(async (membership) => ({
+      id: membership.workspace.id,
+      name: membership.workspace.name,
+      slug: membership.workspace.slug,
+      imageUrl: await buildWorkspaceImageDataUrl(membership.workspace),
+      role: membership.role,
+      billingPlanId: membership.workspace.billingPlanId as BillingPlanId,
+      active: membership.workspace.id === dbUser?.activeWorkspaceId,
+    })),
+  );
 }
 
 export async function setActiveWorkspace(userId: string, workspaceId: string | null) {
@@ -575,27 +599,6 @@ export async function setActiveWorkspace(userId: string, workspaceId: string | n
   }
 
   await db.update(user).set({ activeWorkspaceId: workspaceId }).where(eq(user.id, userId));
-}
-
-async function upsertConversationWorkspace(
-  userId: string,
-  conversationId: string,
-  workspaceId: string | null,
-) {
-  if (workspaceId) {
-    const membership = await db.query.workspaceMember.findFirst({
-      where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.workspaceId, workspaceId)),
-      columns: { id: true },
-    });
-    if (!membership) {
-      throw new Error("Workspace not found");
-    }
-  }
-
-  await db
-    .update(conversation)
-    .set({ workspaceId })
-    .where(and(eq(conversation.id, conversationId), eq(conversation.userId, userId)));
 }
 
 async function ensureBillingCustomer(
@@ -890,8 +893,11 @@ export async function adminListAllWorkspaces() {
         id: true,
         name: true,
         slug: true,
+        imageStorageKey: true,
+        imageMimeType: true,
         billingPlanId: true,
         createdAt: true,
+        updatedAt: true,
       },
       with: {
         members: {
@@ -914,15 +920,14 @@ export async function adminListAllWorkspaces() {
   ]);
 
   const countMap = new Map(
-    coworkerCounts
-      .filter((c) => c.workspaceId !== null)
-      .map((c) => [c.workspaceId!, c.count]),
+    coworkerCounts.filter((c) => c.workspaceId !== null).map((c) => [c.workspaceId!, c.count]),
   );
 
   return workspaces.map((ws) => ({
     id: ws.id,
     name: ws.name,
     slug: ws.slug,
+    imageUrl: buildWorkspaceImageUrl(ws),
     billingPlanId: ws.billingPlanId,
     createdAt: ws.createdAt,
     coworkerCount: countMap.get(ws.id) ?? 0,
@@ -958,10 +963,7 @@ export async function adminJoinWorkspace(userId: string, workspaceId: string) {
   return ws;
 }
 
-export async function adminRemoveWorkspaceMember(
-  workspaceId: string,
-  targetEmail: string,
-) {
+export async function adminRemoveWorkspaceMember(workspaceId: string, targetEmail: string) {
   const targetUser = await db.query.user.findFirst({
     where: eq(user.email, targetEmail),
     columns: { id: true, email: true },
@@ -974,10 +976,7 @@ export async function adminRemoveWorkspaceMember(
   await db
     .delete(workspaceMember)
     .where(
-      and(
-        eq(workspaceMember.workspaceId, workspaceId),
-        eq(workspaceMember.userId, targetUser.id),
-      ),
+      and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, targetUser.id)),
     );
 
   return { email: targetUser.email };

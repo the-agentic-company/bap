@@ -22,7 +22,28 @@ type VitestProcedure = Extract<
 >;
 
 const mocks = vi.hoisted(() => ({
+  billingOverview: {
+    data: {
+      owner: { ownerId: "ws-1" },
+      workspaces: [
+        {
+          id: "ws-1",
+          name: "Alpha",
+          imageUrl: "/api/workspaces/ws-1/image?v=1",
+          active: true,
+        },
+        {
+          id: "ws-2",
+          name: "Beta",
+          imageUrl: null,
+          active: false,
+        },
+      ],
+    },
+    isLoading: false,
+  },
   getSession: vi.fn<VitestProcedure>(),
+  switchWorkspace: vi.fn<VitestProcedure>(),
 }));
 
 vi.mock("@/components/app-image", () => ({
@@ -51,6 +72,14 @@ vi.mock("@/lib/edition", () => ({
     hasInstanceAdmin: true,
     hasSupportAdmin: true,
   },
+}));
+
+vi.mock("@/orpc/hooks/billing", () => ({
+  useBillingOverview: () => mocks.billingOverview,
+  useSwitchWorkspace: () => ({
+    isPending: false,
+    mutateAsync: mocks.switchWorkspace,
+  }),
 }));
 
 function installLocalStorageStub() {
@@ -148,6 +177,8 @@ describe("AppSidebar navigation", () => {
     installLocalStorageStub();
     window.localStorage.clear();
     mocks.getSession.mockReset();
+    mocks.switchWorkspace.mockReset();
+    mocks.switchWorkspace.mockResolvedValue({ success: true });
     mockAdminSession();
   });
 
@@ -191,14 +222,25 @@ describe("AppSidebar navigation", () => {
     });
   });
 
-  it("loads the first-viewport sidebar logo eagerly", async () => {
+  it("renders the active workspace identity at the top of the sidebar", async () => {
     renderWithRouterAt("/inbox");
 
-    const homeLink = await screen.findByRole("link", { name: "Bap home" });
-    const logo = homeLink.querySelector("img");
+    const switcher = await screen.findByRole("button", { name: "Switch workspace" });
+    const image = switcher.querySelector("img");
 
-    expect(logo).toHaveAttribute("src", "/logo-sidebar.png");
-    expect(logo).toHaveAttribute("loading", "eager");
-    expect(logo).toHaveAttribute("decoding", "sync");
+    expect(switcher).toHaveAttribute("title", "Alpha");
+    expect(image).toHaveAttribute("src", "/api/workspaces/ws-1/image?v=1");
+  });
+
+  it("switches workspaces from the sidebar switcher", async () => {
+    const router = renderWithRouterAt("/inbox");
+
+    fireEvent.pointerDown(await screen.findByRole("button", { name: "Switch workspace" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /Beta/ }));
+
+    await waitFor(() => {
+      expect(mocks.switchWorkspace).toHaveBeenCalledWith("ws-2");
+      expect(router.state.location.pathname).toBe("/");
+    });
   });
 });

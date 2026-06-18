@@ -1,9 +1,11 @@
+import type { ChangeEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import { Loader2 } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/general-translation-provider";
+import { AppImage } from "@/components/app-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,7 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
-import { useCurrentUser, useSetUserTimezone } from "@/orpc/hooks/user";
+import {
+  useCurrentUser,
+  useRemoveUserImage,
+  useSetUserTimezone,
+  useUpdateUserImage,
+} from "@/orpc/hooks/user";
 
 export const Route = createFileRoute("/settings/")({
   head: () => ({ meta: [{ title: "General Settings - Bap" }] }),
@@ -29,6 +36,38 @@ const SETTINGS_LOCALE_NAMES = {
   en: "English",
   fr: "Français",
 } as const;
+
+const PROFILE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const PROFILE_IMAGE_MIME_TYPES = ["image/gif", "image/jpeg", "image/png", "image/webp"] as const;
+
+type ProfileImageMimeType = (typeof PROFILE_IMAGE_MIME_TYPES)[number];
+
+function isProfileImageMimeType(value: string): value is ProfileImageMimeType {
+  return PROFILE_IMAGE_MIME_TYPES.includes(value as ProfileImageMimeType);
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener(
+      "error",
+      () => reject(reader.error ?? new Error("Failed to read file.")),
+      {
+        once: true,
+      },
+    );
+    reader.addEventListener(
+      "load",
+      () => {
+        const result = typeof reader.result === "string" ? reader.result : "";
+        const [, contentBase64 = ""] = result.split(",", 2);
+        resolve(contentBase64);
+      },
+      { once: true },
+    );
+    reader.readAsDataURL(file);
+  });
+}
 
 function getPhoneNumber(user: unknown): string {
   if (user && typeof user === "object" && "phoneNumber" in user) {
@@ -78,8 +117,11 @@ function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [removingPhone, setRemovingPhone] = useState(false);
   const [timezoneInput, setTimezoneInput] = useState("");
+  const profileImageInputRef = useRef<HTMLInputElement>(null);
   const { data: currentUser } = useCurrentUser();
   const setUserTimezone = useSetUserTimezone();
+  const updateUserImage = useUpdateUserImage();
+  const removeUserImage = useRemoveUserImage();
   const { locale, locales, setLocale } = useAppLocale();
   const browserTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "", []);
 
@@ -207,6 +249,73 @@ function SettingsPage() {
       });
   }, [browserTimezone, setUserTimezone, t]);
 
+  const handleTriggerProfileImageUpload = useCallback(() => {
+    profileImageInputRef.current?.click();
+  }, []);
+
+  const handleProfileImageChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+
+      if (!file) {
+        return;
+      }
+
+      if (!isProfileImageMimeType(file.type)) {
+        toast.error(t("Use a PNG, JPEG, WebP, or GIF image."));
+        return;
+      }
+
+      if (file.size > PROFILE_IMAGE_MAX_BYTES) {
+        toast.error(t("Profile picture must be 10 MB or smaller."));
+        return;
+      }
+
+      try {
+        const result = await updateUserImage.mutateAsync({
+          mimeType: file.type,
+          contentBase64: await readFileAsBase64(file),
+        });
+        setSessionData((prev: SessionData | null) =>
+          prev
+            ? {
+                ...prev,
+                user: {
+                  ...prev.user,
+                  image: result.image,
+                },
+              }
+            : prev,
+        );
+        toast.success(t("Profile picture updated."));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to update profile picture.");
+      }
+    },
+    [t, updateUserImage],
+  );
+
+  const handleRemoveProfileImage = useCallback(async () => {
+    try {
+      const result = await removeUserImage.mutateAsync();
+      setSessionData((prev: SessionData | null) =>
+        prev
+          ? {
+              ...prev,
+              user: {
+                ...prev.user,
+                image: result.image,
+              },
+            }
+          : prev,
+      );
+      toast.success(t("Profile picture removed."));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to remove profile picture.");
+    }
+  }, [removeUserImage, t]);
+
   const handleLanguageChange = useCallback(
     (nextLocale: string) => {
       setLocale(nextLocale);
@@ -216,6 +325,8 @@ function SettingsPage() {
   );
 
   const user = sessionData?.user;
+  const profileImage = currentUser?.image ?? user?.image ?? null;
+  const profileInitial = user?.email ? user.email.charAt(0).toUpperCase() : "?";
   const savedTimezone = currentUser?.timezone ?? "";
   const timezoneDiffers =
     Boolean(savedTimezone) && Boolean(browserTimezone) && savedTimezone !== browserTimezone;
@@ -249,6 +360,78 @@ function SettingsPage() {
 
       <form onSubmit={handleSave} className="space-y-6">
         <div className="space-y-4">
+          <div className="rounded-lg border p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="bg-primary text-primary-foreground flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl text-lg font-semibold">
+                  {profileImage ? (
+                    <AppImage
+                      src={profileImage}
+                      alt=""
+                      width={56}
+                      height={56}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    profileInitial
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    <T>Profile picture</T>
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    <T>PNG, JPEG, WebP, or GIF. Max 10 MB.</T>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <input
+                  ref={profileImageInputRef}
+                  type="file"
+                  aria-label={t("Profile picture")}
+                  accept={PROFILE_IMAGE_MIME_TYPES.join(",")}
+                  className="hidden"
+                  onChange={handleProfileImageChange}
+                  disabled={updateUserImage.isPending}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleTriggerProfileImageUpload}
+                  disabled={updateUserImage.isPending}
+                >
+                  {updateUserImage.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ImagePlus className="h-4 w-4" />
+                  )}
+                  <span>
+                    <T>Upload</T>
+                  </span>
+                </Button>
+                {profileImage ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleRemoveProfileImage}
+                    disabled={removeUserImage.isPending}
+                  >
+                    {removeUserImage.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    <span>
+                      <T>Remove</T>
+                    </span>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="mb-2 block text-sm font-medium">
               <T>Email</T>

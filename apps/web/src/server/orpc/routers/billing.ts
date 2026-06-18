@@ -18,6 +18,10 @@ import {
   renameWorkspace,
   setActiveWorkspace,
 } from "@bap/core/server/billing/service";
+import {
+  removeWorkspaceImage,
+  updateWorkspaceImage,
+} from "@bap/core/server/billing/workspace-image";
 import { isSelfHostedEdition } from "@bap/core/server/edition";
 import { user, workspace } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
@@ -359,6 +363,38 @@ const rename = protectedProcedure
     return renameWorkspace(input.workspaceId, input.name);
   });
 
+const updateImage = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+      contentBase64: z.string().min(1),
+      mimeType: z.enum(["image/gif", "image/jpeg", "image/png", "image/webp"]),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
+    if (!membership) {
+      throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
+    }
+
+    return updateWorkspaceImage(input);
+  });
+
+const removeImage = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
+    if (!membership) {
+      throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
+    }
+
+    return removeWorkspaceImage(input.workspaceId);
+  });
+
 const adminWorkspaces = protectedProcedure.handler(async ({ context }) => {
   assertBillingEnabled();
   const role = await getDbRole(context.user.id, context.db);
@@ -475,4 +511,6 @@ export const billingRouter = {
   inviteMembers,
   members,
   rename,
+  updateImage,
+  removeImage,
 };

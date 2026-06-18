@@ -13,6 +13,29 @@ export function useCurrentUser(options?: { enabled?: boolean }) {
 }
 
 type CurrentUser = Awaited<ReturnType<typeof client.user.me>>;
+type UserImageMutationResult = {
+  image: string | null;
+};
+
+function updateUserImageCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  result: UserImageMutationResult | undefined,
+) {
+  if (!result) {
+    return;
+  }
+
+  queryClient.setQueryData<CurrentUser>(["user", "me"], (currentUser) =>
+    currentUser ? Object.assign({}, currentUser, { image: result.image }) : currentUser,
+  );
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("bap:user-image-updated", {
+        detail: { image: result.image },
+      }),
+    );
+  }
+}
 
 // Hook for completing onboarding
 export function useCompleteOnboarding() {
@@ -46,6 +69,33 @@ export function useSetUserTimezone() {
   return useMutation({
     mutationFn: (timezone: string) => client.user.setTimezone({ timezone }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
+    },
+  });
+}
+
+export function useUpdateUserImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      contentBase64: string;
+      mimeType: "image/gif" | "image/jpeg" | "image/png" | "image/webp";
+    }) => client.user.updateImage(input),
+    onSuccess: (result) => {
+      updateUserImageCache(queryClient, result);
+      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
+    },
+  });
+}
+
+export function useRemoveUserImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => client.user.removeImage(),
+    onSuccess: (result) => {
+      updateUserImageCache(queryClient, result);
       queryClient.invalidateQueries({ queryKey: ["user", "me"] });
     },
   });

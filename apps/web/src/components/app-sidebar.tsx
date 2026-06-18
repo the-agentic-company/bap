@@ -8,6 +8,7 @@ import {
   BarChart3,
   Bug,
   Building2,
+  Check,
   CircleDollarSign,
   Container,
   CreditCard,
@@ -29,6 +30,7 @@ import { AppImage } from "@/components/app-image";
 import { AppLink } from "@/components/app-link";
 import { BugReportDialog } from "@/components/bug-report-dialog";
 import { BrickIcon } from "@/components/icons/brick-icon";
+import { WorkspaceAvatar } from "@/components/workspace-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +44,8 @@ import { authClient } from "@/lib/auth-client";
 import { clientEditionCapabilities } from "@/lib/edition";
 import { openNewChat } from "@/lib/open-new-chat";
 import { cn } from "@/lib/utils";
+import { useBillingOverview, useSwitchWorkspace } from "@/orpc/hooks/billing";
+import { toast } from "sonner";
 
 type SessionData = Awaited<ReturnType<typeof authClient.getSession>>["data"];
 type SidebarMode = "user" | "admin";
@@ -225,6 +229,118 @@ function SidebarModeToggleButton({
   );
 }
 
+type SidebarWorkspace = {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+  active?: boolean;
+};
+
+const EMPTY_SIDEBAR_WORKSPACES: SidebarWorkspace[] = [];
+
+function WorkspaceSwitcherItem({
+  active,
+  isPending,
+  onSwitchWorkspace,
+  workspace,
+}: {
+  active: boolean;
+  isPending: boolean;
+  onSwitchWorkspace: (workspaceId: string) => void;
+  workspace: SidebarWorkspace;
+}) {
+  const handleClick = useCallback(() => {
+    onSwitchWorkspace(workspace.id);
+  }, [onSwitchWorkspace, workspace.id]);
+
+  return (
+    <DropdownMenuItem disabled={active || isPending} onClick={handleClick} className="gap-2">
+      <WorkspaceAvatar
+        name={workspace.name}
+        imageUrl={workspace.imageUrl}
+        className="h-7 w-7 rounded-md text-xs"
+      />
+      <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
+      {active ? <Check className="h-4 w-4" /> : null}
+    </DropdownMenuItem>
+  );
+}
+
+function WorkspaceSwitcher({
+  activeWorkspace,
+  isPending,
+  onSwitchWorkspace,
+  workspaces,
+}: {
+  activeWorkspace: SidebarWorkspace | null;
+  isPending: boolean;
+  onSwitchWorkspace: (workspaceId: string) => void;
+  workspaces: SidebarWorkspace[];
+}) {
+  const t = useGT();
+  const workspaceName = activeWorkspace?.name ?? t("Workspace");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={t("Switch workspace")}
+          className={cn(
+            "group focus-visible:ring-sidebar-ring/45 flex h-10 w-10 items-center justify-center rounded-lg text-sidebar-foreground",
+            "focus-visible:ring-3 focus-visible:outline-none",
+          )}
+          title={workspaceName}
+        >
+          <span className="border-sidebar-border bg-sidebar-accent/80 group-hover:bg-sidebar-accent flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border text-[13px] transition-colors">
+            <WorkspaceAvatar
+              name={workspaceName}
+              imageUrl={activeWorkspace?.imageUrl}
+              className="bg-sidebar-primary text-sidebar-primary-foreground h-full w-full rounded-[inherit] text-base"
+              loading="eager"
+              decoding="sync"
+            />
+          </span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="start" className="w-64">
+        <DropdownMenuLabel className="font-normal">
+          <span className="text-muted-foreground text-xs">
+            <T>Workspace</T>
+          </span>
+        </DropdownMenuLabel>
+        {workspaces.length > 0 ? (
+          workspaces.map((workspace) => {
+            const active = workspace.id === activeWorkspace?.id;
+            return (
+              <WorkspaceSwitcherItem
+                key={workspace.id}
+                active={active}
+                isPending={isPending}
+                onSwitchWorkspace={onSwitchWorkspace}
+                workspace={workspace}
+              />
+            );
+          })
+        ) : (
+          <DropdownMenuItem disabled>
+            <T>No workspaces found</T>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <AppLink href="/settings/workspace" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span>
+              <T>Workspace settings</T>
+            </span>
+          </AppLink>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 type AppSidebarProps = {
   initialPrincipal?: SessionPrincipal | null;
 };
@@ -238,6 +354,11 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(readStoredSidebarMode);
   const [reportOpen, setReportOpen] = useState(false);
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
+  const effectiveUser = session?.user ?? null;
+  const initialPrincipalActive = session === undefined && initialPrincipal;
+  const hasWorkspaceSession = Boolean(effectiveUser || initialPrincipalActive);
+  const billingOverview = useBillingOverview(hasWorkspaceSession);
+  const switchWorkspace = useSwitchWorkspace();
 
   useEffect(() => {
     let mounted = true;
@@ -257,6 +378,28 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
       });
     return () => {
       mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleUserImageUpdated = (event: Event) => {
+      const image = (event as CustomEvent<{ image: string | null }>).detail?.image ?? null;
+      setSession((current: SessionData | null | undefined) =>
+        current
+          ? {
+              ...current,
+              user: {
+                ...current.user,
+                image,
+              },
+            }
+          : current,
+      );
+    };
+
+    window.addEventListener("bap:user-image-updated", handleUserImageUpdated);
+    return () => {
+      window.removeEventListener("bap:user-image-updated", handleUserImageUpdated);
     };
   }, []);
 
@@ -327,6 +470,18 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     [navigate],
   );
 
+  const handleSwitchWorkspace = useCallback(
+    async (workspaceId: string) => {
+      try {
+        await switchWorkspace.mutateAsync(workspaceId);
+        void navigate({ to: "/" });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to switch workspace.");
+      }
+    },
+    [navigate, switchWorkspace],
+  );
+
   const isActive = (href: string) => {
     if (href === "/") {
       return pathname === "/";
@@ -340,8 +495,6 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     return pathname === href || pathname.startsWith(href + "/");
   };
 
-  const effectiveUser = session?.user ?? null;
-  const initialPrincipalActive = session === undefined && initialPrincipal;
   const userEmail = effectiveUser?.email ?? (initialPrincipalActive ? initialPrincipal.email : "");
   const avatarInitial = userEmail ? userEmail.charAt(0).toUpperCase() : "";
   const userRole =
@@ -356,6 +509,11 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     session as (SessionData & { session?: { impersonatedBy?: string | null } }) | null
   )?.session?.impersonatedBy;
   const isImpersonating = Boolean(impersonatedBy);
+  const workspaces = billingOverview.data?.workspaces ?? EMPTY_SIDEBAR_WORKSPACES;
+  const activeWorkspace =
+    workspaces.find((workspace) => workspace.active) ??
+    workspaces.find((workspace) => workspace.id === billingOverview.data?.owner.ownerId) ??
+    null;
 
   const mainNavItems: NavItem[] = [
     { icon: WandSparkles, label: t("Create"), href: "/" },
@@ -408,26 +566,17 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     <>
       <BugReportDialog open={reportOpen} onOpenChange={setReportOpen} />
 
-      <aside className="bg-sidebar hidden h-screen w-16 shrink-0 flex-col border-r md:flex">
+      <aside className="bg-sidebar hidden h-screen w-20 shrink-0 flex-col border-r md:flex">
         <div className="flex h-14 items-center justify-center">
-          <AppLink
-            href="/"
-            aria-label={t("Bap home")}
-            className="hover:bg-sidebar-accent focus-visible:ring-sidebar-ring/45 flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus-visible:ring-3 focus-visible:outline-none"
-          >
-            <AppImage
-              src="/logo-sidebar.png"
-              alt=""
-              width={24}
-              height={24}
-              loading="eager"
-              decoding="sync"
-              className="object-contain"
-            />
-          </AppLink>
+          <WorkspaceSwitcher
+            activeWorkspace={activeWorkspace}
+            isPending={switchWorkspace.isPending}
+            onSwitchWorkspace={handleSwitchWorkspace}
+            workspaces={workspaces}
+          />
         </div>
 
-        <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 pb-4">
+        <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 pb-4 pt-1">
           {activeSidebarMode === "user" ? (
             <>
               <NavGroup>

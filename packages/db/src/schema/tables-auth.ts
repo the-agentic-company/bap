@@ -10,10 +10,7 @@ import {
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import {
-  magicLinkRequestStatusEnum,
-  workspaceMembershipRoleEnum,
-} from "./enums";
+import { magicLinkRequestStatusEnum, workspaceMembershipRoleEnum } from "./enums";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -233,6 +230,8 @@ export const workspace = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
     slug: text("slug"),
+    imageStorageKey: text("image_storage_key"),
+    imageMimeType: text("image_mime_type"),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
