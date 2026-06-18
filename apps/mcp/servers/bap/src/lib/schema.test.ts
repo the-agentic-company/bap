@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { schema as chatRunSchema } from "./chat.run";
-import { schema as coworkerCreateSchema } from "./coworker.create";
-import { schema as coworkerDeleteDocumentSchema } from "./coworker.deleteDocument";
-import { schema as coworkerGetSchema } from "./coworker.get";
-import { schema as coworkerListSchema } from "./coworker.list";
-import { schema as coworkerLogsSchema } from "./coworker.logs";
-import { schema as coworkerRunSchema } from "./coworker.run";
-import { schema as coworkerRunsSchema } from "./coworker.runs";
-import { schema as coworkerUpdateSchema } from "./coworker.update";
-import { schema as coworkerUpdateDocumentSchema } from "./coworker.updateDocument";
-import { schema as coworkerUploadDocumentSchema } from "./coworker.uploadDocument";
-import { schema as skillAddSchema } from "./skill.add";
+import { schema as chatRunSchema } from "../tools/chat.run";
+import { schema as coworkerCreateSchema } from "../tools/coworker.create";
+import { schema as coworkerDeleteDocumentSchema } from "../tools/coworker.deleteDocument";
+import { schema as coworkerGetSchema } from "../tools/coworker.get";
+import { schema as coworkerListSchema } from "../tools/coworker.list";
+import { schema as coworkerLogsSchema } from "../tools/coworker.logs";
+import { schema as coworkerRunSchema } from "../tools/coworker.run";
+import { schema as coworkerRunsSchema } from "../tools/coworker.runs";
+import { schema as coworkerUpdateSchema } from "../tools/coworker.update";
+import { schema as coworkerUpdateDocumentSchema } from "../tools/coworker.updateDocument";
+import { schema as coworkerUploadDocumentSchema } from "../tools/coworker.uploadDocument";
+import { schema as skillAddSchema } from "../tools/skill.add";
 
 const bapToolSchemas = {
   "chat.run": chatRunSchema,

@@ -104,8 +104,6 @@ describe("triggerCoworkerRun", () => {
       allowedSkillSlugs: [],
       model: "anthropic/claude-sonnet-4-6",
       prompt: "Do the coworker",
-      promptDo: "Do this",
-      promptDont: "Do not do that",
       requiresUserInput: false,
       userInputPrompt: null,
     });
@@ -208,8 +206,6 @@ describe("triggerCoworkerRun", () => {
       allowedSkillSlugs: [],
       model: "anthropic/claude-sonnet-4-6",
       prompt: "",
-      promptDo: null,
-      promptDont: null,
     });
 
     await expect(
@@ -237,8 +233,6 @@ describe("triggerCoworkerRun", () => {
       allowedSkillSlugs: [],
       model: "anthropic/claude-sonnet-4-6",
       prompt: "",
-      promptDo: null,
-      promptDont: null,
     });
 
     await expect(
@@ -264,8 +258,6 @@ describe("triggerCoworkerRun", () => {
       allowedSkillSlugs: [],
       model: "anthropic/claude-sonnet-4-6",
       prompt: "",
-      promptDo: null,
-      promptDont: null,
     });
 
     await expect(
@@ -349,16 +341,9 @@ describe("triggerCoworkerRun", () => {
         content: expect.stringContaining("## Coworker Instructions\nDo the coworker"),
       }),
     );
-    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: expect.stringContaining("## Do\nDo this"),
-      }),
-    );
-    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: expect.stringContaining("## Don't\nDo not do that"),
-      }),
-    );
+    const generationInput = startCoworkerGenerationMock.mock.calls.at(-1)?.[0];
+    expect(generationInput?.content).not.toContain("\n## Do\n");
+    expect(generationInput?.content).not.toContain("\n## Don't\n");
     expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining('"reason": "live click"'),
@@ -445,8 +430,6 @@ describe("triggerCoworkerRun", () => {
       allowedSkillSlugs: [],
       model: "anthropic/claude-sonnet-4-6",
       prompt: "Draft an email",
-      promptDo: null,
-      promptDont: null,
       requiresUserInput: true,
       userInputPrompt: "Which recipient should receive the draft?",
     });
@@ -518,8 +501,6 @@ describe("triggerCoworkerRun", () => {
       allowedSkillSlugs: [],
       model: "anthropic/claude-sonnet-4-6",
       prompt: "Draft an email",
-      promptDo: null,
-      promptDont: null,
       requiresUserInput: true,
       userInputPrompt: "Which recipient should receive the draft?",
     });
@@ -595,8 +576,6 @@ describe("triggerCoworkerRun", () => {
         allowedSkillSlugs: [],
         model: "anthropic/claude-sonnet-4-6",
         prompt: "Review files",
-        promptDo: null,
-        promptDont: null,
         requiresUserInput: true,
         userInputPrompt: "What should I do with the file?",
       },
@@ -697,8 +676,6 @@ describe("triggerCoworkerRun", () => {
         allowedSkillSlugs: [],
         model: "anthropic/claude-sonnet-4-6",
         prompt: "Draft an email",
-        promptDo: null,
-        promptDont: null,
         requiresUserInput: true,
         userInputPrompt: "Which recipient?",
       },
@@ -761,8 +738,6 @@ describe("triggerCoworkerRun", () => {
       allowedCustomIntegrations: ["custom-crm"],
       model: "openai/gpt-5.2-codex",
       prompt: "Do the coworker",
-      promptDo: "Do this",
-      promptDont: "Do not do that",
     });
 
     await triggerCoworkerRun({

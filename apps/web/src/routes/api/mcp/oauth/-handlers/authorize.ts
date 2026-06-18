@@ -15,6 +15,21 @@ import {
  * preserving the original target as the callback URL.
  */
 
+function canonicalizeHostedMcpLoginHostname(hostname: string): string {
+  for (const prefix of ["mcp.", "www."]) {
+    if (!hostname.startsWith(prefix)) {
+      continue;
+    }
+
+    const candidate = hostname.slice(prefix.length);
+    if (candidate === "heybap.com" || candidate.endsWith(".heybap.com")) {
+      return candidate;
+    }
+  }
+
+  return hostname;
+}
+
 function buildLoginRedirect(request: Request): Response {
   const requestUrl = new URL(request.url);
   const callbackUrl = `${requestUrl.pathname}${requestUrl.search}${requestUrl.hash}`;
@@ -22,9 +37,7 @@ function buildLoginRedirect(request: Request): Response {
     `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`,
     request,
   );
-  if (loginUrl.hostname === "heybap.com" || loginUrl.hostname.endsWith(".heybap.com")) {
-    loginUrl.hostname = "heybap.com";
-  }
+  loginUrl.hostname = canonicalizeHostedMcpLoginHostname(loginUrl.hostname);
   return Response.redirect(loginUrl, 303);
 }
 

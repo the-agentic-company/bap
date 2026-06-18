@@ -108,9 +108,25 @@ _Avoid_: bot, automation, worker
 The visual identity shown for a **Coworker** in Bap surfaces.
 _Avoid_: agent avatar, profile picture, icon
 
+**Coworker Builder Conversation**:
+A conversation attached to one **Coworker** that a **User** uses to iteratively edit that **Coworker**. A **Coworker Builder Conversation** is distinct from a conversation created by running the **Coworker**.
+_Avoid_: builder chat, editor chat
+
 **Coworker Document**:
 A file a **User** attaches to a **Coworker** so future **Coworker** **Generations** can use it as persistent reference material. A **Coworker Document** belongs to exactly one **Coworker** and is managed separately from the **Coworker**'s instructions, trigger, and **Toolbox**.
 _Avoid_: doc, attachment, file upload
+
+**Coworker Definition**:
+A portable serialized description of a **Coworker**, including instructions, trigger settings, **Toolbox**, optional **Coworker Documents**, and generated artifacts. A **Coworker Definition** does not include runtime state such as **Generations**, **Pending Starts**, or **Coworker History**.
+_Avoid_: JSON, template, backup
+
+**Coworker History**:
+The user-facing history of write actions performed by **Coworker** **Generations**, derived from coworker run events. **Coworker History** is distinct from an **Audit Trail** and from raw run history: one coworker run can produce zero, one, or many history entries.
+_Avoid_: audit log, run history
+
+**Coworker Forwarding Alias**:
+An email address that routes forwarded email to one **Coworker** configured with the `email.forwarded` trigger. A **Coworker Forwarding Alias** is distinct from user-level forwarded email routing.
+_Avoid_: email alias, forwarding address
 
 **Start Message**:
 A free-text message a **User** provides before a **Coworker** starts a **Generation** so the **Generation** has the task-specific context it needs before work begins.

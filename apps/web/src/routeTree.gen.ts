@@ -13,7 +13,7 @@ import { Route as TemplateRouteImport } from './routes/template'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as InstanceRouteImport } from './routes/instance'
 import { Route as AccountsRouteImport } from './routes/accounts'
-import { Route as MarketingRouteImport } from './routes/_marketing'
+import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as ToolboxRouteRouteImport } from './routes/toolbox/route'
@@ -32,7 +32,7 @@ import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as InternalIndexRouteImport } from './routes/internal/index'
 import { Route as AgentsIndexRouteImport } from './routes/agents/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as MarketingIndexRouteImport } from './routes/_marketing/index'
+import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as TemplateTemplateIdRouteImport } from './routes/template/$templateId'
 import { Route as SkillsIdRouteImport } from './routes/skills/$id'
 import { Route as SharedShareTokenRouteImport } from './routes/shared/$shareToken'
@@ -73,11 +73,11 @@ import { Route as AdminMcpRouteImport } from './routes/admin/mcp'
 import { Route as AdminCreditsRouteImport } from './routes/admin/credits'
 import { Route as AdminCoworkerOverviewRouteImport } from './routes/admin/coworker-overview'
 import { Route as AdminChatOverviewRouteImport } from './routes/admin/chat-overview'
-import { Route as MarketingUploadRouteImport } from './routes/_marketing/upload'
-import { Route as MarketingTemplatesRouteImport } from './routes/_marketing/templates'
-import { Route as MarketingPricingRouteImport } from './routes/_marketing/pricing'
-import { Route as MarketingBugReportRouteImport } from './routes/_marketing/bug-report'
-import { Route as MarketingAvatarRouteImport } from './routes/_marketing/avatar'
+import { Route as PublicUploadRouteImport } from './routes/_public/upload'
+import { Route as PublicTemplatesRouteImport } from './routes/_public/templates'
+import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
+import { Route as PublicBugReportRouteImport } from './routes/_public/bug-report'
+import { Route as PublicAvatarRouteImport } from './routes/_public/avatar'
 import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthInviteOnlyRouteImport } from './routes/_auth/invite-only'
@@ -192,8 +192,8 @@ const AccountsRoute = AccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MarketingRoute = MarketingRouteImport.update({
-  id: '/_marketing',
+const PublicRoute = PublicRouteImport.update({
+  id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -284,10 +284,10 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const MarketingIndexRoute = MarketingIndexRouteImport.update({
+const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => MarketingRoute,
+  getParentRoute: () => PublicRoute,
 } as any)
 const TemplateTemplateIdRoute = TemplateTemplateIdRouteImport.update({
   id: '/$templateId',
@@ -489,30 +489,30 @@ const AdminChatOverviewRoute = AdminChatOverviewRouteImport.update({
   path: '/chat-overview',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const MarketingUploadRoute = MarketingUploadRouteImport.update({
+const PublicUploadRoute = PublicUploadRouteImport.update({
   id: '/upload',
   path: '/upload',
-  getParentRoute: () => MarketingRoute,
+  getParentRoute: () => PublicRoute,
 } as any)
-const MarketingTemplatesRoute = MarketingTemplatesRouteImport.update({
+const PublicTemplatesRoute = PublicTemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
-  getParentRoute: () => MarketingRoute,
+  getParentRoute: () => PublicRoute,
 } as any)
-const MarketingPricingRoute = MarketingPricingRouteImport.update({
+const PublicPricingRoute = PublicPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
-  getParentRoute: () => MarketingRoute,
+  getParentRoute: () => PublicRoute,
 } as any)
-const MarketingBugReportRoute = MarketingBugReportRouteImport.update({
+const PublicBugReportRoute = PublicBugReportRouteImport.update({
   id: '/bug-report',
   path: '/bug-report',
-  getParentRoute: () => MarketingRoute,
+  getParentRoute: () => PublicRoute,
 } as any)
-const MarketingAvatarRoute = MarketingAvatarRouteImport.update({
+const PublicAvatarRoute = PublicAvatarRouteImport.update({
   id: '/avatar',
   path: '/avatar',
-  getParentRoute: () => MarketingRoute,
+  getParentRoute: () => PublicRoute,
 } as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -1031,7 +1031,7 @@ export interface FileRoutesByFullPath {
   '/skills': typeof SkillsRouteRouteWithChildren
   '/support': typeof SupportRouteRouteWithChildren
   '/toolbox': typeof ToolboxRouteRouteWithChildren
-  '/': typeof MarketingIndexRoute
+  '/': typeof PublicIndexRoute
   '/accounts': typeof AccountsRoute
   '/instance': typeof InstanceRoute
   '/search': typeof SearchRoute
@@ -1042,11 +1042,11 @@ export interface FileRoutesByFullPath {
   '/invite-only': typeof AuthInviteOnlyRoute
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
-  '/avatar': typeof MarketingAvatarRoute
-  '/bug-report': typeof MarketingBugReportRoute
-  '/pricing': typeof MarketingPricingRoute
-  '/templates': typeof MarketingTemplatesRoute
-  '/upload': typeof MarketingUploadRoute
+  '/avatar': typeof PublicAvatarRoute
+  '/bug-report': typeof PublicBugReportRoute
+  '/pricing': typeof PublicPricingRoute
+  '/templates': typeof PublicTemplatesRoute
+  '/upload': typeof PublicUploadRoute
   '/admin/chat-overview': typeof AdminChatOverviewRoute
   '/admin/coworker-overview': typeof AdminCoworkerOverviewRoute
   '/admin/credits': typeof AdminCreditsRoute
@@ -1187,7 +1187,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalRouteRouteWithChildren
   '/onboarding': typeof OnboardingRouteRouteWithChildren
   '/skills': typeof SkillsRouteRouteWithChildren
-  '/': typeof MarketingIndexRoute
+  '/': typeof PublicIndexRoute
   '/accounts': typeof AccountsRoute
   '/instance': typeof InstanceRoute
   '/search': typeof SearchRoute
@@ -1195,11 +1195,11 @@ export interface FileRoutesByTo {
   '/invite-only': typeof AuthInviteOnlyRoute
   '/login': typeof AuthLoginRoute
   '/reset-password': typeof AuthResetPasswordRoute
-  '/avatar': typeof MarketingAvatarRoute
-  '/bug-report': typeof MarketingBugReportRoute
-  '/pricing': typeof MarketingPricingRoute
-  '/templates': typeof MarketingTemplatesRoute
-  '/upload': typeof MarketingUploadRoute
+  '/avatar': typeof PublicAvatarRoute
+  '/bug-report': typeof PublicBugReportRoute
+  '/pricing': typeof PublicPricingRoute
+  '/templates': typeof PublicTemplatesRoute
+  '/upload': typeof PublicUploadRoute
   '/admin/chat-overview': typeof AdminChatOverviewRoute
   '/admin/coworker-overview': typeof AdminCoworkerOverviewRoute
   '/admin/credits': typeof AdminCreditsRoute
@@ -1346,7 +1346,7 @@ export interface FileRoutesById {
   '/toolbox': typeof ToolboxRouteRouteWithChildren
   '/_app': typeof AppRouteWithChildren
   '/_auth': typeof AuthRouteWithChildren
-  '/_marketing': typeof MarketingRouteWithChildren
+  '/_public': typeof PublicRouteWithChildren
   '/accounts': typeof AccountsRoute
   '/instance': typeof InstanceRoute
   '/search': typeof SearchRoute
@@ -1357,11 +1357,11 @@ export interface FileRoutesById {
   '/_auth/invite-only': typeof AuthInviteOnlyRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_auth/reset-password': typeof AuthResetPasswordRoute
-  '/_marketing/avatar': typeof MarketingAvatarRoute
-  '/_marketing/bug-report': typeof MarketingBugReportRoute
-  '/_marketing/pricing': typeof MarketingPricingRoute
-  '/_marketing/templates': typeof MarketingTemplatesRoute
-  '/_marketing/upload': typeof MarketingUploadRoute
+  '/_public/avatar': typeof PublicAvatarRoute
+  '/_public/bug-report': typeof PublicBugReportRoute
+  '/_public/pricing': typeof PublicPricingRoute
+  '/_public/templates': typeof PublicTemplatesRoute
+  '/_public/upload': typeof PublicUploadRoute
   '/admin/chat-overview': typeof AdminChatOverviewRoute
   '/admin/coworker-overview': typeof AdminCoworkerOverviewRoute
   '/admin/credits': typeof AdminCreditsRoute
@@ -1402,7 +1402,7 @@ export interface FileRoutesById {
   '/shared/$shareToken': typeof SharedShareTokenRoute
   '/skills/$id': typeof SkillsIdRoute
   '/template/$templateId': typeof TemplateTemplateIdRoute
-  '/_marketing/': typeof MarketingIndexRoute
+  '/_public/': typeof PublicIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/internal/': typeof InternalIndexRoute
@@ -1824,7 +1824,7 @@ export interface FileRouteTypes {
     | '/toolbox'
     | '/_app'
     | '/_auth'
-    | '/_marketing'
+    | '/_public'
     | '/accounts'
     | '/instance'
     | '/search'
@@ -1835,11 +1835,11 @@ export interface FileRouteTypes {
     | '/_auth/invite-only'
     | '/_auth/login'
     | '/_auth/reset-password'
-    | '/_marketing/avatar'
-    | '/_marketing/bug-report'
-    | '/_marketing/pricing'
-    | '/_marketing/templates'
-    | '/_marketing/upload'
+    | '/_public/avatar'
+    | '/_public/bug-report'
+    | '/_public/pricing'
+    | '/_public/templates'
+    | '/_public/upload'
     | '/admin/chat-overview'
     | '/admin/coworker-overview'
     | '/admin/credits'
@@ -1880,7 +1880,7 @@ export interface FileRouteTypes {
     | '/shared/$shareToken'
     | '/skills/$id'
     | '/template/$templateId'
-    | '/_marketing/'
+    | '/_public/'
     | '/admin/'
     | '/agents/'
     | '/internal/'
@@ -1989,7 +1989,7 @@ export interface RootRouteChildren {
   ToolboxRouteRoute: typeof ToolboxRouteRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
-  MarketingRoute: typeof MarketingRouteWithChildren
+  PublicRoute: typeof PublicRouteWithChildren
   AccountsRoute: typeof AccountsRoute
   InstanceRoute: typeof InstanceRoute
   SearchRoute: typeof SearchRoute
@@ -2103,11 +2103,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_marketing': {
-      id: '/_marketing'
+    '/_public': {
+      id: '/_public'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof MarketingRouteImport
+      preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
@@ -2236,12 +2236,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/_marketing/': {
-      id: '/_marketing/'
+    '/_public/': {
+      id: '/_public/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof MarketingIndexRouteImport
-      parentRoute: typeof MarketingRoute
+      preLoaderRoute: typeof PublicIndexRouteImport
+      parentRoute: typeof PublicRoute
     }
     '/template/$templateId': {
       id: '/template/$templateId'
@@ -2523,40 +2523,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminChatOverviewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/_marketing/upload': {
-      id: '/_marketing/upload'
+    '/_public/upload': {
+      id: '/_public/upload'
       path: '/upload'
       fullPath: '/upload'
-      preLoaderRoute: typeof MarketingUploadRouteImport
-      parentRoute: typeof MarketingRoute
+      preLoaderRoute: typeof PublicUploadRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_marketing/templates': {
-      id: '/_marketing/templates'
+    '/_public/templates': {
+      id: '/_public/templates'
       path: '/templates'
       fullPath: '/templates'
-      preLoaderRoute: typeof MarketingTemplatesRouteImport
-      parentRoute: typeof MarketingRoute
+      preLoaderRoute: typeof PublicTemplatesRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_marketing/pricing': {
-      id: '/_marketing/pricing'
+    '/_public/pricing': {
+      id: '/_public/pricing'
       path: '/pricing'
       fullPath: '/pricing'
-      preLoaderRoute: typeof MarketingPricingRouteImport
-      parentRoute: typeof MarketingRoute
+      preLoaderRoute: typeof PublicPricingRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_marketing/bug-report': {
-      id: '/_marketing/bug-report'
+    '/_public/bug-report': {
+      id: '/_public/bug-report'
       path: '/bug-report'
       fullPath: '/bug-report'
-      preLoaderRoute: typeof MarketingBugReportRouteImport
-      parentRoute: typeof MarketingRoute
+      preLoaderRoute: typeof PublicBugReportRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_marketing/avatar': {
-      id: '/_marketing/avatar'
+    '/_public/avatar': {
+      id: '/_public/avatar'
       path: '/avatar'
       fullPath: '/avatar'
-      preLoaderRoute: typeof MarketingAvatarRouteImport
-      parentRoute: typeof MarketingRoute
+      preLoaderRoute: typeof PublicAvatarRouteImport
+      parentRoute: typeof PublicRoute
     }
     '/_auth/reset-password': {
       id: '/_auth/reset-password'
@@ -3484,27 +3484,26 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
-interface MarketingRouteChildren {
-  MarketingAvatarRoute: typeof MarketingAvatarRoute
-  MarketingBugReportRoute: typeof MarketingBugReportRoute
-  MarketingPricingRoute: typeof MarketingPricingRoute
-  MarketingTemplatesRoute: typeof MarketingTemplatesRoute
-  MarketingUploadRoute: typeof MarketingUploadRoute
-  MarketingIndexRoute: typeof MarketingIndexRoute
+interface PublicRouteChildren {
+  PublicAvatarRoute: typeof PublicAvatarRoute
+  PublicBugReportRoute: typeof PublicBugReportRoute
+  PublicPricingRoute: typeof PublicPricingRoute
+  PublicTemplatesRoute: typeof PublicTemplatesRoute
+  PublicUploadRoute: typeof PublicUploadRoute
+  PublicIndexRoute: typeof PublicIndexRoute
 }
 
-const MarketingRouteChildren: MarketingRouteChildren = {
-  MarketingAvatarRoute: MarketingAvatarRoute,
-  MarketingBugReportRoute: MarketingBugReportRoute,
-  MarketingPricingRoute: MarketingPricingRoute,
-  MarketingTemplatesRoute: MarketingTemplatesRoute,
-  MarketingUploadRoute: MarketingUploadRoute,
-  MarketingIndexRoute: MarketingIndexRoute,
+const PublicRouteChildren: PublicRouteChildren = {
+  PublicAvatarRoute: PublicAvatarRoute,
+  PublicBugReportRoute: PublicBugReportRoute,
+  PublicPricingRoute: PublicPricingRoute,
+  PublicTemplatesRoute: PublicTemplatesRoute,
+  PublicUploadRoute: PublicUploadRoute,
+  PublicIndexRoute: PublicIndexRoute,
 }
 
-const MarketingRouteWithChildren = MarketingRoute._addFileChildren(
-  MarketingRouteChildren,
-)
+const PublicRouteWithChildren =
+  PublicRoute._addFileChildren(PublicRouteChildren)
 
 interface TemplateRouteChildren {
   TemplateTemplateIdRoute: typeof TemplateTemplateIdRoute
@@ -3543,7 +3542,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolboxRouteRoute: ToolboxRouteRouteWithChildren,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
-  MarketingRoute: MarketingRouteWithChildren,
+  PublicRoute: PublicRouteWithChildren,
   AccountsRoute: AccountsRoute,
   InstanceRoute: InstanceRoute,
   SearchRoute: SearchRoute,

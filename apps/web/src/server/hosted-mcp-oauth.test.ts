@@ -155,6 +155,33 @@ describe("hosted MCP OAuth refresh tokens", () => {
     expect(updatePayloads[0]).not.toHaveProperty("revokedAt");
     expect(updateWhereMock).toHaveBeenCalled();
   });
+
+  it("signs access tokens with the granted MCP resource issuer", async () => {
+    grantFindFirstMock.mockResolvedValue({
+      id: "grant-1",
+      clientId: "client-1",
+      userId: "user-1",
+      workspaceId: "workspace-1",
+      audience: "bap",
+      resource: "http://127.0.0.1:3010/bap",
+      scopes: ["bap"],
+      revokedAt: null,
+    });
+
+    await exchangeHostedMcpRefreshToken({
+      request: new Request("http://localhost:3000/api/mcp/oauth/token"),
+      clientId: "client-1",
+      refreshToken: "stable-refresh-token",
+      resource: "http://127.0.0.1:3010/bap",
+    });
+
+    expect(signHostedMcpAccessTokenMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audience: "bap",
+        issuer: "http://127.0.0.1:3010/bap",
+      }),
+    );
+  });
 });
 
 describe("hosted MCP OAuth authorization requests", () => {

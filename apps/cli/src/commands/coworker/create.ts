@@ -7,8 +7,6 @@ type CreateFlags = {
   name?: string;
   trigger: string;
   prompt: string;
-  promptDo?: string;
-  promptDont?: string;
   folder?: string;
   autoApprove?: boolean;
   model?: string;
@@ -24,8 +22,6 @@ export default async function (this: LocalContext, flags: CreateFlags): Promise<
     name: flags.name,
     triggerType: flags.trigger,
     prompt: flags.prompt,
-    promptDo: flags.promptDo,
-    promptDont: flags.promptDont,
     autoApprove: flags.autoApprove,
     model: flags.model ?? DEFAULT_CONNECTED_CHATGPT_MODEL,
     authSource: flags.authSource,

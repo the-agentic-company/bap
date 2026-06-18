@@ -487,7 +487,7 @@ function AnimatedDepartment({
 
 // ─── Landing ─────────────────────────────────────────────────────────────────
 
-type CoworkerLandingProps = {
+type HomeLandingProps = {
   initialHasSession?: boolean;
   initialFirstName?: string | null;
   featuredTemplates: TemplateCatalogTemplate[];
@@ -497,11 +497,11 @@ function getFirstName(name: string | null | undefined) {
   return name?.trim().split(/\s+/, 1).find(Boolean) ?? null;
 }
 
-export function CoworkerLanding({
+export function HomeLanding({
   initialHasSession = false,
   initialFirstName = null,
   featuredTemplates,
-}: CoworkerLandingProps) {
+}: HomeLandingProps) {
   const t = useGT();
 
   const gt = useGT();

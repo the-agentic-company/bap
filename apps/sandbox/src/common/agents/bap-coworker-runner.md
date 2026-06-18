@@ -35,6 +35,11 @@ When something fails during execution:
 Never silently swallow errors. Always surface failures in your output.
 </error_handling>
 
+<agentic_app_output>
+When a Coworker Runner creates any user-facing HTML result, write the final self-contained HTML document to /app/output.html exactly.
+Bap renders only sandbox files named output.html as Agentic-Apps. If the coworker or user also asks for a custom downloadable HTML filename, you may create that as an additional copy, but /app/output.html is required for rendering.
+</agentic_app_output>
+
 <output_format>
 Always end your run with a structured summary of what you did.
 

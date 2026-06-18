@@ -2,7 +2,6 @@ import { db } from "@bap/db/client";
 import { conversation } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
 import { env } from "../../../env";
-import { parseModelReference } from "../../../lib/model-reference";
 import type {
   RuntimeHarnessClient,
   RuntimePromptPart,
@@ -28,6 +27,7 @@ import type {
   GenerationStatus,
 } from "../../services/generation/types";
 import { OpenCodeTurnEventBridge } from "./opencode-turn-events";
+import { buildOpenCodeRuntimeModelConfig } from "./model-config";
 
 export type OpenCodeRecoveryReattachOptions = {
   allowSnapshotRestore?: boolean;
@@ -280,11 +280,7 @@ export class OpenCodeRecoveryRunner {
         },
       );
       const eventStream = eventResult.stream;
-      const parsedModel = parseModelReference(ctx.model);
-      const modelConfig = {
-        providerID: parsedModel.providerID,
-        modelID: parsedModel.modelID,
-      };
+      const modelConfig = buildOpenCodeRuntimeModelConfig(ctx.model);
       const continuationPromptSpec =
         continuationPromptParts && continuationPromptParts.length > 0
           ? await composeContinuationPromptSpec(ctx)

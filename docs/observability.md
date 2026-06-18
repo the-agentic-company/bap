@@ -419,6 +419,7 @@ Staging endpoints:
 - Metrics: `https://victoria-metrics.ops.staging.heybap.com`
 - Logs: `https://victoria-logs.ops.staging.heybap.com`
 - Traces: `https://victoria-traces.ops.staging.heybap.com`
+- S3/MinIO: `https://cmdclaw-s3-staging.onrender.com`
 
 Production endpoints:
 
@@ -426,8 +427,14 @@ Production endpoints:
 - Metrics: `https://victoria-metrics.ops.prod.heybap.com`
 - Logs: `https://victoria-logs.ops.prod.heybap.com`
 - Traces: `https://victoria-traces.ops.prod.heybap.com`
+- S3/MinIO: `https://cmdclaw-s3-prod.onrender.com`
 
 Render: `render ...`
+
+Hosted S3 uses the same access key and secret for staging and production; only
+the endpoint URL changes. Load `.env.staging.observability` or
+`.env.prod.observability` before S3 checks. The historical document buckets are
+`cmdclaw-documents` on staging and `cmdclaw-documents-prod` on production.
 
 ## Agent Query Examples
 

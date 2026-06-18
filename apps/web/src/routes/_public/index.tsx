@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CoworkerLanding } from "@/components/landing/coworker-landing";
+import { HomeLanding } from "@/components/landing/home-landing";
 import { env } from "@/env";
 import { fetchLandingData } from "./-landing-data";
 
 /**
  * Landing page (`/`). Migrated from the previous `src/app/page.tsx` server component.
  *
- * - Nests under the public `_marketing` shell (no auth guard); the page renders for both
- *   anonymous and authenticated visitors, with `CoworkerLanding` switching its UI via
+ * - Nests under the public `_public` shell (no auth guard); the page renders for both
+ *   anonymous and authenticated visitors, with `HomeLanding` switching its UI via
  *   `initialHasSession` exactly as the old page did.
  * - The `loader` runs the `fetchLandingData` server function, which resolves the session,
  *   preserves the worktree auto-login redirect for unauthenticated local-dev requests, and
@@ -25,7 +25,7 @@ const description = isSelfHostedEdition
   ? "Your self-hosted Bap deployment"
   : "Turn plain-English tasks into AI coworkers that run across your tools. Handle one-off work instantly or automate recurring workflows for your team.";
 
-export const Route = createFileRoute("/_marketing/")({
+export const Route = createFileRoute("/_public/")({
   loader: () => fetchLandingData(),
   head: () => ({
     meta: [
@@ -44,14 +44,14 @@ export const Route = createFileRoute("/_marketing/")({
     ],
     links: [{ rel: "canonical", href: siteUrl }],
   }),
-  component: LandingPage,
+  component: HomeRoute,
 });
 
-function LandingPage() {
+function HomeRoute() {
   const { initialHasSession, initialFirstName, featuredTemplates } = Route.useLoaderData();
 
   return (
-    <CoworkerLanding
+    <HomeLanding
       initialHasSession={initialHasSession}
       initialFirstName={initialFirstName}
       featuredTemplates={featuredTemplates}

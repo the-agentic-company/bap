@@ -373,7 +373,7 @@ async function issueHostedMcpTokenSet(params: {
     clientId: params.clientId,
     grantId: params.grant.id,
     secret: env.APP_SERVER_SECRET,
-    issuer: buildIssuerUrl(params.request),
+    issuer: params.grant.resource,
     expiresInSeconds: ACCESS_TOKEN_TTL_SECONDS,
   });
   const refreshToken =

@@ -24,7 +24,7 @@ const loadTemplateCatalog = createServerFn({ method: "GET" }).handler(() =>
   listTemplateCatalogEntries(),
 );
 
-export const Route = createFileRoute("/_marketing/templates")({
+export const Route = createFileRoute("/_public/templates")({
   validateSearch: (search: Record<string, unknown>): TemplatesSearch => ({
     preview: typeof search.preview === "string" ? search.preview : undefined,
   }),

@@ -14,8 +14,6 @@ export type OpencodePromptContext = Pick<
   | "userId"
   | "coworkerRunId"
   | "coworkerPrompt"
-  | "coworkerPromptDo"
-  | "coworkerPromptDont"
   | "triggerPayload"
   | "builderCoworkerContext"
   | "selectedPlatformSkillSlugs"
@@ -42,8 +40,6 @@ export function buildOpencodePromptSpecInputForContext(
       kind: "coworker_runner",
       ...base,
       coworkerPrompt: ctx.coworkerPrompt,
-      coworkerPromptDo: ctx.coworkerPromptDo,
-      coworkerPromptDont: ctx.coworkerPromptDont,
       triggerPayload: ctx.triggerPayload,
     };
   }

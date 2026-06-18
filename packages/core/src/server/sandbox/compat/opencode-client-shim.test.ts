@@ -91,6 +91,93 @@ describe("createRuntimeHarnessClientFromOpencodeClient", () => {
     expect(promptAsyncMock).not.toHaveBeenCalled();
   });
 
+  it("normalizes provider/model strings before calling session.prompt", async () => {
+    const promptMock = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
+    const client = {
+      event: {
+        subscribe: vi.fn(),
+      },
+      session: {
+        prompt: promptMock,
+        abort: vi.fn(),
+        messages: vi.fn(),
+        get: vi.fn(),
+        create: vi.fn(),
+      },
+      part: {
+        update: vi.fn(),
+      },
+      permission: {
+        reply: vi.fn(),
+      },
+      question: {
+        reply: vi.fn(),
+        reject: vi.fn(),
+      },
+    } as Parameters<typeof createRuntimeHarnessClientFromOpencodeClient>[0];
+
+    const harness = createRuntimeHarnessClientFromOpencodeClient(client);
+    await harness.prompt({
+      sessionID: "session-1",
+      parts: [{ type: "text", text: "hello" }],
+      model: "openai/gpt-5.5",
+    });
+
+    expect(promptMock).toHaveBeenCalledWith({
+      sessionID: "session-1",
+      parts: [{ type: "text", text: "hello" }],
+      model: {
+        providerID: "openai",
+        modelID: "gpt-5.5",
+      },
+    });
+  });
+
+  it("normalizes nested provider/model values in structured prompt models", async () => {
+    const promptMock = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
+    const client = {
+      event: {
+        subscribe: vi.fn(),
+      },
+      session: {
+        prompt: promptMock,
+        abort: vi.fn(),
+        messages: vi.fn(),
+        get: vi.fn(),
+        create: vi.fn(),
+      },
+      part: {
+        update: vi.fn(),
+      },
+      permission: {
+        reply: vi.fn(),
+      },
+      question: {
+        reply: vi.fn(),
+        reject: vi.fn(),
+      },
+    } as Parameters<typeof createRuntimeHarnessClientFromOpencodeClient>[0];
+
+    const harness = createRuntimeHarnessClientFromOpencodeClient(client);
+    await harness.prompt({
+      sessionID: "session-1",
+      parts: [{ type: "text", text: "hello" }],
+      model: {
+        providerID: "openai",
+        modelID: "openai/gpt-5.5",
+      },
+    });
+
+    expect(promptMock).toHaveBeenCalledWith({
+      sessionID: "session-1",
+      parts: [{ type: "text", text: "hello" }],
+      model: {
+        providerID: "openai",
+        modelID: "gpt-5.5",
+      },
+    });
+  });
+
   it("forwards updatePart to client.part.update", async () => {
     const updateMock = vi.fn().mockResolvedValue({ data: { id: "part-1" }, error: null });
     const client = {

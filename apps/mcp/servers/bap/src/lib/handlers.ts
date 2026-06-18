@@ -53,8 +53,6 @@ export async function handleCoworkerCreate(params: {
   name?: string;
   trigger?: string;
   prompt?: string;
-  promptDo?: string;
-  promptDont?: string;
   autoApprove?: boolean;
   model?: string;
   authSource?: "user" | "shared";
@@ -74,8 +72,6 @@ export async function handleCoworkerCreate(params: {
     name: params.name,
     triggerType: params.trigger ?? "manual",
     prompt: params.prompt ?? "",
-    promptDo: params.promptDo,
-    promptDont: params.promptDont,
     autoApprove: params.autoApprove,
     model: params.model ?? DEFAULT_CONNECTED_CHATGPT_MODEL,
     authSource: params.authSource,
@@ -125,8 +121,6 @@ export async function handleCoworkerUpdate(params: {
   status?: "on" | "off";
   trigger?: string;
   prompt?: string;
-  promptDo?: string | null;
-  promptDont?: string | null;
   autoApprove?: boolean;
   isPinned?: boolean;
   model?: string;
@@ -150,8 +144,6 @@ export async function handleCoworkerUpdate(params: {
   if (params.status !== undefined) updates.status = params.status;
   if (params.trigger !== undefined) updates.triggerType = params.trigger;
   if (params.prompt !== undefined) updates.prompt = params.prompt;
-  if (params.promptDo !== undefined) updates.promptDo = params.promptDo;
-  if (params.promptDont !== undefined) updates.promptDont = params.promptDont;
   if (params.autoApprove !== undefined) updates.autoApprove = params.autoApprove;
   if (params.isPinned !== undefined) updates.isPinned = params.isPinned;
   if (params.model !== undefined) updates.model = params.model;
