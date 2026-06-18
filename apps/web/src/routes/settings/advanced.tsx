@@ -11,8 +11,8 @@ import { fetchSessionContext } from "@/lib/route-guards";
 export const Route = createFileRoute("/settings/advanced")({
   beforeLoad: async () => {
     const { edition } = await fetchSessionContext();
-    // `href` escape hatch: `/instance` and `/admin` are owned by other migration areas
+    // `href` escape hatch: `/instance` and `/internal` are owned by other migration areas
     // and may not be in the typed route tree yet.
-    throw redirect({ href: edition === "selfhost" ? "/instance" : "/admin" });
+    throw redirect({ href: edition === "selfhost" ? "/instance" : "/internal" });
   },
 });

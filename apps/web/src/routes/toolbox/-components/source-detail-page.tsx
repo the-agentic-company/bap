@@ -62,7 +62,7 @@ export function SourceDetailPage() {
 
     if (source.internalKey === "modulr") {
       return {
-        href: "/admin/mcp",
+        href: "/internal/mcp",
         connectedLabel: "Manage Modulr connection",
         disconnectedLabel: "Configure Modulr",
       };
@@ -77,7 +77,7 @@ export function SourceDetailPage() {
     }
 
     return {
-      href: "/admin/mcp",
+      href: "/internal/mcp",
       connectedLabel: `Manage ${source.name}`,
       disconnectedLabel: `Configure ${source.name}`,
     };

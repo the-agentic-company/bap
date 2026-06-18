@@ -22,16 +22,15 @@ import { Route as SkillsRouteRouteImport } from './routes/skills/route'
 import { Route as SettingsRouteRouteImport } from './routes/settings/route'
 import { Route as OnboardingRouteRouteImport } from './routes/onboarding/route'
 import { Route as LegalRouteRouteImport } from './routes/legal/route'
+import { Route as InternalRouteRouteImport } from './routes/internal/route'
 import { Route as IntegrationsRouteRouteImport } from './routes/integrations/route'
 import { Route as AgentsRouteRouteImport } from './routes/agents/route'
-import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as ToolboxIndexRouteImport } from './routes/toolbox/index'
 import { Route as TemplateIndexRouteImport } from './routes/template/index'
 import { Route as SupportIndexRouteImport } from './routes/support/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as InternalIndexRouteImport } from './routes/internal/index'
 import { Route as AgentsIndexRouteImport } from './routes/agents/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as TemplateTemplateIdRouteImport } from './routes/template/$templateId'
 import { Route as SkillsIdRouteImport } from './routes/skills/$id'
@@ -45,8 +44,21 @@ import { Route as OnboardingSubscriptionsRouteImport } from './routes/onboarding
 import { Route as OnboardingIntegrationsRouteImport } from './routes/onboarding/integrations'
 import { Route as LegalTermsRouteImport } from './routes/legal/terms'
 import { Route as LegalPrivacyPolicyRouteImport } from './routes/legal/privacy-policy'
+import { Route as InternalWorkspacesRouteImport } from './routes/internal/workspaces'
+import { Route as InternalWhatsappRouteImport } from './routes/internal/whatsapp'
+import { Route as InternalUsageRouteImport } from './routes/internal/usage'
+import { Route as InternalToolsRouteImport } from './routes/internal/tools'
+import { Route as InternalTemplatesRouteImport } from './routes/internal/templates'
+import { Route as InternalSubscriptionsRouteImport } from './routes/internal/subscriptions'
+import { Route as InternalSandboxesRouteImport } from './routes/internal/sandboxes'
 import { Route as InternalReadmePreviewRouteImport } from './routes/internal/readme-preview'
 import { Route as InternalPreviewsRouteImport } from './routes/internal/previews'
+import { Route as InternalPerformanceRouteImport } from './routes/internal/performance'
+import { Route as InternalOpsRouteImport } from './routes/internal/ops'
+import { Route as InternalMcpRouteImport } from './routes/internal/mcp'
+import { Route as InternalCreditsRouteImport } from './routes/internal/credits'
+import { Route as InternalCoworkerOverviewRouteImport } from './routes/internal/coworker-overview'
+import { Route as InternalChatOverviewRouteImport } from './routes/internal/chat-overview'
 import { Route as IntegrationsWhatsappRouteImport } from './routes/integrations/whatsapp'
 import { Route as IntegrationsTwitterRouteImport } from './routes/integrations/twitter'
 import { Route as IntegrationsRedditRouteImport } from './routes/integrations/reddit'
@@ -61,18 +73,6 @@ import { Route as AgentsOrgChartRouteImport } from './routes/agents/org-chart'
 import { Route as AgentsNewRouteImport } from './routes/agents/new'
 import { Route as AgentsHistoryRouteImport } from './routes/agents/history'
 import { Route as AgentsGridRouteImport } from './routes/agents/grid'
-import { Route as AdminWorkspacesRouteImport } from './routes/admin/workspaces'
-import { Route as AdminWhatsappRouteImport } from './routes/admin/whatsapp'
-import { Route as AdminUsageRouteImport } from './routes/admin/usage'
-import { Route as AdminTemplatesRouteImport } from './routes/admin/templates'
-import { Route as AdminSubscriptionsRouteImport } from './routes/admin/subscriptions'
-import { Route as AdminSandboxesRouteImport } from './routes/admin/sandboxes'
-import { Route as AdminPerformanceRouteImport } from './routes/admin/performance'
-import { Route as AdminOpsRouteImport } from './routes/admin/ops'
-import { Route as AdminMcpRouteImport } from './routes/admin/mcp'
-import { Route as AdminCreditsRouteImport } from './routes/admin/credits'
-import { Route as AdminCoworkerOverviewRouteImport } from './routes/admin/coworker-overview'
-import { Route as AdminChatOverviewRouteImport } from './routes/admin/chat-overview'
 import { Route as PublicUploadRouteImport } from './routes/_public/upload'
 import { Route as PublicTemplatesRouteImport } from './routes/_public/templates'
 import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
@@ -90,6 +90,7 @@ import { Route as AppChatIndexRouteImport } from './routes/_app/chat/index'
 import { Route as ToolboxSourcesNewRouteImport } from './routes/toolbox/sources/new'
 import { Route as ToolboxSourcesIdRouteImport } from './routes/toolbox/sources/$id'
 import { Route as SkillsCommunitySkillIdRouteImport } from './routes/skills/community/$skillId'
+import { Route as PrototypeCoworkerSharingRouteImport } from './routes/prototype/coworker/sharing'
 import { Route as ApiZeroQueryRouteImport } from './routes/api/zero/query'
 import { Route as ApiWhatsappStatusRouteImport } from './routes/api/whatsapp/status'
 import { Route as ApiWhatsappStartRouteImport } from './routes/api/whatsapp/start'
@@ -114,6 +115,7 @@ import { Route as ApiAuthNativeCallbackRouteImport } from './routes/api/auth/nat
 import { Route as ApiAuthCheckEmailRouteImport } from './routes/api/auth/check-email'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AgentsInfoSlugRouteImport } from './routes/agents/info/$slug'
+import { Route as AgentsFoldersFolderIdRouteImport } from './routes/agents/folders/$folderId'
 import { Route as AgentsDeployTemplateIdRouteImport } from './routes/agents/deploy/$templateId'
 import { Route as AuthSignInTokenRouteImport } from './routes/_auth/sign-in.$token'
 import { Route as AppChatConversationIdRouteImport } from './routes/_app/chat/$conversationId'
@@ -122,6 +124,7 @@ import { Route as AgentsEditIdRouteRouteImport } from './routes/agents/edit/$id/
 import { Route as AgentsRunsIdIndexRouteImport } from './routes/agents/runs/$id/index'
 import { Route as AgentsEditIdIndexRouteImport } from './routes/agents/edit/$id/index'
 import { Route as PrototypeCoworkerInfoSlugRouteImport } from './routes/prototype/coworker/info/$slug'
+import { Route as ApiWorkspacesIdImageRouteImport } from './routes/api/workspaces/$id/image'
 import { Route as ApiSandboxFilesIdDownloadRouteImport } from './routes/api/sandbox-files/$id/download'
 import { Route as ApiOauthDynamicsPendingRouteImport } from './routes/api/oauth/dynamics/pending'
 import { Route as ApiModulrDocumentsDownloadRouteImport } from './routes/api/modulr/documents/download'
@@ -234,6 +237,11 @@ const LegalRouteRoute = LegalRouteRouteImport.update({
   path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InternalRouteRoute = InternalRouteRouteImport.update({
+  id: '/internal',
+  path: '/internal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IntegrationsRouteRoute = IntegrationsRouteRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -242,11 +250,6 @@ const IntegrationsRouteRoute = IntegrationsRouteRouteImport.update({
 const AgentsRouteRoute = AgentsRouteRouteImport.update({
   id: '/agents',
   path: '/agents',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRouteRoute = AdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolboxIndexRoute = ToolboxIndexRouteImport.update({
@@ -270,19 +273,14 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   getParentRoute: () => SettingsRouteRoute,
 } as any)
 const InternalIndexRoute = InternalIndexRouteImport.update({
-  id: '/internal/',
-  path: '/internal/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => InternalRouteRoute,
 } as any)
 const AgentsIndexRoute = AgentsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AgentsRouteRoute,
-} as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRouteRoute,
 } as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
@@ -349,15 +347,81 @@ const LegalPrivacyPolicyRoute = LegalPrivacyPolicyRouteImport.update({
   path: '/privacy-policy',
   getParentRoute: () => LegalRouteRoute,
 } as any)
+const InternalWorkspacesRoute = InternalWorkspacesRouteImport.update({
+  id: '/workspaces',
+  path: '/workspaces',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalWhatsappRoute = InternalWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalUsageRoute = InternalUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalToolsRoute = InternalToolsRouteImport.update({
+  id: '/tools',
+  path: '/tools',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalTemplatesRoute = InternalTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalSubscriptionsRoute = InternalSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalSandboxesRoute = InternalSandboxesRouteImport.update({
+  id: '/sandboxes',
+  path: '/sandboxes',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
 const InternalReadmePreviewRoute = InternalReadmePreviewRouteImport.update({
-  id: '/internal/readme-preview',
-  path: '/internal/readme-preview',
-  getParentRoute: () => rootRouteImport,
+  id: '/readme-preview',
+  path: '/readme-preview',
+  getParentRoute: () => InternalRouteRoute,
 } as any)
 const InternalPreviewsRoute = InternalPreviewsRouteImport.update({
-  id: '/internal/previews',
-  path: '/internal/previews',
-  getParentRoute: () => rootRouteImport,
+  id: '/previews',
+  path: '/previews',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalPerformanceRoute = InternalPerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalOpsRoute = InternalOpsRouteImport.update({
+  id: '/ops',
+  path: '/ops',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalMcpRoute = InternalMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalCreditsRoute = InternalCreditsRouteImport.update({
+  id: '/credits',
+  path: '/credits',
+  getParentRoute: () => InternalRouteRoute,
+} as any)
+const InternalCoworkerOverviewRoute =
+  InternalCoworkerOverviewRouteImport.update({
+    id: '/coworker-overview',
+    path: '/coworker-overview',
+    getParentRoute: () => InternalRouteRoute,
+  } as any)
+const InternalChatOverviewRoute = InternalChatOverviewRouteImport.update({
+  id: '/chat-overview',
+  path: '/chat-overview',
+  getParentRoute: () => InternalRouteRoute,
 } as any)
 const IntegrationsWhatsappRoute = IntegrationsWhatsappRouteImport.update({
   id: '/whatsapp',
@@ -428,66 +492,6 @@ const AgentsGridRoute = AgentsGridRouteImport.update({
   id: '/grid',
   path: '/grid',
   getParentRoute: () => AgentsRouteRoute,
-} as any)
-const AdminWorkspacesRoute = AdminWorkspacesRouteImport.update({
-  id: '/workspaces',
-  path: '/workspaces',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminWhatsappRoute = AdminWhatsappRouteImport.update({
-  id: '/whatsapp',
-  path: '/whatsapp',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminUsageRoute = AdminUsageRouteImport.update({
-  id: '/usage',
-  path: '/usage',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminTemplatesRoute = AdminTemplatesRouteImport.update({
-  id: '/templates',
-  path: '/templates',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminSandboxesRoute = AdminSandboxesRouteImport.update({
-  id: '/sandboxes',
-  path: '/sandboxes',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminPerformanceRoute = AdminPerformanceRouteImport.update({
-  id: '/performance',
-  path: '/performance',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminOpsRoute = AdminOpsRouteImport.update({
-  id: '/ops',
-  path: '/ops',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminMcpRoute = AdminMcpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminCreditsRoute = AdminCreditsRouteImport.update({
-  id: '/credits',
-  path: '/credits',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminCoworkerOverviewRoute = AdminCoworkerOverviewRouteImport.update({
-  id: '/coworker-overview',
-  path: '/coworker-overview',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminChatOverviewRoute = AdminChatOverviewRouteImport.update({
-  id: '/chat-overview',
-  path: '/chat-overview',
-  getParentRoute: () => AdminRouteRoute,
 } as any)
 const PublicUploadRoute = PublicUploadRouteImport.update({
   id: '/upload',
@@ -574,6 +578,12 @@ const SkillsCommunitySkillIdRoute = SkillsCommunitySkillIdRouteImport.update({
   path: '/community/$skillId',
   getParentRoute: () => SkillsRouteRoute,
 } as any)
+const PrototypeCoworkerSharingRoute =
+  PrototypeCoworkerSharingRouteImport.update({
+    id: '/prototype/coworker/sharing',
+    path: '/prototype/coworker/sharing',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiZeroQueryRoute = ApiZeroQueryRouteImport.update({
   id: '/api/zero/query',
   path: '/api/zero/query',
@@ -698,6 +708,11 @@ const AgentsInfoSlugRoute = AgentsInfoSlugRouteImport.update({
   path: '/info/$slug',
   getParentRoute: () => AgentsRouteRoute,
 } as any)
+const AgentsFoldersFolderIdRoute = AgentsFoldersFolderIdRouteImport.update({
+  id: '/folders/$folderId',
+  path: '/folders/$folderId',
+  getParentRoute: () => AgentsRouteRoute,
+} as any)
 const AgentsDeployTemplateIdRoute = AgentsDeployTemplateIdRouteImport.update({
   id: '/deploy/$templateId',
   path: '/deploy/$templateId',
@@ -739,6 +754,11 @@ const PrototypeCoworkerInfoSlugRoute =
     path: '/prototype/coworker/info/$slug',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiWorkspacesIdImageRoute = ApiWorkspacesIdImageRouteImport.update({
+  id: '/api/workspaces/$id/image',
+  path: '/api/workspaces/$id/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSandboxFilesIdDownloadRoute =
   ApiSandboxFilesIdDownloadRouteImport.update({
     id: '/api/sandbox-files/$id/download',
@@ -1022,9 +1042,9 @@ const ApiInternalCoworkersRuntimeDocumentsUploadRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/admin': typeof AdminRouteRouteWithChildren
   '/agents': typeof AgentsRouteRouteWithChildren
   '/integrations': typeof IntegrationsRouteRouteWithChildren
+  '/internal': typeof InternalRouteRouteWithChildren
   '/legal': typeof LegalRouteRouteWithChildren
   '/onboarding': typeof OnboardingRouteRouteWithChildren
   '/settings': typeof SettingsRouteRouteWithChildren
@@ -1047,18 +1067,6 @@ export interface FileRoutesByFullPath {
   '/pricing': typeof PublicPricingRoute
   '/templates': typeof PublicTemplatesRoute
   '/upload': typeof PublicUploadRoute
-  '/admin/chat-overview': typeof AdminChatOverviewRoute
-  '/admin/coworker-overview': typeof AdminCoworkerOverviewRoute
-  '/admin/credits': typeof AdminCreditsRoute
-  '/admin/mcp': typeof AdminMcpRoute
-  '/admin/ops': typeof AdminOpsRoute
-  '/admin/performance': typeof AdminPerformanceRoute
-  '/admin/sandboxes': typeof AdminSandboxesRoute
-  '/admin/subscriptions': typeof AdminSubscriptionsRoute
-  '/admin/templates': typeof AdminTemplatesRoute
-  '/admin/usage': typeof AdminUsageRoute
-  '/admin/whatsapp': typeof AdminWhatsappRoute
-  '/admin/workspaces': typeof AdminWorkspacesRoute
   '/agents/grid': typeof AgentsGridRoute
   '/agents/history': typeof AgentsHistoryRoute
   '/agents/new': typeof AgentsNewRoute
@@ -1073,8 +1081,21 @@ export interface FileRoutesByFullPath {
   '/integrations/reddit': typeof IntegrationsRedditRoute
   '/integrations/twitter': typeof IntegrationsTwitterRoute
   '/integrations/whatsapp': typeof IntegrationsWhatsappRoute
+  '/internal/chat-overview': typeof InternalChatOverviewRoute
+  '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
+  '/internal/credits': typeof InternalCreditsRoute
+  '/internal/mcp': typeof InternalMcpRoute
+  '/internal/ops': typeof InternalOpsRoute
+  '/internal/performance': typeof InternalPerformanceRoute
   '/internal/previews': typeof InternalPreviewsRoute
   '/internal/readme-preview': typeof InternalReadmePreviewRoute
+  '/internal/sandboxes': typeof InternalSandboxesRoute
+  '/internal/subscriptions': typeof InternalSubscriptionsRoute
+  '/internal/templates': typeof InternalTemplatesRoute
+  '/internal/tools': typeof InternalToolsRoute
+  '/internal/usage': typeof InternalUsageRoute
+  '/internal/whatsapp': typeof InternalWhatsappRoute
+  '/internal/workspaces': typeof InternalWorkspacesRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/onboarding/integrations': typeof OnboardingIntegrationsRoute
@@ -1087,7 +1108,6 @@ export interface FileRoutesByFullPath {
   '/shared/$shareToken': typeof SharedShareTokenRoute
   '/skills/$id': typeof SkillsIdRoute
   '/template/$templateId': typeof TemplateTemplateIdRoute
-  '/admin/': typeof AdminIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/internal/': typeof InternalIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -1099,6 +1119,7 @@ export interface FileRoutesByFullPath {
   '/chat/$conversationId': typeof AppChatConversationIdRoute
   '/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
+  '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/check-email': typeof ApiAuthCheckEmailRoute
@@ -1123,6 +1144,7 @@ export interface FileRoutesByFullPath {
   '/api/whatsapp/start': typeof ApiWhatsappStartRoute
   '/api/whatsapp/status': typeof ApiWhatsappStatusRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
+  '/prototype/coworker/sharing': typeof PrototypeCoworkerSharingRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
@@ -1165,6 +1187,7 @@ export interface FileRoutesByFullPath {
   '/api/modulr/documents/download': typeof ApiModulrDocumentsDownloadRoute
   '/api/oauth/dynamics/pending': typeof ApiOauthDynamicsPendingRoute
   '/api/sandbox-files/$id/download': typeof ApiSandboxFilesIdDownloadRoute
+  '/api/workspaces/$id/image': typeof ApiWorkspacesIdImageRoute
   '/prototype/coworker/info/$slug': typeof PrototypeCoworkerInfoSlugRoute
   '/agents/edit/$id/': typeof AgentsEditIdIndexRoute
   '/agents/runs/$id/': typeof AgentsRunsIdIndexRoute
@@ -1200,18 +1223,6 @@ export interface FileRoutesByTo {
   '/pricing': typeof PublicPricingRoute
   '/templates': typeof PublicTemplatesRoute
   '/upload': typeof PublicUploadRoute
-  '/admin/chat-overview': typeof AdminChatOverviewRoute
-  '/admin/coworker-overview': typeof AdminCoworkerOverviewRoute
-  '/admin/credits': typeof AdminCreditsRoute
-  '/admin/mcp': typeof AdminMcpRoute
-  '/admin/ops': typeof AdminOpsRoute
-  '/admin/performance': typeof AdminPerformanceRoute
-  '/admin/sandboxes': typeof AdminSandboxesRoute
-  '/admin/subscriptions': typeof AdminSubscriptionsRoute
-  '/admin/templates': typeof AdminTemplatesRoute
-  '/admin/usage': typeof AdminUsageRoute
-  '/admin/whatsapp': typeof AdminWhatsappRoute
-  '/admin/workspaces': typeof AdminWorkspacesRoute
   '/agents/grid': typeof AgentsGridRoute
   '/agents/history': typeof AgentsHistoryRoute
   '/agents/new': typeof AgentsNewRoute
@@ -1226,8 +1237,21 @@ export interface FileRoutesByTo {
   '/integrations/reddit': typeof IntegrationsRedditRoute
   '/integrations/twitter': typeof IntegrationsTwitterRoute
   '/integrations/whatsapp': typeof IntegrationsWhatsappRoute
+  '/internal/chat-overview': typeof InternalChatOverviewRoute
+  '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
+  '/internal/credits': typeof InternalCreditsRoute
+  '/internal/mcp': typeof InternalMcpRoute
+  '/internal/ops': typeof InternalOpsRoute
+  '/internal/performance': typeof InternalPerformanceRoute
   '/internal/previews': typeof InternalPreviewsRoute
   '/internal/readme-preview': typeof InternalReadmePreviewRoute
+  '/internal/sandboxes': typeof InternalSandboxesRoute
+  '/internal/subscriptions': typeof InternalSubscriptionsRoute
+  '/internal/templates': typeof InternalTemplatesRoute
+  '/internal/tools': typeof InternalToolsRoute
+  '/internal/usage': typeof InternalUsageRoute
+  '/internal/whatsapp': typeof InternalWhatsappRoute
+  '/internal/workspaces': typeof InternalWorkspacesRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/onboarding/integrations': typeof OnboardingIntegrationsRoute
@@ -1240,7 +1264,6 @@ export interface FileRoutesByTo {
   '/shared/$shareToken': typeof SharedShareTokenRoute
   '/skills/$id': typeof SkillsIdRoute
   '/template/$templateId': typeof TemplateTemplateIdRoute
-  '/admin': typeof AdminIndexRoute
   '/agents': typeof AgentsIndexRoute
   '/internal': typeof InternalIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -1250,6 +1273,7 @@ export interface FileRoutesByTo {
   '/chat/$conversationId': typeof AppChatConversationIdRoute
   '/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
+  '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/check-email': typeof ApiAuthCheckEmailRoute
@@ -1274,6 +1298,7 @@ export interface FileRoutesByTo {
   '/api/whatsapp/start': typeof ApiWhatsappStartRoute
   '/api/whatsapp/status': typeof ApiWhatsappStatusRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
+  '/prototype/coworker/sharing': typeof PrototypeCoworkerSharingRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
@@ -1316,6 +1341,7 @@ export interface FileRoutesByTo {
   '/api/modulr/documents/download': typeof ApiModulrDocumentsDownloadRoute
   '/api/oauth/dynamics/pending': typeof ApiOauthDynamicsPendingRoute
   '/api/sandbox-files/$id/download': typeof ApiSandboxFilesIdDownloadRoute
+  '/api/workspaces/$id/image': typeof ApiWorkspacesIdImageRoute
   '/prototype/coworker/info/$slug': typeof PrototypeCoworkerInfoSlugRoute
   '/agents/edit/$id': typeof AgentsEditIdIndexRoute
   '/agents/runs/$id': typeof AgentsRunsIdIndexRoute
@@ -1335,9 +1361,9 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/admin': typeof AdminRouteRouteWithChildren
   '/agents': typeof AgentsRouteRouteWithChildren
   '/integrations': typeof IntegrationsRouteRouteWithChildren
+  '/internal': typeof InternalRouteRouteWithChildren
   '/legal': typeof LegalRouteRouteWithChildren
   '/onboarding': typeof OnboardingRouteRouteWithChildren
   '/settings': typeof SettingsRouteRouteWithChildren
@@ -1362,18 +1388,6 @@ export interface FileRoutesById {
   '/_public/pricing': typeof PublicPricingRoute
   '/_public/templates': typeof PublicTemplatesRoute
   '/_public/upload': typeof PublicUploadRoute
-  '/admin/chat-overview': typeof AdminChatOverviewRoute
-  '/admin/coworker-overview': typeof AdminCoworkerOverviewRoute
-  '/admin/credits': typeof AdminCreditsRoute
-  '/admin/mcp': typeof AdminMcpRoute
-  '/admin/ops': typeof AdminOpsRoute
-  '/admin/performance': typeof AdminPerformanceRoute
-  '/admin/sandboxes': typeof AdminSandboxesRoute
-  '/admin/subscriptions': typeof AdminSubscriptionsRoute
-  '/admin/templates': typeof AdminTemplatesRoute
-  '/admin/usage': typeof AdminUsageRoute
-  '/admin/whatsapp': typeof AdminWhatsappRoute
-  '/admin/workspaces': typeof AdminWorkspacesRoute
   '/agents/grid': typeof AgentsGridRoute
   '/agents/history': typeof AgentsHistoryRoute
   '/agents/new': typeof AgentsNewRoute
@@ -1388,8 +1402,21 @@ export interface FileRoutesById {
   '/integrations/reddit': typeof IntegrationsRedditRoute
   '/integrations/twitter': typeof IntegrationsTwitterRoute
   '/integrations/whatsapp': typeof IntegrationsWhatsappRoute
+  '/internal/chat-overview': typeof InternalChatOverviewRoute
+  '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
+  '/internal/credits': typeof InternalCreditsRoute
+  '/internal/mcp': typeof InternalMcpRoute
+  '/internal/ops': typeof InternalOpsRoute
+  '/internal/performance': typeof InternalPerformanceRoute
   '/internal/previews': typeof InternalPreviewsRoute
   '/internal/readme-preview': typeof InternalReadmePreviewRoute
+  '/internal/sandboxes': typeof InternalSandboxesRoute
+  '/internal/subscriptions': typeof InternalSubscriptionsRoute
+  '/internal/templates': typeof InternalTemplatesRoute
+  '/internal/tools': typeof InternalToolsRoute
+  '/internal/usage': typeof InternalUsageRoute
+  '/internal/whatsapp': typeof InternalWhatsappRoute
+  '/internal/workspaces': typeof InternalWorkspacesRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/onboarding/integrations': typeof OnboardingIntegrationsRoute
@@ -1403,7 +1430,6 @@ export interface FileRoutesById {
   '/skills/$id': typeof SkillsIdRoute
   '/template/$templateId': typeof TemplateTemplateIdRoute
   '/_public/': typeof PublicIndexRoute
-  '/admin/': typeof AdminIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/internal/': typeof InternalIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -1415,6 +1441,7 @@ export interface FileRoutesById {
   '/_app/chat/$conversationId': typeof AppChatConversationIdRoute
   '/_auth/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
+  '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/auth/check-email': typeof ApiAuthCheckEmailRoute
@@ -1439,6 +1466,7 @@ export interface FileRoutesById {
   '/api/whatsapp/start': typeof ApiWhatsappStartRoute
   '/api/whatsapp/status': typeof ApiWhatsappStatusRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
+  '/prototype/coworker/sharing': typeof PrototypeCoworkerSharingRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
@@ -1481,6 +1509,7 @@ export interface FileRoutesById {
   '/api/modulr/documents/download': typeof ApiModulrDocumentsDownloadRoute
   '/api/oauth/dynamics/pending': typeof ApiOauthDynamicsPendingRoute
   '/api/sandbox-files/$id/download': typeof ApiSandboxFilesIdDownloadRoute
+  '/api/workspaces/$id/image': typeof ApiWorkspacesIdImageRoute
   '/prototype/coworker/info/$slug': typeof PrototypeCoworkerInfoSlugRoute
   '/agents/edit/$id/': typeof AgentsEditIdIndexRoute
   '/agents/runs/$id/': typeof AgentsRunsIdIndexRoute
@@ -1501,9 +1530,9 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/admin'
     | '/agents'
     | '/integrations'
+    | '/internal'
     | '/legal'
     | '/onboarding'
     | '/settings'
@@ -1526,18 +1555,6 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/templates'
     | '/upload'
-    | '/admin/chat-overview'
-    | '/admin/coworker-overview'
-    | '/admin/credits'
-    | '/admin/mcp'
-    | '/admin/ops'
-    | '/admin/performance'
-    | '/admin/sandboxes'
-    | '/admin/subscriptions'
-    | '/admin/templates'
-    | '/admin/usage'
-    | '/admin/whatsapp'
-    | '/admin/workspaces'
     | '/agents/grid'
     | '/agents/history'
     | '/agents/new'
@@ -1552,8 +1569,21 @@ export interface FileRouteTypes {
     | '/integrations/reddit'
     | '/integrations/twitter'
     | '/integrations/whatsapp'
+    | '/internal/chat-overview'
+    | '/internal/coworker-overview'
+    | '/internal/credits'
+    | '/internal/mcp'
+    | '/internal/ops'
+    | '/internal/performance'
     | '/internal/previews'
     | '/internal/readme-preview'
+    | '/internal/sandboxes'
+    | '/internal/subscriptions'
+    | '/internal/templates'
+    | '/internal/tools'
+    | '/internal/usage'
+    | '/internal/whatsapp'
+    | '/internal/workspaces'
     | '/legal/privacy-policy'
     | '/legal/terms'
     | '/onboarding/integrations'
@@ -1566,7 +1596,6 @@ export interface FileRouteTypes {
     | '/shared/$shareToken'
     | '/skills/$id'
     | '/template/$templateId'
-    | '/admin/'
     | '/agents/'
     | '/internal/'
     | '/settings/'
@@ -1578,6 +1607,7 @@ export interface FileRouteTypes {
     | '/chat/$conversationId'
     | '/sign-in/$token'
     | '/agents/deploy/$templateId'
+    | '/agents/folders/$folderId'
     | '/agents/info/$slug'
     | '/api/auth/$'
     | '/api/auth/check-email'
@@ -1602,6 +1632,7 @@ export interface FileRouteTypes {
     | '/api/whatsapp/start'
     | '/api/whatsapp/status'
     | '/api/zero/query'
+    | '/prototype/coworker/sharing'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
@@ -1644,6 +1675,7 @@ export interface FileRouteTypes {
     | '/api/modulr/documents/download'
     | '/api/oauth/dynamics/pending'
     | '/api/sandbox-files/$id/download'
+    | '/api/workspaces/$id/image'
     | '/prototype/coworker/info/$slug'
     | '/agents/edit/$id/'
     | '/agents/runs/$id/'
@@ -1679,18 +1711,6 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/templates'
     | '/upload'
-    | '/admin/chat-overview'
-    | '/admin/coworker-overview'
-    | '/admin/credits'
-    | '/admin/mcp'
-    | '/admin/ops'
-    | '/admin/performance'
-    | '/admin/sandboxes'
-    | '/admin/subscriptions'
-    | '/admin/templates'
-    | '/admin/usage'
-    | '/admin/whatsapp'
-    | '/admin/workspaces'
     | '/agents/grid'
     | '/agents/history'
     | '/agents/new'
@@ -1705,8 +1725,21 @@ export interface FileRouteTypes {
     | '/integrations/reddit'
     | '/integrations/twitter'
     | '/integrations/whatsapp'
+    | '/internal/chat-overview'
+    | '/internal/coworker-overview'
+    | '/internal/credits'
+    | '/internal/mcp'
+    | '/internal/ops'
+    | '/internal/performance'
     | '/internal/previews'
     | '/internal/readme-preview'
+    | '/internal/sandboxes'
+    | '/internal/subscriptions'
+    | '/internal/templates'
+    | '/internal/tools'
+    | '/internal/usage'
+    | '/internal/whatsapp'
+    | '/internal/workspaces'
     | '/legal/privacy-policy'
     | '/legal/terms'
     | '/onboarding/integrations'
@@ -1719,7 +1752,6 @@ export interface FileRouteTypes {
     | '/shared/$shareToken'
     | '/skills/$id'
     | '/template/$templateId'
-    | '/admin'
     | '/agents'
     | '/internal'
     | '/settings'
@@ -1729,6 +1761,7 @@ export interface FileRouteTypes {
     | '/chat/$conversationId'
     | '/sign-in/$token'
     | '/agents/deploy/$templateId'
+    | '/agents/folders/$folderId'
     | '/agents/info/$slug'
     | '/api/auth/$'
     | '/api/auth/check-email'
@@ -1753,6 +1786,7 @@ export interface FileRouteTypes {
     | '/api/whatsapp/start'
     | '/api/whatsapp/status'
     | '/api/zero/query'
+    | '/prototype/coworker/sharing'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
@@ -1795,6 +1829,7 @@ export interface FileRouteTypes {
     | '/api/modulr/documents/download'
     | '/api/oauth/dynamics/pending'
     | '/api/sandbox-files/$id/download'
+    | '/api/workspaces/$id/image'
     | '/prototype/coworker/info/$slug'
     | '/agents/edit/$id'
     | '/agents/runs/$id'
@@ -1813,9 +1848,9 @@ export interface FileRouteTypes {
     | '/api/internal/coworkers/runtime/documents/upload'
   id:
     | '__root__'
-    | '/admin'
     | '/agents'
     | '/integrations'
+    | '/internal'
     | '/legal'
     | '/onboarding'
     | '/settings'
@@ -1840,18 +1875,6 @@ export interface FileRouteTypes {
     | '/_public/pricing'
     | '/_public/templates'
     | '/_public/upload'
-    | '/admin/chat-overview'
-    | '/admin/coworker-overview'
-    | '/admin/credits'
-    | '/admin/mcp'
-    | '/admin/ops'
-    | '/admin/performance'
-    | '/admin/sandboxes'
-    | '/admin/subscriptions'
-    | '/admin/templates'
-    | '/admin/usage'
-    | '/admin/whatsapp'
-    | '/admin/workspaces'
     | '/agents/grid'
     | '/agents/history'
     | '/agents/new'
@@ -1866,8 +1889,21 @@ export interface FileRouteTypes {
     | '/integrations/reddit'
     | '/integrations/twitter'
     | '/integrations/whatsapp'
+    | '/internal/chat-overview'
+    | '/internal/coworker-overview'
+    | '/internal/credits'
+    | '/internal/mcp'
+    | '/internal/ops'
+    | '/internal/performance'
     | '/internal/previews'
     | '/internal/readme-preview'
+    | '/internal/sandboxes'
+    | '/internal/subscriptions'
+    | '/internal/templates'
+    | '/internal/tools'
+    | '/internal/usage'
+    | '/internal/whatsapp'
+    | '/internal/workspaces'
     | '/legal/privacy-policy'
     | '/legal/terms'
     | '/onboarding/integrations'
@@ -1881,7 +1917,6 @@ export interface FileRouteTypes {
     | '/skills/$id'
     | '/template/$templateId'
     | '/_public/'
-    | '/admin/'
     | '/agents/'
     | '/internal/'
     | '/settings/'
@@ -1893,6 +1928,7 @@ export interface FileRouteTypes {
     | '/_app/chat/$conversationId'
     | '/_auth/sign-in/$token'
     | '/agents/deploy/$templateId'
+    | '/agents/folders/$folderId'
     | '/agents/info/$slug'
     | '/api/auth/$'
     | '/api/auth/check-email'
@@ -1917,6 +1953,7 @@ export interface FileRouteTypes {
     | '/api/whatsapp/start'
     | '/api/whatsapp/status'
     | '/api/zero/query'
+    | '/prototype/coworker/sharing'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
@@ -1959,6 +1996,7 @@ export interface FileRouteTypes {
     | '/api/modulr/documents/download'
     | '/api/oauth/dynamics/pending'
     | '/api/sandbox-files/$id/download'
+    | '/api/workspaces/$id/image'
     | '/prototype/coworker/info/$slug'
     | '/agents/edit/$id/'
     | '/agents/runs/$id/'
@@ -1978,9 +2016,9 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AgentsRouteRoute: typeof AgentsRouteRouteWithChildren
   IntegrationsRouteRoute: typeof IntegrationsRouteRouteWithChildren
+  InternalRouteRoute: typeof InternalRouteRouteWithChildren
   LegalRouteRoute: typeof LegalRouteRouteWithChildren
   OnboardingRouteRoute: typeof OnboardingRouteRouteWithChildren
   SettingsRouteRoute: typeof SettingsRouteRouteWithChildren
@@ -1998,10 +2036,7 @@ export interface RootRouteChildren {
   ApiLiveRoute: typeof ApiLiveRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   ApiReportRoute: typeof ApiReportRoute
-  InternalPreviewsRoute: typeof InternalPreviewsRoute
-  InternalReadmePreviewRoute: typeof InternalReadmePreviewRoute
   SharedShareTokenRoute: typeof SharedShareTokenRoute
-  InternalIndexRoute: typeof InternalIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAuthCheckEmailRoute: typeof ApiAuthCheckEmailRoute
   ApiAuthNativeCallbackRoute: typeof ApiAuthNativeCallbackRoute
@@ -2025,6 +2060,7 @@ export interface RootRouteChildren {
   ApiWhatsappStartRoute: typeof ApiWhatsappStartRoute
   ApiWhatsappStatusRoute: typeof ApiWhatsappStatusRoute
   ApiZeroQueryRoute: typeof ApiZeroQueryRoute
+  PrototypeCoworkerSharingRoute: typeof PrototypeCoworkerSharingRoute
   ApiRpcIndexRoute: typeof ApiRpcIndexRoute
   ApiAuthPasswordStartRoute: typeof ApiAuthPasswordStartRoute
   ApiControlPlaneAuthAuthorizeRoute: typeof ApiControlPlaneAuthAuthorizeRoute
@@ -2060,6 +2096,7 @@ export interface RootRouteChildren {
   ApiModulrDocumentsDownloadRoute: typeof ApiModulrDocumentsDownloadRoute
   ApiOauthDynamicsPendingRoute: typeof ApiOauthDynamicsPendingRoute
   ApiSandboxFilesIdDownloadRoute: typeof ApiSandboxFilesIdDownloadRoute
+  ApiWorkspacesIdImageRoute: typeof ApiWorkspacesIdImageRoute
   PrototypeCoworkerInfoSlugRoute: typeof PrototypeCoworkerInfoSlugRoute
   ApiAuthProviderProviderCallbackRoute: typeof ApiAuthProviderProviderCallbackRoute
   ApiCoworkersDocumentsIdDownloadRoute: typeof ApiCoworkersDocumentsIdDownloadRoute
@@ -2166,6 +2203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/internal': {
+      id: '/internal'
+      path: '/internal'
+      fullPath: '/internal'
+      preLoaderRoute: typeof InternalRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/integrations': {
       id: '/integrations'
       path: '/integrations'
@@ -2178,13 +2222,6 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/agents'
       preLoaderRoute: typeof AgentsRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/toolbox/': {
@@ -2217,10 +2254,10 @@ declare module '@tanstack/react-router' {
     }
     '/internal/': {
       id: '/internal/'
-      path: '/internal'
+      path: '/'
       fullPath: '/internal/'
       preLoaderRoute: typeof InternalIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof InternalRouteRoute
     }
     '/agents/': {
       id: '/agents/'
@@ -2228,13 +2265,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/agents/'
       preLoaderRoute: typeof AgentsIndexRouteImport
       parentRoute: typeof AgentsRouteRoute
-    }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
     }
     '/_public/': {
       id: '/_public/'
@@ -2327,19 +2357,110 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalPrivacyPolicyRouteImport
       parentRoute: typeof LegalRouteRoute
     }
+    '/internal/workspaces': {
+      id: '/internal/workspaces'
+      path: '/workspaces'
+      fullPath: '/internal/workspaces'
+      preLoaderRoute: typeof InternalWorkspacesRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/whatsapp': {
+      id: '/internal/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/internal/whatsapp'
+      preLoaderRoute: typeof InternalWhatsappRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/usage': {
+      id: '/internal/usage'
+      path: '/usage'
+      fullPath: '/internal/usage'
+      preLoaderRoute: typeof InternalUsageRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/tools': {
+      id: '/internal/tools'
+      path: '/tools'
+      fullPath: '/internal/tools'
+      preLoaderRoute: typeof InternalToolsRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/templates': {
+      id: '/internal/templates'
+      path: '/templates'
+      fullPath: '/internal/templates'
+      preLoaderRoute: typeof InternalTemplatesRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/subscriptions': {
+      id: '/internal/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/internal/subscriptions'
+      preLoaderRoute: typeof InternalSubscriptionsRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/sandboxes': {
+      id: '/internal/sandboxes'
+      path: '/sandboxes'
+      fullPath: '/internal/sandboxes'
+      preLoaderRoute: typeof InternalSandboxesRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
     '/internal/readme-preview': {
       id: '/internal/readme-preview'
-      path: '/internal/readme-preview'
+      path: '/readme-preview'
       fullPath: '/internal/readme-preview'
       preLoaderRoute: typeof InternalReadmePreviewRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof InternalRouteRoute
     }
     '/internal/previews': {
       id: '/internal/previews'
-      path: '/internal/previews'
+      path: '/previews'
       fullPath: '/internal/previews'
       preLoaderRoute: typeof InternalPreviewsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/performance': {
+      id: '/internal/performance'
+      path: '/performance'
+      fullPath: '/internal/performance'
+      preLoaderRoute: typeof InternalPerformanceRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/ops': {
+      id: '/internal/ops'
+      path: '/ops'
+      fullPath: '/internal/ops'
+      preLoaderRoute: typeof InternalOpsRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/mcp': {
+      id: '/internal/mcp'
+      path: '/mcp'
+      fullPath: '/internal/mcp'
+      preLoaderRoute: typeof InternalMcpRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/credits': {
+      id: '/internal/credits'
+      path: '/credits'
+      fullPath: '/internal/credits'
+      preLoaderRoute: typeof InternalCreditsRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/coworker-overview': {
+      id: '/internal/coworker-overview'
+      path: '/coworker-overview'
+      fullPath: '/internal/coworker-overview'
+      preLoaderRoute: typeof InternalCoworkerOverviewRouteImport
+      parentRoute: typeof InternalRouteRoute
+    }
+    '/internal/chat-overview': {
+      id: '/internal/chat-overview'
+      path: '/chat-overview'
+      fullPath: '/internal/chat-overview'
+      preLoaderRoute: typeof InternalChatOverviewRouteImport
+      parentRoute: typeof InternalRouteRoute
     }
     '/integrations/whatsapp': {
       id: '/integrations/whatsapp'
@@ -2438,90 +2559,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/agents/grid'
       preLoaderRoute: typeof AgentsGridRouteImport
       parentRoute: typeof AgentsRouteRoute
-    }
-    '/admin/workspaces': {
-      id: '/admin/workspaces'
-      path: '/workspaces'
-      fullPath: '/admin/workspaces'
-      preLoaderRoute: typeof AdminWorkspacesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/whatsapp': {
-      id: '/admin/whatsapp'
-      path: '/whatsapp'
-      fullPath: '/admin/whatsapp'
-      preLoaderRoute: typeof AdminWhatsappRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/usage': {
-      id: '/admin/usage'
-      path: '/usage'
-      fullPath: '/admin/usage'
-      preLoaderRoute: typeof AdminUsageRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/templates': {
-      id: '/admin/templates'
-      path: '/templates'
-      fullPath: '/admin/templates'
-      preLoaderRoute: typeof AdminTemplatesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/subscriptions': {
-      id: '/admin/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/admin/subscriptions'
-      preLoaderRoute: typeof AdminSubscriptionsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/sandboxes': {
-      id: '/admin/sandboxes'
-      path: '/sandboxes'
-      fullPath: '/admin/sandboxes'
-      preLoaderRoute: typeof AdminSandboxesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/performance': {
-      id: '/admin/performance'
-      path: '/performance'
-      fullPath: '/admin/performance'
-      preLoaderRoute: typeof AdminPerformanceRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/ops': {
-      id: '/admin/ops'
-      path: '/ops'
-      fullPath: '/admin/ops'
-      preLoaderRoute: typeof AdminOpsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/mcp': {
-      id: '/admin/mcp'
-      path: '/mcp'
-      fullPath: '/admin/mcp'
-      preLoaderRoute: typeof AdminMcpRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/credits': {
-      id: '/admin/credits'
-      path: '/credits'
-      fullPath: '/admin/credits'
-      preLoaderRoute: typeof AdminCreditsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/coworker-overview': {
-      id: '/admin/coworker-overview'
-      path: '/coworker-overview'
-      fullPath: '/admin/coworker-overview'
-      preLoaderRoute: typeof AdminCoworkerOverviewRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/chat-overview': {
-      id: '/admin/chat-overview'
-      path: '/chat-overview'
-      fullPath: '/admin/chat-overview'
-      preLoaderRoute: typeof AdminChatOverviewRouteImport
-      parentRoute: typeof AdminRouteRoute
     }
     '/_public/upload': {
       id: '/_public/upload'
@@ -2641,6 +2678,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/skills/community/$skillId'
       preLoaderRoute: typeof SkillsCommunitySkillIdRouteImport
       parentRoute: typeof SkillsRouteRoute
+    }
+    '/prototype/coworker/sharing': {
+      id: '/prototype/coworker/sharing'
+      path: '/prototype/coworker/sharing'
+      fullPath: '/prototype/coworker/sharing'
+      preLoaderRoute: typeof PrototypeCoworkerSharingRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/zero/query': {
       id: '/api/zero/query'
@@ -2810,6 +2854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsInfoSlugRouteImport
       parentRoute: typeof AgentsRouteRoute
     }
+    '/agents/folders/$folderId': {
+      id: '/agents/folders/$folderId'
+      path: '/folders/$folderId'
+      fullPath: '/agents/folders/$folderId'
+      preLoaderRoute: typeof AgentsFoldersFolderIdRouteImport
+      parentRoute: typeof AgentsRouteRoute
+    }
     '/agents/deploy/$templateId': {
       id: '/agents/deploy/$templateId'
       path: '/deploy/$templateId'
@@ -2864,6 +2915,13 @@ declare module '@tanstack/react-router' {
       path: '/prototype/coworker/info/$slug'
       fullPath: '/prototype/coworker/info/$slug'
       preLoaderRoute: typeof PrototypeCoworkerInfoSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspaces/$id/image': {
+      id: '/api/workspaces/$id/image'
+      path: '/api/workspaces/$id/image'
+      fullPath: '/api/workspaces/$id/image'
+      preLoaderRoute: typeof ApiWorkspacesIdImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sandbox-files/$id/download': {
@@ -3212,42 +3270,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AdminRouteRouteChildren {
-  AdminChatOverviewRoute: typeof AdminChatOverviewRoute
-  AdminCoworkerOverviewRoute: typeof AdminCoworkerOverviewRoute
-  AdminCreditsRoute: typeof AdminCreditsRoute
-  AdminMcpRoute: typeof AdminMcpRoute
-  AdminOpsRoute: typeof AdminOpsRoute
-  AdminPerformanceRoute: typeof AdminPerformanceRoute
-  AdminSandboxesRoute: typeof AdminSandboxesRoute
-  AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
-  AdminTemplatesRoute: typeof AdminTemplatesRoute
-  AdminUsageRoute: typeof AdminUsageRoute
-  AdminWhatsappRoute: typeof AdminWhatsappRoute
-  AdminWorkspacesRoute: typeof AdminWorkspacesRoute
-  AdminIndexRoute: typeof AdminIndexRoute
-}
-
-const AdminRouteRouteChildren: AdminRouteRouteChildren = {
-  AdminChatOverviewRoute: AdminChatOverviewRoute,
-  AdminCoworkerOverviewRoute: AdminCoworkerOverviewRoute,
-  AdminCreditsRoute: AdminCreditsRoute,
-  AdminMcpRoute: AdminMcpRoute,
-  AdminOpsRoute: AdminOpsRoute,
-  AdminPerformanceRoute: AdminPerformanceRoute,
-  AdminSandboxesRoute: AdminSandboxesRoute,
-  AdminSubscriptionsRoute: AdminSubscriptionsRoute,
-  AdminTemplatesRoute: AdminTemplatesRoute,
-  AdminUsageRoute: AdminUsageRoute,
-  AdminWhatsappRoute: AdminWhatsappRoute,
-  AdminWorkspacesRoute: AdminWorkspacesRoute,
-  AdminIndexRoute: AdminIndexRoute,
-}
-
-const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
-  AdminRouteRouteChildren,
-)
-
 interface AgentsRunsIdRouteRouteChildren {
   AgentsRunsIdIndexRoute: typeof AgentsRunsIdIndexRoute
 }
@@ -3299,6 +3321,7 @@ interface AgentsRouteRouteChildren {
   AgentsIndexRoute: typeof AgentsIndexRoute
   AgentsEditIdRouteRoute: typeof AgentsEditIdRouteRouteWithChildren
   AgentsDeployTemplateIdRoute: typeof AgentsDeployTemplateIdRoute
+  AgentsFoldersFolderIdRoute: typeof AgentsFoldersFolderIdRoute
   AgentsInfoSlugRoute: typeof AgentsInfoSlugRoute
 }
 
@@ -3313,6 +3336,7 @@ const AgentsRouteRouteChildren: AgentsRouteRouteChildren = {
   AgentsIndexRoute: AgentsIndexRoute,
   AgentsEditIdRouteRoute: AgentsEditIdRouteRouteWithChildren,
   AgentsDeployTemplateIdRoute: AgentsDeployTemplateIdRoute,
+  AgentsFoldersFolderIdRoute: AgentsFoldersFolderIdRoute,
   AgentsInfoSlugRoute: AgentsInfoSlugRoute,
 }
 
@@ -3336,6 +3360,48 @@ const IntegrationsRouteRouteChildren: IntegrationsRouteRouteChildren = {
 
 const IntegrationsRouteRouteWithChildren =
   IntegrationsRouteRoute._addFileChildren(IntegrationsRouteRouteChildren)
+
+interface InternalRouteRouteChildren {
+  InternalChatOverviewRoute: typeof InternalChatOverviewRoute
+  InternalCoworkerOverviewRoute: typeof InternalCoworkerOverviewRoute
+  InternalCreditsRoute: typeof InternalCreditsRoute
+  InternalMcpRoute: typeof InternalMcpRoute
+  InternalOpsRoute: typeof InternalOpsRoute
+  InternalPerformanceRoute: typeof InternalPerformanceRoute
+  InternalPreviewsRoute: typeof InternalPreviewsRoute
+  InternalReadmePreviewRoute: typeof InternalReadmePreviewRoute
+  InternalSandboxesRoute: typeof InternalSandboxesRoute
+  InternalSubscriptionsRoute: typeof InternalSubscriptionsRoute
+  InternalTemplatesRoute: typeof InternalTemplatesRoute
+  InternalToolsRoute: typeof InternalToolsRoute
+  InternalUsageRoute: typeof InternalUsageRoute
+  InternalWhatsappRoute: typeof InternalWhatsappRoute
+  InternalWorkspacesRoute: typeof InternalWorkspacesRoute
+  InternalIndexRoute: typeof InternalIndexRoute
+}
+
+const InternalRouteRouteChildren: InternalRouteRouteChildren = {
+  InternalChatOverviewRoute: InternalChatOverviewRoute,
+  InternalCoworkerOverviewRoute: InternalCoworkerOverviewRoute,
+  InternalCreditsRoute: InternalCreditsRoute,
+  InternalMcpRoute: InternalMcpRoute,
+  InternalOpsRoute: InternalOpsRoute,
+  InternalPerformanceRoute: InternalPerformanceRoute,
+  InternalPreviewsRoute: InternalPreviewsRoute,
+  InternalReadmePreviewRoute: InternalReadmePreviewRoute,
+  InternalSandboxesRoute: InternalSandboxesRoute,
+  InternalSubscriptionsRoute: InternalSubscriptionsRoute,
+  InternalTemplatesRoute: InternalTemplatesRoute,
+  InternalToolsRoute: InternalToolsRoute,
+  InternalUsageRoute: InternalUsageRoute,
+  InternalWhatsappRoute: InternalWhatsappRoute,
+  InternalWorkspacesRoute: InternalWorkspacesRoute,
+  InternalIndexRoute: InternalIndexRoute,
+}
+
+const InternalRouteRouteWithChildren = InternalRouteRoute._addFileChildren(
+  InternalRouteRouteChildren,
+)
 
 interface LegalRouteRouteChildren {
   LegalPrivacyPolicyRoute: typeof LegalPrivacyPolicyRoute
@@ -3531,9 +3597,9 @@ const ApiMockCrmContactsRouteWithChildren =
   ApiMockCrmContactsRoute._addFileChildren(ApiMockCrmContactsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  AdminRouteRoute: AdminRouteRouteWithChildren,
   AgentsRouteRoute: AgentsRouteRouteWithChildren,
   IntegrationsRouteRoute: IntegrationsRouteRouteWithChildren,
+  InternalRouteRoute: InternalRouteRouteWithChildren,
   LegalRouteRoute: LegalRouteRouteWithChildren,
   OnboardingRouteRoute: OnboardingRouteRouteWithChildren,
   SettingsRouteRoute: SettingsRouteRouteWithChildren,
@@ -3551,10 +3617,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLiveRoute: ApiLiveRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   ApiReportRoute: ApiReportRoute,
-  InternalPreviewsRoute: InternalPreviewsRoute,
-  InternalReadmePreviewRoute: InternalReadmePreviewRoute,
   SharedShareTokenRoute: SharedShareTokenRoute,
-  InternalIndexRoute: InternalIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAuthCheckEmailRoute: ApiAuthCheckEmailRoute,
   ApiAuthNativeCallbackRoute: ApiAuthNativeCallbackRoute,
@@ -3580,6 +3643,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWhatsappStartRoute: ApiWhatsappStartRoute,
   ApiWhatsappStatusRoute: ApiWhatsappStatusRoute,
   ApiZeroQueryRoute: ApiZeroQueryRoute,
+  PrototypeCoworkerSharingRoute: PrototypeCoworkerSharingRoute,
   ApiRpcIndexRoute: ApiRpcIndexRoute,
   ApiAuthPasswordStartRoute: ApiAuthPasswordStartRoute,
   ApiControlPlaneAuthAuthorizeRoute: ApiControlPlaneAuthAuthorizeRoute,
@@ -3621,6 +3685,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiModulrDocumentsDownloadRoute: ApiModulrDocumentsDownloadRoute,
   ApiOauthDynamicsPendingRoute: ApiOauthDynamicsPendingRoute,
   ApiSandboxFilesIdDownloadRoute: ApiSandboxFilesIdDownloadRoute,
+  ApiWorkspacesIdImageRoute: ApiWorkspacesIdImageRoute,
   PrototypeCoworkerInfoSlugRoute: PrototypeCoworkerInfoSlugRoute,
   ApiAuthProviderProviderCallbackRoute: ApiAuthProviderProviderCallbackRoute,
   ApiCoworkersDocumentsIdDownloadRoute: ApiCoworkersDocumentsIdDownloadRoute,

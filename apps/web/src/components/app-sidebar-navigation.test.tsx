@@ -124,17 +124,17 @@ function renderWithRouter() {
   });
   const adminRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/admin",
+    path: "/internal",
     component: () => <AppSidebar />,
   });
   const adminWorkspacesRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/admin/workspaces",
+    path: "/internal/workspaces",
     component: () => <AppSidebar />,
   });
   const adminMcpRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/admin/mcp",
+    path: "/internal/mcp",
     component: () => <AppSidebar />,
   });
   const router = createRouter({
@@ -197,7 +197,7 @@ describe("AppSidebar navigation", () => {
   });
 
   it("does not keep the admin user item selected on nested admin pages", async () => {
-    renderWithRouterAt("/admin/workspaces");
+    renderWithRouterAt("/internal/workspaces");
 
     const userLink = await screen.findByRole("link", { name: "User" });
     const workspacesLink = await screen.findByRole("link", { name: "Workspaces" });
@@ -209,7 +209,7 @@ describe("AppSidebar navigation", () => {
   });
 
   it("renders the selected MCP logo with the active text color", async () => {
-    renderWithRouterAt("/admin/mcp");
+    renderWithRouterAt("/internal/mcp");
 
     const mcpLink = await screen.findByRole("link", { name: "MCP" });
     const mcpIcon = mcpLink.querySelector("span");

@@ -65,6 +65,26 @@ vi.mock("@/lib/edition", () => ({
   },
 }));
 
+vi.mock("@/orpc/hooks/billing", () => ({
+  useBillingOverview: () => ({
+    data: {
+      owner: { ownerId: "workspace-1" },
+      workspaces: [
+        {
+          id: "workspace-1",
+          name: "Workspace",
+          active: true,
+          imageUrl: null,
+        },
+      ],
+    },
+  }),
+  useSwitchWorkspace: () => ({
+    isPending: false,
+    mutateAsync: vi.fn<VitestProcedure>(),
+  }),
+}));
+
 function installLocalStorageStub() {
   const store = new Map<string, string>();
 
@@ -138,7 +158,7 @@ describe("AppSidebar", () => {
     render(<AppSidebar />);
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Admin view" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: "Internal view" })).toHaveAttribute(
         "aria-pressed",
         "true",
       ),
@@ -150,7 +170,7 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("link", { name: "Agents" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Toolbox" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bug report" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Admin" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Internal" })).toBeInTheDocument();
   });
 
   it("renders admin navigation and avatar from the initial principal before client session resolves", () => {
@@ -159,7 +179,7 @@ describe("AppSidebar", () => {
     render(<AppSidebar initialPrincipal={INITIAL_ADMIN_PRINCIPAL} />);
 
     expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Admin view" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Internal view" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -179,21 +199,21 @@ describe("AppSidebar", () => {
       ),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Admin view" }));
+    fireEvent.click(screen.getByRole("button", { name: "Internal view" }));
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Admin view" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Internal view" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
   });
 
   it("keeps admin route navigation on admin routes", async () => {
-    mocks.pathname = "/admin";
+    mocks.pathname = "/internal";
 
     render(<AppSidebar />);
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Admin view" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: "Internal view" })).toHaveAttribute(
         "aria-pressed",
         "true",
       ),

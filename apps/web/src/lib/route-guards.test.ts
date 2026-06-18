@@ -131,7 +131,7 @@ describe("route guards", () => {
   it("allows cloud support admins", async () => {
     mockSession("admin");
 
-    await expect(requireSupportAdmin("/admin")).resolves.toMatchObject({
+    await expect(requireSupportAdmin("/internal")).resolves.toMatchObject({
       edition: "cloud",
       isAdmin: true,
     });
@@ -140,7 +140,7 @@ describe("route guards", () => {
   it("redirects non-admin support users home", async () => {
     mockSession("member");
 
-    await expect(requireSupportAdmin("/admin")).rejects.toEqual({ href: "/" });
+    await expect(requireSupportAdmin("/internal")).rejects.toEqual({ href: "/" });
   });
 
   it("redirects cloud requests away from self-host instance routes", async () => {

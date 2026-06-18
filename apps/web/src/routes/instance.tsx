@@ -9,7 +9,7 @@ import { getInstanceHealthStatus, type InstanceHealthStatus } from "@/server/ins
  * Self-hosted instance management page (was src/app/instance/page.tsx).
  *
  * access=self-host: this surface only exists in the self-host edition. The previous page
- * called `isSelfHostedEdition()` during render and `redirect("/admin")` for the cloud
+ * called `isSelfHostedEdition()` during render and `redirect("/internal")` for the cloud
  * edition; that gate moves to `beforeLoad` via the shared self-host instance guard, which
  * redirects the cloud edition home and unauthenticated requests to `/login` (with a
  * `callbackUrl` back to `/instance`) before any render.

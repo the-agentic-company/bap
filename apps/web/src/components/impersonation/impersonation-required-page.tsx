@@ -3,7 +3,7 @@ import { Loader2, LogIn, ShieldCheck } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { getImpersonationErrorMessage } from "@/routes/admin/-lib/impersonation-errors";
+import { getImpersonationErrorMessage } from "@/routes/internal/-lib/impersonation-errors";
 
 export type ImpersonationTarget = {
   resourceType: "chat" | "coworker" | "coworker_run";

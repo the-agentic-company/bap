@@ -177,7 +177,7 @@ function SidebarModeToggle({
       <SidebarModeToggleButton
         currentMode={mode}
         icon={Shield}
-        label={t("Admin view")}
+        label={t("Internal view")}
         mode="admin"
         onModeChange={onModeChange}
       />
@@ -416,7 +416,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     try {
       const result = await authClient.admin.stopImpersonating();
       if (!result.error) {
-        window.location.assign("/admin");
+        window.location.assign("/internal");
       }
     } finally {
       setStoppingImpersonation(false);
@@ -433,7 +433,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   }, []);
 
   const openAdminRoute = useCallback(() => {
-    void navigate({ to: "/admin" });
+    void navigate({ to: "/internal" });
   }, [navigate]);
 
   const enterUserMode = useCallback(() => {
@@ -486,8 +486,8 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     if (href === "/") {
       return pathname === "/";
     }
-    if (href === "/admin") {
-      return pathname === "/admin" || pathname === "/admin/";
+    if (href === "/internal") {
+      return pathname === "/internal" || pathname === "/internal/";
     }
     if (href === "/chat") {
       return pathname === "/chat" || pathname.startsWith("/chat/");
@@ -503,7 +503,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   const avatarImage =
     effectiveUser?.image ?? (initialPrincipalActive ? initialPrincipal.image : null);
   const isAdmin = userRole === "admin";
-  const isAdminRoute = pathname?.startsWith("/admin") || pathname?.startsWith("/instance");
+  const isAdminRoute = pathname?.startsWith("/internal") || pathname?.startsWith("/instance");
   const activeSidebarMode: SidebarMode = !isAdmin || isAdminRoute ? "admin" : sidebarMode;
   const impersonatedBy = (
     session as (SessionData & { session?: { impersonatedBy?: string | null } }) | null
@@ -535,27 +535,27 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     : [];
 
   const adminUsersItems: NavItem[] = [
-    { icon: UserCog, label: "User", href: "/admin" },
-    { icon: Building2, label: "Workspaces", href: "/admin/workspaces" },
+    { icon: UserCog, label: "User", href: "/internal" },
+    { icon: Building2, label: "Workspaces", href: "/internal/workspaces" },
   ];
 
   const adminConfigItems: NavItem[] = [
-    { icon: LayoutTemplate, label: "Templates", href: "/admin/templates" },
-    { icon: CreditCard, label: "AI Subscriptions", href: "/admin/subscriptions" },
-    { icon: McpLogoIcon, label: "MCP", href: "/admin/mcp" },
+    { icon: LayoutTemplate, label: "Templates", href: "/internal/templates" },
+    { icon: CreditCard, label: "AI Subscriptions", href: "/internal/subscriptions" },
+    { icon: McpLogoIcon, label: "MCP", href: "/internal/mcp" },
   ];
 
   const adminBillingItems: NavItem[] = [
-    { icon: CircleDollarSign, label: "Credits", href: "/admin/credits" },
-    { icon: BarChart3, label: "Usage", href: "/admin/usage" },
+    { icon: CircleDollarSign, label: "Credits", href: "/internal/credits" },
+    { icon: BarChart3, label: "Usage", href: "/internal/usage" },
   ];
 
   const adminMonitoringItems: NavItem[] = [
-    { icon: Activity, label: "Chat Health", href: "/admin/chat-overview" },
-    { icon: BrickIcon, label: "Coworker Overview", href: "/admin/coworker-overview" },
-    { icon: Gauge, label: "Performance", href: "/admin/performance" },
-    { icon: Container, label: "Sandboxes", href: "/admin/sandboxes" },
-    { icon: Bug, label: "Ops", href: "/admin/ops" },
+    { icon: Activity, label: "Chat Health", href: "/internal/chat-overview" },
+    { icon: BrickIcon, label: "Coworker Overview", href: "/internal/coworker-overview" },
+    { icon: Gauge, label: "Performance", href: "/internal/performance" },
+    { icon: Container, label: "Sandboxes", href: "/internal/sandboxes" },
+    { icon: Bug, label: "Ops", href: "/internal/ops" },
   ];
 
   const adminInstanceItems: NavItem[] = clientEditionCapabilities.hasInstanceAdmin
@@ -602,7 +602,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
               <NavGroup>
                 <NavButton icon={Bug} label={t("Bug report")} onClick={openReportDialog} />
                 {isAdmin ? (
-                  <NavButton icon={Shield} label={t("Admin")} onClick={openAdminRoute} />
+                  <NavButton icon={Shield} label={t("Internal")} onClick={openAdminRoute} />
                 ) : null}
               </NavGroup>
             </>

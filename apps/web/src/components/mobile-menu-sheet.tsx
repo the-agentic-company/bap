@@ -182,7 +182,12 @@ export function MobileMenuPanel({ open, onOpenChange }: MobileMenuPanelProps) {
           ) : null}
           <MenuItem icon={Bug} label={t("Bug report")} onClick={handleBugReportClick} />
           {clientEditionCapabilities.hasSupportAdmin && isAdmin ? (
-            <MenuItem icon={Shield} label={t("Admin")} href="/admin" onClick={handleItemClick} />
+            <MenuItem
+              icon={Shield}
+              label={t("Internal")}
+              href="/internal"
+              onClick={handleItemClick}
+            />
           ) : clientEditionCapabilities.hasInstanceAdmin ? (
             <MenuItem
               icon={Shield}
