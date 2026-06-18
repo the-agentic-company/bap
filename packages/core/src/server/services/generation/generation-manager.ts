@@ -1,17 +1,10 @@
 import { db } from "@bap/db/client";
-import { conversation, generation, message, messageAttachment } from "@bap/db/schema";
+import { generation, message } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
 import type { IntegrationType } from "../../oauth/config";
 import type { RuntimeToolRef } from "../../runtime/runtime-driver";
 import { SandboxSlotLeaseCoordinator } from "../../execution/sandbox-slot-lease";
 import type { SandboxBackend } from "../../sandbox/types";
-import {
-  buildQueueJobId,
-  GENERATION_APPROVAL_TIMEOUT_JOB_NAME,
-  GENERATION_AUTH_TIMEOUT_JOB_NAME,
-  GENERATION_PREPARING_STUCK_CHECK_JOB_NAME,
-  getQueue,
-} from "../../queues/queue-client";
 import { getLatestGenerationStreamEnvelope } from "../../redis/generation-event-bus";
 import { logger } from "../../utils/observability";
 import {
@@ -22,6 +15,12 @@ import { writeSessionTranscriptFromConversation } from "../memory-service";
 import { clearConversationSessionSnapshot } from "../runtime-session-snapshot-service";
 import { SESSION_BOUNDARY_PREFIX } from "../session-constants";
 import { conversationRuntimeService } from "../conversation-runtime-service";
+import { formatErrorMessage } from "./format-error-message";
+import {
+  enqueueGenerationTimeout,
+  enqueuePreparingStuckCheck,
+} from "./generation-job-scheduler";
+import { persistMessageAttachments } from "./message-attachment-persistence";
 import { GenerationControl, getExecutionPolicyFromRecord } from "./control/generation-control";
 import { GenerationLifecycleStore } from "./core/lifecycle-store";
 import { GenerationTurnFinalizer } from "./core/turn-finalizer";
@@ -64,59 +63,6 @@ export type { GenerationEvent };
 
 const CANCELLATION_POLL_INTERVAL_MS = 1000;
 const AGENT_PREPARING_TIMEOUT_MS = generationLifecyclePolicy.bootstrapTimeoutMs;
-
-function formatErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`;
-  }
-  if (typeof error === "string") {
-    return error;
-  }
-  if (error && typeof error === "object") {
-    const message = extractStructuredErrorMessage(error);
-    if (message) {
-      return message;
-    }
-    const json = safeJsonStringify(error);
-    if (json) {
-      return json;
-    }
-  }
-  return String(error);
-}
-
-function extractStructuredErrorMessage(error: unknown): string | null {
-  if (!error || typeof error !== "object") {
-    return null;
-  }
-
-  const record = error as Record<string, unknown>;
-  if (typeof record.message === "string" && record.message.trim()) {
-    return record.message;
-  }
-  if (typeof record.error === "string" && record.error.trim()) {
-    return record.error;
-  }
-
-  const nestedCandidates = [record.error, record.data, record.details];
-  for (const candidate of nestedCandidates) {
-    const nested = extractStructuredErrorMessage(candidate);
-    if (nested) {
-      return nested;
-    }
-  }
-
-  return null;
-}
-
-function safeJsonStringify(value: unknown): string | null {
-  try {
-    const serialized = JSON.stringify(value);
-    return typeof serialized === "string" ? serialized : null;
-  } catch {
-    return null;
-  }
-}
 
 class GenerationManager {
   private activeGenerations = new Map<string, GenerationContext>();
@@ -169,8 +115,8 @@ class GenerationManager {
   });
   private readonly turnIntake = new TurnIntake({
     lifecycleStore: this.lifecycleStore,
-    persistMessageAttachments: (params) => this.persistMessageAttachments(params),
-    enqueuePreparingStuckCheck: (generationId) => this.enqueuePreparingStuckCheck(generationId),
+    persistMessageAttachments: (params) => persistMessageAttachments(params),
+    enqueuePreparingStuckCheck: (generationId) => enqueuePreparingStuckCheck(generationId),
     enqueueGenerationRun: (generationId, runType, options) =>
       this.generationRunQueue.enqueueGenerationRun(generationId, runType, options),
   });
@@ -197,7 +143,7 @@ class GenerationManager {
     waitForSandboxSlotLease: (ctx, options) => this.waitForSandboxSlotLease(ctx, options),
     releaseSandboxSlotLease: (ctx) => this.releaseSandboxSlotLease(ctx),
     enqueueGenerationTimeout: (generationId, kind, expiresAtIso) =>
-      this.enqueueGenerationTimeout(generationId, kind, expiresAtIso),
+      enqueueGenerationTimeout(generationId, kind, expiresAtIso),
     processGenerationTimeout: (generationId, kind) =>
       this.processGenerationTimeout(generationId, kind),
     runSuspendedInterruptResume: (ctx) => this.resumeRunner.runSuspendedInterruptResume(ctx),
@@ -271,7 +217,7 @@ class GenerationManager {
     enqueueGenerationRun: (generationId, runType) =>
       this.generationRunQueue.enqueueGenerationRun(generationId, runType),
     enqueueGenerationTimeout: (generationId, kind, expiresAtIso) =>
-      this.enqueueGenerationTimeout(generationId, kind, expiresAtIso),
+      enqueueGenerationTimeout(generationId, kind, expiresAtIso),
     enqueueResolvedInterruptResume: (input) =>
       this.generationRunQueue.enqueueResolvedInterruptResume(input),
     enqueueConversationQueuedMessageProcess: (conversationId) =>
@@ -355,36 +301,6 @@ class GenerationManager {
   private readonly conversationTurnQueue = new ConversationTurnQueue({
     startGeneration: (input) => this.startGeneration(input),
   });
-  private async persistMessageAttachments(params: {
-    conversationId: string;
-    messageId: string;
-    attachments?: UserFileAttachment[];
-  }): Promise<void> {
-    const attachments = params.attachments;
-    if (!attachments || attachments.length === 0) {
-      return;
-    }
-
-    const { uploadToS3, ensureBucket } = await import("../../storage/s3-client");
-    await ensureBucket();
-
-    await Promise.all(
-      attachments.map(async (attachment) => {
-        const base64Data = attachment.dataUrl.split(",")[1] || "";
-        const buffer = Buffer.from(base64Data, "base64");
-        const sanitizedFilename = attachment.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const storageKey = `attachments/${params.conversationId}/${params.messageId}/${Date.now()}-${sanitizedFilename}`;
-        await uploadToS3(storageKey, buffer, attachment.mimeType);
-        await db.insert(messageAttachment).values({
-          messageId: params.messageId,
-          filename: attachment.name,
-          mimeType: attachment.mimeType,
-          sizeBytes: buffer.length,
-          storageKey,
-        });
-      }),
-    );
-  }
 
   async enqueueConversationMessage(params: {
     conversationId: string;
@@ -556,62 +472,6 @@ class GenerationManager {
     },
   ): Promise<"acquired" | "requeued"> {
     return this.sandboxSlotLeaseCoordinator.wait(ctx, options);
-  }
-
-  private async enqueueGenerationTimeout(
-    generationId: string,
-    kind: GenerationTimeoutKind,
-    expiresAtIso: string,
-  ): Promise<void> {
-    if (process.env.NODE_ENV === "test") {
-      return;
-    }
-    const queue = getQueue();
-    const runAt = Date.parse(expiresAtIso);
-    const delay = Math.max(0, Number.isFinite(runAt) ? runAt - Date.now() : 0);
-    const timeoutKey =
-      Number.isFinite(runAt) && runAt > 0
-        ? String(runAt)
-        : expiresAtIso.replaceAll(/[^a-zA-Z0-9_-]/g, "-");
-    const jobName =
-      kind === "approval" ? GENERATION_APPROVAL_TIMEOUT_JOB_NAME : GENERATION_AUTH_TIMEOUT_JOB_NAME;
-    const jobId = buildQueueJobId([jobName, generationId, timeoutKey]);
-    await queue.add(
-      jobName,
-      { generationId, kind, expiresAt: expiresAtIso },
-      {
-        jobId,
-        delay,
-        removeOnComplete: true,
-        removeOnFail: 500,
-      },
-    );
-  }
-
-  private async enqueuePreparingStuckCheck(generationId: string): Promise<void> {
-    try {
-      const queue = getQueue();
-      const jobName = GENERATION_PREPARING_STUCK_CHECK_JOB_NAME;
-      await queue.add(
-        jobName,
-        { generationId },
-        {
-          jobId: buildQueueJobId([jobName, generationId]),
-          delay: AGENT_PREPARING_TIMEOUT_MS,
-          removeOnComplete: true,
-          removeOnFail: 500,
-        },
-      );
-    } catch (error) {
-      logger.warn({
-        event: "GENERATION_PREPARING_STUCK_CHECK_ENQUEUE_FAILED",
-        ...{ source: "generation-manager" },
-        ...{
-          generationId,
-          error: formatErrorMessage(error),
-        },
-      });
-    }
   }
 
   /**
