@@ -1,26 +1,7 @@
 {
   "description": "Baseline for size/design Oxlint checks. Entries allow only existing violations at or below the recorded count; new violations and baseline growth fail.",
   "rules": {
-    "eslint(max-lines)": {
-      "apps/cli/src/commands/chat/impl.ts": 1159,
-      "apps/sandbox/scripts/daytona-sandbox.ts": 1174,
-      "apps/sandbox/src/common/skills/linkedin/src/linkedin.ts": 1072,
-      "apps/web/src/components/chat/chat-area.test.tsx": 1301,
-      "apps/web/src/components/landing/home-landing.tsx": 1103,
-      "apps/web/src/routes/agents/-components/coworker-editor-page.tsx": 1162,
-      "apps/web/src/routes/agents/-components/coworker-info-page.tsx": 1320,
-      "apps/web/src/routes/agents/-components/coworkers-page.tsx": 1184,
-      "packages/core/src/server/billing/service.ts": 1006,
-      "packages/core/src/server/runtime/opencode/opencode-normal-runner.ts": 1570,
-      "packages/core/src/server/runtime/opencode/opencode-runtime-driver.ts": 1231,
-      "packages/core/src/server/sandbox/e2b.ts": 1270,
-      "packages/core/src/server/sandbox/opencode-session.ts": 1748,
-      "packages/core/src/server/services/generation/decisions/decision-flow.ts": 1876,
-      "packages/core/src/server/services/generation/generation-manager.ts": 1104,
-      "packages/core/src/server/services/memory-service.ts": 1078
-    },
-    "local(max-mocked-modules)": {
-      "apps/web/src/components/chat/chat-area.test.tsx": 32
-    }
+    "eslint(max-lines)": {},
+    "local(max-mocked-modules)": {}
   }
 }
