@@ -166,6 +166,8 @@ export async function getCoworkerCatalogDetails(input: {
 
   return {
     id: wf.id,
+    ownerId: wf.ownerId,
+    workspaceId: wf.workspaceId,
     name: wf.name,
     description: wf.description,
     username: wf.username,

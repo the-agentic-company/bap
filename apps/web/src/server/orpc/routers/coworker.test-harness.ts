@@ -35,6 +35,7 @@ const coworkerRouterMocks = vi.hoisted(() => ({
   uploadToS3Mock: vi.fn<VitestProcedure>(),
   listConfiguredRemoteIntegrationTargetsMock: vi.fn<VitestProcedure>(),
   searchRemoteIntegrationUsersMock: vi.fn<VitestProcedure>(),
+  getWorkspaceMembershipForUserMock: vi.fn<VitestProcedure>(),
 }));
 
 export const {
@@ -55,6 +56,7 @@ export const {
   uploadToS3Mock,
   listConfiguredRemoteIntegrationTargetsMock,
   searchRemoteIntegrationUsersMock,
+  getWorkspaceMembershipForUserMock,
 } = coworkerRouterMocks;
 
 vi.mock("../middleware", () => ({
@@ -79,6 +81,10 @@ vi.mock("@bap/core/server/services/coworker-metadata", () => ({
     coworkerRouterMocks.generateCoworkerMetadataOnFirstPromptFillMock,
   normalizeAndEnsureUniqueCoworkerUsername:
     coworkerRouterMocks.normalizeAndEnsureUniqueCoworkerUsernameMock,
+}));
+
+vi.mock("@bap/core/server/billing/service", () => ({
+  getWorkspaceMembershipForUser: coworkerRouterMocks.getWorkspaceMembershipForUserMock,
 }));
 
 vi.mock("@bap/core/server/services/coworker-builder-service", async () => {
@@ -152,6 +158,7 @@ export function createContext() {
   const deleteReturningMock = vi.fn<VitestProcedure>();
   const deleteWhereMock = vi.fn<VitestProcedure>(() => ({ returning: deleteReturningMock }));
   const deleteMock = vi.fn<VitestProcedure>(() => ({ where: deleteWhereMock }));
+  const transactionMock = vi.fn<VitestProcedure>((fn: (tx: unknown) => unknown) => fn(context.db));
 
   const selectResultQueue: unknown[][] = [];
   const enqueueSelectResult = (...rows: unknown[][]) => {
@@ -207,6 +214,9 @@ export function createContext() {
         user: {
           findFirst: vi.fn<VitestProcedure>(),
         },
+        workspace: {
+          findFirst: vi.fn<VitestProcedure>(),
+        },
         workspaceMcpServer: {
           findMany: vi.fn<VitestProcedure>(),
         },
@@ -215,13 +225,17 @@ export function createContext() {
       update: updateMock,
       delete: deleteMock,
       select: selectMock,
+      transaction: transactionMock,
     },
     mocks: {
       insertReturningMock,
       insertValuesMock,
       updateSetMock,
       updateReturningMock,
+      deleteMock,
       deleteReturningMock,
+      deleteWhereMock,
+      transactionMock,
       enqueueSelectResult,
     },
   };
@@ -259,6 +273,7 @@ export function createContext() {
   });
   context.db.query.coworkerDocument.findMany.mockResolvedValue([]);
   context.db.query.sandboxFile.findMany.mockResolvedValue([]);
+  context.db.query.workspace.findFirst.mockResolvedValue({ id: "ws-2" });
   context.db.query.workspaceMcpServer.findMany.mockResolvedValue([]);
 
   return context;
@@ -325,4 +340,5 @@ export function resetCoworkerRouterTestHarness() {
       enabledIntegrationTypes: ["google_gmail", "hubspot"],
     },
   ]);
+  getWorkspaceMembershipForUserMock.mockResolvedValue({ id: "membership-1", role: "member" });
 }

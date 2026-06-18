@@ -1,7 +1,7 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import {
   mapZeroCoworkerFolders,
   mapZeroCoworkerList,
@@ -26,6 +26,75 @@ const ACTIVE_COWORKER_RUN_STATUSES = new Set([
 export type CoworkerListData = ReturnType<typeof mapZeroCoworkerList>;
 export type CoworkerFolderListData = ReturnType<typeof mapZeroCoworkerFolders>;
 const coworkerListCache = new Map<string, CoworkerListData>();
+const coworkerFolderListCache = new Map<string, CoworkerFolderListData>();
+const browserStorageSnapshotCache = new Map<string, { raw: string; value: unknown }>();
+const COWORKER_LIST_STORAGE_PREFIX = "bap:zero-coworker-list:";
+const COWORKER_FOLDER_LIST_STORAGE_PREFIX = "bap:zero-coworker-folder-list:";
+const DATE_FIELDS = new Set([
+  "createdAt",
+  "disabledAt",
+  "finishedAt",
+  "lastRunAt",
+  "sharedAt",
+  "startedAt",
+  "updatedAt",
+]);
+const subscribeToBrowserStorage = () => () => {};
+
+function reviveStoredInventory(_key: string, value: unknown) {
+  if (typeof value !== "string" || !DATE_FIELDS.has(_key)) {
+    return value;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date;
+}
+
+function getBrowserStorageItem<T>(storageKey: string | null): T | undefined {
+  if (!storageKey || typeof window === "undefined") {
+    return undefined;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (!stored) {
+      browserStorageSnapshotCache.delete(storageKey);
+      return undefined;
+    }
+
+    const cachedSnapshot = browserStorageSnapshotCache.get(storageKey);
+    if (cachedSnapshot?.raw === stored) {
+      return cachedSnapshot.value as T;
+    }
+
+    const value = JSON.parse(stored, reviveStoredInventory) as T;
+    browserStorageSnapshotCache.set(storageKey, { raw: stored, value });
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+function setBrowserStorageItem<T>(storageKey: string | null, data: T) {
+  if (!storageKey || typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(data));
+    browserStorageSnapshotCache.delete(storageKey);
+  } catch {
+    // Browser storage is a render accelerator only; Zero remains the source of truth.
+  }
+}
+
+function useBrowserInventoryCache<T>(storageKey: string | null): T | undefined {
+  return useSyncExternalStore(
+    subscribeToBrowserStorage,
+    () => getBrowserStorageItem<T>(storageKey),
+    () => undefined,
+  );
+}
 
 function getZeroRuntimeCacheKey(runtime: { userId: string | null; workspaceId: string }) {
   return runtime.userId && runtime.workspaceId ? `${runtime.userId}:${runtime.workspaceId}` : null;
@@ -54,17 +123,29 @@ export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
     }
   }, [cacheKey, details.type, mappedData]);
   const cachedData = cacheKey ? coworkerListCache.get(cacheKey) : undefined;
+  const storageKey = cacheKey ? `${COWORKER_LIST_STORAGE_PREFIX}${cacheKey}` : null;
+  const storedData = useBrowserInventoryCache<CoworkerListData>(storageKey);
   const data =
     mappedData.length > 0 || details.type === "complete"
       ? mappedData
-      : (cachedData ?? initialData ?? mappedData);
+      : (cachedData ?? storedData ?? initialData ?? mappedData);
+  useEffect(() => {
+    if (storageKey && (mappedData.length > 0 || details.type === "complete")) {
+      setBrowserStorageItem(storageKey, mappedData);
+    }
+  }, [details.type, mappedData, storageKey]);
   const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const isWaitingForZero =
+    Boolean(zeroRuntime.userId && zeroRuntime.workspaceId) && !zeroRuntime.isReady;
   const isLoading =
     !error &&
     data.length === 0 &&
     !cachedData &&
+    !storedData &&
     !(initialData && initialData.length > 0) &&
-    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
+    (zeroRuntime.isResolvingWorkspace ||
+      isWaitingForZero ||
+      (zeroRuntime.isReady && details.type !== "complete"));
 
   return {
     data,
@@ -73,7 +154,9 @@ export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
     isError: Boolean(error),
     isFetching:
       !error &&
-      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
+      (zeroRuntime.isResolvingWorkspace ||
+        isWaitingForZero ||
+        (zeroRuntime.isReady && details.type !== "complete")),
     isLoading,
     isPending: isLoading,
     refetch: async () => ({ data }),
@@ -248,6 +331,20 @@ export function useDeleteCoworker() {
     mutationFn: (id: string) => client.coworker.delete({ id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coworker"] });
+    },
+  });
+}
+
+export function useMoveCoworkerWorkspace() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { coworkerId: string; targetWorkspaceId: string }) =>
+      client.coworker.moveWorkspace(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
+      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
     },
   });
 }
@@ -548,24 +645,48 @@ export function useCoworkerFolderList() {
   const [folders, details] = useZeroQuery(
     zeroRuntime.isReady ? zeroQueries.coworkerInventory.folders() : null,
   );
+  const cacheKey = getZeroRuntimeCacheKey(zeroRuntime);
   const data = useMemo(() => mapZeroCoworkerFolders(folders ?? []), [folders]);
+  useEffect(() => {
+    if (cacheKey && (data.length > 0 || details.type === "complete")) {
+      coworkerFolderListCache.set(cacheKey, data);
+    }
+  }, [cacheKey, details.type, data]);
+  const cachedData = cacheKey ? coworkerFolderListCache.get(cacheKey) : undefined;
+  const storageKey = cacheKey ? `${COWORKER_FOLDER_LIST_STORAGE_PREFIX}${cacheKey}` : null;
+  const storedData = useBrowserInventoryCache<CoworkerFolderListData>(storageKey);
+  const folderData =
+    data.length > 0 || details.type === "complete" ? data : (cachedData ?? storedData ?? data);
+  useEffect(() => {
+    if (storageKey && (data.length > 0 || details.type === "complete")) {
+      setBrowserStorageItem(storageKey, data);
+    }
+  }, [data, details.type, storageKey]);
   const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const isWaitingForZero =
+    Boolean(zeroRuntime.userId && zeroRuntime.workspaceId) && !zeroRuntime.isReady;
   const isLoading =
     !error &&
-    data.length === 0 &&
-    (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete"));
+    folderData.length === 0 &&
+    !cachedData &&
+    !storedData &&
+    (zeroRuntime.isResolvingWorkspace ||
+      isWaitingForZero ||
+      (zeroRuntime.isReady && details.type !== "complete"));
 
   return {
-    data,
+    data: folderData,
     dataUpdatedAt: Date.now(),
     error,
     isError: Boolean(error),
     isFetching:
       !error &&
-      (zeroRuntime.isResolvingWorkspace || (zeroRuntime.isReady && details.type !== "complete")),
+      (zeroRuntime.isResolvingWorkspace ||
+        isWaitingForZero ||
+        (zeroRuntime.isReady && details.type !== "complete")),
     isLoading,
     isPending: isLoading,
-    refetch: async () => ({ data }),
+    refetch: async () => ({ data: folderData }),
     status: error ? "error" : isLoading ? "pending" : "success",
   };
 }

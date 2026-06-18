@@ -12,6 +12,7 @@ import { coworkerRemoteIntegrationProcedures } from "./coworker/remote-integrati
 import { coworkerRunProcedures } from "./coworker/runs.router";
 import { coworkerSharingProcedures } from "./coworker/sharing.router";
 import { coworkerTriggerProcedures } from "./coworker/trigger.router";
+import { coworkerWorkspaceMoveProcedures } from "./coworker/workspace-move.router";
 
 export const coworkerRouter = {
   list: coworkerCatalogProcedures.list,
@@ -28,6 +29,7 @@ export const coworkerRouter = {
   getDocumentUrl: coworkerDocumentProcedures.getDocumentUrl,
   deleteDocument: coworkerDocumentProcedures.deleteDocument,
   delete: coworkerProfileProcedures.delete,
+  moveWorkspace: coworkerWorkspaceMoveProcedures.moveWorkspace,
   trigger: coworkerTriggerProcedures.trigger,
   listRemoteIntegrationTargets: coworkerRemoteIntegrationProcedures.listRemoteIntegrationTargets,
   searchRemoteIntegrationUsers: coworkerRemoteIntegrationProcedures.searchRemoteIntegrationUsers,

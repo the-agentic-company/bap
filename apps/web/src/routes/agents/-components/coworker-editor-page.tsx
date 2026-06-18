@@ -3,11 +3,7 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { CUSTOM_SKILL_PREFIX } from "@bap/core/lib/coworker-tool-policy";
 import { EMAIL_FORWARDED_TRIGGER_TYPE } from "@bap/core/lib/email-forwarding";
-import {
-  useNavigate,
-  useParams as useTanStackParams,
-  useRouterState,
-} from "@tanstack/react-router";
+import { useNavigate, useParams as useTanStackParams, useRouterState } from "@tanstack/react-router";
 import { T, msg, useGT } from "gt-react";
 import { Loader2 } from "lucide-react";
 import {
@@ -55,6 +51,7 @@ import {
 import { useProviderAuthStatus } from "@/orpc/hooks/provider-auth";
 import { usePlatformSkillList, useSkillList } from "@/orpc/hooks/skills";
 import { useWorkspaceMcpServerList } from "@/orpc/hooks/workspace-mcp-servers";
+import { CoworkerAdminPanel } from "./coworker-editor/coworker-admin-panel";
 import { CoworkerChatPanel } from "./coworker-editor/coworker-chat-panel";
 import {
   CoworkerEditorDesktopLayout,
@@ -63,7 +60,6 @@ import {
 } from "./coworker-editor/coworker-editor-layout";
 import { isUuidRouteSlug } from "./coworker-editor/coworker-editor-utils";
 import { CoworkerSettingsPanel } from "./coworker-editor/coworker-settings-panel";
-import { RemoteIntegrationAdminPanel } from "./coworker-editor/remote-integration-admin-panel";
 import {
   EMPTY_COWORKER_DOCUMENTS,
   type CoworkerTab,
@@ -851,7 +847,8 @@ export default function CoworkerEditorPage({
   );
   const renderAdminContent = useCallback(
     () => (
-      <RemoteIntegrationAdminPanel
+      <CoworkerAdminPanel
+        coworkerId={coworkerId}
         availableTargets={availableRemoteIntegrationTargets}
         selectedTargetEnv={remoteTargetEnv}
         remoteUserQuery={remoteUserQuery}
@@ -868,6 +865,7 @@ export default function CoworkerEditorPage({
     ),
     [
       availableRemoteIntegrationTargets,
+      coworkerId,
       handleRemoteRunClick,
       handleRemoteTargetEnvChange,
       handleRemoteUserQueryChange,
