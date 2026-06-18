@@ -40,11 +40,11 @@ function getBrowserLocation(): BrowserLocation | undefined {
   return typeof window === "undefined" ? undefined : window.location;
 }
 
-export function getZeroCacheURL(): string | undefined {
+function getZeroCacheURL(): string | undefined {
   return resolveZeroCacheURL(env.VITE_ZERO_CACHE_URL, getBrowserLocation());
 }
 
-export function getZeroQueryURL(): string | undefined {
+function getZeroQueryURL(): string | undefined {
   return resolveZeroQueryURL(env.VITE_ZERO_QUERY_URL, getBrowserLocation());
 }
 

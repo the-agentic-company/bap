@@ -1,24 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import CoworkersPage from "./-components/coworkers-page";
-import { loadInitialCoworkers } from "./-lib/initial-coworkers-loader";
+import { loadInitialCoworkerInventory } from "./-lib/initial-coworker-inventory-loader";
 
 /**
  * /agents — coworkers landing grid (was src/app/agents/page.tsx).
  * Protected by the parent /agents layout `beforeLoad` guard.
  */
 export const Route = createFileRoute("/agents/")({
-  loader: () => loadInitialCoworkers(),
+  loader: () => loadInitialCoworkerInventory(),
+  pendingMs: 10_000,
+  staleTime: 30_000,
   head: () => ({ meta: [{ title: "Coworkers" }] }),
   component: AgentsIndexRoute,
 });
 
 function AgentsIndexRoute() {
-  const initialCoworkers = Route.useLoaderData();
+  const initialInventory = Route.useLoaderData();
   return (
     <CoworkersPage
-      initialCoworkerSharedCount={initialCoworkers.sharedCount}
-      initialCoworkerTotalCount={initialCoworkers.totalCount}
-      initialCoworkers={initialCoworkers.coworkers}
+      initialCoworkerSharedCount={initialInventory.sharedCount}
+      initialCoworkerTotalCount={initialInventory.totalCount}
+      initialCoworkers={initialInventory.coworkers}
+      initialFolders={initialInventory.folders}
     />
   );
 }

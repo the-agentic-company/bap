@@ -1,5 +1,4 @@
 import { T } from "gt-react";
-import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import {
   InteractiveCoworkerCard,
@@ -9,13 +8,6 @@ import type { IntegrationType } from "@/lib/integration-icons";
 import type { CoworkerFolderItem, CoworkerItem } from "./coworkers-page";
 import { FolderCard } from "./folder-card";
 import { SharedCoworkerCard, type SharedCoworkerItem } from "./shared-coworker-card";
-
-const CARD_MOTION = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-  transition: { duration: 0.2, ease: "easeOut" },
-} as const;
 
 type CoworkerSection = {
   key: string;
@@ -139,68 +131,48 @@ export function CoworkerBrowserGrid({
           <h3 className="text-muted-foreground text-xs font-medium">
             <T>Folders</T>
           </h3>
-          <motion.div layout className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <AnimatePresence mode="popLayout">
-              {displayedFolderList.map((folder) => (
-                <motion.div
-                  key={`folder-${folder.id}`}
-                  layout
-                  className="h-full"
-                  initial={CARD_MOTION.initial}
-                  animate={CARD_MOTION.animate}
-                  exit={CARD_MOTION.exit}
-                  transition={CARD_MOTION.transition}
-                >
-                  <FolderCard
-                    canManage={canManageFolder(folder)}
-                    canChangeVisibility={folder.parentId === null && canManageFolder(folder)}
-                    folder={folder}
-                    isDragTarget={activeDropFolderId === folder.id}
-                    isDraggable={canManageFolder(folder)}
-                    onCreateChild={handleOpenCreateChildFolderDialog}
-                    onDelete={handleDeleteFolderRequest}
-                    onDragEnd={handleFolderCardDragEnd}
-                    onDragEnter={handleFolderDragEnter}
-                    onDragLeave={handleFolderDragLeave}
-                    onDragOver={handleFolderDragOver}
-                    onDragStart={handleFolderCardDragStart}
-                    onDropCoworker={handleFolderDropCoworker}
-                    onMove={handleMoveFolder}
-                    onToggleVisibility={handleToggleFolderVisibilityRequest}
-                    pathLabel={isGlobalSearch ? getFolderPathLabel(folder) : undefined}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {displayedFolderList.map((folder) => (
+              <div key={`folder-${folder.id}`} className="h-full">
+                <FolderCard
+                  canManage={canManageFolder(folder)}
+                  canChangeVisibility={folder.parentId === null && canManageFolder(folder)}
+                  folder={folder}
+                  isDragTarget={activeDropFolderId === folder.id}
+                  isDraggable={canManageFolder(folder)}
+                  onCreateChild={handleOpenCreateChildFolderDialog}
+                  onDelete={handleDeleteFolderRequest}
+                  onDragEnd={handleFolderCardDragEnd}
+                  onDragEnter={handleFolderDragEnter}
+                  onDragLeave={handleFolderDragLeave}
+                  onDragOver={handleFolderDragOver}
+                  onDragStart={handleFolderCardDragStart}
+                  onDropCoworker={handleFolderDropCoworker}
+                  onMove={handleMoveFolder}
+                  onToggleVisibility={handleToggleFolderVisibilityRequest}
+                  pathLabel={isGlobalSearch ? getFolderPathLabel(folder) : undefined}
+                />
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
       {coworkerSections.map((section) => (
         <section key={section.key} className="space-y-3">
           <h3 className="text-muted-foreground text-xs font-medium">{section.title}</h3>
-          <motion.div layout className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <AnimatePresence mode="popLayout">
-              {section.coworkers.map((wf) => (
-                <motion.div
-                  key={wf.id}
-                  layout
-                  className="h-full"
-                  initial={CARD_MOTION.initial}
-                  animate={CARD_MOTION.animate}
-                  exit={CARD_MOTION.exit}
-                  transition={CARD_MOTION.transition}
-                >
-                  <InteractiveCoworkerCard
-                    coworker={wf}
-                    onDragEnd={handleCoworkerDragEnd}
-                    onDragStart={handleCoworkerDragStart}
-                    onMove={handleMoveCoworker}
-                    sharingLocked={wf.folderId !== null}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {section.coworkers.map((wf) => (
+              <div key={wf.id} className="h-full">
+                <InteractiveCoworkerCard
+                  coworker={wf}
+                  onDragEnd={handleCoworkerDragEnd}
+                  onDragStart={handleCoworkerDragStart}
+                  onMove={handleMoveCoworker}
+                  sharingLocked={wf.folderId !== null}
+                />
+              </div>
+            ))}
+          </div>
         </section>
       ))}
       {displayedSharedCoworkerList.length > 0 ? (
@@ -208,28 +180,18 @@ export function CoworkerBrowserGrid({
           <h3 className="text-muted-foreground text-xs font-medium">
             <T>Shared with workspace</T>
           </h3>
-          <motion.div layout className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <AnimatePresence mode="popLayout">
-              {displayedSharedCoworkerList.map((coworker) => (
-                <motion.div
-                  key={`shared-${coworker.id}`}
-                  layout
-                  className="h-full"
-                  initial={CARD_MOTION.initial}
-                  animate={CARD_MOTION.animate}
-                  exit={CARD_MOTION.exit}
-                  transition={CARD_MOTION.transition}
-                >
-                  <SharedCoworkerCard
-                    coworker={coworker}
-                    connectedIntegrationTypes={connectedIntegrationTypes}
-                    isImporting={importingSharedCoworkerId === coworker.id}
-                    onImport={handleImportSharedCoworker}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {displayedSharedCoworkerList.map((coworker) => (
+              <div key={`shared-${coworker.id}`} className="h-full">
+                <SharedCoworkerCard
+                  coworker={coworker}
+                  connectedIntegrationTypes={connectedIntegrationTypes}
+                  isImporting={importingSharedCoworkerId === coworker.id}
+                  onImport={handleImportSharedCoworker}
+                />
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
     </div>

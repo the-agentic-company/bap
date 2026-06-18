@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/env";
 import { ORPCProvider } from "@/orpc/provider";
 import { BapZeroProvider } from "@/zero/provider";
+import { getAutumnBetterAuthUrl } from "./app-root-shell-urls";
 
 const isSelfHostedEdition = env.VITE_APP_EDITION === "selfhost";
 
@@ -17,10 +18,6 @@ let autumnProviderPromise: Promise<AutumnProviderComponent> | undefined;
 function loadAutumnProvider(): Promise<AutumnProviderComponent> {
   autumnProviderPromise ??= import("autumn-js/react").then((module) => module.AutumnProvider);
   return autumnProviderPromise;
-}
-
-export function getAutumnBetterAuthUrl() {
-  return env.VITE_APP_URL ?? (typeof window === "undefined" ? "" : window.location.origin);
 }
 
 function BillingProviderWrapper({ children }: { children: ReactNode }) {

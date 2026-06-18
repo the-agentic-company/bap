@@ -1,14 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { CoworkerItem } from "../-components/coworkers-page";
+import type { CoworkerFolderItem, CoworkerItem } from "../-components/coworkers-page";
 
-export type InitialCoworkersLoaderData = {
+export type InitialCoworkerInventoryLoaderData = {
   coworkers: CoworkerItem[];
+  folders: CoworkerFolderItem[];
   sharedCount: number;
   totalCount: number;
 };
 
-export const EMPTY_INITIAL_COWORKERS_DATA: InitialCoworkersLoaderData = {
+export const EMPTY_INITIAL_COWORKER_INVENTORY_DATA: InitialCoworkerInventoryLoaderData = {
   coworkers: [],
+  folders: [],
   sharedCount: 0,
   totalCount: 0,
 };
@@ -25,6 +27,12 @@ function serializeDate(value: unknown): Date | null {
 
 function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
   const allowedIntegrations = Array.isArray(row.allowedIntegrations) ? row.allowedIntegrations : [];
+  const allowedCustomIntegrations = Array.isArray(row.allowedCustomIntegrations)
+    ? row.allowedCustomIntegrations
+    : [];
+  const allowedWorkspaceMcpServerIds = Array.isArray(row.allowedWorkspaceMcpServerIds)
+    ? row.allowedWorkspaceMcpServerIds
+    : [];
   const allowedSkillSlugs = Array.isArray(row.allowedSkillSlugs) ? row.allowedSkillSlugs : [];
   const recentRuns = Array.isArray(row.recentRuns) ? row.recentRuns : [];
 
@@ -44,8 +52,10 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
     integrations: [],
     toolAccessMode: row.toolAccessMode === "selected" ? "selected" : "all",
     allowedIntegrations: allowedIntegrations as CoworkerItem["allowedIntegrations"],
-    allowedCustomIntegrations: [],
-    allowedWorkspaceMcpServerIds: [],
+    allowedCustomIntegrations:
+      allowedCustomIntegrations as CoworkerItem["allowedCustomIntegrations"],
+    allowedWorkspaceMcpServerIds:
+      allowedWorkspaceMcpServerIds as CoworkerItem["allowedWorkspaceMcpServerIds"],
     allowedSkillSlugs: allowedSkillSlugs.filter((slug): slug is string => typeof slug === "string"),
     schedule: null,
     requiresUserInput: row.requiresUserInput === true,
@@ -79,28 +89,42 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
   };
 }
 
-export const loadInitialCoworkers = createServerFn({ method: "GET" }).handler(async () => {
+function serializeInitialFolder(row: Record<string, unknown>): CoworkerFolderItem {
+  return {
+    id: String(row.id),
+    workspaceId: typeof row.workspaceId === "string" ? row.workspaceId : "",
+    ownerId: typeof row.ownerId === "string" ? row.ownerId : null,
+    parentId: typeof row.parentId === "string" ? row.parentId : null,
+    name: typeof row.name === "string" ? row.name : "",
+    visibility: row.visibility === "workspace" ? "workspace" : "private",
+    position: typeof row.position === "number" ? row.position : 0,
+    createdAt: serializeDate(row.createdAt) ?? new Date(0),
+    updatedAt: serializeDate(row.updatedAt) ?? new Date(0),
+  };
+}
+
+export const loadInitialCoworkerInventory = createServerFn({ method: "GET" }).handler(async () => {
   const [
     { getRequest },
     { getRequestSession },
     { resolveSessionPrincipalWorkspaceId },
-    { queryInitialCoworkers },
+    { queryInitialCoworkerInventory },
   ] = await Promise.all([
     import("@tanstack/react-start/server"),
     import("@/server/session-auth"),
     import("@/server/session-principal-workspace"),
-    import("@/server/initial-coworkers"),
+    import("@/server/initial-coworker-inventory"),
   ]);
   const request = getRequest();
   const sessionData = await getRequestSession(request.headers);
   const userId = sessionData?.user?.id;
 
   if (!userId) {
-    return EMPTY_INITIAL_COWORKERS_DATA;
+    return EMPTY_INITIAL_COWORKER_INVENTORY_DATA;
   }
 
   const workspaceId = await resolveSessionPrincipalWorkspaceId(userId);
-  const result = await queryInitialCoworkers({
+  const result = await queryInitialCoworkerInventory({
     userId,
     workspaceId,
   });
@@ -109,6 +133,7 @@ export const loadInitialCoworkers = createServerFn({ method: "GET" }).handler(as
     coworkers: result.coworkers.map((row) =>
       serializeInitialCoworker(row as Record<string, unknown>),
     ),
+    folders: result.folders.map((row) => serializeInitialFolder(row as Record<string, unknown>)),
     sharedCount: result.sharedCount,
     totalCount: result.totalCount,
   };

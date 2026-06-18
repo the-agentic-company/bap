@@ -3,26 +3,39 @@ import {
   normalizeCoworkerToolAccessMode,
 } from "@bap/core/lib/coworker-tool-policy";
 import { db } from "@bap/db/client";
-import { coworker, coworkerRun, generation } from "@bap/db/schema";
-import { and, count, desc, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { coworker, coworkerFolder, coworkerRun, generation } from "@bap/db/schema";
+import { and, count, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
-const INITIAL_COWORKER_LIMIT = 36;
+const INITIAL_COWORKER_LIMIT = 500;
 
-export async function queryInitialCoworkers(params: { userId: string; workspaceId: string }) {
+export async function queryInitialCoworkerInventory(params: {
+  userId: string;
+  workspaceId: string;
+}) {
   const where = and(
     eq(coworker.ownerId, params.userId),
     eq(coworker.workspaceId, params.workspaceId),
+  );
+  const folderWhere = and(
+    eq(coworkerFolder.workspaceId, params.workspaceId),
+    or(eq(coworkerFolder.ownerId, params.userId), eq(coworkerFolder.visibility, "workspace")),
   );
   const [totalRow] = await db.select({ value: count() }).from(coworker).where(where);
   const [sharedRow] = await db
     .select({ value: count() })
     .from(coworker)
     .where(and(where, isNotNull(coworker.sharedAt)));
-  const rows = await db.query.coworker.findMany({
-    where,
-    orderBy: [desc(coworker.isPinned), desc(coworker.updatedAt), desc(coworker.id)],
-    limit: INITIAL_COWORKER_LIMIT,
-  });
+  const [rows, folders] = await Promise.all([
+    db.query.coworker.findMany({
+      where,
+      orderBy: [desc(coworker.isPinned), desc(coworker.updatedAt), desc(coworker.id)],
+      limit: INITIAL_COWORKER_LIMIT,
+    }),
+    db.query.coworkerFolder.findMany({
+      where: folderWhere,
+      orderBy: (folder, { asc }) => [asc(folder.parentId), asc(folder.position), asc(folder.name)],
+    }),
+  ]);
   const coworkerIds = rows.map((row) => row.id);
   const rankedRuns =
     coworkerIds.length > 0
@@ -79,6 +92,7 @@ export async function queryInitialCoworkers(params: { userId: string; workspaceI
   return {
     sharedCount: sharedRow?.value ?? 0,
     totalCount: totalRow?.value ?? rows.length,
+    folders,
     coworkers: rows.map((row) => {
       const lastRun = lastRunsByCoworkerId.get(row.id);
       const toolAccessMode = normalizeCoworkerToolAccessMode(
@@ -93,11 +107,13 @@ export async function queryInitialCoworkers(params: { userId: string; workspaceI
         username: row.username,
         folderId: row.folderId,
         status: row.status,
+        disabledReason: row.disabledReason,
+        disabledAt: row.disabledAt,
         autoApprove: row.autoApprove,
         model: row.model,
         authSource: row.authSource,
         triggerType: row.triggerType,
-        integrations: row.allowedIntegrations,
+        integrations: [],
         toolAccessMode,
         allowedIntegrations: row.allowedIntegrations,
         allowedCustomIntegrations: row.allowedCustomIntegrations,

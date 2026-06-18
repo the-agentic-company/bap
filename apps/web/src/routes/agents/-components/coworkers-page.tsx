@@ -3,22 +3,18 @@
 import { useNavigate } from "@tanstack/react-router";
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@bap/core/lib/chat-model-defaults";
-import { T, msg, useGT, useMessages } from "gt-react";
+import { T, useGT, useMessages } from "gt-react";
 import {
   ChevronRight,
   ChevronDown,
-  Clock,
   Filter,
   Folder,
-  Mail,
   Loader2,
   Menu,
-  Play,
   Search,
   Share2,
   Upload,
   UserPlus,
-  Webhook,
   X,
 } from "lucide-react";
 import { type ChangeEvent, useCallback, useMemo, useRef, useState } from "react";
@@ -66,6 +62,8 @@ import { AppImage as Image } from "../-lib/app-image";
 import { AppLink as Link } from "../-lib/app-link";
 import { CoworkerBrowserGrid } from "./coworker-browser-grid";
 import { CoworkerFolderDialogs } from "./coworker-folder-dialogs";
+import { CoworkerInventoryLoading } from "./coworker-inventory-loading";
+import { TRIGGER_TYPE_OPTIONS } from "./coworker-trigger-type-options";
 import type { SharedCoworkerItem } from "./shared-coworker-card";
 
 export type CoworkerItem = CoworkerListData[number];
@@ -76,34 +74,33 @@ export type MoveTarget =
   | { type: "coworker"; id: string; name: string; currentFolderId: string | null }
   | { type: "folder"; id: string; name: string; currentFolderId: string | null };
 const EMPTY_INITIAL_COWORKERS: CoworkerListData = [];
+const EMPTY_INITIAL_FOLDERS: CoworkerFolderListData = [];
 
 const DEFAULT_COWORKER_BUILDER_MODEL = DEFAULT_CONNECTED_CHATGPT_MODEL;
-
-const TRIGGER_TYPE_OPTIONS = [
-  { value: "manual", label: msg("Manual"), icon: Play },
-  { value: "schedule", label: msg("Scheduled"), icon: Clock },
-  { value: "email", label: msg("Email"), icon: Mail },
-  { value: "webhook", label: msg("Webhook"), icon: Webhook },
-] as const;
 
 export default function CoworkersPage({
   currentFolderId = null,
   initialCoworkerSharedCount = 0,
   initialCoworkerTotalCount = 0,
-  initialCoworkers,
+  initialCoworkers = EMPTY_INITIAL_COWORKERS,
+  initialFolders = EMPTY_INITIAL_FOLDERS,
 }: {
   currentFolderId?: string | null;
   initialCoworkerSharedCount?: number;
   initialCoworkerTotalCount?: number;
   initialCoworkers?: CoworkerListData;
+  initialFolders?: CoworkerFolderListData;
 }) {
   const t = useGT();
   const m = useMessages();
 
   const navigate = useNavigate();
-  const initialCoworkerList = initialCoworkers ?? EMPTY_INITIAL_COWORKERS;
-  const { data: coworkers, isLoading } = useCoworkerList({ initialData: initialCoworkerList });
-  const { data: folders } = useCoworkerFolderList();
+  const { data: coworkers, isLoading: isCoworkersLoading } = useCoworkerList({
+    initialData: initialCoworkers,
+  });
+  const { data: folders, isLoading: isFoldersLoading } = useCoworkerFolderList({
+    initialData: initialFolders,
+  });
   const { data: sharedCoworkers } = useSharedCoworkerList();
   const { data: integrations } = useIntegrationList();
   const { data: providerAuthStatus } = useProviderAuthStatus();
@@ -813,6 +810,10 @@ export default function CoworkersPage({
       providerAvailability,
     ],
   );
+  const hasInventoryData =
+    coworkerList.length > 0 || folderList.length > 0 || displayedSharedCoworkerList.length > 0;
+  const isInventoryLoading =
+    !currentFolderId && !hasInventoryData && (isCoworkersLoading || isFoldersLoading);
 
   const doCreate = useCallback(
     async ({
@@ -881,7 +882,7 @@ export default function CoworkersPage({
       folderList.length === 0 &&
       !currentFolderId &&
       !searchQuery.trim() &&
-      !isLoading ? (
+      !isInventoryLoading ? (
         <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
           <Image src="/tools/lobster.svg" alt="" width={64} height={64} className="mb-6" />
           <h2 className="text-foreground mb-1.5 text-center text-xl font-semibold tracking-tight">
@@ -1089,9 +1090,11 @@ export default function CoworkersPage({
             </div>
           ) : null}
 
-          {displayedCoworkerList.length === 0 &&
-          displayedFolderList.length === 0 &&
-          displayedSharedCoworkerList.length === 0 ? (
+          {isInventoryLoading ? (
+            <CoworkerInventoryLoading label={t("Loading coworkers")} />
+          ) : displayedCoworkerList.length === 0 &&
+            displayedFolderList.length === 0 &&
+            displayedSharedCoworkerList.length === 0 ? (
             <div className="border-border rounded-xl border border-dashed p-10 text-center">
               <p className="text-muted-foreground text-sm">
                 {searchQuery.trim() ? (
