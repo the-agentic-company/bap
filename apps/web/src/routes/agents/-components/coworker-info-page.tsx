@@ -34,6 +34,7 @@ import {
   useTriggerCoworker,
 } from "@/orpc/hooks/coworkers";
 import { AppLink as Link } from "../-lib/app-link";
+import { CoworkerInfoEmptyOutput, CoworkerInfoEmptySummary } from "./coworker-info-empty-state";
 import {
   getAdjacentMobilePanel,
   getInfoTab,
@@ -270,6 +271,13 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     }
   }, [navigate, resolvedCoworkerId, resolvedCoworkerSlug, triggerCoworker]);
 
+  const coworkerName =
+    coworker.data?.name || coworkerListItem?.name || run.data?.coworkerName || "Coworker";
+  const coworkerUsername =
+    coworker.data?.username ?? coworkerListItem?.username ?? run.data?.coworkerUsername;
+  const coworkerDefinition =
+    coworker.data?.description?.trim() || coworkerListItem?.description?.trim();
+
   const detailsPanel = useMemo(
     () => (
       <RunDetailsPanel
@@ -282,6 +290,17 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       />
     ),
     [activeTab, conversation.isFetching, conversationId, detailsRun, handleTabChange, messages],
+  );
+  const emptySummaryPanel = useMemo(() => <CoworkerInfoEmptySummary />, []);
+  const emptyOutputPanel = useMemo(
+    () => (
+      <CoworkerInfoEmptyOutput
+        coworkerDescription={coworkerDefinition}
+        onRunNow={handleRunNow}
+        isRunning={triggerCoworker.isPending}
+      />
+    ),
+    [coworkerDefinition, handleRunNow, triggerCoworker.isPending],
   );
 
   if (isRunLoading) {
@@ -304,149 +323,175 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     );
   }
 
-  if (!run.data && !coworkerRuns.data?.length) {
-    return (
-      <main className="flex min-h-[60vh] items-center justify-center p-6">
-        <Button
-          type="button"
-          onClick={handleRunNow}
-          disabled={triggerCoworker.isPending}
-          className="bg-foreground text-background hover:bg-foreground/90 inline-flex h-10 items-center justify-center rounded-lg px-6 text-sm font-medium transition-colors"
-        >
-          {triggerCoworker.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Play className="h-4 w-4" />
-          )}
-          <T>Run now</T>
-        </Button>
-      </main>
-    );
-  }
-
-  const coworkerName =
-    coworker.data?.name || coworkerListItem?.name || run.data?.coworkerName || "Coworker";
-  const coworkerUsername =
-    coworker.data?.username ?? coworkerListItem?.username ?? run.data?.coworkerUsername;
-  const coworkerDefinition =
-    coworker.data?.description?.trim() || coworkerListItem?.description?.trim();
-
-  return (
-    <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 flex-col overflow-hidden md:h-dvh">
-      <section className="bg-background/95 z-10 hidden shrink-0 px-3 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:block md:px-6 md:py-3">
-        <div className="flex min-h-10 items-center gap-2 md:gap-4">
-          <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-visible">
-              <CoworkerAvatar
-                username={coworkerUsername}
-                size={44}
-                scale={82}
-                className="rounded-none"
-              />
-            </div>
-            <h1 className="truncate text-base leading-tight font-semibold md:text-lg">
-              {coworkerName}
-            </h1>
-            <Popover open={definitionOpen} onOpenChange={handleDefinitionOpenChange}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-foreground h-7 w-7 shrink-0"
-                  onMouseEnter={handleOpenDefinition}
-                  onClick={handleToggleDefinition}
-                  aria-label={t("Show coworker definition")}
-                >
-                  <Info className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-80 p-3">
-                <p className="text-sm font-medium">
-                  <T>Coworker definition</T>
-                </p>
-                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                  {coworkerDefinition || "No definition set."}
-                </p>
-              </PopoverContent>
-            </Popover>
+  const headerSection = (
+    <section className="bg-background/95 z-10 hidden shrink-0 px-3 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:block md:px-6 md:py-3">
+      <div className="flex min-h-10 items-center gap-2 md:gap-4">
+        <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-visible">
+            <CoworkerAvatar
+              username={coworkerUsername}
+              size={44}
+              scale={82}
+              className="rounded-none"
+            />
           </div>
-
-          <div className="ml-auto flex shrink-0 items-center gap-1 md:gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 md:w-auto md:px-3"
-              asChild
-            >
-              <Link
-                href={getCoworkerEditHref({
-                  id: resolvedCoworkerId,
-                  username: coworkerUsername,
-                })}
+          <h1 className="truncate text-base leading-tight font-semibold md:text-lg">
+            {coworkerName}
+          </h1>
+          <Popover open={definitionOpen} onOpenChange={handleDefinitionOpenChange}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground h-7 w-7 shrink-0"
+                onMouseEnter={handleOpenDefinition}
+                onClick={handleToggleDefinition}
+                aria-label={t("Show coworker definition")}
               >
-                <Pencil className="h-4 w-4" />
+                <Info className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 p-3">
+              <p className="text-sm font-medium">
+                <T>Coworker definition</T>
+              </p>
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                {coworkerDefinition || "No definition set."}
+              </p>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1 md:gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 md:w-auto md:px-3"
+            asChild
+          >
+            <Link
+              href={getCoworkerEditHref({
+                id: resolvedCoworkerId,
+                username: coworkerUsername,
+              })}
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="hidden md:inline">
+                <T>Configure</T>
+              </span>
+            </Link>
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 md:w-auto md:px-3"
+              >
+                <History className="h-4 w-4" />
                 <span className="hidden md:inline">
-                  <T>Configure</T>
+                  <T>History</T>
                 </span>
-              </Link>
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 md:w-auto md:px-3"
-                >
-                  <History className="h-4 w-4" />
-                  <span className="hidden md:inline">
-                    <T>History</T>
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-72 p-2">
-                <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium">
-                    <T>Previous Runs</T>
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    <T>Switch this page to an older run.</T>
-                  </p>
-                </div>
-                <div className="mt-1 max-h-80 space-y-1 overflow-auto">
-                  {(coworkerRuns.data ?? []).map((historyRun) => (
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-2">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium">
+                  <T>Previous Runs</T>
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  <T>Switch this page to an older run.</T>
+                </p>
+              </div>
+              <div className="mt-1 max-h-80 space-y-1 overflow-auto">
+                {(coworkerRuns.data ?? []).length > 0 ? (
+                  (coworkerRuns.data ?? []).map((historyRun) => (
                     <HistoryRunButton
                       key={historyRun.id}
                       run={historyRun}
                       selected={historyRun.id === selectedRunId}
                       onSelect={handleHistorySelect}
                     />
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button
-              type="button"
-              variant="brand"
-              size="icon"
-              onClick={handleRunNow}
-              disabled={triggerCoworker.isPending}
-              className="h-8 w-8 shrink-0 md:w-auto md:px-3"
-            >
-              {triggerCoworker.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              <span className="hidden md:inline">
-                <T>Run now</T>
-              </span>
-            </Button>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
+                    <T>No previous Coworker Runs.</T>
+                  </p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button
+            type="button"
+            variant="brand"
+            size="icon"
+            onClick={handleRunNow}
+            disabled={triggerCoworker.isPending}
+            className="h-8 w-8 shrink-0 md:w-auto md:px-3"
+          >
+            {triggerCoworker.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            <span className="hidden md:inline">
+              <T>Run now</T>
+            </span>
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+
+  if (!run.data && !coworkerRuns.data?.length) {
+    return (
+      <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 flex-col overflow-hidden md:h-dvh">
+        {headerSection}
+
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto md:hidden">
+            <div className="space-y-3 px-4 pt-4">
+              <CoworkerInfoEmptySummary />
+            </div>
+            <div className="px-4 pt-3 pb-4">
+              <div className="border-border bg-card min-h-[26rem] rounded-xl border">
+                <CoworkerInfoEmptyOutput
+                  coworkerDescription={coworkerDefinition}
+                  onRunNow={handleRunNow}
+                  isRunning={triggerCoworker.isPending}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden min-h-0 flex-1 md:flex">
+            <DualPanelWorkspace
+              storageKey="agent-info-details-output-width-v3"
+              defaultRightWidth={75}
+              minLeftWidth={25}
+              minRightWidth={40}
+              showTitles={false}
+              leftTitle="Details"
+              rightTitle="Output"
+              leftPanelClassName="border-0 bg-background rounded-none"
+              rightPanelClassName="bg-card rounded-xl"
+              separatorClassName="bg-muted/40"
+              allowLeftPanelDragCollapse
+              left={emptySummaryPanel}
+              right={emptyOutputPanel}
+            />
           </div>
         </div>
-      </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 flex-col overflow-hidden md:h-dvh">
+      {headerSection}
 
       <div className="flex min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
