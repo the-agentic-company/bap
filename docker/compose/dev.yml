@@ -1,6 +1,20 @@
 name: ${BAP_COMPOSE_PROJECT:-bap-local}
 
 services:
+  localcan-caddy:
+    image: caddy:2-alpine
+    ports:
+      - "${BAP_LOCALCAN_CADDY_PORT:-3399}:80"
+    environment:
+      LOCALCAN_CADDY_LISTEN_PORT: "80"
+      LOCALCAN_APP_ROUTER_UPSTREAM: host.docker.internal:${LOCAL_TUNNEL_PROXY_PORT:-3410}
+      LOCALCAN_MCP_UPSTREAM: host.docker.internal:${MCP_GATEWAY_PORT:-3010}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../../Caddyfile.localcan:/etc/caddy/Caddyfile:ro
+    restart: unless-stopped
+
   database:
     image: pgvector/pgvector:pg16
     command: ["postgres", "-c", "wal_level=logical"]

@@ -41,6 +41,16 @@ custom queries stay unresolved.
 `zero-cache` stores its SQLite replica in the `bap_zero_cache_data` Docker
 volume and exposes a health check at `http://127.0.0.1:4848/keepalive`.
 
+LocalCan should point both public hosts to the Compose Caddy port:
+
+- `localcan.baptistecolle.com` -> `http://127.0.0.1:3399`
+- `mcp.localcan.baptistecolle.com` -> `http://127.0.0.1:3399`
+
+Compose publishes Caddy on `BAP_LOCALCAN_CADDY_PORT`, defaulting to `3399`.
+Caddy routes the app host to the Bun worktree router on `127.0.0.1:3410`
+(`LOCAL_TUNNEL_PROXY_PORT`) and the MCP host to the MCP gateway on
+`127.0.0.1:3010` (`MCP_GATEWAY_PORT`).
+
 The default observability endpoints are:
 
 - `Vector` on `http://127.0.0.1:4318` for OTLP/HTTP metrics and logs, `http://127.0.0.1:5318` for raw OTLP/HTTP traces, `127.0.0.1:4317` for OTLP/gRPC metrics and logs, and `http://127.0.0.1:8686/logs` for JSON logs

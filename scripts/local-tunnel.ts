@@ -180,7 +180,10 @@ export async function runLocalTunnelProxy(): Promise<void> {
     return;
   }
 
-  const port = DEFAULT_PROXY_PORT;
+  const port = Number.parseInt(
+    process.env.LOCAL_TUNNEL_PROXY_PORT ?? String(DEFAULT_PROXY_PORT),
+    10,
+  );
   if (await isHealthyLocalTunnelRunning(port)) {
     console.log(`[worktree] local tunnel already running and healthy on http://127.0.0.1:${port}`);
     return;

@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "bun --env-file=../../.env ../../scripts/local-tunnel.ts"
+    "dev": "LOCAL_TUNNEL_PROXY_PORT=3410 bun --env-file=../../.env ../../scripts/local-tunnel.ts"
   }
 }

@@ -1,0 +1,22 @@
+{
+	auto_https off
+	admin off
+}
+
+http://:{$LOCALCAN_CADDY_LISTEN_PORT:3399} {
+	@mcp host mcp.localcan.baptistecolle.com
+
+	handle @mcp {
+		reverse_proxy {$LOCALCAN_MCP_UPSTREAM:127.0.0.1:3010} {
+			header_up X-Forwarded-Proto https
+			header_up X-Bap-Public-Origin https://mcp.localcan.baptistecolle.com
+		}
+	}
+
+	handle {
+		reverse_proxy {$LOCALCAN_APP_ROUTER_UPSTREAM:127.0.0.1:3410} {
+			header_up X-Forwarded-Proto https
+			header_up X-Bap-Public-Origin https://localcan.baptistecolle.com
+		}
+	}
+}
