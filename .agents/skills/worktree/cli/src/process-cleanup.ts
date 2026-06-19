@@ -30,7 +30,12 @@ export function isWorktreeServiceProcessCommand(command: string): boolean {
   return (
     isWebDevProcessCommand(command) ||
     /\bbun\s+--env-file(?:=|\s+)\S+\/\.env\s+index\.ts\b/.test(normalized) ||
-    /\bbun\s+(?:--watch\s+)?--env-file(?:=|\s+)\S+\/\.env\s+src\/proxy\.ts\b/.test(normalized)
+    /\bbun\s+(?:--watch\s+)?--env-file(?:=|\s+)\S+\/\.env\s+src\/proxy\.ts\b/.test(
+      normalized,
+    ) ||
+    /\bbun\s+(?:--watch\s+)?(?:--env-file(?:=|\s+)\S+\/\.env\s+)?scripts\/local-tunnel\.ts\b/.test(
+      normalized,
+    )
   );
 }
 

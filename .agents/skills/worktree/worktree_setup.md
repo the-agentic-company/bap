@@ -127,7 +127,8 @@ The worktree lifecycle implementation is bundled with this skill:
 
 - `.agents/skills/worktree/cli/src/cli.ts` handles the worktree lifecycle commands
 - `.agents/skills/worktree/cli/src/stack.ts` defines the shared and per-worktree port and volume assignments
-- `.agents/skills/worktree/cli/src/proxy.ts` runs the local proxy from the main checkout
+- `scripts/local-tunnel.ts` runs the local proxy from the main checkout
+- `.agents/skills/worktree/cli/src/proxy.ts` is a compatibility wrapper for the tunnel script
 - `.agents/skills/worktree/hooks/` contains lifecycle hook scripts used by external tools
 
 ## Run the CLI in a worktree

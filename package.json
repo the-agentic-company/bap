@@ -11,7 +11,7 @@
     "cli": "bun --env-file=.env apps/cli/src/bin/bap.ts",
     "bap": "bun --env-file=.env apps/cli/src/bin/bap.ts",
     "env": "infisical export --output-file=.env",
-    "dev": "bun --env-file=.env turbo dev --filter=@bap/web --filter=@bap/worker --filter=@bap/ws --filter=@bap/mcp --ui=tui",
+    "dev": "bun --env-file=.env turbo dev --filter=@bap/web --filter=@bap/worker --filter=@bap/ws --filter=@bap/mcp --filter=@bap/local-tunnel --ui=tui",
     "dev:timed": "bash -lc 'set -o pipefail; FORCE_COLOR=1 CLICOLOR_FORCE=1 bun --env-file=.env turbo run dev --filter=@bap/web --filter=@bap/worker --filter=@bap/ws --filter=@bap/mcp --ui=stream --log-prefix=task --log-order=stream --color 2>&1 | perl -ne '\\''BEGIN { $| = 1 } chomp; @t = localtime; printf(\"[%04d-%02d-%02d %02d:%02d:%02d] %s\\n\", $t[5] + 1900, $t[4] + 1, $t[3], $t[2], $t[1], $t[0], $_);'\\'''",
     "dev:selfhost": "bun --env-file=.env.selfhost turbo dev:selfhost --filter=@bap/web --filter=@bap/worker --filter=@bap/ws --ui=tui",
     "dev:selfhost:web": "bun --env-file=.env.selfhost turbo dev:selfhost --filter=@bap/web",
