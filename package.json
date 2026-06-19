@@ -58,7 +58,8 @@
     "test:monitor": "turbo run test:monitor --filter=@bap/web",
     "test:prod": "turbo run test:prod --filter=@bap/web",
     "test:record": "turbo run test:record --filter=@bap/web",
-    "test:unit": "turbo run test:unit --filter=@bap/cli --filter=@bap/mcp --filter=@bap/client --filter=@bap/core --filter=@bap/message-format --filter=@bap/web"
+    "test:unit": "turbo run test:unit --filter=@bap/cli --filter=@bap/mcp --filter=@bap/client --filter=@bap/core --filter=@bap/message-format --filter=@bap/web",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
