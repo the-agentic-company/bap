@@ -1,7 +1,6 @@
 import { config } from "dotenv";
 import { createElement, Fragment, type ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
-import { mswServer } from "@/test/msw/server";
 
 const passthroughTranslation = (message: string | string[] | null | undefined) => message ?? "";
 
@@ -41,6 +40,7 @@ for (const [key, value] of Object.entries(testEnvDefaults)) {
 }
 
 const isLiveE2E = process.env.E2E_LIVE === "1";
+let mswServerPromise: Promise<typeof import("@/test/msw/server").mswServer> | null = null;
 
 function createMemoryStorage(): Storage {
   const store = new Map<string, string>();
@@ -57,12 +57,15 @@ function createMemoryStorage(): Storage {
   };
 }
 
-if (typeof globalThis.localStorage?.clear !== "function") {
-  Object.defineProperty(globalThis, "localStorage", {
-    configurable: true,
-    value: createMemoryStorage(),
-    writable: true,
-  });
+Object.defineProperty(globalThis, "localStorage", {
+  configurable: true,
+  value: createMemoryStorage(),
+  writable: true,
+});
+
+function loadMswServer(): Promise<typeof import("@/test/msw/server").mswServer> {
+  mswServerPromise ??= import("@/test/msw/server").then((module) => module.mswServer);
+  return mswServerPromise;
 }
 
 if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
@@ -100,23 +103,26 @@ if (typeof globalThis.ResizeObserver === "undefined") {
   });
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   if (isLiveE2E) {
     return;
   }
+  const mswServer = await loadMswServer();
   mswServer.listen({ onUnhandledRequest: "error" });
 });
 
-afterEach(() => {
+afterEach(async () => {
   if (isLiveE2E) {
     return;
   }
+  const mswServer = await loadMswServer();
   mswServer.resetHandlers();
 });
 
-afterAll(() => {
+afterAll(async () => {
   if (isLiveE2E) {
     return;
   }
+  const mswServer = await loadMswServer();
   mswServer.close();
 });

@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-type PreflightService = "web server" | "worker" | "local tunnel";
+type PreflightService = "web server" | "worker" | "local tunnel" | "Bap MCP";
 type PreflightStatus = "ok" | "missing" | "unhealthy";
 
 export type CliLivePreflightCheck = {
@@ -32,6 +32,8 @@ const workerRecovery =
   "Start the worker with `bun run dev` or `bun run dev:worker`, then rerun the command.";
 const tunnelRecovery =
   "Start the local tunnel with `bun run dev` or `bun run --cwd apps/local-tunnel dev`, then rerun the command.";
+const bapMcpRecovery =
+  "Start or repair the public MCP tunnel configured by APP_MCP_BASE_URL, then rerun the command.";
 
 function ok(service: PreflightService, detail: string, recovery: string): CliLivePreflightCheck {
   return { service, status: "ok", detail, recovery };
@@ -82,6 +84,15 @@ export function resolveCliLiveWebHealthUrl(env: NodeJS.ProcessEnv): string {
   const serverUrl =
     env.APP_SERVER_URL?.trim() || env.PLAYWRIGHT_BASE_URL?.trim() || DEFAULT_SERVER_URL;
   return new URL("/api/dev/health", serverUrl).toString();
+}
+
+export function resolveCliLiveBapMcpUrl(env: NodeJS.ProcessEnv): string | null {
+  const baseUrl = env.APP_MCP_BASE_URL?.trim();
+  if (!baseUrl) {
+    return null;
+  }
+
+  return new URL("/bap", baseUrl).toString();
 }
 
 async function checkJsonHealth(args: {
@@ -165,6 +176,63 @@ async function checkLocalTunnel(): Promise<CliLivePreflightCheck> {
       (body as { proxy?: unknown }).proxy === "localcan",
     expectedBody: '`{ ok: true, proxy: "localcan" }`',
   });
+}
+
+async function checkBapMcp(env: NodeJS.ProcessEnv): Promise<CliLivePreflightCheck> {
+  const secret = env.APP_SERVER_SECRET?.trim();
+  if (!secret) {
+    return missing(
+      "Bap MCP",
+      "APP_SERVER_SECRET is not configured, so platform MCP tokens cannot be minted",
+      bapMcpRecovery,
+    );
+  }
+
+  let url: string | null = null;
+  try {
+    url = resolveCliLiveBapMcpUrl(env);
+  } catch (error) {
+    return unhealthy(
+      "Bap MCP",
+      `APP_MCP_BASE_URL is invalid: ${formatError(error)}`,
+      bapMcpRecovery,
+    );
+  }
+
+  if (!url) {
+    return missing("Bap MCP", "APP_MCP_BASE_URL is not configured", bapMcpRecovery);
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_HEALTH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      headers: { accept: "application/json, text/event-stream, */*" },
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    if (response.status >= 500) {
+      return unhealthy("Bap MCP", `GET ${url} returned HTTP ${response.status}`, bapMcpRecovery);
+    }
+    if (/Public URL not available/i.test(text)) {
+      return unhealthy(
+        "Bap MCP",
+        `GET ${url} returned a LocalCan unavailable page`,
+        bapMcpRecovery,
+      );
+    }
+
+    return ok("Bap MCP", `reachable at ${url}`, bapMcpRecovery);
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.name === "AbortError"
+        ? `timed out after ${DEFAULT_HEALTH_TIMEOUT_MS}ms`
+        : formatError(error);
+    return missing("Bap MCP", `GET ${url} failed: ${reason}`, bapMcpRecovery);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function parseJsonFile(path: string): unknown {
@@ -349,9 +417,13 @@ export async function runCliLivePreflight(args: {
   env: NodeJS.ProcessEnv;
   repoRoot: string;
 }): Promise<CliLivePreflightResult> {
-  const [web, tunnel] = await Promise.all([checkWebServer(args.env), checkLocalTunnel()]);
+  const [web, tunnel, bapMcp] = await Promise.all([
+    checkWebServer(args.env),
+    checkLocalTunnel(),
+    checkBapMcp(args.env),
+  ]);
   const worker = checkWorkerProcess(args.env, args.repoRoot);
-  const checks = [web, worker, tunnel];
+  const checks = [web, worker, tunnel, bapMcp];
 
   return {
     ok: checks.every((check) => check.status === "ok"),

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   collectWorkerProcessMatches,
   formatCliLivePreflightFailure,
+  resolveCliLiveBapMcpUrl,
   resolveCliLiveWebHealthUrl,
   type CliLivePreflightResult,
 } from "../../scripts/e2e-live-preflight";
@@ -10,6 +11,12 @@ describe("e2e-live cli preflight", () => {
   test("resolves the web health URL from APP_SERVER_URL", () => {
     expect(resolveCliLiveWebHealthUrl({ APP_SERVER_URL: "http://127.0.0.1:3707/base" })).toBe(
       "http://127.0.0.1:3707/api/dev/health",
+    );
+  });
+
+  test("resolves the Bap MCP URL from APP_MCP_BASE_URL", () => {
+    expect(resolveCliLiveBapMcpUrl({ APP_MCP_BASE_URL: "https://mcp.example.test/root" })).toBe(
+      "https://mcp.example.test/bap",
     );
   });
 
@@ -35,10 +42,17 @@ describe("e2e-live cli preflight", () => {
           detail: "healthy",
           recovery: "start tunnel",
         },
+        {
+          service: "Bap MCP",
+          status: "unhealthy",
+          detail: "GET https://mcp.example.test/bap returned HTTP 502",
+          recovery: "fix mcp tunnel",
+        },
       ],
     };
 
     expect(formatCliLivePreflightFailure(result)).toContain("not started: web server, worker");
+    expect(formatCliLivePreflightFailure(result)).toContain("unhealthy: Bap MCP");
   });
 
   test("matches worker entrypoints by cwd when the command is generic", () => {
