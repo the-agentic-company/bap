@@ -429,7 +429,24 @@ Production endpoints:
 - Traces: `https://victoria-traces.ops.prod.heybap.com`
 - S3/MinIO: `https://cmdclaw-s3-prod.onrender.com`
 
-Render: `render ...`
+Render uses the API key from the repository `.env` file. Load
+`RENDER_API_KEY` without printing it and pass it only through the command
+environment:
+
+```bash
+RENDER_API_KEY="$(sed -n 's/^RENDER_API_KEY=//p' .env | tail -1 | sed 's/^"//;s/"$//')" \
+  render services --output json
+```
+
+Useful incident commands:
+
+```bash
+RENDER_API_KEY="$(sed -n 's/^RENDER_API_KEY=//p' .env | tail -1 | sed 's/^"//;s/"$//')" \
+  render deploys list <service-id> --output json
+
+RENDER_API_KEY="$(sed -n 's/^RENDER_API_KEY=//p' .env | tail -1 | sed 's/^"//;s/"$//')" \
+  render logs --resources <service-id> --start <iso8601> --end <iso8601> --output json
+```
 
 Hosted S3 uses the same access key and secret for staging and production; only
 the endpoint URL changes. Load `.env.staging.observability` or
