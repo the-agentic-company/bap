@@ -32,71 +32,82 @@ type SnapshotRow = {
   metadata: Record<string, unknown> | null;
 };
 
+type ProviderSnapshotResult = {
+  rows: SnapshotRow[];
+  failed: boolean;
+};
+
 function toSeconds(ms: number): number {
   return Math.max(0, Math.floor(ms / 1000));
 }
 
-async function collectE2B(now: Date): Promise<SnapshotRow[]> {
+async function collectE2B(now: Date): Promise<ProviderSnapshotResult> {
   try {
     const { isE2BConfigured, listAllE2BSandboxes } = await import("../sandbox/e2b");
     if (!isE2BConfigured()) {
-      return [];
+      return { rows: [], failed: false };
     }
     const rows = await listAllE2BSandboxes();
-    return rows.map((s) => {
-      const startedAt = s.startedAt instanceof Date ? s.startedAt : new Date(s.startedAt);
-      const runtimeSeconds =
-        s.state === "running" && Number.isFinite(startedAt.getTime())
-          ? toSeconds(now.getTime() - startedAt.getTime())
-          : 0;
-      return {
-        snapshotAt: now,
-        provider: "e2b" as const,
-        sandboxId: s.sandboxId,
-        state: s.state,
-        startedAt,
-        runtimeSeconds,
-        credits: computeCredits(runtimeSeconds),
-        metadata: { ...s.metadata, templateId: s.templateId, cpuCount: s.cpuCount, memoryMB: s.memoryMB },
-      };
-    });
+    return {
+      rows: rows.map((s) => {
+        const startedAt = s.startedAt instanceof Date ? s.startedAt : new Date(s.startedAt);
+        const runtimeSeconds =
+          s.state === "running" && Number.isFinite(startedAt.getTime())
+            ? toSeconds(now.getTime() - startedAt.getTime())
+            : 0;
+        return {
+          snapshotAt: now,
+          provider: "e2b" as const,
+          sandboxId: s.sandboxId,
+          state: s.state,
+          startedAt,
+          runtimeSeconds,
+          credits: computeCredits(runtimeSeconds),
+          metadata: { ...s.metadata, templateId: s.templateId, cpuCount: s.cpuCount, memoryMB: s.memoryMB },
+        };
+      }),
+      failed: false,
+    };
   } catch (error) {
     console.warn("[sandbox-usage-snapshot] E2B listing failed", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return [];
+    return { rows: [], failed: true };
   }
 }
 
-async function collectDaytona(now: Date): Promise<SnapshotRow[]> {
+async function collectDaytona(now: Date): Promise<ProviderSnapshotResult> {
   if (!isDaytonaConfigured()) {
-    return [];
+    return { rows: [], failed: false };
   }
   try {
     const rows = await listAllDaytonaSandboxes();
-    return rows.map((s) => {
-      const startedAt = s.startedAt ?? null;
-      const runtimeSeconds =
-        s.state === "running" && startedAt ? toSeconds(now.getTime() - startedAt.getTime()) : 0;
-      return {
-        snapshotAt: now,
-        provider: "daytona" as const,
-        sandboxId: s.sandboxId,
-        state: s.state,
-        startedAt,
-        runtimeSeconds,
-        credits: computeCredits(runtimeSeconds),
-        metadata: {
-          ...s.metadata,
-          lastActivityAt: s.lastActivityAt?.toISOString() ?? null,
-        },
-      };
-    });
+    return {
+      rows: rows.map((s) => {
+        const startedAt = s.startedAt ?? null;
+        const runtimeSeconds =
+          s.state === "running" && startedAt ? toSeconds(now.getTime() - startedAt.getTime()) : 0;
+        return {
+          snapshotAt: now,
+          provider: "daytona" as const,
+          sandboxId: s.sandboxId,
+          state: s.state,
+          startedAt,
+          runtimeSeconds,
+          credits: computeCredits(runtimeSeconds),
+          metadata: {
+            ...s.metadata,
+            lastActivityAt: s.lastActivityAt?.toISOString() ?? null,
+          },
+        };
+      }),
+      failed: false,
+    };
   } catch (error) {
     console.warn("[sandbox-usage-snapshot] Daytona listing failed", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return [];
+    return { rows: [], failed: true };
   }
 }
 
@@ -105,12 +116,25 @@ export async function collectSandboxUsageSnapshot(now: Date = new Date()): Promi
   e2b: number;
   daytona: number;
   failed: number;
+  providerFailures: Array<"e2b" | "daytona">;
 }> {
-  const [e2bRows, daytonaRows] = await Promise.all([collectE2B(now), collectDaytona(now)]);
+  const [e2bResult, daytonaResult] = await Promise.all([collectE2B(now), collectDaytona(now)]);
+  const e2bRows = e2bResult.rows;
+  const daytonaRows = daytonaResult.rows;
   const rows = [...e2bRows, ...daytonaRows].filter((r) => r.sandboxId);
+  const providerFailures: Array<"e2b" | "daytona"> = [
+    ...(e2bResult.failed ? (["e2b"] as const) : []),
+    ...(daytonaResult.failed ? (["daytona"] as const) : []),
+  ];
 
   if (rows.length === 0) {
-    return { inserted: 0, e2b: e2bRows.length, daytona: daytonaRows.length, failed: 0 };
+    return {
+      inserted: 0,
+      e2b: e2bRows.length,
+      daytona: daytonaRows.length,
+      failed: 0,
+      providerFailures,
+    };
   }
 
   let inserted = 0;
@@ -126,7 +150,7 @@ export async function collectSandboxUsageSnapshot(now: Date = new Date()): Promi
     });
   }
 
-  return { inserted, e2b: e2bRows.length, daytona: daytonaRows.length, failed };
+  return { inserted, e2b: e2bRows.length, daytona: daytonaRows.length, failed, providerFailures };
 }
 
 export async function syncSandboxUsageSnapshotJob(): Promise<void> {

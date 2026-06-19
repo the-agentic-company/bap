@@ -43,7 +43,11 @@ export function startSandboxUsageSnapshotQueue() {
                   "../services/sandbox-usage-snapshot"
                 );
                 const summary = await collectSandboxUsageSnapshot();
-                if (summary.inserted > 0 || summary.failed > 0) {
+                if (
+                  summary.inserted > 0 ||
+                  summary.failed > 0 ||
+                  summary.providerFailures.length > 0
+                ) {
                   console.info("[worker] sandbox usage snapshot summary", summary);
                 }
                 recordCounter("bap_worker_jobs_total", 1, {

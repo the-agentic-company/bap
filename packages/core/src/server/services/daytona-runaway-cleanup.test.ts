@@ -130,6 +130,8 @@ describe("daytona-runaway-cleanup", () => {
           conversationId: "conv-1",
           sandboxId: "sbx-1",
           generationId: "gen-1",
+          generationStatus: "running",
+          generationCompletedAt: null,
           coworkerRunId: "run-1",
         },
       ]),
@@ -143,6 +145,7 @@ describe("daytona-runaway-cleanup", () => {
       stale: 1,
       stopped: 1,
       finalizedAsError: 1,
+      markedRuntimeDead: 1,
       missingActivity: 0,
       skippedNotStarted: 0,
       lookupFailed: 0,
@@ -204,6 +207,8 @@ describe("daytona-runaway-cleanup", () => {
           conversationId: "conv-1",
           sandboxId: "sbx-1",
           generationId: "gen-1",
+          generationStatus: "running",
+          generationCompletedAt: null,
           coworkerRunId: null,
         },
       ]),
@@ -223,6 +228,7 @@ describe("daytona-runaway-cleanup", () => {
       stale: 0,
       stopped: 0,
       finalizedAsError: 0,
+      markedRuntimeDead: 0,
       missingActivity: 0,
       skippedNotStarted: 0,
       lookupFailed: 0,
@@ -244,6 +250,8 @@ describe("daytona-runaway-cleanup", () => {
           conversationId: "conv-1",
           sandboxId: "sbx-1",
           generationId: "gen-1",
+          generationStatus: "running",
+          generationCompletedAt: null,
           coworkerRunId: null,
         },
       ]),
@@ -263,6 +271,7 @@ describe("daytona-runaway-cleanup", () => {
       stale: 0,
       stopped: 0,
       finalizedAsError: 0,
+      markedRuntimeDead: 0,
       missingActivity: 1,
       skippedNotStarted: 0,
       lookupFailed: 0,
@@ -270,6 +279,51 @@ describe("daytona-runaway-cleanup", () => {
     });
     expect(sandboxStopMock).not.toHaveBeenCalled();
     expect(recordedUpdates).toHaveLength(0);
+  });
+
+  it("stops stale Daytona sandboxes for active runtimes without active generations", async () => {
+    const selectChain = {
+      from: vi.fn(() => selectChain),
+      leftJoin: vi.fn(() => selectChain),
+      where: vi.fn(async () => [
+        {
+          runtimeId: "rt-leaked",
+          conversationId: "conv-leaked",
+          sandboxId: "sbx-leaked",
+          generationId: null,
+          generationStatus: null,
+          generationCompletedAt: null,
+          coworkerRunId: null,
+        },
+      ]),
+    };
+    selectMock.mockReturnValue(selectChain);
+
+    const summary = await cleanupRunawayDaytonaJobs(new Date("2026-04-21T19:00:00.000Z"));
+
+    expect(summary).toEqual({
+      scanned: 1,
+      stale: 1,
+      stopped: 1,
+      finalizedAsError: 0,
+      markedRuntimeDead: 1,
+      missingActivity: 0,
+      skippedNotStarted: 0,
+      lookupFailed: 0,
+      stopFailed: 0,
+    });
+    expect(daytonaGetMock).toHaveBeenCalledWith("sbx-leaked");
+    expect(sandboxStopMock).toHaveBeenCalledOnce();
+    expect(cancelInterruptsForGenerationMock).not.toHaveBeenCalled();
+    expect(recordedUpdates.map((entry) => entry.values)).toEqual([
+      expect.objectContaining({
+        status: "dead",
+        sandboxId: null,
+        sessionId: null,
+        activeGenerationId: null,
+      }),
+    ]);
+    expect(recordedInserts).toHaveLength(0);
   });
 
   it("registers a repeating BullMQ scheduler on the dedicated cleanup queue", async () => {

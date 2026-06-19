@@ -7,7 +7,7 @@ import {
   coworkerRunEvent,
   generation,
 } from "@bap/db/schema";
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { getDaytonaClientConfig } from "../sandbox/daytona";
 import {
   DAYTONA_RUNAWAY_CLEANUP_JOB_NAME,
@@ -48,6 +48,7 @@ export async function cleanupRunawayDaytonaJobs(now = new Date()): Promise<{
   stale: number;
   stopped: number;
   finalizedAsError: number;
+  markedRuntimeDead: number;
   missingActivity: number;
   skippedNotStarted: number;
   lookupFailed: number;
@@ -59,18 +60,18 @@ export async function cleanupRunawayDaytonaJobs(now = new Date()): Promise<{
       conversationId: conversationRuntime.conversationId,
       sandboxId: conversationRuntime.sandboxId,
       generationId: generation.id,
+      generationStatus: generation.status,
+      generationCompletedAt: generation.completedAt,
       coworkerRunId: coworkerRun.id,
     })
     .from(conversationRuntime)
-    .innerJoin(generation, eq(generation.id, conversationRuntime.activeGenerationId))
+    .leftJoin(generation, eq(generation.id, conversationRuntime.activeGenerationId))
     .leftJoin(coworkerRun, eq(coworkerRun.generationId, generation.id))
     .where(
       and(
         eq(conversationRuntime.status, "active"),
         eq(conversationRuntime.sandboxProvider, "daytona"),
         isNotNull(conversationRuntime.sandboxId),
-        eq(generation.status, "running"),
-        isNull(generation.completedAt),
       ),
     );
 
@@ -80,6 +81,7 @@ export async function cleanupRunawayDaytonaJobs(now = new Date()): Promise<{
       stale: 0,
       stopped: 0,
       finalizedAsError: 0,
+      markedRuntimeDead: 0,
       missingActivity: 0,
       skippedNotStarted: 0,
       lookupFailed: 0,
@@ -91,6 +93,7 @@ export async function cleanupRunawayDaytonaJobs(now = new Date()): Promise<{
   let stale = 0;
   let stopped = 0;
   let finalizedAsError = 0;
+  let markedRuntimeDead = 0;
   let missingActivity = 0;
   let skippedNotStarted = 0;
   let lookupFailed = 0;
@@ -161,52 +164,60 @@ export async function cleanupRunawayDaytonaJobs(now = new Date()): Promise<{
       continue;
     }
 
-    await generationInterruptService.cancelInterruptsForGeneration(candidate.generationId);
+    const generationId = candidate.generationId;
+    const hasRunningGeneration =
+      generationId && candidate.generationStatus === "running" && !candidate.generationCompletedAt;
 
-    await db
-      .update(generation)
-      .set({
-        status: "error",
-        pendingApproval: null,
-        pendingAuth: null,
-        isPaused: false,
-        resumeInterruptId: null,
-        suspendedAt: null,
-        cancelRequestedAt: null,
-        errorMessage: DAYTONA_RUNAWAY_CLEANUP_ERROR_MESSAGE,
-        completionReason: "runtime_error",
-        completedAt: now,
-      })
-      .where(eq(generation.id, candidate.generationId));
+    if (hasRunningGeneration) {
+      await generationInterruptService.cancelInterruptsForGeneration(generationId);
 
-    await db
-      .update(conversation)
-      .set({
-        generationStatus: "error",
-      })
-      .where(eq(conversation.id, candidate.conversationId));
-
-    if (candidate.coworkerRunId) {
       await db
-        .update(coworkerRun)
+        .update(generation)
         .set({
           status: "error",
-          finishedAt: now,
+          pendingApproval: null,
+          pendingAuth: null,
+          isPaused: false,
+          resumeInterruptId: null,
+          suspendedAt: null,
+          cancelRequestedAt: null,
           errorMessage: DAYTONA_RUNAWAY_CLEANUP_ERROR_MESSAGE,
+          completionReason: "runtime_error",
+          completedAt: now,
         })
-        .where(eq(coworkerRun.id, candidate.coworkerRunId));
+        .where(eq(generation.id, generationId));
 
-      await db.insert(coworkerRunEvent).values({
-        coworkerRunId: candidate.coworkerRunId,
-        type: "error",
-        payload: {
-          message: DAYTONA_RUNAWAY_CLEANUP_ERROR_MESSAGE,
-          stage: "daytona_runaway_cleanup",
-          sandboxId,
-          lastActivityAt: lastActivityAt.toISOString(),
-          idleMs,
-        },
-      });
+      await db
+        .update(conversation)
+        .set({
+          generationStatus: "error",
+        })
+        .where(eq(conversation.id, candidate.conversationId));
+
+      if (candidate.coworkerRunId) {
+        await db
+          .update(coworkerRun)
+          .set({
+            status: "error",
+            finishedAt: now,
+            errorMessage: DAYTONA_RUNAWAY_CLEANUP_ERROR_MESSAGE,
+          })
+          .where(eq(coworkerRun.id, candidate.coworkerRunId));
+
+        await db.insert(coworkerRunEvent).values({
+          coworkerRunId: candidate.coworkerRunId,
+          type: "error",
+          payload: {
+            message: DAYTONA_RUNAWAY_CLEANUP_ERROR_MESSAGE,
+            stage: "daytona_runaway_cleanup",
+            sandboxId,
+            lastActivityAt: lastActivityAt.toISOString(),
+            idleMs,
+          },
+        });
+      }
+
+      finalizedAsError += 1;
     }
 
     await db
@@ -219,7 +230,7 @@ export async function cleanupRunawayDaytonaJobs(now = new Date()): Promise<{
       })
       .where(eq(conversationRuntime.id, candidate.runtimeId));
 
-    finalizedAsError += 1;
+    markedRuntimeDead += 1;
   }
 
   return {
@@ -227,6 +238,7 @@ export async function cleanupRunawayDaytonaJobs(now = new Date()): Promise<{
     stale,
     stopped,
     finalizedAsError,
+    markedRuntimeDead,
     missingActivity,
     skippedNotStarted,
     lookupFailed,

@@ -147,11 +147,7 @@ type DaytonaListResult =
     };
 
 type DaytonaListClient = {
-  list: (
-    labels?: Record<string, string>,
-    page?: number,
-    limit?: number,
-  ) => Promise<DaytonaListResult>;
+  list: (...args: unknown[]) => unknown;
 };
 
 const DAYTONA_LIST_PAGE_SIZE = 100;
@@ -189,11 +185,87 @@ export function normalizeDaytonaListItems(result: DaytonaListResult): DaytonaLis
   return result.items ?? [];
 }
 
+function isAsyncIterable(value: unknown): value is AsyncIterable<DaytonaListedSandbox> {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      Symbol.asyncIterator in value &&
+      typeof (value as AsyncIterable<DaytonaListedSandbox>)[Symbol.asyncIterator] === "function",
+  );
+}
+
+function matchesLabels(
+  sandbox: DaytonaListedSandbox,
+  labels: Record<string, string> | undefined,
+): boolean {
+  if (!labels) {
+    return true;
+  }
+  const actual = sandbox.labels ?? sandbox.metadata ?? {};
+  return Object.entries(labels).every(([key, value]) => actual[key] === value);
+}
+
+async function collectAsyncIterableList(
+  result: AsyncIterable<DaytonaListedSandbox>,
+  labels?: Record<string, string>,
+): Promise<DaytonaListedSandbox[]> {
+  const items: DaytonaListedSandbox[] = [];
+  for await (const sandbox of result) {
+    if (matchesLabels(sandbox, labels)) {
+      items.push(sandbox);
+    }
+  }
+  return items;
+}
+
 export async function listDaytonaSandboxPages(
   daytona: DaytonaListClient,
   labels?: Record<string, string>,
 ): Promise<DaytonaListedSandbox[]> {
-  const first = await daytona.list(labels, 1, DAYTONA_LIST_PAGE_SIZE);
+  if (labels) {
+    const first = (await daytona.list(labels, 1, DAYTONA_LIST_PAGE_SIZE)) as DaytonaListResult;
+    const items = [...normalizeDaytonaListItems(first)];
+    if (Array.isArray(first) || !first.totalPages || first.totalPages <= 1) {
+      return items;
+    }
+
+    for (let page = 2; page <= first.totalPages; page += 1) {
+      // eslint-disable-next-line no-await-in-loop -- pagination must preserve API order
+      const next = (await daytona.list(labels, page, DAYTONA_LIST_PAGE_SIZE)) as DaytonaListResult;
+      items.push(...normalizeDaytonaListItems(next));
+    }
+
+    return items;
+  }
+
+  const currentResult = daytona.list({ limit: DAYTONA_LIST_PAGE_SIZE });
+  if (isAsyncIterable(currentResult)) {
+    return await collectAsyncIterableList(currentResult);
+  }
+
+  const awaitedCurrentResult = await currentResult;
+  if (isAsyncIterable(awaitedCurrentResult)) {
+    return await collectAsyncIterableList(awaitedCurrentResult);
+  }
+  if (
+    Array.isArray(awaitedCurrentResult) ||
+    (awaitedCurrentResult && typeof awaitedCurrentResult === "object")
+  ) {
+    const first = awaitedCurrentResult as DaytonaListResult;
+    const currentItems = normalizeDaytonaListItems(first);
+    if (currentItems.length > 0) {
+      if (!Array.isArray(first) && first.totalPages && first.totalPages > 1) {
+        for (let page = 2; page <= first.totalPages; page += 1) {
+          // eslint-disable-next-line no-await-in-loop -- pagination must preserve API order
+          const next = (await daytona.list(labels, page, DAYTONA_LIST_PAGE_SIZE)) as DaytonaListResult;
+          currentItems.push(...normalizeDaytonaListItems(next));
+        }
+      }
+      return currentItems;
+    }
+  }
+
+  const first = (await daytona.list(undefined, 1, DAYTONA_LIST_PAGE_SIZE)) as DaytonaListResult;
   const items = [...normalizeDaytonaListItems(first)];
   if (Array.isArray(first) || !first.totalPages || first.totalPages <= 1) {
     return items;
@@ -201,7 +273,7 @@ export async function listDaytonaSandboxPages(
 
   for (let page = 2; page <= first.totalPages; page += 1) {
     // eslint-disable-next-line no-await-in-loop -- pagination must preserve API order
-    const next = await daytona.list(labels, page, DAYTONA_LIST_PAGE_SIZE);
+    const next = (await daytona.list(undefined, page, DAYTONA_LIST_PAGE_SIZE)) as DaytonaListResult;
     items.push(...normalizeDaytonaListItems(next));
   }
 
@@ -217,7 +289,7 @@ export async function listAllDaytonaSandboxes(): Promise<DaytonaAdminSandbox[]> 
   const daytona = new Daytona(getDaytonaClientConfig()) as unknown as Partial<DaytonaListClient>;
 
   if (typeof daytona.list !== "function") {
-    return [];
+    throw new Error("Configured Daytona SDK client does not expose a sandbox list method");
   }
 
   const raw = await listDaytonaSandboxPages(daytona as DaytonaListClient);

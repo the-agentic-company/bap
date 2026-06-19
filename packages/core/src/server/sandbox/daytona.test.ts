@@ -69,11 +69,29 @@ describe("daytona sandbox listing", () => {
       .mockResolvedValueOnce({ items: [{ id: "sbx-1" }], totalPages: 2 })
       .mockResolvedValueOnce({ items: [{ id: "sbx-2" }], totalPages: 2 });
 
+    await expect(
+      listDaytonaSandboxPages(
+        { list },
+        {
+          "bap-generation-id": "gen-1",
+        },
+      ),
+    ).resolves.toEqual([{ id: "sbx-1" }, { id: "sbx-2" }]);
+    expect(list).toHaveBeenNthCalledWith(1, { "bap-generation-id": "gen-1" }, 1, 100);
+    expect(list).toHaveBeenNthCalledWith(2, { "bap-generation-id": "gen-1" }, 2, 100);
+  });
+
+  it("collects current async iterable Daytona list responses for unfiltered inventory", async () => {
+    async function* sandboxes() {
+      yield { id: "sbx-1", labels: { "bap-generation-id": "gen-1" } };
+      yield { id: "sbx-2", labels: { "bap-generation-id": "gen-2" } };
+    }
+    const list = vi.fn(() => sandboxes());
+
     await expect(listDaytonaSandboxPages({ list })).resolves.toEqual([
-      { id: "sbx-1" },
-      { id: "sbx-2" },
+      { id: "sbx-1", labels: { "bap-generation-id": "gen-1" } },
+      { id: "sbx-2", labels: { "bap-generation-id": "gen-2" } },
     ]);
-    expect(list).toHaveBeenNthCalledWith(1, undefined, 1, 100);
-    expect(list).toHaveBeenNthCalledWith(2, undefined, 2, 100);
+    expect(list).toHaveBeenCalledWith({ limit: 100 });
   });
 });

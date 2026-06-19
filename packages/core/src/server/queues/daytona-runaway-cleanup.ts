@@ -45,7 +45,12 @@ export function startDaytonaRunawayCleanupQueue() {
               if (job.name === DAYTONA_RUNAWAY_CLEANUP_JOB_NAME) {
                 const { cleanupRunawayDaytonaJobs } = await import("../services/daytona-runaway-cleanup");
                 const summary = await cleanupRunawayDaytonaJobs();
-                if (summary.stale > 0 || summary.stopFailed > 0 || summary.lookupFailed > 0) {
+                if (
+                  summary.stale > 0 ||
+                  summary.markedRuntimeDead > 0 ||
+                  summary.stopFailed > 0 ||
+                  summary.lookupFailed > 0
+                ) {
                   console.info("[worker] daytona runaway cleanup summary", summary);
                 }
                 recordCounter("bap_worker_jobs_total", 1, {

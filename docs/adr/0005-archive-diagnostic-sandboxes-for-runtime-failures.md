@@ -1,11 +1,33 @@
-# Archive Diagnostic Sandboxes For Runtime Failures
+# Do Not Retain Diagnostic Sandboxes For Runtime Failures
 
-Bap archives Daytona sandboxes for a short, bounded period after platform-suspect runtime failures so operators can recover the filesystem state that existed when the failure happened. The first eligible failures are `runtime_no_progress_after_prompt`, `runtime_progress_stalled`, and runtime-turn `runtime_error`. The archive is evidence for debugging, not an active runtime for continuing the Generation.
+Bap does not retain Daytona sandboxes for multi-day diagnostic archive after runtime failures.
+Generation failures should preserve durable product state, terminal telemetry, traces, logs, and
+bounded runtime diagnostic metadata, while sandbox compute is released promptly.
 
-Archived Diagnostic Sandboxes are retained for three days, referenced from Generation debug metadata, and then deleted automatically. If archival fails, the Generation still terminalizes normally and Bap falls back to normal cleanup. Normal user-facing failures, cancellations, auth waits, approval denials, run-deadline parking, and non-Daytona sandboxes continue to use the standard cleanup path.
+Daytona sandboxes created for OpenCode runtime work use provider lifecycle controls aligned with
+the Generation run deadline: auto-stop follows the run deadline, and auto-delete follows shortly
+after stop. Bap cleanup jobs also stop stale active Daytona runtimes and clear dead runtime
+bindings when a sandbox no longer has an active running Generation.
+
+If filesystem-level evidence is needed for a future incident class, Bap should capture a bounded
+Runtime Diagnostic Snapshot or explicit artifact before cleanup. It should not preserve the entire
+sandbox for days by default.
+
+**Consequences**
+
+- Runtime failures no longer depend on three-day sandbox retention for debugging.
+- Daytona quota and cost pressure are reduced because stopped sandboxes are deleted shortly after
+  the Generation timeout window.
+- Operators debug runtime failures from Canonical Service Events, Operational Logs, traces,
+  terminal Generation state, and bounded diagnostic snapshots instead of reconnecting to old
+  sandboxes.
 
 **Considered Options**
 
-- Always delete sandboxes after failures: minimizes retention and cost, but makes retrospective debugging difficult once a user reports a runtime-boundary failure.
-- Preserve every failed sandbox: maximizes forensic data, but retains too much user and provider filesystem state for ordinary product failures.
-- Archive only high-signal runtime failure sandboxes with short TTL: keeps useful evidence for the failures that are hardest to debug while bounding cost and privacy exposure.
+- Retain failed sandboxes for three days: useful for filesystem forensics, but it keeps user and
+  provider filesystem state around too long and can exhaust Daytona quota when cleanup misses a
+  runtime binding.
+- Delete all failed sandboxes immediately: minimizes quota pressure, but can discard useful
+  bounded diagnostic evidence before it is captured.
+- Use short provider lifecycle cleanup plus durable telemetry and bounded diagnostic artifacts:
+  keeps operational evidence while avoiding long-lived sandbox retention.
