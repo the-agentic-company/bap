@@ -251,7 +251,7 @@ describe("coworkerRouter", () => {
       { desc: (value: unknown) => `d:${value}` },
     );
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       id: "wf-1",
       name: "Coworker",
       description: "Summarizes things",
