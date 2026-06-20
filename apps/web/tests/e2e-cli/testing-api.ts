@@ -2,7 +2,10 @@ export type CliLiveTestingAction = Record<string, unknown> & {
   action: string;
 };
 
-export async function callCliLiveTestingApi<T>(payload: CliLiveTestingAction): Promise<T> {
+export async function callCliLiveTestingApi<T>(
+  payload: CliLiveTestingAction,
+  options?: { signal?: AbortSignal },
+): Promise<T> {
   const serverUrl = process.env.APP_SERVER_URL ?? "http://localhost:3000";
   const secret = process.env.APP_SERVER_SECRET;
   if (!secret) {
@@ -15,6 +18,7 @@ export async function callCliLiveTestingApi<T>(payload: CliLiveTestingAction): P
       authorization: `Bearer ${secret}`,
       "content-type": "application/json",
     },
+    signal: options?.signal,
     body: JSON.stringify(payload),
   });
 

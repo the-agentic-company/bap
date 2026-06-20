@@ -10,6 +10,9 @@ export const slackPostVerifyTimeoutMs = Number(
 export const gmailPollIntervalMs = Number(process.env.E2E_GMAIL_POLL_INTERVAL_MS ?? "2500");
 export const transientRetryCount = Number(process.env.E2E_TRANSIENT_RETRY_COUNT ?? "1");
 export const transientRetryDelayMs = Number(process.env.E2E_TRANSIENT_RETRY_DELAY_MS ?? "2000");
+export const cliFailureDiagnosticTimeoutMs = Number(
+  process.env.E2E_CLI_FAILURE_DIAGNOSTIC_TIMEOUT_MS ?? "5000",
+);
 export const productionLiveTarget = (() => {
   try {
     return new URL(defaultServerUrl).hostname === "heybap.com";
@@ -41,6 +44,8 @@ export type CommandResult = {
   stdout: string;
   stderr: string;
   timedOut: boolean;
+  command?: string[];
+  diagnostics?: string;
 };
 
 export function sleep(ms: number): Promise<void> {
