@@ -321,6 +321,66 @@ describe("OpenCodeRecoveryRunner", () => {
     expect(finishGeneration).toHaveBeenCalledWith(ctx, "completed");
   });
 
+  it("normalizes OpenAI provider/model references on runtime-question resume continuation prompts", async () => {
+    const prompt = vi.fn().mockResolvedValue({ data: null, error: null });
+    const { client } = mockRuntime({
+      client: createRuntimeClient({ prompt }),
+      sessionSource: "restored_snapshot",
+    });
+    const { runner, callbacks, finishGeneration } = createRunner();
+    const continuationParts = [
+      {
+        type: "text" as const,
+        text: "Continue the interrupted assistant turn. The pending question has been answered. The resolved answer was: Beta.",
+      },
+    ];
+    const ctx = createContext({
+      id: "gen-resume-runtime-question",
+      model: "openai/gpt-5.4-mini",
+      resumeInterruptId: "interrupt-resume-runtime-question",
+    });
+
+    await runner.run(ctx, {
+      allowSnapshotRestore: true,
+      requireLiveSession: false,
+      resumeInterruptId: "interrupt-resume-runtime-question",
+      modeLabel: "resume_interrupt",
+      onRuntimeAttached: async () => continuationParts,
+    });
+
+    expect(callbacks.applyResolvedInterruptToRuntime).toHaveBeenCalledWith(
+      ctx,
+      "interrupt-resume-runtime-question",
+      client,
+    );
+    expect(prompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionID: "session-1",
+        parts: continuationParts,
+        agent: "bap-chat",
+        system: "continue system",
+        model: {
+          providerID: "openai",
+          modelID: "gpt-5.4-mini",
+        },
+      }),
+    );
+    expect(prompt.mock.calls[0]?.[0].model).not.toBe("openai/gpt-5.4-mini");
+    expect(loggerInfoMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "GENERATION_RECOVERY_CONTINUATION_PROMPT_REQUESTED",
+        generationId: "gen-resume-runtime-question",
+        mode: "resume_interrupt",
+        resumeInterruptId: "interrupt-resume-runtime-question",
+        modelReference: "openai/gpt-5.4-mini",
+        modelProviderID: "openai",
+        modelID: "gpt-5.4-mini",
+        continuationPartCount: 1,
+      }),
+    );
+    expect(finishGeneration).toHaveBeenCalledWith(ctx, "completed");
+  });
+
   it("rejects fresh and snapshot-restored sessions when a live reattach is required", async () => {
     const { runner, finishGeneration } = createRunner();
     const createdCtx = createContext({ id: "gen-created" });

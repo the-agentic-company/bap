@@ -235,6 +235,20 @@ export class OpenCodeRecoveryRunner {
         await this.callbacks.resolveSandboxRuntimeEnvForContext(ctx),
       );
       if (options?.resumeInterruptId && !createdFreshResumeSession) {
+        logger.info({
+          event: "GENERATION_RECOVERY_APPLY_RESOLVED_INTERRUPT",
+          source: "generation-manager",
+          traceId: ctx.traceId,
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+          interruptId: options.resumeInterruptId,
+          mode: modeLabel,
+          sessionSource: session.sessionSource,
+          sessionId: session.session.id,
+          runtimeHarness: session.metadata.runtimeHarness,
+          runtimeProtocolVersion: session.metadata.runtimeProtocolVersion,
+        });
         await this.callbacks.applyResolvedInterruptToRuntime(
           ctx,
           options.resumeInterruptId,
@@ -281,25 +295,41 @@ export class OpenCodeRecoveryRunner {
       );
       const eventStream = eventResult.stream;
       const modelConfig = buildOpenCodeRuntimeModelConfig(ctx.model);
-      const continuationPromptSpec =
-        continuationPromptParts && continuationPromptParts.length > 0
-          ? await composeContinuationPromptSpec(ctx)
-          : null;
-      const continuationPromptPromise =
-        continuationPromptParts && continuationPromptParts.length > 0 && ctx.sessionId
-          ? runtimeClient
-              .prompt({
-                sessionID: ctx.sessionId,
-                parts: continuationPromptParts,
-                agent: continuationPromptSpec?.agentId,
-                system: continuationPromptSpec?.systemPrompt,
-                model: modelConfig,
-              })
-              .then(
-                () => ({ ok: true as const }),
-                (error) => ({ ok: false as const, error }),
-              )
-          : Promise.resolve({ ok: true as const });
+      let continuationPromptPromise: Promise<
+        { ok: true } | { ok: false; error: unknown }
+      > = Promise.resolve({ ok: true });
+      if (continuationPromptParts && continuationPromptParts.length > 0 && ctx.sessionId) {
+        const continuationPromptSpec = await composeContinuationPromptSpec(ctx);
+        logger.info({
+          event: "GENERATION_RECOVERY_CONTINUATION_PROMPT_REQUESTED",
+          source: "generation-manager",
+          traceId: ctx.traceId,
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+          mode: modeLabel,
+          resumeInterruptId: options?.resumeInterruptId ?? null,
+          sessionSource: session.sessionSource,
+          sessionId: ctx.sessionId,
+          modelReference: ctx.model,
+          modelProviderID: modelConfig.providerID,
+          modelID: modelConfig.modelID,
+          continuationPartCount: continuationPromptParts.length,
+          agentId: continuationPromptSpec.agentId,
+        });
+        continuationPromptPromise = runtimeClient
+          .prompt({
+            sessionID: ctx.sessionId,
+            parts: continuationPromptParts,
+            agent: continuationPromptSpec.agentId,
+            system: continuationPromptSpec.systemPrompt,
+            model: modelConfig,
+          })
+          .then(
+            () => ({ ok: true as const }),
+            (error) => ({ ok: false as const, error }),
+          );
+      }
       const reattachTimeoutId = setTimeout(() => {
         reattachTimeoutTriggered = true;
         subscribeController.abort();
