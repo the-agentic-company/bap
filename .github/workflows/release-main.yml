@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       commit_sha: ${{ steps.resolve.outputs.commit_sha }}
+      changed_since: ${{ steps.resolve.outputs.changed_since }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -31,16 +32,34 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
           fetch-depth: 0
 
-      - name: Resolve commit on main
+      - name: Resolve release commit
         id: resolve
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
 
           git fetch origin main --force
           commit_sha="$(git rev-parse "HEAD^{commit}")"
-          git merge-base --is-ancestor "${commit_sha}" origin/main
+
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            if git merge-base --is-ancestor "${commit_sha}" origin/main; then
+              changed_since="$(git rev-parse "${commit_sha}^")"
+            else
+              changed_since="$(git merge-base "${commit_sha}" origin/main)"
+            fi
+          else
+            git merge-base --is-ancestor "${commit_sha}" origin/main
+            changed_since="${BEFORE}"
+            if [ -z "${changed_since}" ] || [[ "${changed_since}" =~ ^0+$ ]]; then
+              changed_since="$(git rev-parse "${commit_sha}^")"
+            fi
+          fi
+
           echo "commit_sha=${commit_sha}" >> "$GITHUB_OUTPUT"
+          echo "changed_since=${changed_since}" >> "$GITHUB_OUTPUT"
 
   observability-changes:
     needs: resolve
@@ -65,7 +84,7 @@ jobs:
       - name: Detect observability changes
         id: changes
         env:
-          BEFORE: ${{ github.event.before }}
+          CHANGED_SINCE: ${{ needs.resolve.outputs.changed_since }}
           EVENT_NAME: ${{ github.event_name }}
           HEAD: ${{ needs.resolve.outputs.commit_sha }}
         shell: bash
@@ -80,7 +99,7 @@ jobs:
             vector=true
             caddy=true
           else
-            before="${BEFORE}"
+            before="${CHANGED_SINCE}"
             head="${HEAD}"
 
             if [ -z "${before}" ] || [[ "${before}" =~ ^0+$ ]]; then
@@ -170,7 +189,7 @@ jobs:
           format: compact
           fail-on-issues: true
           version: 2.88.3
-          changed-since: ${{ github.event_name == 'push' && github.event.before || format('{0}^', needs.resolve.outputs.commit_sha) }}
+          changed-since: ${{ needs.resolve.outputs.changed_since }}
 
       - name: Check Render observability config
         run: bun scripts/check-render-observability-config.ts
