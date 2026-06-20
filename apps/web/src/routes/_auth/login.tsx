@@ -8,12 +8,12 @@ import { CloudLoginClient } from "@/components/login/cloud-login-client";
 import { Button } from "@/components/ui/button";
 import { env } from "@/env";
 import { INVITE_ONLY_LOGIN_ERROR } from "@/lib/admin-emails";
-import { auth } from "@/lib/auth";
 import {
   buildWorktreeAutoLoginPath,
   isWorktreeAutoLoginConfigured,
 } from "@/lib/worktree-auto-login";
 import { sanitizeReturnPath } from "@/server/control-plane/return-path";
+import { getRequestSession } from "@/server/session-auth";
 
 type LoginSearch = {
   callbackUrl?: string;
@@ -98,7 +98,7 @@ function getCloudErrorMessage(error: string | undefined) {
  * TanStack redirects so they propagate through the loader) and otherwise returns the render
  * data for the cloud or self-host login screen.
  */
-const resolveLoginPage = createServerFn({ method: "GET" })
+export const resolveLoginPage = createServerFn({ method: "GET" })
   .inputValidator((search: LoginSearch) => search)
   .handler(async ({ data: params }): Promise<LoginLoaderData> => {
     if (params.error === INVITE_ONLY_LOGIN_ERROR) {
@@ -120,7 +120,7 @@ const resolveLoginPage = createServerFn({ method: "GET" })
     }
 
     const request = getRequest();
-    const sessionData = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+    const sessionData = await getRequestSession(request.headers);
 
     if (sessionData?.user?.id) {
       throw redirect({ href: callbackUrl });
