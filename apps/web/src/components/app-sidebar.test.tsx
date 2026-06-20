@@ -170,7 +170,7 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("link", { name: "Agents" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Toolbox" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bug report" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Internal" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Admin" })).toBeInTheDocument();
   });
 
   it("renders admin navigation and avatar from the initial principal before client session resolves", () => {
