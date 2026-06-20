@@ -354,6 +354,32 @@ async function pollSlackMessagesContaining(args: {
   return poll();
 }
 
+async function waitForSlackMessagesOrAttachFailure(args: {
+  attachExitPromise: Promise<CommandResult>;
+  token: string;
+  channelId: string;
+  afterTs: number;
+  marker: string;
+  expectedCount: number;
+  timeoutMs: number;
+}): Promise<SlackHistoryMessage[]> {
+  const slackMessagesPromise = pollSlackMessagesContaining(args);
+  const first = await Promise.race([
+    slackMessagesPromise.then((messages) => ({ type: "slack" as const, messages })),
+    args.attachExitPromise.then((result) => ({ type: "attach_exit" as const, result })),
+  ]);
+
+  if (first.type === "slack") {
+    return first.messages;
+  }
+
+  if (first.result.code !== 0 || first.result.timedOut) {
+    assertExitOk(first.result, "chat chaos approval attach");
+  }
+
+  return slackMessagesPromise;
+}
+
 describe.runIf(liveEnabled)("@live CLI chat interrupt", () => {
   beforeAll(async () => {
     await ensureCliAuth();
@@ -485,7 +511,9 @@ describe.runIf(liveEnabled)("@live CLI chat interrupt", () => {
       await waitForApprovalPromptAnsweringQuestions(attach, 60_000);
       attach.write("y\n");
       await attach.waitFor(/\[approval_accepted\]/, 30_000);
-      const postedMessages = await pollSlackMessagesContaining({
+      const attachExitPromise = attach.waitForExit(Math.max(responseTimeoutMs, 120_000));
+      const postedMessages = await waitForSlackMessagesOrAttachFailure({
+        attachExitPromise,
         token: slackAccessToken,
         channelId: targetChannelId,
         afterTs: latestTargetBeforePromptTs,
@@ -496,7 +524,7 @@ describe.runIf(liveEnabled)("@live CLI chat interrupt", () => {
       const texts = postedMessages.map((message) => message.text ?? "");
       expect(texts.some((text) => text.includes(`hi ${marker}`))).toBe(true);
 
-      const attachResult = await attach.waitForExit(Math.max(responseTimeoutMs, 120_000));
+      const attachResult = await attachExitPromise;
       assertExitOk(attachResult, "chat chaos approval attach");
       expect(attachResult.stdout).not.toContain("[approval_parked]");
       expect(attachResult.stdout).toContain("[approval_accepted]");

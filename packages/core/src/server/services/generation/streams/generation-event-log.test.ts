@@ -151,6 +151,47 @@ describe("GenerationEventLog", () => {
     ]);
   });
 
+  it("recovers paused run deadline as a parked status event", async () => {
+    generationFindFirstMock.mockResolvedValue({
+      id: "gen-paused",
+      conversationId: "conv-paused",
+      runtimeId: "runtime-paused",
+      status: "paused",
+      completionReason: "run_deadline",
+      sandboxProvider: "daytona",
+      sandboxId: null,
+      messageId: null,
+      inputTokens: 0,
+      outputTokens: 0,
+      errorMessage: null,
+      conversation: {
+        userId: "user-1",
+        type: "coworker",
+      },
+      contentParts: [{ type: "text", text: "partial" }],
+    });
+
+    const eventLog = new GenerationEventLog({
+      projectInterruptPendingEvent: vi.fn(),
+    });
+
+    await expect(
+      collectEvents(eventLog.subscribe({ generationId: "gen-paused", userId: "user-1" })),
+    ).resolves.toEqual([
+      { type: "text", content: "partial" },
+      {
+        type: "status_change",
+        status: "run_deadline_parked",
+        metadata: {
+          runtimeId: "runtime-paused",
+          sandboxProvider: "daytona",
+          sandboxId: undefined,
+          releasedSandboxId: undefined,
+        },
+      },
+    ]);
+  });
+
   it("replays pending approval state while a Generation is waiting", async () => {
     const projectInterruptPendingEvent = vi.fn((interrupt) => ({
       type: "interrupt_pending",

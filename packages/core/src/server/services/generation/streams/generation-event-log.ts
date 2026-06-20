@@ -89,6 +89,15 @@ function formatStreamErrorMessage(error: unknown): string {
   }
 }
 
+function normalizeSandboxProvider(
+  value: string | null | undefined,
+): "e2b" | "daytona" | "docker" | undefined {
+  if (value === "e2b" || value === "daytona" || value === "docker") {
+    return value;
+  }
+  return undefined;
+}
+
 function shouldMirrorCoworkerEvent(event: GenerationEvent): boolean {
   return (
     event.type === "tool_use" ||
@@ -184,6 +193,7 @@ export class GenerationEventLog {
     let terminated = false;
     let terminatedBy:
       | "completed"
+      | "paused"
       | "cancelled"
       | "error"
       | "not_found"
@@ -316,6 +326,27 @@ export class GenerationEventLog {
                 }
               }
               observedParts = latestParts;
+            }
+
+            if (
+              latest.status === "paused" &&
+              latest.completionReason === "run_deadline"
+            ) {
+              lastStatus = latest.status;
+              terminated = true;
+              terminatedBy = "paused";
+              eventsYielded += 1;
+              yield {
+                type: "status_change",
+                status: "run_deadline_parked",
+                metadata: {
+                  runtimeId: latest.runtimeId ?? undefined,
+                  sandboxProvider: normalizeSandboxProvider(latest.sandboxProvider),
+                  sandboxId: latest.sandboxId ?? undefined,
+                  releasedSandboxId: latest.sandboxId ?? undefined,
+                },
+              };
+              break;
             }
 
             if (latest.status !== lastStatus) {

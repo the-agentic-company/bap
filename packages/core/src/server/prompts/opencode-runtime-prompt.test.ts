@@ -71,6 +71,10 @@ describe("composeOpencodePromptSpec", () => {
     expect(result.systemPrompt).toContain('"coworkerId": "cw-1"');
     expect(result.systemPrompt).toContain("--base-updated-at '2026-03-03T12:00:00.000Z'");
     expect(result.systemPrompt).toContain("coworker edit cw-1");
+    expect(result.systemPrompt).toContain(
+      "The coworker already exists as a builder placeholder.",
+    );
+    expect(result.systemPrompt).toContain("Do not call coworker creation tools");
     expect(result.systemPrompt).not.toContain("Never run `coworker edit` on your first response");
     expect(result.systemPrompt).not.toContain("Question round first");
     expect(result.systemPrompt).not.toContain("If information is missing, apply a best-effort default edit first");

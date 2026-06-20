@@ -224,6 +224,20 @@ async function expectCoworkerPromptContainsHi(coworkerId: string): Promise<void>
   expect(details.prompt?.toLowerCase()).toMatch(/\b(hi|hello|greet|greeting)\b/);
 }
 
+function expectCoworkerEditApplied(output: string): void {
+  const usedEditorCli = output.includes("coworker edit") && output.includes("Saved coworker edits");
+  const usedCoworkerUpdateTool =
+    output.includes("[tool_use] bap_coworker_update") &&
+    output.includes("[tool_result] bap_coworker_update") &&
+    output.includes('"status": "completed"');
+
+  if (!usedEditorCli && !usedCoworkerUpdateTool) {
+    throw new Error(
+      `Expected coworker edit to be applied via coworker edit or bap_coworker_update.\n${output}`,
+    );
+  }
+}
+
 function extractBuilderCoworkerId(output: string): string {
   return requireMatch(output, /Created builder coworker:\s*[\s\S]*?\n\s*id:\s+([^\s]+)/, output);
 }
@@ -252,8 +266,7 @@ describe.runIf(liveEnabled)("@live CLI coworker builder", () => {
 
       assertExitOk(result, "coworker build");
       expect(result.stdout).toContain("[approval_accepted]");
-      expect(result.stdout).toContain("coworker edit");
-      expect(result.stdout).toContain("Saved coworker edits");
+      expectCoworkerEditApplied(result.stdout);
       expect(result.stdout).not.toContain("[error]");
 
       await expectCoworkerPromptContainsHi(extractBuilderCoworkerId(result.stdout));
@@ -285,8 +298,7 @@ describe.runIf(liveEnabled)("@live CLI coworker builder", () => {
 
       assertExitOk(resumed, "coworker build attach");
       expect(resumed.stdout).toContain("[approval_accepted]");
-      expect(resumed.stdout).toContain("coworker edit");
-      expect(resumed.stdout).toContain("Saved coworker edits");
+      expectCoworkerEditApplied(resumed.stdout);
       expect(resumed.stdout).not.toContain("[error]");
 
       await expectCoworkerPromptContainsHi(coworkerId);
@@ -325,8 +337,7 @@ describe.runIf(liveEnabled)("@live CLI coworker builder", () => {
 
       assertExitOk(resumed, "coworker build runtime deadline attach");
       expect(resumed.stdout).toContain("reason=run_deadline; sending continue");
-      expect(resumed.stdout).toContain("coworker edit");
-      expect(resumed.stdout).toContain("Saved coworker edits");
+      expectCoworkerEditApplied(resumed.stdout);
       expect(resumed.stdout).not.toContain("[error]");
 
       await expectCoworkerPromptContainsHi(coworkerId);
