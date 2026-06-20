@@ -4,7 +4,12 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatCliLivePreflightFailure, runCliLivePreflight } from "./e2e-live-preflight";
+import {
+  formatCliLivePreflightFailure,
+  formatCliLivePreflightSuccess,
+  resolveCliLivePreflightTarget,
+  runCliLivePreflight,
+} from "./e2e-live-preflight";
 
 type Mode =
   | "auth"
@@ -385,10 +390,12 @@ function runCliLiveStable(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 async function runCliLive(env: NodeJS.ProcessEnv): Promise<void> {
+  const preflightTarget = resolveCliLivePreflightTarget(env);
   const preflight = await runCliLivePreflight({ env, repoRoot });
   if (!preflight.ok) {
     fail(formatCliLivePreflightFailure(preflight));
   }
+  console.log(`[e2e-live] ${formatCliLivePreflightSuccess(preflight, preflightTarget)}`);
 
   const deadline = Date.now() + cliLiveTimeoutMs;
   const runWithCliLiveDeadline = (command: string, args: string[]) => {

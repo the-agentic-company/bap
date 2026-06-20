@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import {
   collectWorkerProcessMatches,
   formatCliLivePreflightFailure,
+  formatCliLivePreflightSuccess,
   resolveCliLiveBapMcpUrl,
   resolveCliLivePreflightTarget,
   resolveCliLiveWebHealthUrl,
@@ -118,6 +119,34 @@ describe("e2e-live cli preflight", () => {
 
     expect(formatCliLivePreflightFailure(result)).toContain("not started: web server, worker");
     expect(formatCliLivePreflightFailure(result)).toContain("unhealthy: Bap MCP");
+  });
+
+  test("formats successful preflight checks for CI logs", () => {
+    const result: CliLivePreflightResult = {
+      ok: true,
+      checks: [
+        {
+          service: "web server",
+          status: "ok",
+          detail: "healthy at https://staging.heybap.com/api/health",
+          recovery: "start web",
+        },
+        {
+          service: "worker",
+          status: "ok",
+          detail: 'remote queue "bap-staging" has 1 registered worker(s)',
+          recovery: "start worker",
+        },
+      ],
+    };
+
+    expect(formatCliLivePreflightSuccess(result, "remote")).toBe(
+      [
+        "cli-live pre-check passed (remote).",
+        "- web server: healthy at https://staging.heybap.com/api/health",
+        '- worker: remote queue "bap-staging" has 1 registered worker(s)',
+      ].join("\n"),
+    );
   });
 
   test("matches worker entrypoints by cwd when the command is generic", () => {
