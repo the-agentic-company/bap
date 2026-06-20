@@ -7,6 +7,7 @@ import {
   getValidTokensForUser,
 } from "@bap/core/server/integrations/token-refresh";
 import type { IntegrationType } from "@bap/core/server/oauth/config";
+import { getQueue, queueName } from "@bap/core/server/queues";
 import { db } from "@bap/db/client";
 import {
   type ContentPart,
@@ -122,6 +123,9 @@ const requestSchema = z.discriminatedUnion("action", [
     email: z.email(),
   }),
   z.object({
+    action: z.literal("worker:queue-ready"),
+  }),
+  z.object({
     action: z.literal("workspace-mcp:linear-api-key:apply"),
     email: z.email(),
   }),
@@ -150,6 +154,26 @@ async function findUserByEmail(email: string): Promise<{ id: string } | null> {
   });
 
   return dbUser ?? null;
+}
+
+async function getWorkerQueueReadiness(): Promise<{
+  ready: boolean;
+  queueName: string;
+  workerCount: number;
+  counts: Record<string, number>;
+}> {
+  const queue = getQueue();
+  const [workerCount, counts] = await Promise.all([
+    queue.getWorkersCount(),
+    queue.getJobCounts("waiting", "active", "delayed", "failed", "paused"),
+  ]);
+
+  return {
+    ready: workerCount > 0,
+    queueName,
+    workerCount,
+    counts,
+  };
 }
 
 async function applyLinearMcpApiKeyForLiveTest(email: string): Promise<unknown> {
@@ -731,6 +755,9 @@ async function handleAction(payload: z.infer<typeof requestSchema>): Promise<unk
     case "user:exists": {
       const dbUser = await findUserByEmail(payload.email);
       return { exists: Boolean(dbUser) };
+    }
+    case "worker:queue-ready": {
+      return getWorkerQueueReadiness();
     }
     case "workspace-mcp:linear-api-key:apply": {
       const backup = await applyLinearMcpApiKeyForLiveTest(payload.email);
