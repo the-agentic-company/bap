@@ -24,17 +24,23 @@ function uniqueNonEmpty(values: Iterable<string> | undefined): string[] {
   return Array.from(new Set(Array.from(values ?? []).filter((value) => value.trim().length > 0)));
 }
 
-function previewJson(value: unknown, maxLength = 4_000): string | null {
+function stringifyJsonPreview(value: unknown): string | null {
   if (value === null || value === undefined) {
     return null;
   }
+  return JSON.stringify(value) ?? String(value);
+}
 
-  const serialized = JSON.stringify(value) ?? String(value);
+function truncatePreview(serialized: string, maxLength: number): string {
   if (serialized.length <= maxLength) {
     return serialized;
   }
-
   return `${serialized.slice(0, maxLength)}...[truncated ${serialized.length - maxLength} chars]`;
+}
+
+function previewJson(value: unknown, maxLength = 4_000): string | null {
+  const serialized = stringifyJsonPreview(value);
+  return serialized ? truncatePreview(serialized, maxLength) : null;
 }
 
 async function getWorkerQueueReadiness(): Promise<{
@@ -57,43 +63,26 @@ async function getWorkerQueueReadiness(): Promise<{
   };
 }
 
-export async function getCliLiveFailureDiagnostics(args: {
-  generationIds?: Iterable<string>;
-  conversationIds?: Iterable<string>;
-  maxGenerations?: number;
-  maxInterrupts?: number;
-}): Promise<unknown> {
-  const inputGenerationIds = uniqueNonEmpty(args.generationIds);
-  const inputConversationIds = uniqueNonEmpty(args.conversationIds);
-  const maxGenerations = args.maxGenerations ?? 8;
-  const maxInterrupts = args.maxInterrupts ?? 12;
-
-  if (inputGenerationIds.length === 0 && inputConversationIds.length === 0) {
-    return {
-      input: {
-        generationIds: [],
-        conversationIds: [],
-      },
-      conversations: [],
-      generations: [],
-      runtimes: [],
-      interrupts: [],
-      workerQueue: await getWorkerQueueReadiness(),
-    };
+function buildGenerationWhere(generationIds: string[], conversationIds: string[]) {
+  if (generationIds.length > 0 && conversationIds.length > 0) {
+    return or(
+      inArray(generation.id, generationIds),
+      inArray(generation.conversationId, conversationIds),
+    );
   }
+  if (generationIds.length > 0) {
+    return inArray(generation.id, generationIds);
+  }
+  return inArray(generation.conversationId, conversationIds);
+}
 
-  const generationWhere =
-    inputGenerationIds.length > 0 && inputConversationIds.length > 0
-      ? or(
-          inArray(generation.id, inputGenerationIds),
-          inArray(generation.conversationId, inputConversationIds),
-        )
-      : inputGenerationIds.length > 0
-        ? inArray(generation.id, inputGenerationIds)
-        : inArray(generation.conversationId, inputConversationIds);
-
-  const generationRows = await db.query.generation.findMany({
-    where: generationWhere,
+async function loadDiagnosticGenerationRows(args: {
+  generationIds: string[];
+  conversationIds: string[];
+  maxGenerations: number;
+}) {
+  return db.query.generation.findMany({
+    where: buildGenerationWhere(args.generationIds, args.conversationIds),
     columns: {
       id: true,
       conversationId: true,
@@ -126,91 +115,161 @@ export async function getCliLiveFailureDiagnostics(args: {
       completedAt: true,
     },
     orderBy: (fields) => [desc(fields.startedAt)],
+    limit: args.maxGenerations,
+  });
+}
+
+async function loadDiagnosticConversationRows(conversationIds: string[], maxGenerations: number) {
+  if (conversationIds.length === 0) {
+    return [];
+  }
+  return db.query.conversation.findMany({
+    where: inArray(conversation.id, conversationIds),
+    columns: {
+      id: true,
+      type: true,
+      title: true,
+      generationStatus: true,
+      currentGenerationId: true,
+      lastSandboxProvider: true,
+      lastRuntimeHarness: true,
+      model: true,
+      autoApprove: true,
+      spawnDepth: true,
+      createdAt: true,
+      updatedAt: true,
+      archivedAt: true,
+    },
     limit: maxGenerations,
+  });
+}
+
+async function loadDiagnosticRuntimeRows(conversationIds: string[], maxGenerations: number) {
+  if (conversationIds.length === 0) {
+    return [];
+  }
+  return db.query.conversationRuntime.findMany({
+    where: inArray(conversationRuntime.conversationId, conversationIds),
+    columns: {
+      id: true,
+      conversationId: true,
+      sandboxProvider: true,
+      runtimeHarness: true,
+      runtimeProtocolVersion: true,
+      sandboxId: true,
+      sessionId: true,
+      status: true,
+      activeGenerationId: true,
+      activeTurnSeq: true,
+      lastBoundAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+    limit: maxGenerations,
+  });
+}
+
+function buildInterruptWhere(generationIds: string[], conversationIds: string[]) {
+  if (generationIds.length > 0 && conversationIds.length > 0) {
+    return or(
+      inArray(generationInterrupt.generationId, generationIds),
+      inArray(generationInterrupt.conversationId, conversationIds),
+    );
+  }
+  if (generationIds.length > 0) {
+    return inArray(generationInterrupt.generationId, generationIds);
+  }
+  return inArray(generationInterrupt.conversationId, conversationIds);
+}
+
+async function loadDiagnosticInterruptRows(args: {
+  generationIds: string[];
+  conversationIds: string[];
+  maxInterrupts: number;
+}) {
+  if (args.generationIds.length === 0 && args.conversationIds.length === 0) {
+    return [];
+  }
+  return db.query.generationInterrupt.findMany({
+    where: buildInterruptWhere(args.generationIds, args.conversationIds),
+    columns: interruptDiagnosticColumns,
+    orderBy: (fields) => [desc(fields.requestedAt)],
+    limit: args.maxInterrupts,
+  });
+}
+
+type CliLiveFailureDiagnosticInput = {
+  inputGenerationIds: string[];
+  inputConversationIds: string[];
+  maxGenerations: number;
+  maxInterrupts: number;
+};
+
+function buildDiagnosticInput(args: {
+  generationIds?: Iterable<string>;
+  conversationIds?: Iterable<string>;
+  maxGenerations?: number;
+  maxInterrupts?: number;
+}): CliLiveFailureDiagnosticInput {
+  return {
+    inputGenerationIds: uniqueNonEmpty(args.generationIds),
+    inputConversationIds: uniqueNonEmpty(args.conversationIds),
+    maxGenerations: Number(args.maxGenerations || 8),
+    maxInterrupts: Number(args.maxInterrupts || 12),
+  };
+}
+
+function hasDiagnosticInput(input: CliLiveFailureDiagnosticInput): boolean {
+  return input.inputGenerationIds.length > 0 || input.inputConversationIds.length > 0;
+}
+
+async function getEmptyCliLiveFailureDiagnostics(): Promise<unknown> {
+  return {
+    input: {
+      generationIds: [],
+      conversationIds: [],
+    },
+    conversations: [],
+    generations: [],
+    runtimes: [],
+    interrupts: [],
+    workerQueue: await getWorkerQueueReadiness(),
+  };
+}
+
+async function getPopulatedCliLiveFailureDiagnostics(
+  input: CliLiveFailureDiagnosticInput,
+): Promise<unknown> {
+  const generationRows = await loadDiagnosticGenerationRows({
+    generationIds: input.inputGenerationIds,
+    conversationIds: input.inputConversationIds,
+    maxGenerations: input.maxGenerations,
   });
 
   const diagnosticGenerationIds = uniqueNonEmpty([
-    ...inputGenerationIds,
+    ...input.inputGenerationIds,
     ...generationRows.map((row) => row.id),
   ]);
   const diagnosticConversationIds = uniqueNonEmpty([
-    ...inputConversationIds,
+    ...input.inputConversationIds,
     ...generationRows.map((row) => row.conversationId),
   ]);
 
   const [conversationRows, runtimeRows, interruptRows, workerQueue] = await Promise.all([
-    diagnosticConversationIds.length > 0
-      ? db.query.conversation.findMany({
-          where: inArray(conversation.id, diagnosticConversationIds),
-          columns: {
-            id: true,
-            type: true,
-            title: true,
-            generationStatus: true,
-            currentGenerationId: true,
-            lastSandboxProvider: true,
-            lastRuntimeHarness: true,
-            model: true,
-            autoApprove: true,
-            spawnDepth: true,
-            createdAt: true,
-            updatedAt: true,
-            archivedAt: true,
-          },
-          limit: maxGenerations,
-        })
-      : Promise.resolve([]),
-    diagnosticConversationIds.length > 0
-      ? db.query.conversationRuntime.findMany({
-          where: inArray(conversationRuntime.conversationId, diagnosticConversationIds),
-          columns: {
-            id: true,
-            conversationId: true,
-            sandboxProvider: true,
-            runtimeHarness: true,
-            runtimeProtocolVersion: true,
-            sandboxId: true,
-            sessionId: true,
-            status: true,
-            activeGenerationId: true,
-            activeTurnSeq: true,
-            lastBoundAt: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-          limit: maxGenerations,
-        })
-      : Promise.resolve([]),
-    diagnosticGenerationIds.length > 0 && diagnosticConversationIds.length > 0
-      ? db.query.generationInterrupt.findMany({
-          where: or(
-            inArray(generationInterrupt.generationId, diagnosticGenerationIds),
-            inArray(generationInterrupt.conversationId, diagnosticConversationIds),
-          ),
-          columns: interruptDiagnosticColumns,
-          orderBy: (fields) => [desc(fields.requestedAt)],
-          limit: maxInterrupts,
-        })
-      : diagnosticGenerationIds.length > 0
-        ? db.query.generationInterrupt.findMany({
-            where: inArray(generationInterrupt.generationId, diagnosticGenerationIds),
-            columns: interruptDiagnosticColumns,
-            orderBy: (fields) => [desc(fields.requestedAt)],
-            limit: maxInterrupts,
-          })
-        : db.query.generationInterrupt.findMany({
-            where: inArray(generationInterrupt.conversationId, diagnosticConversationIds),
-            columns: interruptDiagnosticColumns,
-            orderBy: (fields) => [desc(fields.requestedAt)],
-            limit: maxInterrupts,
-          }),
+    loadDiagnosticConversationRows(diagnosticConversationIds, input.maxGenerations),
+    loadDiagnosticRuntimeRows(diagnosticConversationIds, input.maxGenerations),
+    loadDiagnosticInterruptRows({
+      generationIds: diagnosticGenerationIds,
+      conversationIds: diagnosticConversationIds,
+      maxInterrupts: input.maxInterrupts,
+    }),
     getWorkerQueueReadiness(),
   ]);
 
   return {
     input: {
-      generationIds: inputGenerationIds,
-      conversationIds: inputConversationIds,
+      generationIds: input.inputGenerationIds,
+      conversationIds: input.inputConversationIds,
     },
     conversations: conversationRows,
     generations: generationRows.map(({ debugInfo, pendingApproval, pendingAuth, ...row }) =>
@@ -224,4 +283,22 @@ export async function getCliLiveFailureDiagnostics(args: {
     interrupts: interruptRows,
     workerQueue,
   };
+}
+
+async function getCliLiveFailureDiagnosticsForInput(
+  input: CliLiveFailureDiagnosticInput,
+): Promise<unknown> {
+  if (!hasDiagnosticInput(input)) {
+    return getEmptyCliLiveFailureDiagnostics();
+  }
+  return getPopulatedCliLiveFailureDiagnostics(input);
+}
+
+export async function getCliLiveFailureDiagnostics(args: {
+  generationIds?: Iterable<string>;
+  conversationIds?: Iterable<string>;
+  maxGenerations?: number;
+  maxInterrupts?: number;
+}): Promise<unknown> {
+  return getCliLiveFailureDiagnosticsForInput(buildDiagnosticInput(args));
 }
