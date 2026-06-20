@@ -459,7 +459,7 @@ Metrics:
 
 ```bash
 curl -s --get 'http://127.0.0.1:8428/api/v1/query' \
-  --data-urlencode 'query=max(bap_runtime_up{service_name="bap-web"})'
+  --data-urlencode 'query=max(app_runtime_up{service_name="bap-web"})'
 ```
 
 Logs:
@@ -486,7 +486,7 @@ curl -s http://127.0.0.1:8428/api/v1/rules
 
 When debugging a local issue:
 
-1. Check `bap_runtime_up` and queue metrics in `VictoriaMetrics`.
+1. Check `app_runtime_up` and queue metrics in `VictoriaMetrics`.
 2. Check recent logs in `VictoriaLogs`.
 3. If the issue crosses web and worker boundaries, inspect traces in `VictoriaTraces`.
 4. Make the code change, restart the app, rerun the workload, and query again.
