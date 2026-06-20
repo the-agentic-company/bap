@@ -140,6 +140,40 @@ function acceptsRemoteHealthBody(body: unknown): boolean {
   );
 }
 
+function parseJsonText(text: string): unknown | null {
+  try {
+    return text ? (JSON.parse(text) as unknown) : null;
+  } catch {
+    return null;
+  }
+}
+
+function summarizeRemoteWorkerReadiness(body: unknown): {
+  ready: boolean;
+  queueName: string;
+  workerCount: number;
+} {
+  const record = typeof body === "object" && body !== null ? body : {};
+  const queueName =
+    typeof (record as { queueName?: unknown }).queueName === "string"
+      ? (record as { queueName: string }).queueName
+      : "unknown";
+  const workerCount =
+    typeof (record as { workerCount?: unknown }).workerCount === "number"
+      ? (record as { workerCount: number }).workerCount
+      : 0;
+
+  return {
+    ready: (record as { ready?: unknown }).ready === true,
+    queueName,
+    workerCount,
+  };
+}
+
+function formatRemoteWorkerDetail(summary: { queueName: string; workerCount: number }): string {
+  return `remote queue "${summary.queueName}" has ${summary.workerCount} registered worker(s)`;
+}
+
 export function resolveCliLiveBapMcpUrl(env: NodeJS.ProcessEnv): string | null {
   const baseUrl = env.APP_MCP_BASE_URL?.trim();
   if (!baseUrl) {
@@ -272,10 +306,8 @@ async function checkRemoteWorker(env: NodeJS.ProcessEnv): Promise<CliLivePreflig
       signal: controller.signal,
     });
     const text = await response.text();
-    let body: unknown = null;
-    try {
-      body = text ? (JSON.parse(text) as unknown) : null;
-    } catch {
+    const body = parseJsonText(text);
+    if (body === null) {
       return unhealthy("worker", `POST ${url} did not return JSON`, remoteWorkerRecovery);
     }
 
@@ -287,35 +319,12 @@ async function checkRemoteWorker(env: NodeJS.ProcessEnv): Promise<CliLivePreflig
       );
     }
 
-    if (typeof body !== "object" || body === null || (body as { ready?: unknown }).ready !== true) {
-      const queueName =
-        typeof (body as { queueName?: unknown })?.queueName === "string"
-          ? ` "${(body as { queueName: string }).queueName}"`
-          : "";
-      const workerCount =
-        typeof (body as { workerCount?: unknown })?.workerCount === "number"
-          ? (body as { workerCount: number }).workerCount
-          : 0;
-      return unhealthy(
-        "worker",
-        `remote queue${queueName} has ${workerCount} registered worker(s)`,
-        remoteWorkerRecovery,
-      );
+    const summary = summarizeRemoteWorkerReadiness(body);
+    if (!summary.ready) {
+      return unhealthy("worker", formatRemoteWorkerDetail(summary), remoteWorkerRecovery);
     }
 
-    const queueName =
-      typeof (body as { queueName?: unknown }).queueName === "string"
-        ? (body as { queueName: string }).queueName
-        : "unknown";
-    const workerCount =
-      typeof (body as { workerCount?: unknown }).workerCount === "number"
-        ? (body as { workerCount: number }).workerCount
-        : 1;
-    return ok(
-      "worker",
-      `remote queue "${queueName}" has ${workerCount} registered worker(s)`,
-      remoteWorkerRecovery,
-    );
+    return ok("worker", formatRemoteWorkerDetail(summary), remoteWorkerRecovery);
   } catch (error) {
     const reason =
       error instanceof Error && error.name === "AbortError"
