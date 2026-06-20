@@ -35,6 +35,55 @@ function uniqueNonEmpty(values: Iterable<string> | undefined): string[] {
   return Array.from(new Set(Array.from(values ?? []).filter((value) => value.trim().length > 0)));
 }
 
+function normalizeCliIdentifier(candidate: string | undefined): string | null {
+  const value = candidate?.trim().replace(/[),.;]+$/g, "");
+  if (
+    !value ||
+    value === "-" ||
+    value.toLowerCase() === "null" ||
+    value.toLowerCase() === "undefined"
+  ) {
+    return null;
+  }
+  return value;
+}
+
+function addMatches(target: Set<string>, text: string, patterns: RegExp[]): void {
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const id = normalizeCliIdentifier(match[1]);
+      if (id) {
+        target.add(id);
+      }
+    }
+  }
+}
+
+export function extractCliIdentifiersFromText(text: string): {
+  conversationIds: string[];
+  generationIds: string[];
+} {
+  const conversationIds = new Set<string>();
+  const generationIds = new Set<string>();
+  const idValuePattern = "([A-Za-z0-9_-]+)";
+
+  addMatches(generationIds, text, [
+    /\[generation\]\s+([^\s]+)/g,
+    new RegExp(`\\bgeneration(?:Id|_id)?[=:]\\s*${idValuePattern}`, "gi"),
+    new RegExp(`\\bgeneration id:\\s*${idValuePattern}`, "gi"),
+  ]);
+  addMatches(conversationIds, text, [
+    /\[conversation\]\s+([^\s]+)/g,
+    new RegExp(`\\bconversation(?:Id|_id)?[=:]\\s*${idValuePattern}`, "gi"),
+    new RegExp(`\\bconversation id:\\s*${idValuePattern}`, "gi"),
+  ]);
+
+  return {
+    conversationIds: [...conversationIds],
+    generationIds: [...generationIds],
+  };
+}
+
 export function createCliLiveCleanupState(): CliLiveCleanupState {
   return {
     conversationIds: new Set<string>(),
@@ -47,20 +96,12 @@ export function trackCliIdentifiersFromText(state: CliLiveCleanupState | null, t
     return;
   }
 
-  const generationMatches = text.matchAll(/\[generation\]\s+([^\s]+)/g);
-  for (const match of generationMatches) {
-    const id = match[1]?.trim();
-    if (id) {
-      state.generationIds.add(id);
-    }
+  const ids = extractCliIdentifiersFromText(text);
+  for (const id of ids.generationIds) {
+    state.generationIds.add(id);
   }
-
-  const conversationMatches = text.matchAll(/\[conversation\]\s+([^\s]+)/g);
-  for (const match of conversationMatches) {
-    const id = match[1]?.trim();
-    if (id) {
-      state.conversationIds.add(id);
-    }
+  for (const id of ids.conversationIds) {
+    state.conversationIds.add(id);
   }
 }
 

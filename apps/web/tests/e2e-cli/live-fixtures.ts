@@ -10,6 +10,7 @@ import {
   type SandboxProvider,
 } from "../e2e/live-sandbox";
 import {
+  cliFailureDiagnosticTimeoutMs,
   commandTimeoutMs,
   defaultServerUrl,
   expectedUserEmail,
@@ -22,6 +23,7 @@ import {
   assertNoStartedDaytonaSandboxesRemain,
   cleanupCliLiveSandboxes,
   createCliLiveCleanupState,
+  extractCliIdentifiersFromText,
   trackCliIdentifiersFromText,
   type CliLiveCleanupState,
 } from "./live-sandbox-cleanup";
@@ -101,8 +103,100 @@ type GenerationStateRecord = {
   completedAt: string | null;
 };
 
+type CliLiveFailureDiagnostics = {
+  input: {
+    conversationIds: string[];
+    generationIds: string[];
+  };
+  conversations: Array<{
+    id: string;
+    type: string;
+    title: string | null;
+    generationStatus: string;
+    currentGenerationId: string | null;
+    lastSandboxProvider: string | null;
+    lastRuntimeHarness: string | null;
+    model: string | null;
+    autoApprove: boolean;
+    spawnDepth: number;
+    createdAt: string;
+    updatedAt: string;
+    archivedAt: string | null;
+  }>;
+  generations: Array<{
+    id: string;
+    conversationId: string;
+    runtimeId: string | null;
+    messageId: string | null;
+    status: string;
+    pendingApproval: boolean;
+    pendingAuth: boolean;
+    executionPolicy: Record<string, unknown> | null;
+    sandboxId: string | null;
+    sandboxProvider: string | null;
+    runtimeHarness: string | null;
+    runtimeProtocolVersion: string | null;
+    isPaused: boolean;
+    deadlineAt: string;
+    remainingRunMs: number;
+    suspendedAt: string | null;
+    resumeInterruptId: string | null;
+    lastRuntimeProgressAt: string;
+    recoveryAttempts: number;
+    completionReason: string | null;
+    errorMessage: string | null;
+    debugInfoPreview: string | null;
+    inputTokens: number;
+    outputTokens: number;
+    traceId: string | null;
+    terminalCanonicalEventEmittedAt: string | null;
+    startedAt: string;
+    cancelRequestedAt: string | null;
+    completedAt: string | null;
+  }>;
+  runtimes: Array<{
+    id: string;
+    conversationId: string;
+    sandboxProvider: string | null;
+    runtimeHarness: string | null;
+    runtimeProtocolVersion: string | null;
+    sandboxId: string | null;
+    sessionId: string | null;
+    status: string;
+    activeGenerationId: string | null;
+    activeTurnSeq: number;
+    lastBoundAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  interrupts: Array<{
+    id: string;
+    generationId: string;
+    runtimeId: string | null;
+    conversationId: string;
+    kind: string;
+    status: string;
+    provider: string;
+    providerRequestId: string | null;
+    providerToolUseId: string;
+    turnSeq: number | null;
+    requestedAt: string;
+    expiresAt: string | null;
+    resolvedAt: string | null;
+    appliedAt: string | null;
+  }>;
+  workerQueue: {
+    ready: boolean;
+    queueName: string;
+    workerCount: number;
+    counts: Record<string, number>;
+  };
+};
+
 let activeCliLiveCleanupState: CliLiveCleanupState | null = null;
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const commandOutputTailLength = 12_000;
+const diagnosticFieldTailLength = 1_200;
 
 beforeEach(() => {
   activeCliLiveCleanupState = createCliLiveCleanupState();
@@ -132,6 +226,152 @@ export function buildCliCommandArgs(...args: string[]): string[] {
 
 export function trackCliOutput(text: string): void {
   trackCliIdentifiersFromText(activeCliLiveCleanupState, text);
+}
+
+function tailText(value: string, maxLength: number): string {
+  if (value.length === 0) {
+    return "(empty)";
+  }
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `[truncated ${value.length - maxLength} chars]\n${value.slice(-maxLength)}`;
+}
+
+function formatCommandForDisplay(command: string[] | undefined): string {
+  if (!command || command.length === 0) {
+    return "(unknown)";
+  }
+  return command
+    .map((arg) => (/^[A-Za-z0-9_./:=@+-]+$/.test(arg) ? arg : JSON.stringify(arg)))
+    .join(" ");
+}
+
+function compactJson(value: unknown, maxLength = diagnosticFieldTailLength): string {
+  if (value === null || value === undefined) {
+    return "-";
+  }
+  return tailText(
+    typeof value === "string" ? value : (JSON.stringify(value) ?? String(value)),
+    maxLength,
+  );
+}
+
+function formatCliLiveFailureDiagnostics(diagnostics: CliLiveFailureDiagnostics): string {
+  const lines = [
+    "cli-live diagnostics:",
+    `  input generationIds=${diagnostics.input.generationIds.join(",") || "-"} conversationIds=${
+      diagnostics.input.conversationIds.join(",") || "-"
+    }`,
+    `  workerQueue ready=${diagnostics.workerQueue.ready} workers=${diagnostics.workerQueue.workerCount} queue=${diagnostics.workerQueue.queueName} counts=${JSON.stringify(diagnostics.workerQueue.counts)}`,
+  ];
+
+  lines.push("  conversations:");
+  if (diagnostics.conversations.length === 0) {
+    lines.push("    - none");
+  } else {
+    for (const row of diagnostics.conversations) {
+      lines.push(
+        `    - id=${row.id} status=${row.generationStatus} currentGeneration=${row.currentGenerationId ?? "-"} type=${row.type} model=${row.model ?? "-"} autoApprove=${row.autoApprove} spawnDepth=${row.spawnDepth} updatedAt=${row.updatedAt}`,
+      );
+    }
+  }
+
+  lines.push("  generations:");
+  if (diagnostics.generations.length === 0) {
+    lines.push("    - none");
+  } else {
+    for (const row of diagnostics.generations) {
+      lines.push(
+        `    - id=${row.id} conversation=${row.conversationId} status=${row.status} completionReason=${row.completionReason ?? "-"} error=${row.errorMessage ?? "-"} runtime=${row.runtimeId ?? "-"} sandbox=${row.sandboxProvider ?? "-"}/${row.sandboxId ?? "-"} paused=${row.isPaused} pendingApproval=${row.pendingApproval} pendingAuth=${row.pendingAuth} remainingRunMs=${row.remainingRunMs} recoveryAttempts=${row.recoveryAttempts} deadlineAt=${row.deadlineAt} lastProgress=${row.lastRuntimeProgressAt} startedAt=${row.startedAt} completedAt=${row.completedAt ?? "-"} trace=${row.traceId ?? "-"}`,
+      );
+      if (row.executionPolicy) {
+        lines.push(`      executionPolicy=${compactJson(row.executionPolicy, 600)}`);
+      }
+      if (row.debugInfoPreview) {
+        lines.push(`      debugInfo=${compactJson(row.debugInfoPreview)}`);
+      }
+    }
+  }
+
+  lines.push("  runtimes:");
+  if (diagnostics.runtimes.length === 0) {
+    lines.push("    - none");
+  } else {
+    for (const row of diagnostics.runtimes) {
+      lines.push(
+        `    - id=${row.id} conversation=${row.conversationId} status=${row.status} activeGeneration=${row.activeGenerationId ?? "-"} sandbox=${row.sandboxProvider ?? "-"}/${row.sandboxId ?? "-"} session=${row.sessionId ?? "-"} harness=${row.runtimeHarness ?? "-"} protocol=${row.runtimeProtocolVersion ?? "-"} activeTurnSeq=${row.activeTurnSeq} lastBoundAt=${row.lastBoundAt ?? "-"} updatedAt=${row.updatedAt}`,
+      );
+    }
+  }
+
+  lines.push("  interrupts:");
+  if (diagnostics.interrupts.length === 0) {
+    lines.push("    - none");
+  } else {
+    for (const row of diagnostics.interrupts) {
+      lines.push(
+        `    - id=${row.id} generation=${row.generationId} conversation=${row.conversationId} runtime=${row.runtimeId ?? "-"} kind=${row.kind} status=${row.status} provider=${row.provider} toolUse=${row.providerToolUseId} providerRequest=${row.providerRequestId ?? "-"} turnSeq=${row.turnSeq ?? "-"} requestedAt=${row.requestedAt} expiresAt=${row.expiresAt ?? "-"} resolvedAt=${row.resolvedAt ?? "-"} appliedAt=${row.appliedAt ?? "-"}`,
+      );
+    }
+  }
+
+  return lines.join("\n");
+}
+
+async function collectCliLiveFailureDiagnostics(args: {
+  stdout: string;
+  stderr: string;
+}): Promise<string | undefined> {
+  const ids = extractCliIdentifiersFromText(`${args.stdout}\n${args.stderr}`);
+  if (ids.generationIds.length === 0 && ids.conversationIds.length === 0) {
+    return undefined;
+  }
+  if (!process.env.APP_SERVER_SECRET) {
+    return `cli-live diagnostics unavailable: APP_SERVER_SECRET is not set for generationIds=${ids.generationIds.join(",") || "-"} conversationIds=${ids.conversationIds.join(",") || "-"}`;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), cliFailureDiagnosticTimeoutMs);
+  try {
+    const diagnostics = await callCliLiveTestingApi<CliLiveFailureDiagnostics>(
+      {
+        action: "diagnostics:cli-live-failure",
+        generationIds: ids.generationIds,
+        conversationIds: ids.conversationIds,
+      },
+      { signal: controller.signal },
+    );
+    return formatCliLiveFailureDiagnostics(diagnostics);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return `cli-live diagnostics unavailable after ${cliFailureDiagnosticTimeoutMs}ms: ${message}; generationIds=${ids.generationIds.join(",") || "-"} conversationIds=${ids.conversationIds.join(",") || "-"}`;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function buildCommandResult(args: {
+  commandArgs: string[];
+  result: Omit<CommandResult, "command" | "diagnostics">;
+}): Promise<CommandResult> {
+  const command = ["bun", ...args.commandArgs];
+  if (args.result.code === 0 && !args.result.timedOut) {
+    return {
+      ...args.result,
+      command,
+    };
+  }
+
+  const diagnostics = await collectCliLiveFailureDiagnostics({
+    stdout: args.result.stdout,
+    stderr: args.result.stderr,
+  });
+  return {
+    ...args.result,
+    command,
+    ...(diagnostics ? { diagnostics } : {}),
+  };
 }
 
 export function runBunCommand(
@@ -169,13 +409,24 @@ export function runBunCommand(
       trackCliOutput(stderr);
     });
 
+    const resolveResult = (result: Omit<CommandResult, "command" | "diagnostics">) => {
+      void buildCommandResult({ commandArgs: args, result }).then(resolveDone, (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        resolveDone({
+          ...result,
+          command: ["bun", ...args],
+          diagnostics: `cli-live diagnostics unavailable: ${message}`,
+        });
+      });
+    };
+
     child.on("close", (code) => {
       if (settled) {
         return;
       }
       settled = true;
       clearTimeout(timer);
-      resolveDone({ code, stdout, stderr, timedOut });
+      resolveResult({ code, stdout, stderr, timedOut });
     });
 
     child.on("error", (error) => {
@@ -185,7 +436,7 @@ export function runBunCommand(
       settled = true;
       clearTimeout(timer);
       stderr += `\n${String(error)}\n`;
-      resolveDone({ code: -1, stdout, stderr, timedOut });
+      resolveResult({ code: -1, stdout, stderr, timedOut });
     });
   });
 }
@@ -196,7 +447,15 @@ export function assertExitOk(result: CommandResult, label: string): void {
   }
   const timeoutHint = result.timedOut ? " (timed out)" : "";
   throw new Error(
-    `${label} exited with code ${String(result.code)}${timeoutHint}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+    [
+      `${label} exited with code ${String(result.code)}${timeoutHint}`,
+      `command: ${formatCommandForDisplay(result.command)}`,
+      `stdout tail:\n${tailText(result.stdout, commandOutputTailLength)}`,
+      `stderr tail:\n${tailText(result.stderr, commandOutputTailLength)}`,
+      result.diagnostics,
+    ]
+      .filter((line): line is string => Boolean(line))
+      .join("\n"),
   );
 }
 

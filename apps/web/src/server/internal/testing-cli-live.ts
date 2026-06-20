@@ -28,6 +28,7 @@ import { and, desc, eq, inArray, like, or } from "drizzle-orm";
 import { z } from "zod";
 import { env } from "@/env";
 import { isAuthorizedByServerSecret } from "@/server/internal/server-secret";
+import { getCliLiveFailureDiagnostics } from "@/server/internal/testing-cli-live-diagnostics";
 
 type SandboxProvider = "e2b" | "daytona" | "docker";
 
@@ -96,6 +97,13 @@ const requestSchema = z.discriminatedUnion("action", [
     generationIds: z.array(z.string()).optional(),
     conversationIds: z.array(z.string()).optional(),
     expectedProvider: z.enum(sandboxProviders),
+  }),
+  z.object({
+    action: z.literal("diagnostics:cli-live-failure"),
+    generationIds: z.array(z.string().min(1)).optional(),
+    conversationIds: z.array(z.string().min(1)).optional(),
+    maxGenerations: z.number().int().min(1).max(20).optional(),
+    maxInterrupts: z.number().int().min(1).max(20).optional(),
   }),
   z.object({
     action: z.literal("generation:get-state"),
@@ -651,6 +659,9 @@ async function handleAction(payload: z.infer<typeof requestSchema>): Promise<unk
         }
       }
       return { ok: true };
+    }
+    case "diagnostics:cli-live-failure": {
+      return getCliLiveFailureDiagnostics(payload);
     }
     case "generation:get-state": {
       const record = await db.query.generation.findFirst({
