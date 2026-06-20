@@ -1,9 +1,11 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   collectWorkerProcessMatches,
   formatCliLivePreflightFailure,
   resolveCliLiveBapMcpUrl,
+  resolveCliLivePreflightTarget,
   resolveCliLiveWebHealthUrl,
+  runCliLivePreflight,
   type CliLivePreflightResult,
 } from "../../scripts/e2e-live-preflight";
 
@@ -12,6 +14,69 @@ describe("e2e-live cli preflight", () => {
     expect(resolveCliLiveWebHealthUrl({ APP_SERVER_URL: "http://127.0.0.1:3707/base" })).toBe(
       "http://127.0.0.1:3707/api/dev/health",
     );
+  });
+
+  test("uses deployed health checks for remote APP_SERVER_URL targets", () => {
+    const env = { APP_SERVER_URL: "https://staging.heybap.com" };
+
+    expect(resolveCliLivePreflightTarget(env)).toBe("remote");
+    expect(resolveCliLiveWebHealthUrl(env)).toBe("https://staging.heybap.com/api/health");
+  });
+
+  test("keeps localcan targets on the local preflight path", () => {
+    const env = { APP_SERVER_URL: "https://localcan.baptistecolle.com/__worktrees/bap-123" };
+
+    expect(resolveCliLivePreflightTarget(env)).toBe("local");
+    expect(resolveCliLiveWebHealthUrl(env)).toBe(
+      "https://localcan.baptistecolle.com/api/dev/health",
+    );
+  });
+
+  test("remote preflight does not require local worker or tunnel processes", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, _init) => {
+      const url = String(input);
+      if (url === "https://staging.heybap.com/api/health") {
+        return Response.json({ ok: true, checks: { database: true, redis: true } });
+      }
+      if (url === "https://staging.heybap.com/api/internal/testing/cli-live") {
+        return Response.json({
+          ready: true,
+          queueName: "bap-staging",
+          workerCount: 1,
+          counts: {},
+        });
+      }
+      if (url === "https://mcp.staging.heybap.com/bap") {
+        return new Response("ok");
+      }
+
+      return new Response("not found", { status: 404 });
+    });
+
+    try {
+      const result = await runCliLivePreflight({
+        env: {
+          APP_MCP_BASE_URL: "https://mcp.staging.heybap.com",
+          APP_SERVER_SECRET: "secret",
+          APP_SERVER_URL: "https://staging.heybap.com",
+        },
+        repoRoot: "/does/not/exist",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.checks.map((check) => check.service)).toEqual([
+        "web server",
+        "worker",
+        "Bap MCP",
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls).toContainEqual([
+        "https://staging.heybap.com/api/internal/testing/cli-live",
+        expect.objectContaining({ method: "POST" }),
+      ]);
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 
   test("resolves the Bap MCP URL from APP_MCP_BASE_URL", () => {

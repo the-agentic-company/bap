@@ -19,6 +19,8 @@ on:
     secrets:
       APP_SERVER_SECRET:
         required: true
+      APP_MCP_BASE_URL:
+        required: true
       APP_DEFAULT_USER_EMAIL:
         required: false
       DATABASE_URL_PROD:
@@ -70,6 +72,7 @@ jobs:
       - name: Run CLI live checks
         env:
           APP_DEFAULT_USER_EMAIL: ${{ secrets.APP_DEFAULT_USER_EMAIL }}
+          APP_MCP_BASE_URL: ${{ secrets.APP_MCP_BASE_URL }}
           APP_SERVER_SECRET: ${{ secrets.APP_SERVER_SECRET }}
           APP_SERVER_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}

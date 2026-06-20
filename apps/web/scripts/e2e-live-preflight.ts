@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 
 type PreflightService = "web server" | "worker" | "local tunnel" | "Bap MCP";
 type PreflightStatus = "ok" | "missing" | "unhealthy";
+type CliLivePreflightTarget = "local" | "remote";
 
 export type CliLivePreflightCheck = {
   service: PreflightService;
@@ -30,6 +31,8 @@ const webRecovery =
   "Start the web server with `bun run dev` or `bun run dev:web`, then rerun the command.";
 const workerRecovery =
   "Start the worker with `bun run dev` or `bun run dev:worker`, then rerun the command.";
+const remoteWorkerRecovery =
+  "Start or repair the deployed worker service for APP_SERVER_URL, then rerun the command.";
 const tunnelRecovery =
   "Start the local tunnel with `bun run dev` or `bun run --cwd apps/local-tunnel dev`, then rerun the command.";
 const bapMcpRecovery =
@@ -80,10 +83,61 @@ function isPidRunning(pid: number): boolean {
   }
 }
 
-export function resolveCliLiveWebHealthUrl(env: NodeJS.ProcessEnv): string {
-  const serverUrl =
-    env.APP_SERVER_URL?.trim() || env.PLAYWRIGHT_BASE_URL?.trim() || DEFAULT_SERVER_URL;
-  return new URL("/api/dev/health", serverUrl).toString();
+function resolveCliLiveServerUrl(env: NodeJS.ProcessEnv): string {
+  return env.APP_SERVER_URL?.trim() || env.PLAYWRIGHT_BASE_URL?.trim() || DEFAULT_SERVER_URL;
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === "localhost" ||
+    normalized === "::1" ||
+    normalized === "[::1]" ||
+    /^127(?:\.\d{1,3}){3}$/.test(normalized)
+  );
+}
+
+function isLocalTunnelHost(hostname: string): boolean {
+  return hostname.toLowerCase().includes("localcan");
+}
+
+export function resolveCliLivePreflightTarget(env: NodeJS.ProcessEnv): CliLivePreflightTarget {
+  try {
+    const hostname = new URL(resolveCliLiveServerUrl(env)).hostname;
+    return isLoopbackHost(hostname) || isLocalTunnelHost(hostname) ? "local" : "remote";
+  } catch {
+    return "local";
+  }
+}
+
+export function resolveCliLiveWebHealthUrl(
+  env: NodeJS.ProcessEnv,
+  target: CliLivePreflightTarget = resolveCliLivePreflightTarget(env),
+): string {
+  const path = target === "remote" ? "/api/health" : "/api/dev/health";
+  return new URL(path, resolveCliLiveServerUrl(env)).toString();
+}
+
+function resolveCliLiveTestingApiUrl(env: NodeJS.ProcessEnv): string {
+  return new URL("/api/internal/testing/cli-live", resolveCliLiveServerUrl(env)).toString();
+}
+
+function acceptsBasicOkBody(body: unknown): boolean {
+  return typeof body === "object" && body !== null && (body as { ok?: unknown }).ok === true;
+}
+
+function acceptsRemoteHealthBody(body: unknown): boolean {
+  if (!acceptsBasicOkBody(body)) {
+    return false;
+  }
+
+  const checks = (body as { checks?: unknown }).checks;
+  return (
+    typeof checks === "object" &&
+    checks !== null &&
+    (checks as { database?: unknown }).database === true &&
+    (checks as { redis?: unknown }).redis === true
+  );
 }
 
 export function resolveCliLiveBapMcpUrl(env: NodeJS.ProcessEnv): string | null {
@@ -147,16 +201,21 @@ async function checkJsonHealth(args: {
   }
 }
 
-async function checkWebServer(env: NodeJS.ProcessEnv): Promise<CliLivePreflightCheck> {
+async function checkWebServer(
+  env: NodeJS.ProcessEnv,
+  target: CliLivePreflightTarget,
+): Promise<CliLivePreflightCheck> {
   try {
     return await checkJsonHealth({
       service: "web server",
-      url: resolveCliLiveWebHealthUrl(env),
+      url: resolveCliLiveWebHealthUrl(env, target),
       recovery: webRecovery,
       timeoutMs: DEFAULT_HEALTH_TIMEOUT_MS,
-      acceptsBody: (body) =>
-        typeof body === "object" && body !== null && (body as { ok?: unknown }).ok === true,
-      expectedBody: "`{ ok: true }`",
+      acceptsBody: target === "remote" ? acceptsRemoteHealthBody : acceptsBasicOkBody,
+      expectedBody:
+        target === "remote"
+          ? "`{ ok: true, checks: { database: true, redis: true } }`"
+          : "`{ ok: true }`",
     });
   } catch (error) {
     return unhealthy("web server", `APP_SERVER_URL is invalid: ${formatError(error)}`, webRecovery);
@@ -176,6 +235,96 @@ async function checkLocalTunnel(): Promise<CliLivePreflightCheck> {
       (body as { proxy?: unknown }).proxy === "localcan",
     expectedBody: '`{ ok: true, proxy: "localcan" }`',
   });
+}
+
+async function checkRemoteWorker(env: NodeJS.ProcessEnv): Promise<CliLivePreflightCheck> {
+  const secret = env.APP_SERVER_SECRET?.trim();
+  if (!secret) {
+    return missing(
+      "worker",
+      "APP_SERVER_SECRET is not configured, so remote worker readiness cannot be checked",
+      remoteWorkerRecovery,
+    );
+  }
+
+  let url: string;
+  try {
+    url = resolveCliLiveTestingApiUrl(env);
+  } catch (error) {
+    return unhealthy(
+      "worker",
+      `APP_SERVER_URL is invalid: ${formatError(error)}`,
+      remoteWorkerRecovery,
+    );
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_HEALTH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${secret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ action: "worker:queue-ready" }),
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    let body: unknown = null;
+    try {
+      body = text ? (JSON.parse(text) as unknown) : null;
+    } catch {
+      return unhealthy("worker", `POST ${url} did not return JSON`, remoteWorkerRecovery);
+    }
+
+    if (!response.ok) {
+      return unhealthy(
+        "worker",
+        `POST ${url} returned HTTP ${response.status}`,
+        remoteWorkerRecovery,
+      );
+    }
+
+    if (typeof body !== "object" || body === null || (body as { ready?: unknown }).ready !== true) {
+      const queueName =
+        typeof (body as { queueName?: unknown })?.queueName === "string"
+          ? ` "${(body as { queueName: string }).queueName}"`
+          : "";
+      const workerCount =
+        typeof (body as { workerCount?: unknown })?.workerCount === "number"
+          ? (body as { workerCount: number }).workerCount
+          : 0;
+      return unhealthy(
+        "worker",
+        `remote queue${queueName} has ${workerCount} registered worker(s)`,
+        remoteWorkerRecovery,
+      );
+    }
+
+    const queueName =
+      typeof (body as { queueName?: unknown }).queueName === "string"
+        ? (body as { queueName: string }).queueName
+        : "unknown";
+    const workerCount =
+      typeof (body as { workerCount?: unknown }).workerCount === "number"
+        ? (body as { workerCount: number }).workerCount
+        : 1;
+    return ok(
+      "worker",
+      `remote queue "${queueName}" has ${workerCount} registered worker(s)`,
+      remoteWorkerRecovery,
+    );
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.name === "AbortError"
+        ? `timed out after ${DEFAULT_HEALTH_TIMEOUT_MS}ms`
+        : formatError(error);
+    return missing("worker", `POST ${url} failed: ${reason}`, remoteWorkerRecovery);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function checkBapMcp(env: NodeJS.ProcessEnv): Promise<CliLivePreflightCheck> {
@@ -417,13 +566,24 @@ export async function runCliLivePreflight(args: {
   env: NodeJS.ProcessEnv;
   repoRoot: string;
 }): Promise<CliLivePreflightResult> {
-  const [web, tunnel, bapMcp] = await Promise.all([
-    checkWebServer(args.env),
-    checkLocalTunnel(),
-    checkBapMcp(args.env),
-  ]);
-  const worker = checkWorkerProcess(args.env, args.repoRoot);
-  const checks = [web, worker, tunnel, bapMcp];
+  const target = resolveCliLivePreflightTarget(args.env);
+  const [web, worker, tunnel, bapMcp] =
+    target === "remote"
+      ? await Promise.all([
+          checkWebServer(args.env, target),
+          checkRemoteWorker(args.env),
+          Promise.resolve<CliLivePreflightCheck | null>(null),
+          checkBapMcp(args.env),
+        ])
+      : await Promise.all([
+          checkWebServer(args.env, target),
+          Promise.resolve(checkWorkerProcess(args.env, args.repoRoot)),
+          checkLocalTunnel(),
+          checkBapMcp(args.env),
+        ]);
+  const checks = [web, worker, tunnel, bapMcp].filter(
+    (check): check is CliLivePreflightCheck => check !== null,
+  );
 
   return {
     ok: checks.every((check) => check.status === "ok"),
