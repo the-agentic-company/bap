@@ -257,66 +257,78 @@ function compactJson(value: unknown, maxLength = diagnosticFieldTailLength): str
   );
 }
 
-function formatCliLiveFailureDiagnostics(diagnostics: CliLiveFailureDiagnostics): string {
-  const lines = [
-    "cli-live diagnostics:",
-    `  input generationIds=${diagnostics.input.generationIds.join(",") || "-"} conversationIds=${
-      diagnostics.input.conversationIds.join(",") || "-"
-    }`,
-    `  workerQueue ready=${diagnostics.workerQueue.ready} workers=${diagnostics.workerQueue.workerCount} queue=${diagnostics.workerQueue.queueName} counts=${JSON.stringify(diagnostics.workerQueue.counts)}`,
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  return String(value);
+}
+
+function displayList(values: string[]): string {
+  return values.length > 0 ? values.join(",") : "-";
+}
+
+function formatSection<T>(title: string, rows: T[], formatRow: (row: T) => string[]): string[] {
+  const lines = [`  ${title}:`];
+  if (rows.length === 0) {
+    lines.push("    - none");
+    return lines;
+  }
+  for (const row of rows) {
+    lines.push(...formatRow(row));
+  }
+  return lines;
+}
+
+function formatConversationDiagnostic(row: CliLiveFailureDiagnostics["conversations"][number]) {
+  return [
+    `    - id=${row.id} status=${row.generationStatus} currentGeneration=${displayValue(row.currentGenerationId)} type=${row.type} model=${displayValue(row.model)} autoApprove=${row.autoApprove} spawnDepth=${row.spawnDepth} updatedAt=${row.updatedAt}`,
   ];
+}
 
-  lines.push("  conversations:");
-  if (diagnostics.conversations.length === 0) {
-    lines.push("    - none");
-  } else {
-    for (const row of diagnostics.conversations) {
-      lines.push(
-        `    - id=${row.id} status=${row.generationStatus} currentGeneration=${row.currentGenerationId ?? "-"} type=${row.type} model=${row.model ?? "-"} autoApprove=${row.autoApprove} spawnDepth=${row.spawnDepth} updatedAt=${row.updatedAt}`,
-      );
-    }
+function formatGenerationDiagnostic(row: CliLiveFailureDiagnostics["generations"][number]) {
+  const lines = [
+    `    - id=${row.id} conversation=${row.conversationId} status=${row.status} completionReason=${displayValue(row.completionReason)} error=${displayValue(row.errorMessage)} runtime=${displayValue(row.runtimeId)} sandbox=${displayValue(row.sandboxProvider)}/${displayValue(row.sandboxId)} paused=${row.isPaused} pendingApproval=${row.pendingApproval} pendingAuth=${row.pendingAuth} remainingRunMs=${row.remainingRunMs} recoveryAttempts=${row.recoveryAttempts} deadlineAt=${row.deadlineAt} lastProgress=${row.lastRuntimeProgressAt} startedAt=${row.startedAt} completedAt=${displayValue(row.completedAt)} trace=${displayValue(row.traceId)}`,
+  ];
+  if (row.executionPolicy) {
+    lines.push(`      executionPolicy=${compactJson(row.executionPolicy, 600)}`);
   }
-
-  lines.push("  generations:");
-  if (diagnostics.generations.length === 0) {
-    lines.push("    - none");
-  } else {
-    for (const row of diagnostics.generations) {
-      lines.push(
-        `    - id=${row.id} conversation=${row.conversationId} status=${row.status} completionReason=${row.completionReason ?? "-"} error=${row.errorMessage ?? "-"} runtime=${row.runtimeId ?? "-"} sandbox=${row.sandboxProvider ?? "-"}/${row.sandboxId ?? "-"} paused=${row.isPaused} pendingApproval=${row.pendingApproval} pendingAuth=${row.pendingAuth} remainingRunMs=${row.remainingRunMs} recoveryAttempts=${row.recoveryAttempts} deadlineAt=${row.deadlineAt} lastProgress=${row.lastRuntimeProgressAt} startedAt=${row.startedAt} completedAt=${row.completedAt ?? "-"} trace=${row.traceId ?? "-"}`,
-      );
-      if (row.executionPolicy) {
-        lines.push(`      executionPolicy=${compactJson(row.executionPolicy, 600)}`);
-      }
-      if (row.debugInfoPreview) {
-        lines.push(`      debugInfo=${compactJson(row.debugInfoPreview)}`);
-      }
-    }
+  if (row.debugInfoPreview) {
+    lines.push(`      debugInfo=${compactJson(row.debugInfoPreview)}`);
   }
+  return lines;
+}
 
-  lines.push("  runtimes:");
-  if (diagnostics.runtimes.length === 0) {
-    lines.push("    - none");
-  } else {
-    for (const row of diagnostics.runtimes) {
-      lines.push(
-        `    - id=${row.id} conversation=${row.conversationId} status=${row.status} activeGeneration=${row.activeGenerationId ?? "-"} sandbox=${row.sandboxProvider ?? "-"}/${row.sandboxId ?? "-"} session=${row.sessionId ?? "-"} harness=${row.runtimeHarness ?? "-"} protocol=${row.runtimeProtocolVersion ?? "-"} activeTurnSeq=${row.activeTurnSeq} lastBoundAt=${row.lastBoundAt ?? "-"} updatedAt=${row.updatedAt}`,
-      );
-    }
-  }
+function formatRuntimeDiagnostic(row: CliLiveFailureDiagnostics["runtimes"][number]) {
+  return [
+    `    - id=${row.id} conversation=${row.conversationId} status=${row.status} activeGeneration=${displayValue(row.activeGenerationId)} sandbox=${displayValue(row.sandboxProvider)}/${displayValue(row.sandboxId)} session=${displayValue(row.sessionId)} harness=${displayValue(row.runtimeHarness)} protocol=${displayValue(row.runtimeProtocolVersion)} activeTurnSeq=${row.activeTurnSeq} lastBoundAt=${displayValue(row.lastBoundAt)} updatedAt=${row.updatedAt}`,
+  ];
+}
 
-  lines.push("  interrupts:");
-  if (diagnostics.interrupts.length === 0) {
-    lines.push("    - none");
-  } else {
-    for (const row of diagnostics.interrupts) {
-      lines.push(
-        `    - id=${row.id} generation=${row.generationId} conversation=${row.conversationId} runtime=${row.runtimeId ?? "-"} kind=${row.kind} status=${row.status} provider=${row.provider} toolUse=${row.providerToolUseId} providerRequest=${row.providerRequestId ?? "-"} turnSeq=${row.turnSeq ?? "-"} requestedAt=${row.requestedAt} expiresAt=${row.expiresAt ?? "-"} resolvedAt=${row.resolvedAt ?? "-"} appliedAt=${row.appliedAt ?? "-"}`,
-      );
-    }
-  }
+function formatInterruptDiagnostic(row: CliLiveFailureDiagnostics["interrupts"][number]) {
+  return [
+    `    - id=${row.id} generation=${row.generationId} conversation=${row.conversationId} runtime=${displayValue(row.runtimeId)} kind=${row.kind} status=${row.status} provider=${row.provider} toolUse=${row.providerToolUseId} providerRequest=${displayValue(row.providerRequestId)} turnSeq=${displayValue(row.turnSeq)} requestedAt=${row.requestedAt} expiresAt=${displayValue(row.expiresAt)} resolvedAt=${displayValue(row.resolvedAt)} appliedAt=${displayValue(row.appliedAt)}`,
+  ];
+}
 
-  return lines.join("\n");
+function formatCliLiveFailureDiagnostics(diagnostics: CliLiveFailureDiagnostics): string {
+  return [
+    "cli-live diagnostics:",
+    `  input generationIds=${displayList(diagnostics.input.generationIds)} conversationIds=${displayList(diagnostics.input.conversationIds)}`,
+    `  workerQueue ready=${diagnostics.workerQueue.ready} workers=${diagnostics.workerQueue.workerCount} queue=${diagnostics.workerQueue.queueName} counts=${JSON.stringify(diagnostics.workerQueue.counts)}`,
+    ...formatSection("conversations", diagnostics.conversations, formatConversationDiagnostic),
+    ...formatSection("generations", diagnostics.generations, formatGenerationDiagnostic),
+    ...formatSection("runtimes", diagnostics.runtimes, formatRuntimeDiagnostic),
+    ...formatSection("interrupts", diagnostics.interrupts, formatInterruptDiagnostic),
+  ].join("\n");
+}
+
+function formatCliIdentifierSummary(ids: { generationIds: string[]; conversationIds: string[] }) {
+  return `generationIds=${displayList(ids.generationIds)} conversationIds=${displayList(ids.conversationIds)}`;
+}
+
+function hasCliIdentifiers(ids: { generationIds: string[]; conversationIds: string[] }): boolean {
+  return ids.generationIds.length > 0 || ids.conversationIds.length > 0;
 }
 
 async function collectCliLiveFailureDiagnostics(args: {
@@ -324,11 +336,12 @@ async function collectCliLiveFailureDiagnostics(args: {
   stderr: string;
 }): Promise<string | undefined> {
   const ids = extractCliIdentifiersFromText(`${args.stdout}\n${args.stderr}`);
-  if (ids.generationIds.length === 0 && ids.conversationIds.length === 0) {
+  if (!hasCliIdentifiers(ids)) {
     return undefined;
   }
+  const idSummary = formatCliIdentifierSummary(ids);
   if (!process.env.APP_SERVER_SECRET) {
-    return `cli-live diagnostics unavailable: APP_SERVER_SECRET is not set for generationIds=${ids.generationIds.join(",") || "-"} conversationIds=${ids.conversationIds.join(",") || "-"}`;
+    return `cli-live diagnostics unavailable: APP_SERVER_SECRET is not set for ${idSummary}`;
   }
 
   const controller = new AbortController();
@@ -345,7 +358,7 @@ async function collectCliLiveFailureDiagnostics(args: {
     return formatCliLiveFailureDiagnostics(diagnostics);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return `cli-live diagnostics unavailable after ${cliFailureDiagnosticTimeoutMs}ms: ${message}; generationIds=${ids.generationIds.join(",") || "-"} conversationIds=${ids.conversationIds.join(",") || "-"}`;
+    return `cli-live diagnostics unavailable after ${cliFailureDiagnosticTimeoutMs}ms: ${message}; ${idSummary}`;
   } finally {
     clearTimeout(timer);
   }
