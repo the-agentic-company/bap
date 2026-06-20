@@ -28,6 +28,26 @@ type Mode =
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appRoot, "../..");
 const cliLiveTimeoutMs = 20 * 60 * 1000;
+const defaultCliLiveTestFiles = [
+  "tests/e2e-cli/auth.cli.live.e2e.test.ts",
+  "tests/e2e-cli/chat.cli.live.test.ts",
+  "tests/e2e-cli/chat.interrupt.cli.live.test.ts",
+  "tests/e2e-cli/chat.performance.cli.live.test.ts",
+  "tests/e2e-cli/chat.runtime-progress-stall.cli.live.test.ts",
+  "tests/e2e-cli/chat.question.cli.live.test.ts",
+  "tests/e2e-cli/chat.file-upload.cli.live.test.ts",
+  "tests/e2e-cli/chat.fill-pdf.cli.live.test.ts",
+  "tests/e2e-cli/chat.slack.cli.live.test.ts",
+  "tests/e2e-cli/chat.gmail.cli.live.test.ts",
+  "tests/e2e-cli/chat.linear.cli.live.test.ts",
+  "tests/e2e-cli/chat.bap-mcp.cli.live.test.ts",
+  "tests/e2e-cli/chat.google-calendar.cli.live.test.ts",
+  "tests/e2e-cli/chat.google-drive.cli.live.test.ts",
+  "tests/e2e-cli/chat.linkedin.cli.live.test.ts",
+  "tests/e2e-cli/chat.sandbox-file.cli.live.test.ts",
+  "tests/e2e-cli/coworkers.cli.live.test.ts",
+  "tests/e2e-cli/coworker-builder.cli.live.test.ts",
+] as const;
 
 function fail(message: string): never {
   console.error(`[e2e-live] ${message}`);
@@ -389,6 +409,30 @@ function runCliLiveStable(env: NodeJS.ProcessEnv): Promise<void> {
   return run("bun", ["vitest", "run", "tests/e2e-cli/auth.cli.live.e2e.test.ts"], env);
 }
 
+function parseCliLiveTestFiles(env: NodeJS.ProcessEnv): string[] {
+  const raw = env.E2E_CLI_LIVE_TEST_FILES?.trim();
+  if (!raw) {
+    return [...defaultCliLiveTestFiles];
+  }
+
+  const files = raw
+    .split(/[\s,]+/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  if (files.length === 0) {
+    fail("E2E_CLI_LIVE_TEST_FILES was set but did not contain any test files.");
+  }
+  return files;
+}
+
+function getCliLiveTestName(env: NodeJS.ProcessEnv): string | null {
+  return env.E2E_CLI_LIVE_TEST_NAME?.trim() || null;
+}
+
+function isCliLiveFocused(env: NodeJS.ProcessEnv): boolean {
+  return Boolean(env.E2E_CLI_LIVE_TEST_FILES?.trim() || getCliLiveTestName(env));
+}
+
 async function runCliLive(env: NodeJS.ProcessEnv): Promise<void> {
   const preflightTarget = resolveCliLivePreflightTarget(env);
   const preflight = await runCliLivePreflight({ env, repoRoot });
@@ -408,28 +452,23 @@ async function runCliLive(env: NodeJS.ProcessEnv): Promise<void> {
   };
 
   await runWithCliLiveDeadline("bun", ["run", "chat:auth"]);
+  const testFiles = parseCliLiveTestFiles(env);
+  const testName = getCliLiveTestName(env);
+  if (isCliLiveFocused(env)) {
+    console.log(
+      `[e2e-live] running focused CLI live tests: files=${testFiles.join(", ")} name=${testName ?? "-"}`,
+    );
+  }
   await runWithCliLiveDeadline("bun", [
     "vitest",
     "run",
-    "tests/e2e-cli/auth.cli.live.e2e.test.ts",
-    "tests/e2e-cli/chat.cli.live.test.ts",
-    "tests/e2e-cli/chat.interrupt.cli.live.test.ts",
-    "tests/e2e-cli/chat.performance.cli.live.test.ts",
-    "tests/e2e-cli/chat.runtime-progress-stall.cli.live.test.ts",
-    "tests/e2e-cli/chat.question.cli.live.test.ts",
-    "tests/e2e-cli/chat.file-upload.cli.live.test.ts",
-    "tests/e2e-cli/chat.fill-pdf.cli.live.test.ts",
-    "tests/e2e-cli/chat.slack.cli.live.test.ts",
-    "tests/e2e-cli/chat.gmail.cli.live.test.ts",
-    "tests/e2e-cli/chat.linear.cli.live.test.ts",
-    "tests/e2e-cli/chat.bap-mcp.cli.live.test.ts",
-    "tests/e2e-cli/chat.google-calendar.cli.live.test.ts",
-    "tests/e2e-cli/chat.google-drive.cli.live.test.ts",
-    "tests/e2e-cli/chat.linkedin.cli.live.test.ts",
-    "tests/e2e-cli/chat.sandbox-file.cli.live.test.ts",
-    "tests/e2e-cli/coworkers.cli.live.test.ts",
-    "tests/e2e-cli/coworker-builder.cli.live.test.ts",
+    ...testFiles,
+    ...(testName ? ["-t", testName] : []),
   ]);
+  if (isCliLiveFocused(env)) {
+    console.log("[e2e-live] skipping sandbox live checks because CLI live filtering is active.");
+    return;
+  }
   await runWithCliLiveDeadline("bun", ["run", "--cwd", "../sandbox", "test:live"]);
 }
 
