@@ -8,7 +8,6 @@ set -euo pipefail
 cd "$CODEX_WORKTREE_PATH"
 
 bun install
-bun run worktree:setup
 '''
 
 [cleanup]
