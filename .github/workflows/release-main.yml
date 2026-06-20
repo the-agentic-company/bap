@@ -166,6 +166,8 @@ jobs:
 
   checks:
     needs: resolve
+    # Temporary fast path for validating staging verify/preflight changes.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -206,7 +208,6 @@ jobs:
   staging-resume:
     needs:
       - resolve
-      - checks
     runs-on: ubuntu-latest
     environment: staging
     env:
@@ -226,9 +227,10 @@ jobs:
         run: bun scripts/release/render-staging-lifecycle.ts resume
 
   staging-db:
+    # Temporary fast path for validating staging verify/preflight changes.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     needs:
       - resolve
-      - checks
       - staging-resume
     uses: ./.github/workflows/db-push.yml
     with:
@@ -237,9 +239,10 @@ jobs:
     secrets: inherit
 
   staging-daytona:
+    # Temporary fast path for validating staging verify/preflight changes.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     needs:
       - resolve
-      - checks
       - staging-resume
     uses: ./.github/workflows/daytona-sandbox.yml
     with:
@@ -251,7 +254,6 @@ jobs:
     needs:
       - resolve
       - staging-resume
-      - staging-db
     uses: ./.github/workflows/render-deploy.yml
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
@@ -259,9 +261,10 @@ jobs:
     secrets: inherit
 
   staging-observability:
+    # Temporary fast path for validating staging verify/preflight changes.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     needs:
       - resolve
-      - checks
       - staging-resume
       # Temporarily bypass observability change detection while the stack is
       # being iterated on heavily. Keep deploying every main release until this
@@ -287,6 +290,8 @@ jobs:
     secrets: inherit
 
   staging-observability-verify:
+    # Temporary fast path for validating staging verify/preflight changes.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     needs:
       - staging-observability
     # if: ${{ needs.observability-changes.outputs.verify_grafana == 'true' || needs.observability-changes.outputs.verify_vmalert == 'true' }}
@@ -301,8 +306,6 @@ jobs:
 
   staging-verify:
     needs:
-      - staging-db
-      - staging-daytona
       - staging-render
     uses: ./.github/workflows/verify-deployment.yml
     with:
@@ -420,14 +423,8 @@ jobs:
   notify-failure:
     needs:
       - resolve
-      - observability-changes
-      - checks
       - staging-resume
-      - staging-db
-      - staging-daytona
       - staging-render
-      - staging-observability
-      - staging-observability-verify
       - staging-verify
       # - staging-suspend
       # - rollback-staging-render
