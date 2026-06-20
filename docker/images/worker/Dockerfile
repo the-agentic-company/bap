@@ -21,7 +21,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=pruner /tmp/pruned/full/ ./
-RUN NODE_ENV=development bun install
+RUN NODE_ENV=development bun install --frozen-lockfile
 RUN bun run --cwd apps/worker bundle
 WORKDIR /app/apps/worker
 CMD ["bun", "dist/index.js"]

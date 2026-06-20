@@ -28,7 +28,7 @@ const radixPackagePathPattern =
 const zodPackagePathPattern = /[/\\]node_modules[/\\](?:\.bun[/\\])?zod@?[/\\]/;
 const uiVendorPackagePathPattern =
 	/[/\\]node_modules[/\\](?:\.bun[/\\])?(?:sonner|tailwind-merge|lucide-react|@floating-ui[+/\\])@?[/\\]/;
-const ssrExternalPackages = ["dockerode", "docker-modem", "ssh2", "cpu-features", "tslib"];
+const ssrExternalPackages = ["dockerode", "docker-modem", "ssh2", "cpu-features", "sharp", "tslib"];
 
 // Self-host dev runs on 3001 via `dev:selfhost`, everything else stays on 3000.
 const devPort =
@@ -164,6 +164,7 @@ export default defineConfig(({ isSsrBuild }) => ({
 					/^docker-modem$/,
 					/^ssh2($|\/)/,
 					/^cpu-features($|\/)/,
+					/^sharp($|\/)/,
 				],
 			},
 		}),
