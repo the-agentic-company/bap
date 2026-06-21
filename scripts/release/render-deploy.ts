@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
 type DeployStatus =
@@ -116,6 +117,72 @@ function describeUnknownError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function normalizeCommitId(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function shortCommitId(value: string): string {
+  return value.trim().slice(0, 12);
+}
+
+function commitIdsMatch(actual: string, expected: string): boolean {
+  const normalizedActual = normalizeCommitId(actual);
+  const normalizedExpected = normalizeCommitId(expected);
+  if (!normalizedActual || !normalizedExpected) {
+    return false;
+  }
+
+  return (
+    normalizedActual === normalizedExpected ||
+    normalizedActual.startsWith(normalizedExpected) ||
+    normalizedExpected.startsWith(normalizedActual)
+  );
+}
+
+function resolveLocalCommitSubject(commitId: string): string | null {
+  try {
+    const subject = execFileSync("git", ["show", "-s", "--format=%s", commitId], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return subject || null;
+  } catch {
+    return null;
+  }
+}
+
+function formatCommit(commitId: string, subject?: string | null): string {
+  const suffix = subject ? ` ${subject}` : "";
+  return `${shortCommitId(commitId)}${suffix}`;
+}
+
+function formatRenderCommit(deploy: RenderDeploy): string {
+  const commitId = deploy.commit?.id?.trim();
+  if (!commitId) {
+    return "unreported";
+  }
+  return formatCommit(commitId, deploy.commit?.message);
+}
+
+function assertRenderCommitMatchesExpected(deploy: RenderDeploy, expectedCommitId: string): void {
+  const actualCommitId = deploy.commit?.id?.trim();
+  if (!actualCommitId) {
+    fail(
+      `Render deploy ${deploy.id} did not report a commit id; expected ${shortCommitId(
+        expectedCommitId,
+      )}`,
+    );
+  }
+
+  if (!commitIdsMatch(actualCommitId, expectedCommitId)) {
+    fail(
+      `Render deploy ${deploy.id} is for ${formatRenderCommit(
+        deploy,
+      )}, expected ${shortCommitId(expectedCommitId)}`,
+    );
+  }
+}
+
 function isTransientRenderError(error: unknown): boolean {
   if (error instanceof RenderRequestError) {
     return error.status >= 500 || error.status === 429;
@@ -168,9 +235,7 @@ async function renderRequestWithRetry<T>(path: string, init: RequestInit = {}): 
       }
 
       console.error(
-        `[render-deploy] ${describeUnknownError(error)}; retrying in ${
-          delayMs / 1000
-        }s.`,
+        `[render-deploy] ${describeUnknownError(error)}; retrying in ${delayMs / 1000}s.`,
       );
       await sleep(delayMs);
     }
@@ -497,7 +562,11 @@ async function printRecentLogs(
   printLogs(sortLogsAscending(tail.logs ?? []));
 }
 
-async function waitForDeploy(serviceId: string, deployId: string): Promise<RenderDeploy> {
+async function waitForDeploy(
+  serviceId: string,
+  deployId: string,
+  expectedCommitId?: string,
+): Promise<RenderDeploy> {
   const timeoutMs = Number(readArg("--timeout-ms") ?? "1800000");
   const pollMs = Number(readArg("--poll-ms") ?? "15000");
   const startedAt = Date.now();
@@ -505,9 +574,26 @@ async function waitForDeploy(serviceId: string, deployId: string): Promise<Rende
   while (true) {
     const deploy = await getDeploy(serviceId, deployId);
     const status = deploy.status ?? "unknown";
-    console.log(`[render-deploy] ${serviceId} ${deployId} status=${status}`);
+    const expectedCommit = expectedCommitId ? ` expected=${shortCommitId(expectedCommitId)}` : "";
+    console.log(
+      `[render-deploy] ${serviceId} ${deployId} status=${status} render_commit=${formatRenderCommit(
+        deploy,
+      )}${expectedCommit}`,
+    );
+
+    if (
+      expectedCommitId &&
+      deploy.commit?.id &&
+      !commitIdsMatch(deploy.commit.id, expectedCommitId)
+    ) {
+      await printDeployDiagnostics(serviceId, deploy);
+      assertRenderCommitMatchesExpected(deploy, expectedCommitId);
+    }
 
     if (successStatuses.has(status)) {
+      if (expectedCommitId) {
+        assertRenderCommitMatchesExpected(deploy, expectedCommitId);
+      }
       return deploy;
     }
 
@@ -552,10 +638,7 @@ async function createDeploy(
   );
 }
 
-async function updateDockerCommand(
-  serviceId: string,
-  dockerCommand: string,
-): Promise<void> {
+async function updateDockerCommand(serviceId: string, dockerCommand: string): Promise<void> {
   await renderRequestWithRetry(`/services/${serviceId}`, {
     method: "PATCH",
     body: JSON.stringify({
@@ -596,18 +679,37 @@ async function main(): Promise<void> {
 
   if (command === "deploy") {
     const commitId = readArg("--commit")?.trim();
+    const sourceRef = readArg("--source-ref")?.trim();
     const imageUrl = readArg("--image-url")?.trim();
     const dockerCommand = readArg("--docker-command")?.trim();
     if (!commitId && !imageUrl) {
       fail("Missing required argument --commit or --image-url");
     }
+
+    const commitSubject = commitId ? resolveLocalCommitSubject(commitId) : null;
+    console.log(
+      `[render-deploy] Preparing deploy for ${serviceId}: source_ref=${
+        sourceRef || "-"
+      } commit=${commitId ? formatCommit(commitId, commitSubject) : "-"} image_url=${
+        imageUrl || "-"
+      }`,
+    );
+
     if (dockerCommand) {
       console.log(`[render-deploy] Updating Docker command for ${serviceId}`);
       await updateDockerCommand(serviceId, dockerCommand);
     }
     const deploy = await createDeploy(serviceId, { commitId, imageUrl });
+    console.log(
+      `[render-deploy] Created deploy ${deploy.id} for ${serviceId}: requested_commit=${
+        commitId ? formatCommit(commitId, commitSubject) : "-"
+      } render_commit=${formatRenderCommit(deploy)}`,
+    );
+    if (commitId && deploy.commit?.id && !commitIdsMatch(deploy.commit.id, commitId)) {
+      assertRenderCommitMatchesExpected(deploy, commitId);
+    }
     writeOutput("deploy_id", deploy.id);
-    await waitForDeploy(serviceId, deploy.id);
+    await waitForDeploy(serviceId, deploy.id, commitId);
     return;
   }
 
