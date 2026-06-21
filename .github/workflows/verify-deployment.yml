@@ -75,11 +75,8 @@ jobs:
           APP_MCP_BASE_URL: ${{ secrets.APP_MCP_BASE_URL }}
           APP_SERVER_SECRET: ${{ secrets.APP_SERVER_SECRET }}
           APP_SERVER_URL: ${{ inputs.base_url }}
-          E2E_CLI_LIVE_TEST_FILES: |
-            tests/e2e-cli/chat.question.cli.live.test.ts
-            tests/e2e-cli/coworker-builder.cli.live.test.ts
-          E2E_CLI_LIVE_TEST_NAME: >-
-            keeps the tty session open for a native follow-up after answering a question|parks a runtime question and attach resumes it with the selected answer|parks a builder question, attach resumes it, and persists hi instructions
+          E2E_CLI_LIVE_TEST_FILES: ""
+          E2E_CLI_LIVE_TEST_NAME: ""
           PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
         run: bun run --cwd apps/web test:e2e:cli:live
