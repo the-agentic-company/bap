@@ -3,12 +3,10 @@ import { eq, asc } from "drizzle-orm";
 import { Sandbox } from "e2b";
 import { db } from "@bap/db/client";
 import { message, conversationRuntime } from "@bap/db/schema";
-import type { ProviderAuthSource } from "../../../lib/provider-auth-source";
-import { getResolvedProviderAuth } from "../../control-plane/subscription-providers";
 import { restoreConversationSessionSnapshot } from "../../services/opencode-session-snapshot-service";
 import { COMPACTION_SUMMARY_PREFIX, SESSION_BOUNDARY_PREFIX } from "../../services/session-constants";
 import type { ObservabilityContext } from "../../utils/observability";
-import { toRuntimeProviderAuthPayload } from "../provider-auth-runtime";
+import { injectProviderAuth } from "../provider-auth-injection";
 import { getOrCreateSandbox } from "./provisioning";
 import {
   getConversationRuntimeState,
@@ -384,49 +382,4 @@ async function replayConversationHistory(
   });
 }
 
-/**
- * Inject stored subscription provider OAuth tokens into an OpenCode server.
- * Called after sandbox creation to give OpenCode access to the user's
- * ChatGPT/Gemini/Kimi subscriptions.
- */
-export async function injectProviderAuth(
-  client: OpencodeClient,
-  userId: string,
-  options?: { openAIAuthSource?: ProviderAuthSource | null },
-): Promise<void> {
-  try {
-    const [openaiAuth, googleAuth, kimiAuth] = await Promise.all([
-      getResolvedProviderAuth({
-        userId,
-        provider: "openai",
-        authSource: options?.openAIAuthSource,
-      }),
-      getResolvedProviderAuth({
-        userId,
-        provider: "google",
-        authSource: "shared",
-      }),
-      getResolvedProviderAuth({
-        userId,
-        provider: "kimi",
-        authSource: "user",
-      }),
-    ]);
-
-    const auths = [openaiAuth, googleAuth, kimiAuth]
-      .filter((auth): auth is NonNullable<typeof auth> => Boolean(auth))
-      .map(toRuntimeProviderAuthPayload);
-    await Promise.all(
-      auths.map(async (auth) => {
-        try {
-          await client.auth.set(auth);
-          console.log(`[E2B] Injected ${auth.providerID} auth for user ${userId}`);
-        } catch (err) {
-          console.error(`[E2B] Failed to inject ${auth.providerID} auth:`, err);
-        }
-      }),
-    );
-  } catch (err) {
-    console.error("[E2B] Failed to load provider auths:", err);
-  }
-}
+export { injectProviderAuth };

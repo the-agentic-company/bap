@@ -60,7 +60,7 @@ type OpenCodeConfigProvidersPayload = {
   }>;
 };
 
-async function waitForConfiguredModel(input: {
+async function assertConfiguredModel(input: {
   url: string;
   model: string;
   token?: string;
@@ -104,6 +104,40 @@ async function waitForConfiguredModel(input: {
   }
 }
 
+export async function waitForConfiguredModel(
+  url: string,
+  model: string,
+  token?: string,
+  maxWait = 30_000,
+): Promise<void> {
+  const startedAt = Date.now();
+  let lastReadinessError: unknown;
+  while (Date.now() - startedAt < maxWait) {
+    const remainingMs = maxWait - (Date.now() - startedAt);
+    try {
+      // eslint-disable-next-line no-await-in-loop -- provider readiness polling is intentional
+      await assertConfiguredModel({
+        url,
+        model,
+        token,
+        timeoutMs: Math.max(1, Math.min(OPENCODE_READINESS_FETCH_TIMEOUT_MS, remainingMs)),
+      });
+      return;
+    } catch (error) {
+      lastReadinessError = error;
+    }
+    // eslint-disable-next-line no-await-in-loop -- readiness polling is intentional
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  const errorDetail = lastReadinessError instanceof Error ? `: ${lastReadinessError.message}` : "";
+  throw new Error(
+    `OpenCode provider catalog failed readiness check (url=${redactDaytonaAuth(
+      joinUrlPath(url, "/config/providers"),
+    )}, waitedMs=${maxWait})${errorDetail}`,
+  );
+}
+
 export async function getConversationRuntimeState(conversationId: string): Promise<{
   runtimeId: string;
   sandboxId: string | null;
@@ -129,7 +163,7 @@ export async function getConversationRuntimeState(conversationId: string): Promi
   };
 }
 
-export async function waitForServer(
+export async function waitForServerHealth(
   url: string,
   model: string,
   token?: string,
@@ -148,12 +182,6 @@ export async function waitForServer(
         signal: AbortSignal.timeout(fetchTimeoutMs),
       });
       if (response.ok) {
-        await waitForConfiguredModel({
-          url,
-          model,
-          token,
-          timeoutMs: Math.max(1, Math.min(OPENCODE_READINESS_FETCH_TIMEOUT_MS, remainingMs)),
-        });
         return;
       }
     } catch (error) {
@@ -168,6 +196,18 @@ export async function waitForServer(
   throw new Error(
     `OpenCode server failed readiness check (url=${redactDaytonaAuth(readinessUrl)}, waitedMs=${maxWait})${errorDetail}`,
   );
+}
+
+export async function waitForServer(
+  url: string,
+  model: string,
+  token?: string,
+  maxWait = 30_000,
+): Promise<void> {
+  const startedAt = Date.now();
+  await waitForServerHealth(url, model, token, maxWait);
+  const elapsedMs = Date.now() - startedAt;
+  await waitForConfiguredModel(url, model, token, Math.max(1, maxWait - elapsedMs));
 }
 
 export async function replayConversationHistory(
