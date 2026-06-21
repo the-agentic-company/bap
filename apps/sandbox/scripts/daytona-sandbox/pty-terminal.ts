@@ -17,7 +17,7 @@ export function shouldUsePty(cmd: string): boolean {
   return firstToken === "opencode" || firstToken === "claude";
 }
 
-export function normalizeInteractiveCommand(cmd: string): string {
+function normalizeInteractiveCommand(cmd: string): string {
   const trimmed = cmd.trim();
   const firstToken = trimmed.split(/\s+/)[0]?.toLowerCase();
   if (firstToken === "opencode") {
