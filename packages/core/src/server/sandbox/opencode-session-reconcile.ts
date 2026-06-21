@@ -2,7 +2,7 @@ import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { eq } from "drizzle-orm";
 import { db } from "@bap/db/client";
 import { conversationRuntime } from "@bap/db/schema";
-import { injectProviderAuth } from "./e2b";
+import { injectProviderAuth } from "./provider-auth-injection";
 import { restoreConversationSessionSnapshot } from "../services/opencode-session-snapshot-service";
 import type { OpenCodeMcpRuntimeWarning } from "./opencode-mcp-reconciliation";
 import type {

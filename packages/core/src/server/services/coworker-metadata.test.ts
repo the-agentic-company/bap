@@ -24,6 +24,7 @@ vi.mock("../../env", () => ({
 }));
 
 import {
+  COWORKER_METADATA_GENERATION_TIMEOUT_MS,
   generateCoworkerMetadataOnFirstPromptFill,
   normalizeAndEnsureUniqueCoworkerUsername,
 } from "./coworker-metadata";
@@ -179,6 +180,53 @@ describe("coworker-metadata", () => {
       description: "Follow up with leads after every call.",
       username: "follow-up-with-leads-after-every-call",
     });
+  });
+
+  it("falls back to prompt-derived metadata when Gemini generation times out", async () => {
+    vi.useFakeTimers();
+    try {
+      const { db, mocks } = createDbStub();
+      generateContentMock.mockReturnValue(new Promise(() => {}));
+      mocks.findFirst.mockResolvedValueOnce(null);
+
+      const resultPromise = generateCoworkerMetadataOnFirstPromptFill({
+        database: db,
+        current: {
+          id: "cw-1",
+          name: "",
+          description: null,
+          username: null,
+          prompt: "   ",
+          triggerType: "manual",
+          allowedIntegrations: ["slack"],
+          allowedCustomIntegrations: [],
+          schedule: null,
+          autoApprove: true,
+        },
+        next: {
+          id: "cw-1",
+          name: "",
+          description: null,
+          username: null,
+          prompt: "Create a greeting coworker.",
+          triggerType: "manual",
+          allowedIntegrations: ["slack"],
+          allowedCustomIntegrations: [],
+          schedule: null,
+          autoApprove: true,
+        },
+      });
+
+      await vi.advanceTimersByTimeAsync(COWORKER_METADATA_GENERATION_TIMEOUT_MS);
+
+      await expect(resultPromise).resolves.toEqual({
+        name: "Create a greeting coworker",
+        description: "Create a greeting coworker.",
+        username: "create-a-greeting-coworker",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("normalizes and uniquifies manual usernames", async () => {

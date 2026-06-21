@@ -624,3 +624,16 @@ export function formatCliLivePreflightFailure(result: CliLivePreflightResult): s
 
   return lines.join("\n");
 }
+
+export function formatCliLivePreflightSuccess(
+  result: CliLivePreflightResult,
+  target: CliLivePreflightTarget,
+): string {
+  const lines = [`cli-live pre-check passed (${target}).`];
+
+  for (const check of result.checks) {
+    lines.push(`- ${check.service}: ${check.detail}`);
+  }
+
+  return lines.join("\n");
+}

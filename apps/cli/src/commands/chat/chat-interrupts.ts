@@ -79,14 +79,34 @@ function openUrlInBrowser(url: string): boolean {
   }
 }
 
-function createApprovalPrompt(rl: readline.Interface | null): {
+function isReadlineOpen(rl: readline.Interface | null): rl is readline.Interface {
+  if (!rl) {
+    return false;
+  }
+  return !(rl as readline.Interface & { closed?: boolean }).closed;
+}
+
+export function createApprovalPrompt(rl: readline.Interface | null): {
   rl: readline.Interface;
   close: () => void;
 } | null {
-  if (rl && process.stdin.isTTY && process.stdout.isTTY) {
+  if (isReadlineOpen(rl) && process.stdin.isTTY && process.stdout.isTTY) {
     return {
       rl,
       close: () => {},
+    };
+  }
+
+  if (process.stdin.isTTY && process.stdout.isTTY) {
+    const stdioRl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    return {
+      rl: stdioRl,
+      close: () => {
+        stdioRl.close();
+      },
     };
   }
 

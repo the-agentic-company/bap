@@ -10,7 +10,9 @@ import {
   getSandboxReadinessUrl,
   getSandboxServerPort,
   getSandboxServerBackgroundStartCommand,
+  resolveSandboxAgentRuntimeForModel,
 } from "./opencode-runtime";
+import { injectProviderAuth } from "./provider-auth-injection";
 import { conversationRuntimeService } from "../services/conversation-runtime-service";
 import { generationLifecyclePolicy } from "../services/lifecycle-policy";
 import type {
@@ -26,7 +28,9 @@ import {
   escapeShell,
   getConversationRuntimeState,
   sleep,
+  waitForConfiguredModel,
   waitForServer,
+  waitForServerHealth,
 } from "./opencode-session-support";
 
 const DEFAULT_DAYTONA_SNAPSHOT = "bap-agent-dev";
@@ -139,6 +143,31 @@ async function createDaytonaOpencodeClient(
     model,
     fetch: authedFetch as typeof fetch,
   });
+}
+
+async function createAuthenticatedDaytonaClient(input: {
+  baseUrl: string;
+  config: OpenCodeSessionConfig;
+  token?: string;
+}): Promise<OpencodeClient> {
+  const client = await createDaytonaOpencodeClient(
+    input.baseUrl,
+    input.config.model,
+    input.token,
+  );
+
+  if (
+    input.config.userId &&
+    resolveSandboxAgentRuntimeForModel(input.config.model) === "opencode"
+  ) {
+    await injectProviderAuth(client, input.config.userId, {
+      openAIAuthSource: input.config.openAIAuthSource,
+      logPrefix: "[Daytona]",
+    });
+  }
+
+  await waitForConfiguredModel(input.baseUrl, input.config.model, input.token);
+  return client;
 }
 
 export function wrapDaytonaSandbox(sandbox: DaytonaSandboxLike): OpenCodeSandbox {
@@ -354,13 +383,18 @@ export async function getOrCreateDaytonaSandbox(
       },
     ).catch(() => null);
     if (health?.ok) {
+      const client = await createAuthenticatedDaytonaClient({
+        baseUrl,
+        config,
+        token: preview.token,
+      });
       onLifecycle?.("sandbox_reused", {
         conversationId: config.conversationId,
         sandboxId: fromConversation.id,
       });
       return {
         sandbox: wrapDaytonaSandbox(fromConversation),
-        client: await createDaytonaOpencodeClient(baseUrl, config.model, preview.token),
+        client,
         reused: true,
       };
     }
@@ -403,7 +437,12 @@ export async function getOrCreateDaytonaSandbox(
     serverUrl: preview.url,
   });
 
-  await waitForServer(baseUrl, config.model, preview.token);
+  await waitForServerHealth(baseUrl, config.model, preview.token);
+  const client = await createAuthenticatedDaytonaClient({
+    baseUrl,
+    config,
+    token: preview.token,
+  });
 
   onLifecycle?.("opencode_ready", {
     conversationId: config.conversationId,
@@ -413,7 +452,7 @@ export async function getOrCreateDaytonaSandbox(
 
   return {
     sandbox: wrapDaytonaSandbox(created),
-    client: await createDaytonaOpencodeClient(baseUrl, config.model, preview.token),
+    client,
     reused: false,
   };
 }
@@ -456,7 +495,7 @@ async function ensureDaytonaAgentReady(
       sandboxId: sandbox.id,
       serverUrl: preview.url,
     });
-    await waitForServer(baseUrl, config.model, preview.token);
+    await waitForServerHealth(baseUrl, config.model, preview.token);
   };
 
   if (init?.freshSandbox) {
@@ -469,7 +508,7 @@ async function ensureDaytonaAgentReady(
       serverUrl: preview.url,
     });
     try {
-      await waitForServer(baseUrl, config.model, preview.token, 10_000);
+      await waitForServerHealth(baseUrl, config.model, preview.token, 10_000);
     } catch {
       await startServerAndWait();
     }
@@ -483,27 +522,19 @@ async function ensureDaytonaAgentReady(
     }
   }
 
+  const client = await createAuthenticatedDaytonaClient({
+    baseUrl,
+    config,
+    token: preview.token,
+  });
+
   onLifecycle?.("opencode_ready", {
     conversationId: config.conversationId,
     sandboxId: sandbox.id,
     serverUrl: preview.url,
   });
 
-  return await createSandboxRuntimeClient({
-    serverUrl: baseUrl,
-    model: config.model,
-    fetch: preview.token
-      ? (((input, init) => {
-          if (input instanceof Request) {
-            const authedUrl = appendDaytonaAuth(input.url, preview.token);
-            return fetch(new Request(authedUrl, input), init);
-          }
-
-          const authedUrl = appendDaytonaAuth(String(input), preview.token);
-          return fetch(authedUrl, init);
-        }) as typeof fetch)
-      : undefined,
-  });
+  return client;
 }
 
 export async function getOrCreateDaytonaSandboxInit(

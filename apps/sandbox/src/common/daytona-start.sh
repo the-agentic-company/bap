@@ -7,7 +7,9 @@ SANDBOX_AGENT_PORT=2468
 cd /app
 mkdir -p /app/.bap
 export OPENCODE_CONFIG=/app/opencode.json
+export OPENCODE_ENABLE_EXPERIMENTAL_MODELS=true
 
+opencode models openai --refresh >/tmp/opencode-model-refresh.log 2>&1 || true
 opencode serve --hostname 0.0.0.0 --port "${OPENCODE_PORT}" >/tmp/opencode.log 2>&1 &
 opencode_pid=$!
 

@@ -3,6 +3,7 @@ import {
   hasCompleteRuntimeMetadata,
   printRuntimeMetadata,
   shouldAutoResumePausedRunDeadline,
+  shouldContinueAfterInitialMessage,
   shouldPrintRuntimeMetadata,
 } from "./impl";
 
@@ -103,5 +104,11 @@ describe("runtime metadata markers", () => {
         pauseReason: "run_deadline",
       }),
     ).toBe(false);
+  });
+
+  it("keeps --message interactive by default when stdio is a tty", () => {
+    expect(shouldContinueAfterInitialMessage(undefined)).toBe(true);
+    expect(shouldContinueAfterInitialMessage(true)).toBe(true);
+    expect(shouldContinueAfterInitialMessage(false)).toBe(false);
   });
 });

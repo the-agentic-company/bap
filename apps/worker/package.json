@@ -7,7 +7,7 @@
     "dev": "bun --watch --env-file=../../.env index.ts",
     "dev:selfhost": "bun --watch --env-file=../../.env.selfhost index.ts",
     "start": "bun --env-file=../../.env index.ts",
-    "bundle": "rm -rf dist && bun build index.ts --target bun --outdir dist --external cpu-features --external '@bap/sandbox/*'",
+    "bundle": "rm -rf dist && bun build index.ts --target bun --outdir dist --external cpu-features --external sharp --external '@bap/sandbox/*'",
     "build": "bunx tsc --noEmit -p tsconfig.json",
     "check": "bunx tsc --noEmit -p tsconfig.json"
   },
@@ -15,7 +15,8 @@
     "@bap/core": "workspace:*",
     "@bap/db": "workspace:*",
     "@bap/sandbox": "workspace:*",
-    "form-data": "^4.0.5"
+    "form-data": "^4.0.5",
+    "sharp": "0.35.1"
   },
   "devDependencies": {
     "typescript": "^5"

@@ -61,12 +61,46 @@ function shouldTraceOpencodeFetch(url: URL | null): boolean {
   if (!url) {
     return false;
   }
+  const isSessionPromptRoute = /\/session\/[^/]+\/(?:message|prompt_async)$/.test(url.pathname);
   return (
     url.pathname.endsWith("/session/prompt") ||
+    isSessionPromptRoute ||
     url.pathname.endsWith("/session/messages") ||
     url.pathname.endsWith("/session/get") ||
     url.pathname.endsWith("/event/subscribe")
   );
+}
+
+function summarizePromptModel(model: unknown): string | null {
+  if (typeof model === "string") {
+    return model;
+  }
+  if (!model || typeof model !== "object") {
+    return null;
+  }
+  const parsed = model as Record<string, unknown>;
+  const providerID = parsed.providerID;
+  const modelID = parsed.modelID;
+  if (typeof providerID === "string" && typeof modelID === "string") {
+    return `${providerID}/${modelID}`;
+  }
+  if (typeof modelID === "string") {
+    return modelID;
+  }
+  return null;
+}
+
+function summarizeJsonBody(text: string): string {
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    const model =
+      parsed && typeof parsed === "object"
+        ? summarizePromptModel((parsed as Record<string, unknown>).model)
+        : null;
+    return model ? `json(${text.length}, model=${model})` : `json(${text.length})`;
+  } catch {
+    return `string(${text.length})`;
+  }
 }
 
 async function getRequestBodySummary(
@@ -75,7 +109,7 @@ async function getRequestBodySummary(
 ): Promise<string | null> {
   const body = init?.body;
   if (typeof body === "string") {
-    return `string(${body.length})`;
+    return summarizeJsonBody(body);
   }
   if (body instanceof URLSearchParams) {
     return `urlsearchparams(${body.toString().length})`;
@@ -90,7 +124,7 @@ async function getRequestBodySummary(
   if (input instanceof Request && !init?.body) {
     try {
       const text = await input.clone().text();
-      return `request(${text.length})`;
+      return summarizeJsonBody(text);
     } catch {
       return "request(unreadable)";
     }
@@ -115,7 +149,9 @@ async function getResponseBodyPreview(response: Response, url: URL | null): Prom
   }
 }
 
-function getFetchPreconnect(fetchImpl: typeof fetch): ((...args: unknown[]) => unknown) | undefined {
+function getFetchPreconnect(
+  fetchImpl: typeof fetch,
+): ((...args: unknown[]) => unknown) | undefined {
   const preconnect = Reflect.get(fetchImpl as object, "preconnect");
   return typeof preconnect === "function" ? preconnect.bind(fetchImpl) : undefined;
 }
@@ -127,10 +163,7 @@ function createLoggingFetch(fetchImpl: typeof fetch): typeof fetch {
       const url = resolveFetchUrl(input);
       const shouldTrace = shouldTraceOpencodeFetch(url);
       const startedAt = Date.now();
-      const method =
-        init?.method ??
-        (input instanceof Request ? input.method : undefined) ??
-        "GET";
+      const method = init?.method ?? (input instanceof Request ? input.method : undefined) ?? "GET";
       const requestHeaders =
         getHeadersObject(init?.headers) ??
         (input instanceof Request ? getHeadersObject(input.headers) : null);

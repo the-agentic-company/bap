@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "Start or stop every Render resource in staging"
+        description: "Start every Render resource in staging"
         required: true
         default: start
         type: choice
         options:
           - start
-          - stop
+          # Temporarily disabled while staging is being used for release verification.
+          # - stop
 
 permissions:
   contents: read
@@ -58,9 +59,10 @@ jobs:
             start)
               command=resume
               ;;
-            stop)
-              command=suspend
-              ;;
+            # Temporarily disabled while staging is being used for release verification.
+            # stop)
+            #   command=suspend
+            #   ;;
             *)
               printf 'Unsupported action: %s\n' "${ACTION}" >&2
               exit 1

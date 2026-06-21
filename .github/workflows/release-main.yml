@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch, tag, or commit SHA to release"
-        required: true
-        default: "main"
+        description: "Branch, tag, or commit SHA to release. Leave empty to release the selected workflow ref."
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -24,23 +24,59 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       commit_sha: ${{ steps.resolve.outputs.commit_sha }}
+      source_ref: ${{ steps.resolve.outputs.source_ref }}
+      changed_since: ${{ steps.resolve.outputs.changed_since }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && (inputs.ref || github.ref) || github.sha }}
           fetch-depth: 0
 
-      - name: Resolve commit on main
+      - name: Resolve release commit
         id: resolve
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || '' }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
 
           git fetch origin main --force
           commit_sha="$(git rev-parse "HEAD^{commit}")"
-          git merge-base --is-ancestor "${commit_sha}" origin/main
-          echo "commit_sha=${commit_sha}" >> "$GITHUB_OUTPUT"
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            if [ -n "${INPUT_REF}" ]; then
+              source_ref="${INPUT_REF}"
+            else
+              source_ref="${GITHUB_REF_NAME:-${commit_sha}}"
+            fi
+          else
+            source_ref="${GITHUB_REF_NAME:-${commit_sha}}"
+          fi
+
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            if git merge-base --is-ancestor "${commit_sha}" origin/main; then
+              changed_since="$(git rev-parse "${commit_sha}^")"
+            else
+              changed_since="$(git merge-base "${commit_sha}" origin/main)"
+            fi
+          else
+            git merge-base --is-ancestor "${commit_sha}" origin/main
+            changed_since="${BEFORE}"
+            if [ -z "${changed_since}" ] || [[ "${changed_since}" =~ ^0+$ ]]; then
+              changed_since="$(git rev-parse "${commit_sha}^")"
+            fi
+          fi
+
+          {
+            echo "commit_sha=${commit_sha}"
+            echo "source_ref=${source_ref}"
+            echo "changed_since=${changed_since}"
+          } >> "$GITHUB_OUTPUT"
+          printf 'Resolved release ref "%s" to %s (%s)\n' \
+            "${source_ref}" "${commit_sha}" "$(git show -s --format=%s "${commit_sha}")"
 
   observability-changes:
     needs: resolve
@@ -65,7 +101,7 @@ jobs:
       - name: Detect observability changes
         id: changes
         env:
-          BEFORE: ${{ github.event.before }}
+          CHANGED_SINCE: ${{ needs.resolve.outputs.changed_since }}
           EVENT_NAME: ${{ github.event_name }}
           HEAD: ${{ needs.resolve.outputs.commit_sha }}
         shell: bash
@@ -80,7 +116,7 @@ jobs:
             vector=true
             caddy=true
           else
-            before="${BEFORE}"
+            before="${CHANGED_SINCE}"
             head="${HEAD}"
 
             if [ -z "${before}" ] || [[ "${before}" =~ ^0+$ ]]; then
@@ -172,7 +208,7 @@ jobs:
           format: compact
           fail-on-issues: true
           version: 2.88.3
-          changed-since: ${{ github.event_name == 'push' && github.event.before || format('{0}^', needs.resolve.outputs.commit_sha) }}
+          changed-since: ${{ needs.resolve.outputs.changed_since }}
 
       - name: Check Render observability config
         run: bun scripts/check-render-observability-config.ts
@@ -238,6 +274,7 @@ jobs:
     uses: ./.github/workflows/render-deploy.yml
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
+      source_ref: ${{ needs.resolve.outputs.source_ref }}
       environment: staging
     secrets: inherit
 

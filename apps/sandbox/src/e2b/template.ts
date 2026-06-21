@@ -14,6 +14,8 @@ const templateStartScript = [
   "cd /app",
   "mkdir -p /app/.bap",
   "export OPENCODE_CONFIG=/app/opencode.json",
+  "export OPENCODE_ENABLE_EXPERIMENTAL_MODELS=true",
+  "opencode models openai --refresh >/tmp/opencode-model-refresh.log 2>&1 || true",
   `opencode serve --hostname 0.0.0.0 --port ${OPENCODE_PORT} >/tmp/opencode.log 2>&1 &`,
   "opencode_pid=$!",
   `sandbox-agent server --no-token --host 0.0.0.0 --port ${SANDBOX_AGENT_PORT} >/tmp/sandbox-agent.log 2>&1 &`,
@@ -87,7 +89,7 @@ export const template = Template({
   .runCmd("mkdir -p $HOME/.config/opencode /app/.opencode $HOME/.cache/opencode")
   .runCmd("cp /app/opencode.json /app/.opencode/opencode.json")
   .runCmd(
-    'bash -lc \'set -euo pipefail; opencode serve --hostname 127.0.0.1 --port 4096 > /tmp/opencode-prewarm.log 2>&1 & pid=$!; ok=0; for i in $(seq 1 120); do if curl -fsS http://127.0.0.1:4096/health >/dev/null 2>&1; then ok=1; break; fi; sleep 0.25; done; kill $pid || true; wait $pid || true; test "$ok" = "1"\'',
+    'bash -lc \'set -euo pipefail; export OPENCODE_ENABLE_EXPERIMENTAL_MODELS=true; opencode models openai --refresh >/tmp/opencode-model-refresh.log 2>&1 || true; opencode serve --hostname 127.0.0.1 --port 4096 > /tmp/opencode-prewarm.log 2>&1 & pid=$!; ok=0; for i in $(seq 1 120); do if curl -fsS http://127.0.0.1:4096/health >/dev/null 2>&1; then ok=1; break; fi; sleep 0.25; done; kill $pid || true; wait $pid || true; test "$ok" = "1"\'',
   )
   .runCmd(
     'bash -lc \'set -euo pipefail; sandbox-agent server --no-token --host 127.0.0.1 --port 2468 > /tmp/sandbox-agent-prewarm.log 2>&1 & pid=$!; ok=0; for i in $(seq 1 120); do if curl -fsS http://127.0.0.1:2468/v1/health >/dev/null 2>&1; then ok=1; break; fi; sleep 0.25; done; kill $pid || true; wait $pid || true; test "$ok" = "1"\'',

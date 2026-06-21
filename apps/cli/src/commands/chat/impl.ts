@@ -106,6 +106,10 @@ function attachSigintHandler(rl: readline.Interface): void {
   });
 }
 
+export function shouldContinueAfterInitialMessage(value: boolean | undefined): boolean {
+  return value ?? true;
+}
+
 async function runChatLoop(
   stdout: NodeJS.WriteStream,
   client: Parameters<typeof runOneGeneration>[1],
@@ -226,7 +230,9 @@ export default async function (this: LocalContext, flags: ChatFlags): Promise<vo
     debugForceRuntimeNoProgressAfterPrompt:
       flags.chaosForceRuntimeNoProgress ?? false,
     validate: flags.validate,
-    continueAfterMessage: (flags as InternalChatFlags).continueAfterMessage,
+    continueAfterMessage: shouldContinueAfterInitialMessage(
+      (flags as InternalChatFlags).continueAfterMessage,
+    ),
     file: flags.file ?? [],
     perfettoTrace: flags.perfettoTrace ?? false,
     timing: flags.timing ?? false,

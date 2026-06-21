@@ -7,6 +7,11 @@ on:
         description: "Git commit SHA to deploy"
         required: true
         type: string
+      source_ref:
+        description: "Git ref whose head resolved to commit_sha"
+        required: false
+        type: string
+        default: ""
       environment:
         description: "Environment to target"
         required: true
@@ -73,6 +78,19 @@ jobs:
             exit 1
           fi
 
+      - name: Log web deploy target
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source_ref="${SOURCE_REF:--}"
+          subject="$(git show -s --format=%s "${COMMIT_SHA}")"
+          printf '[render-deploy] Deploy target service=%s source_ref=%s commit=%s %s\n' \
+            "${RENDER_WEB_SERVICE_NAME}" "${source_ref}" "${COMMIT_SHA}" "${subject}"
+
       - name: Capture previous web deploy
         id: previous-web
         run: bun scripts/release/render-deploy.ts previous-success --service-name "${RENDER_WEB_SERVICE_NAME}"
@@ -81,7 +99,12 @@ jobs:
         id: deploy-web
         env:
           COMMIT_SHA: ${{ inputs.commit_sha }}
-        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_WEB_SERVICE_NAME}" --commit "${COMMIT_SHA}"
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: >
+          bun scripts/release/render-deploy.ts deploy
+          --service-name "${RENDER_WEB_SERVICE_NAME}"
+          --commit "${COMMIT_SHA}"
+          --source-ref "${SOURCE_REF}"
 
   deploy-worker:
     runs-on: ubuntu-latest
@@ -121,6 +144,19 @@ jobs:
             exit 1
           fi
 
+      - name: Log worker deploy target
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source_ref="${SOURCE_REF:--}"
+          subject="$(git show -s --format=%s "${COMMIT_SHA}")"
+          printf '[render-deploy] Deploy target service=%s source_ref=%s commit=%s %s\n' \
+            "${RENDER_WORKER_SERVICE_NAME}" "${source_ref}" "${COMMIT_SHA}" "${subject}"
+
       - name: Capture previous worker deploy
         id: previous-worker
         run: bun scripts/release/render-deploy.ts previous-success --service-name "${RENDER_WORKER_SERVICE_NAME}"
@@ -129,7 +165,12 @@ jobs:
         id: deploy-worker
         env:
           COMMIT_SHA: ${{ inputs.commit_sha }}
-        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_WORKER_SERVICE_NAME}" --commit "${COMMIT_SHA}"
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: >
+          bun scripts/release/render-deploy.ts deploy
+          --service-name "${RENDER_WORKER_SERVICE_NAME}"
+          --commit "${COMMIT_SHA}"
+          --source-ref "${SOURCE_REF}"
 
   deploy-mcp:
     runs-on: ubuntu-latest
@@ -169,6 +210,19 @@ jobs:
             exit 1
           fi
 
+      - name: Log MCP deploy target
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          source_ref="${SOURCE_REF:--}"
+          subject="$(git show -s --format=%s "${COMMIT_SHA}")"
+          printf '[render-deploy] Deploy target service=%s source_ref=%s commit=%s %s\n' \
+            "${RENDER_MCP_SERVICE_NAME}" "${source_ref}" "${COMMIT_SHA}" "${subject}"
+
       - name: Capture previous MCP deploy
         id: previous-mcp
         run: bun scripts/release/render-deploy.ts previous-success --service-name "${RENDER_MCP_SERVICE_NAME}"
@@ -177,4 +231,9 @@ jobs:
         id: deploy-mcp
         env:
           COMMIT_SHA: ${{ inputs.commit_sha }}
-        run: bun scripts/release/render-deploy.ts deploy --service-name "${RENDER_MCP_SERVICE_NAME}" --commit "${COMMIT_SHA}"
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: >
+          bun scripts/release/render-deploy.ts deploy
+          --service-name "${RENDER_MCP_SERVICE_NAME}"
+          --commit "${COMMIT_SHA}"
+          --source-ref "${SOURCE_REF}"

@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
 type DeployStatus =
@@ -58,6 +59,11 @@ type RenderApiError = {
 };
 
 type Command = "previous-success" | "deploy" | "rollback" | "wait";
+type CommandHandler = (serviceId: string) => Promise<void>;
+type WaitForDeployOptions = {
+  timeoutMs: number;
+  pollMs: number;
+};
 
 const renderApiBaseUrl = "https://api.render.com/v1";
 const successStatuses = new Set(["live"]);
@@ -116,6 +122,97 @@ function describeUnknownError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function normalizeCommitId(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function shortCommitId(value: string): string {
+  return value.trim().slice(0, 12);
+}
+
+function commitIdsMatch(actual: string, expected: string): boolean {
+  const normalizedActual = normalizeCommitId(actual);
+  const normalizedExpected = normalizeCommitId(expected);
+  if (!normalizedActual || !normalizedExpected) {
+    return false;
+  }
+
+  return (
+    normalizedActual === normalizedExpected ||
+    normalizedActual.startsWith(normalizedExpected) ||
+    normalizedExpected.startsWith(normalizedActual)
+  );
+}
+
+function resolveLocalCommitSubject(commitId: string): string | null {
+  try {
+    const subject = execFileSync("git", ["show", "-s", "--format=%s", commitId], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return subject || null;
+  } catch {
+    return null;
+  }
+}
+
+function formatCommit(commitId: string, subject?: string | null): string {
+  const suffix = subject ? ` ${subject}` : "";
+  return `${shortCommitId(commitId)}${suffix}`;
+}
+
+function formatRenderCommit(deploy: RenderDeploy): string {
+  const commitId = deploy.commit?.id?.trim();
+  if (!commitId) {
+    return "unreported";
+  }
+  return formatCommit(commitId, deploy.commit?.message);
+}
+
+function assertRenderCommitMatchesExpected(deploy: RenderDeploy, expectedCommitId: string): void {
+  const actualCommitId = deploy.commit?.id?.trim();
+  if (!actualCommitId) {
+    fail(
+      `Render deploy ${deploy.id} did not report a commit id; expected ${shortCommitId(
+        expectedCommitId,
+      )}`,
+    );
+  }
+
+  if (!commitIdsMatch(actualCommitId, expectedCommitId)) {
+    fail(
+      `Render deploy ${deploy.id} is for ${formatRenderCommit(
+        deploy,
+      )}, expected ${shortCommitId(expectedCommitId)}`,
+    );
+  }
+}
+
+function formatExpectedCommitSuffix(expectedCommitId?: string): string {
+  return expectedCommitId ? ` expected=${shortCommitId(expectedCommitId)}` : "";
+}
+
+function readWaitForDeployOptions(): WaitForDeployOptions {
+  return {
+    timeoutMs: Number(readArg("--timeout-ms") ?? "1800000"),
+    pollMs: Number(readArg("--poll-ms") ?? "15000"),
+  };
+}
+
+function logDeployPoll(
+  serviceId: string,
+  deployId: string,
+  deploy: RenderDeploy,
+  status: string,
+  expectedCommitId?: string,
+): void {
+  console.log(
+    `[render-deploy] ${serviceId} ${deployId} status=${status} render_commit=${formatRenderCommit(
+      deploy,
+    )}${formatExpectedCommitSuffix(expectedCommitId)}`,
+  );
+}
+
 function isTransientRenderError(error: unknown): boolean {
   if (error instanceof RenderRequestError) {
     return error.status >= 500 || error.status === 429;
@@ -168,9 +265,7 @@ async function renderRequestWithRetry<T>(path: string, init: RequestInit = {}): 
       }
 
       console.error(
-        `[render-deploy] ${describeUnknownError(error)}; retrying in ${
-          delayMs / 1000
-        }s.`,
+        `[render-deploy] ${describeUnknownError(error)}; retrying in ${delayMs / 1000}s.`,
       );
       await sleep(delayMs);
     }
@@ -497,31 +592,84 @@ async function printRecentLogs(
   printLogs(sortLogsAscending(tail.logs ?? []));
 }
 
-async function waitForDeploy(serviceId: string, deployId: string): Promise<RenderDeploy> {
-  const timeoutMs = Number(readArg("--timeout-ms") ?? "1800000");
-  const pollMs = Number(readArg("--poll-ms") ?? "15000");
+async function failOnUnexpectedDeployCommit(
+  serviceId: string,
+  deploy: RenderDeploy,
+  expectedCommitId?: string,
+): Promise<void> {
+  const actualCommitId = deploy.commit?.id;
+  if (!expectedCommitId || !actualCommitId || commitIdsMatch(actualCommitId, expectedCommitId)) {
+    return;
+  }
+
+  await printDeployDiagnostics(serviceId, deploy);
+  assertRenderCommitMatchesExpected(deploy, expectedCommitId);
+}
+
+async function finishIfDeployTerminal(
+  serviceId: string,
+  deployId: string,
+  deploy: RenderDeploy,
+  status: string,
+  expectedCommitId?: string,
+): Promise<RenderDeploy | null> {
+  if (successStatuses.has(status)) {
+    if (expectedCommitId) {
+      assertRenderCommitMatchesExpected(deploy, expectedCommitId);
+    }
+    return deploy;
+  }
+
+  if (failedStatuses.has(status)) {
+    await printDeployDiagnostics(serviceId, deploy);
+    fail(`Deploy ${deployId} for service ${serviceId} failed with status ${status}`);
+  }
+
+  return null;
+}
+
+async function failOnDeployTimeout(
+  serviceId: string,
+  deployId: string,
+  deploy: RenderDeploy,
+  startedAt: number,
+  timeoutMs: number,
+): Promise<void> {
+  if (Date.now() - startedAt <= timeoutMs) {
+    return;
+  }
+
+  await printDeployDiagnostics(serviceId, deploy);
+  fail(`Timed out waiting for deploy ${deployId} for service ${serviceId}`);
+}
+
+async function waitForDeploy(
+  serviceId: string,
+  deployId: string,
+  expectedCommitId?: string,
+): Promise<RenderDeploy> {
+  const { timeoutMs, pollMs } = readWaitForDeployOptions();
   const startedAt = Date.now();
 
   while (true) {
     const deploy = await getDeploy(serviceId, deployId);
     const status = deploy.status ?? "unknown";
-    console.log(`[render-deploy] ${serviceId} ${deployId} status=${status}`);
+    logDeployPoll(serviceId, deployId, deploy, status, expectedCommitId);
+    await failOnUnexpectedDeployCommit(serviceId, deploy, expectedCommitId);
 
-    if (successStatuses.has(status)) {
-      return deploy;
+    const terminalDeploy = await finishIfDeployTerminal(
+      serviceId,
+      deployId,
+      deploy,
+      status,
+      expectedCommitId,
+    );
+    if (terminalDeploy) {
+      return terminalDeploy;
     }
 
-    if (failedStatuses.has(status)) {
-      await printDeployDiagnostics(serviceId, deploy);
-      fail(`Deploy ${deployId} for service ${serviceId} failed with status ${status}`);
-    }
-
-    if (Date.now() - startedAt > timeoutMs) {
-      await printDeployDiagnostics(serviceId, deploy);
-      fail(`Timed out waiting for deploy ${deployId} for service ${serviceId}`);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    await failOnDeployTimeout(serviceId, deployId, deploy, startedAt, timeoutMs);
+    await sleep(pollMs);
   }
 }
 
@@ -552,10 +700,7 @@ async function createDeploy(
   );
 }
 
-async function updateDockerCommand(
-  serviceId: string,
-  dockerCommand: string,
-): Promise<void> {
+async function updateDockerCommand(serviceId: string, dockerCommand: string): Promise<void> {
   await renderRequestWithRetry(`/services/${serviceId}`, {
     method: "PATCH",
     body: JSON.stringify({
@@ -577,55 +722,104 @@ async function rollbackDeploy(serviceId: string, deployId: string): Promise<Rend
   );
 }
 
-async function main(): Promise<void> {
-  const command = process.argv[2] as Command | undefined;
-  if (!command) {
+function isCommand(value: string | undefined): value is Command {
+  return (
+    value === "previous-success" || value === "deploy" || value === "rollback" || value === "wait"
+  );
+}
+
+function readCommand(): Command {
+  const command = process.argv[2];
+  if (!isCommand(command)) {
     fail("Usage: bun scripts/release/render-deploy.ts <previous-success|deploy|rollback|wait>");
   }
+  return command;
+}
 
+async function handlePreviousSuccess(serviceId: string): Promise<void> {
+  const deploy = await findPreviousSuccessfulDeploy(serviceId);
+  if (!deploy) {
+    fail(`No previous successful deploy found for service ${serviceId}`);
+  }
+  writeOutput("deploy_id", deploy.id);
+}
+
+function logDeployRequest(
+  serviceId: string,
+  input: {
+    sourceRef?: string;
+    commitId?: string;
+    commitSubject?: string | null;
+    imageUrl?: string;
+  },
+): void {
+  console.log(
+    `[render-deploy] Preparing deploy for ${serviceId}: source_ref=${
+      input.sourceRef || "-"
+    } commit=${
+      input.commitId ? formatCommit(input.commitId, input.commitSubject) : "-"
+    } image_url=${input.imageUrl || "-"}`,
+  );
+}
+
+async function applyDockerCommandOverride(
+  serviceId: string,
+  dockerCommand?: string,
+): Promise<void> {
+  if (!dockerCommand) {
+    return;
+  }
+  console.log(`[render-deploy] Updating Docker command for ${serviceId}`);
+  await updateDockerCommand(serviceId, dockerCommand);
+}
+
+async function handleDeploy(serviceId: string): Promise<void> {
+  const commitId = readArg("--commit")?.trim();
+  const sourceRef = readArg("--source-ref")?.trim();
+  const imageUrl = readArg("--image-url")?.trim();
+  const dockerCommand = readArg("--docker-command")?.trim();
+  if (!commitId && !imageUrl) {
+    fail("Missing required argument --commit or --image-url");
+  }
+
+  const commitSubject = commitId ? resolveLocalCommitSubject(commitId) : null;
+  logDeployRequest(serviceId, { sourceRef, commitId, commitSubject, imageUrl });
+  await applyDockerCommandOverride(serviceId, dockerCommand);
+
+  const deploy = await createDeploy(serviceId, { commitId, imageUrl });
+  console.log(
+    `[render-deploy] Created deploy ${deploy.id} for ${serviceId}: requested_commit=${
+      commitId ? formatCommit(commitId, commitSubject) : "-"
+    } render_commit=${formatRenderCommit(deploy)}`,
+  );
+  await failOnUnexpectedDeployCommit(serviceId, deploy, commitId);
+  writeOutput("deploy_id", deploy.id);
+  await waitForDeploy(serviceId, deploy.id, commitId);
+}
+
+async function handleRollback(serviceId: string): Promise<void> {
+  const targetDeployId = requireArg("--deploy-id");
+  const deploy = await rollbackDeploy(serviceId, targetDeployId);
+  writeOutput("rollback_deploy_id", deploy.id);
+  await waitForDeploy(serviceId, deploy.id);
+}
+
+async function handleWait(serviceId: string): Promise<void> {
+  const deployId = requireArg("--deploy-id");
+  await waitForDeploy(serviceId, deployId);
+}
+
+const commandHandlers: Record<Command, CommandHandler> = {
+  "previous-success": handlePreviousSuccess,
+  deploy: handleDeploy,
+  rollback: handleRollback,
+  wait: handleWait,
+};
+
+async function main(): Promise<void> {
+  const command = readCommand();
   const serviceId = await resolveServiceId();
-
-  if (command === "previous-success") {
-    const deploy = await findPreviousSuccessfulDeploy(serviceId);
-    if (!deploy) {
-      fail(`No previous successful deploy found for service ${serviceId}`);
-    }
-    writeOutput("deploy_id", deploy.id);
-    return;
-  }
-
-  if (command === "deploy") {
-    const commitId = readArg("--commit")?.trim();
-    const imageUrl = readArg("--image-url")?.trim();
-    const dockerCommand = readArg("--docker-command")?.trim();
-    if (!commitId && !imageUrl) {
-      fail("Missing required argument --commit or --image-url");
-    }
-    if (dockerCommand) {
-      console.log(`[render-deploy] Updating Docker command for ${serviceId}`);
-      await updateDockerCommand(serviceId, dockerCommand);
-    }
-    const deploy = await createDeploy(serviceId, { commitId, imageUrl });
-    writeOutput("deploy_id", deploy.id);
-    await waitForDeploy(serviceId, deploy.id);
-    return;
-  }
-
-  if (command === "rollback") {
-    const targetDeployId = requireArg("--deploy-id");
-    const deploy = await rollbackDeploy(serviceId, targetDeployId);
-    writeOutput("rollback_deploy_id", deploy.id);
-    await waitForDeploy(serviceId, deploy.id);
-    return;
-  }
-
-  if (command === "wait") {
-    const deployId = requireArg("--deploy-id");
-    await waitForDeploy(serviceId, deployId);
-    return;
-  }
-
-  fail(`Unsupported command: ${command}`);
+  await commandHandlers[command](serviceId);
 }
 
 if (import.meta.main) {

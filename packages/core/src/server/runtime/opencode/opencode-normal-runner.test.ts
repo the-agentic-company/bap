@@ -527,6 +527,43 @@ describe("OpenCodeNormalRunner", () => {
     );
   });
 
+  it("polls durable cancellation while the OpenCode prompt is pending", async () => {
+    const prompt = vi.fn(() => new Promise<never>(() => undefined));
+    const abort = vi.fn().mockResolvedValue({ data: null, error: null });
+    const subscribe = vi.fn().mockResolvedValue({
+      stream: asAsyncIterableThenHang([]),
+    });
+    mockSandboxRuntime({
+      client: createRuntimeClient({ subscribe, prompt, abort }),
+    });
+    const refreshCancellationSignal = vi.fn(async (ctx: GenerationContext) => {
+      if (refreshCancellationSignal.mock.calls.length >= 2) {
+        ctx.abortController.abort();
+        return true;
+      }
+      return false;
+    });
+    const { runner, finishGeneration } = createRunner({
+      refreshCancellationSignal,
+    });
+    const ctx = createContext({ id: "gen-cancel-pending-prompt" });
+
+    const runPromise = runner.run(ctx);
+
+    await Promise.race([
+      runPromise,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Runner did not finish after cancellation.")), 3_000);
+      }),
+    ]);
+
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(refreshCancellationSignal).toHaveBeenCalledTimes(2);
+    expect(abort).toHaveBeenCalledWith({ sessionID: "session-1" });
+    expect(finishGeneration).toHaveBeenCalledWith(ctx, "cancelled");
+    expect(ctx.abortController.signal.aborted).toBe(true);
+  });
+
   it("starts post-prompt cache writes without blocking prompt completion", async () => {
     const cacheWrite = createDeferred<void>();
     let cacheWriteStarted = false;
@@ -705,6 +742,57 @@ describe("OpenCodeNormalRunner", () => {
         expect.anything(),
       );
       expect(hangingRunner.finishGeneration).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("parks when the run deadline fires while prompt and event stream are both pending", async () => {
+    vi.useFakeTimers();
+    try {
+      const promptStarted = createDeferred<void>();
+      const releaseEventStream = createDeferred<void>();
+      async function* openEventStream(): AsyncIterable<RuntimeEvent> {
+        await releaseEventStream.promise;
+      }
+      const hangingPrompt = vi.fn(() => {
+        promptStarted.resolve(undefined);
+        return new Promise<never>(() => undefined);
+      });
+      const runtimeClient = createRuntimeClient({
+        subscribe: vi.fn().mockResolvedValue({ stream: openEventStream() }),
+        prompt: hangingPrompt,
+      });
+      mockSandboxRuntime({ client: runtimeClient });
+      const runner = createRunner();
+      const ctx = createContext({
+        id: "gen-deadline-open-stream",
+        conversationId: "conv-deadline-open-stream",
+        deadlineAt: new Date(Date.now() + 50),
+      });
+
+      const runPromise = runner.runner.run(ctx);
+      await promptStarted.promise;
+      await vi.advanceTimersByTimeAsync(60);
+
+      let resolved = false;
+      const observedRun = runPromise.then(() => {
+        resolved = true;
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      try {
+        expect(resolved).toBe(true);
+        expect(runner.parkGenerationForRunDeadline).toHaveBeenCalledWith(
+          ctx,
+          runtimeClient,
+        );
+        expect(runner.finishGeneration).not.toHaveBeenCalled();
+      } finally {
+        releaseEventStream.resolve(undefined);
+        await observedRun;
+      }
     } finally {
       vi.useRealTimers();
     }

@@ -4,6 +4,7 @@ import { coworker } from "@bap/db/schema";
 
 const COWORKER_USERNAME_MAX_LENGTH = 64;
 const COWORKER_DESCRIPTION_MAX_LENGTH = 280;
+export const COWORKER_METADATA_GENERATION_TIMEOUT_MS = 5_000;
 
 type CoworkerQueryLike = {
   findFirst: (...args: any[]) => Promise<unknown>;
@@ -35,6 +36,36 @@ type GeneratedCoworkerMetadata = {
   description: string | null;
   username: string | null;
 };
+
+function unrefTimer(timer: ReturnType<typeof setTimeout>): void {
+  const unref = (timer as { unref?: () => void }).unref;
+  if (typeof unref === "function") {
+    unref.call(timer);
+  }
+}
+
+async function withMetadataGenerationTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => {
+          reject(
+            new Error(
+              `Coworker metadata generation timed out after ${COWORKER_METADATA_GENERATION_TIMEOUT_MS}ms`,
+            ),
+          );
+        }, COWORKER_METADATA_GENERATION_TIMEOUT_MS);
+        unrefTimer(timeout);
+      }),
+    ]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
 
 function isBlank(value: string | null | undefined): boolean {
   return !value || value.trim().length === 0;
@@ -242,7 +273,7 @@ async function generateCoworkerMetadataWithGemini(params: {
       ),
     ].join("\n");
 
-    const result = await model.generateContent(prompt);
+    const result = await withMetadataGenerationTimeout(model.generateContent(prompt));
     const text = result.response.text();
     if (!text) {
       return null;
