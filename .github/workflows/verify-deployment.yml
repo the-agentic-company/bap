@@ -75,7 +75,7 @@ jobs:
           APP_MCP_BASE_URL: ${{ secrets.APP_MCP_BASE_URL }}
           APP_SERVER_SECRET: ${{ secrets.APP_SERVER_SECRET }}
           APP_SERVER_URL: ${{ inputs.base_url }}
-          E2E_CLI_LIVE_TEST_FILES: "tests/e2e-cli/chat.interrupt.cli.live.test.ts"
+          E2E_CLI_LIVE_TEST_FILES: ""
           E2E_CLI_LIVE_TEST_NAME: ""
           PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
