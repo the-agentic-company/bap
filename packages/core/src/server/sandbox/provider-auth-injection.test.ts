@@ -45,4 +45,43 @@ describe("provider auth injection", () => {
       }),
     );
   });
+
+  it("serializes provider auth writes to avoid losing OpenCode auth config updates", async () => {
+    getResolvedProviderAuthMock.mockImplementation(
+      async ({ provider }: { provider: string }) => {
+        if (provider === "openai") {
+          return {
+            provider: "openai",
+            accessToken: "openai-access",
+            refreshToken: "openai-refresh",
+            expiresAt: Date.now() + 60_000,
+            authSource: "shared",
+          };
+        }
+        if (provider === "google") {
+          return {
+            provider: "google",
+            accessToken: "google-key",
+            refreshToken: null,
+            expiresAt: null,
+            authSource: "shared",
+          };
+        }
+        return null;
+      },
+    );
+
+    const events: string[] = [];
+    const authSet = vi.fn().mockImplementation(async ({ providerID }: { providerID: string }) => {
+      events.push(`start:${providerID}`);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      events.push(`end:${providerID}`);
+      return { data: true };
+    });
+    const client = { auth: { set: authSet } } as unknown as OpencodeClient;
+
+    await injectProviderAuth(client, "user-1", { openAIAuthSource: "shared" });
+
+    expect(events).toEqual(["start:openai", "end:openai", "start:google", "end:google"]);
+  });
 });

@@ -97,19 +97,18 @@ export async function injectProviderAuth(
     const auths = [openaiAuth, googleAuth, kimiAuth]
       .filter((auth): auth is NonNullable<typeof auth> => Boolean(auth))
       .map(toRuntimeProviderAuthPayload);
-    await Promise.all(
-      auths.map(async (auth) => {
-        try {
-          await setRuntimeProviderAuth(client, auth);
-          console.log(`${logPrefix} Injected ${auth.providerID} auth for user ${userId}`);
-        } catch (err) {
-          console.error(
-            `${logPrefix} Failed to inject ${auth.providerID} auth after ${AUTH_SET_MAX_ATTEMPTS} attempts:`,
-            err,
-          );
-        }
-      }),
-    );
+    for (const auth of auths) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- OpenCode auth writes must be serialized
+        await setRuntimeProviderAuth(client, auth);
+        console.log(`${logPrefix} Injected ${auth.providerID} auth for user ${userId}`);
+      } catch (err) {
+        console.error(
+          `${logPrefix} Failed to inject ${auth.providerID} auth after ${AUTH_SET_MAX_ATTEMPTS} attempts:`,
+          err,
+        );
+      }
+    }
   } catch (err) {
     console.error(`${logPrefix} Failed to load provider auths:`, err);
   }
