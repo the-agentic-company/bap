@@ -5,6 +5,7 @@ import {
 } from "./opencode-runtime-driver";
 import { logger } from "../../utils/observability";
 import { GenerationSuspendedError } from "../../services/generation/core/turn-suspension";
+import type { RuntimeHarnessClient } from "../../sandbox/core/types";
 import type { GenerationContext } from "../../services/generation/types";
 import type { NormalRunnerCallbacks } from "./opencode-runner-types";
 import {
@@ -20,14 +21,112 @@ import { RuntimeNoProgressWatchdog } from "./opencode-runner-watchdog";
 
 export type { NormalRunnerCallbacks } from "./opencode-runner-types";
 
+const OPENCODE_PROMPT_CANCELLATION_POLL_INTERVAL_MS = 1_000;
+
+function startPromptCancellationPoll(input: {
+  ctx: GenerationContext;
+  callbacks: NormalRunnerCallbacks;
+  runtimeClient: RuntimeHarnessClient;
+  sessionId: string;
+  promptTimeoutController: AbortController;
+}): {
+  promise: Promise<{ type: "cancelled" }>;
+  stop: () => void;
+} {
+  let stopped = false;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const stop = () => {
+    stopped = true;
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = undefined;
+    }
+  };
+
+  const promise = new Promise<{ type: "cancelled" }>((resolve) => {
+    const poll = async () => {
+      if (stopped) {
+        return;
+      }
+
+      try {
+        const cancellationRequested =
+          input.ctx.abortController.signal.aborted ||
+          (await input.callbacks.refreshCancellationSignal(input.ctx));
+        if (stopped) {
+          return;
+        }
+        if (cancellationRequested) {
+          stop();
+          input.promptTimeoutController.abort();
+          logger.info({
+            event: "OPENCODE_PROMPT_CANCELLATION_OBSERVED",
+            ...{
+              source: "generation-manager",
+              traceId: input.ctx.traceId,
+              generationId: input.ctx.id,
+              conversationId: input.ctx.conversationId,
+              userId: input.ctx.userId,
+              sessionId: input.sessionId,
+            },
+          });
+          void input.runtimeClient.abort({ sessionID: input.sessionId }).catch((err) => {
+            console.error("[GenerationManager] Failed to abort cancelled OpenCode session:", err);
+          });
+          resolve({ type: "cancelled" });
+          return;
+        }
+      } catch (error) {
+        logger.warn({
+          event: "OPENCODE_PROMPT_CANCELLATION_POLL_FAILED",
+          ...{
+            source: "generation-manager",
+            traceId: input.ctx.traceId,
+            generationId: input.ctx.id,
+            conversationId: input.ctx.conversationId,
+            userId: input.ctx.userId,
+            sessionId: input.sessionId,
+          },
+          ...{
+            error: formatErrorMessage(error),
+          },
+        });
+      }
+
+      if (!stopped) {
+        timeoutId = setTimeout(poll, OPENCODE_PROMPT_CANCELLATION_POLL_INTERVAL_MS);
+      }
+    };
+
+    timeoutId = setTimeout(poll, OPENCODE_PROMPT_CANCELLATION_POLL_INTERVAL_MS);
+  });
+
+  return { promise, stop };
+}
+
 export class OpenCodeNormalRunner {
   constructor(private readonly callbacks: NormalRunnerCallbacks) {}
 
   async run(ctx: GenerationContext): Promise<void> {
     let promptTimeoutTriggered = false;
     let clearPromptTimeout: (() => void) | undefined;
+    let stopPromptCancellationPoll: (() => void) | undefined;
     let watchdog: RuntimeNoProgressWatchdog | undefined;
-    let client: import("../../sandbox/core/types").RuntimeHarnessClient | undefined;
+    let client: RuntimeHarnessClient | undefined;
+    const stopPromptLevelWatchers = () => {
+      this.callbacks.stopExternalInterruptPolling(ctx);
+      clearPromptTimeout?.();
+      watchdog?.clear();
+      stopPromptCancellationPoll?.();
+    };
+    const finishPromptCancellation = async () => {
+      stopPromptLevelWatchers();
+      if (ctx.abortForInterruptPark) {
+        return;
+      }
+      await this.callbacks.finishGeneration(ctx, "cancelled");
+    };
     try {
       if (await this.callbacks.refreshCancellationSignal(ctx, { force: true })) {
         await this.callbacks.finishGeneration(ctx, "cancelled");
@@ -124,6 +223,14 @@ export class OpenCodeNormalRunner {
           },
         );
       this.callbacks.startExternalInterruptPolling(ctx);
+      const promptCancellationPoll = startPromptCancellationPoll({
+        ctx,
+        callbacks: this.callbacks,
+        runtimeClient,
+        sessionId: activeSessionId,
+        promptTimeoutController,
+      });
+      stopPromptCancellationPoll = promptCancellationPoll.stop;
 
       const eventLoop = this.callbacks.opencodeTurnEvents.createEventLoop({
         ctx,
@@ -190,12 +297,21 @@ export class OpenCodeNormalRunner {
       const eventLoopConsumeOutcome = await Promise.race([
         eventLoopConsumePromise,
         runtimeNoProgressPromise,
+        promptCancellationPoll.promise,
       ]);
+      if (eventLoopConsumeOutcome.type === "cancelled") {
+        await finishPromptCancellation();
+        return;
+      }
       let deferredSessionError: Error | null = null;
       if (
         eventLoopConsumeOutcome.type === "event_loop_error" &&
         !watchdog.wasTriggered
       ) {
+        if (ctx.abortController.signal.aborted) {
+          await finishPromptCancellation();
+          return;
+        }
         const sessionErrorMessage = eventLoop.snapshot().sessionErrorMessage;
         if (sessionErrorMessage && !ctx.abortController.signal.aborted && !promptTimeoutTriggered) {
           deferredSessionError =
@@ -208,6 +324,7 @@ export class OpenCodeNormalRunner {
       }
 
       if (watchdog.wasTriggered) {
+        stopPromptLevelWatchers();
         await watchdog.finishFailure(
           watchdog.triggeredReason ?? "runtime_no_progress_after_prompt",
         );
@@ -250,8 +367,14 @@ export class OpenCodeNormalRunner {
             },
           }).then((value) => ({ type: "terminal" as const, value })),
           runtimeNoProgressPromise,
+          promptCancellationPoll.promise,
         ]);
+        if (terminalOutcomeResult.type === "cancelled") {
+          await finishPromptCancellation();
+          return;
+        }
         if (terminalOutcomeResult.type === "runtime_no_progress") {
+          stopPromptLevelWatchers();
           await watchdog.finishFailure(terminalOutcomeResult.reason);
           return;
         }
@@ -262,13 +385,11 @@ export class OpenCodeNormalRunner {
             this.callbacks.markPhase(ctx, "session_idle");
           }
         } else if (terminalOutcome === "timed_out") {
+          stopPromptLevelWatchers();
           await this.callbacks.parkGenerationForRunDeadline(ctx, runtimeClient);
           return;
         } else if (terminalOutcome === "aborted") {
-          if (ctx.abortForInterruptPark) {
-            return;
-          }
-          await this.callbacks.finishGeneration(ctx, "cancelled");
+          await finishPromptCancellation();
           return;
         }
         if (terminalOutcome !== "unknown") {
@@ -281,10 +402,16 @@ export class OpenCodeNormalRunner {
       const promptResultOutcome = await Promise.race([
         this.callbacks.awaitPromiseUntilRunDeadline(ctx, promptResultPromise),
         runtimeNoProgressPromise,
+        promptCancellationPoll.promise,
       ]);
-      this.callbacks.stopExternalInterruptPolling(ctx);
-      clearPromptTimeout?.();
-      watchdog.clear();
+      stopPromptLevelWatchers();
+      if (promptResultOutcome.type === "cancelled") {
+        if (ctx.abortForInterruptPark) {
+          return;
+        }
+        await this.callbacks.finishGeneration(ctx, "cancelled");
+        return;
+      }
       if (promptResultOutcome.type === "runtime_no_progress") {
         await watchdog.finishFailure(promptResultOutcome.reason);
         return;
@@ -472,9 +599,7 @@ export class OpenCodeNormalRunner {
       );
       await this.callbacks.finishGeneration(ctx, "completed");
     } catch (error) {
-      this.callbacks.stopExternalInterruptPolling(ctx);
-      clearPromptTimeout?.();
-      watchdog?.clear();
+      stopPromptLevelWatchers();
       if (error instanceof GenerationSuspendedError) {
         logger.info({
           event: "GENERATION_SUSPENDED_FOR_INTERRUPT",

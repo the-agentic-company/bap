@@ -527,6 +527,43 @@ describe("OpenCodeNormalRunner", () => {
     );
   });
 
+  it("polls durable cancellation while the OpenCode prompt is pending", async () => {
+    const prompt = vi.fn(() => new Promise<never>(() => undefined));
+    const abort = vi.fn().mockResolvedValue({ data: null, error: null });
+    const subscribe = vi.fn().mockResolvedValue({
+      stream: asAsyncIterableThenHang([]),
+    });
+    mockSandboxRuntime({
+      client: createRuntimeClient({ subscribe, prompt, abort }),
+    });
+    const refreshCancellationSignal = vi.fn(async (ctx: GenerationContext) => {
+      if (refreshCancellationSignal.mock.calls.length >= 2) {
+        ctx.abortController.abort();
+        return true;
+      }
+      return false;
+    });
+    const { runner, finishGeneration } = createRunner({
+      refreshCancellationSignal,
+    });
+    const ctx = createContext({ id: "gen-cancel-pending-prompt" });
+
+    const runPromise = runner.run(ctx);
+
+    await Promise.race([
+      runPromise,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Runner did not finish after cancellation.")), 3_000);
+      }),
+    ]);
+
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(refreshCancellationSignal).toHaveBeenCalledTimes(2);
+    expect(abort).toHaveBeenCalledWith({ sessionID: "session-1" });
+    expect(finishGeneration).toHaveBeenCalledWith(ctx, "cancelled");
+    expect(ctx.abortController.signal.aborted).toBe(true);
+  });
+
   it("starts post-prompt cache writes without blocking prompt completion", async () => {
     const cacheWrite = createDeferred<void>();
     let cacheWriteStarted = false;
