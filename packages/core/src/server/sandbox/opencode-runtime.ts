@@ -35,7 +35,7 @@ export function getSandboxServerBackgroundStartCommand(input: {
     return `export SANDBOX_ID=${input.sandboxId} && cd /app && nohup sandbox-agent server --no-token --host 0.0.0.0 --port ${SANDBOX_AGENT_PORT} >/tmp/opencode.log 2>&1 &`;
   }
 
-  return `export SANDBOX_ID=${input.sandboxId} OPENCODE_CONFIG=${OPENCODE_CONFIG_PATH} && cd /app && nohup opencode serve --port ${OPENCODE_PORT} --hostname 0.0.0.0 >/tmp/opencode.log 2>&1 &`;
+  return `export SANDBOX_ID=${input.sandboxId} OPENCODE_CONFIG=${OPENCODE_CONFIG_PATH} OPENCODE_ENABLE_EXPERIMENTAL_MODELS=true && cd /app && nohup opencode serve --port ${OPENCODE_PORT} --hostname 0.0.0.0 >/tmp/opencode.log 2>&1 &`;
 }
 
 export function getSandboxServerPort(model: string): number {
@@ -60,7 +60,6 @@ function getOpencodeClientBaseUrl(serverUrl: string, model: string): string {
   }
   return serverUrl;
 }
-
 
 export async function createSandboxRuntimeClient(options: {
   serverUrl: string;

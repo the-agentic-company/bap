@@ -96,7 +96,7 @@ function normalizeInteractiveCommand(cmd: string): string {
   const trimmed = cmd.trim();
   const firstToken = trimmed.split(/\s+/)[0]?.toLowerCase();
   if (firstToken === "opencode") {
-    return `OPENCODE_CONFIG=/app/opencode.json ${trimmed}`;
+    return `OPENCODE_CONFIG=/app/opencode.json OPENCODE_ENABLE_EXPERIMENTAL_MODELS=true ${trimmed}`;
   }
   return trimmed;
 }

@@ -94,6 +94,9 @@ describe("getOrCreateSandboxForCloudProvider", () => {
     expect(executeCommandMock).toHaveBeenCalledTimes(1);
     expect(executeCommandMock.mock.calls[0]?.[0]).toContain("opencode serve --port 4096");
     expect(executeCommandMock.mock.calls[0]?.[0]).toContain("SANDBOX_ID=sandbox-1");
+    expect(executeCommandMock.mock.calls[0]?.[0]).toContain(
+      "OPENCODE_ENABLE_EXPERIMENTAL_MODELS=true",
+    );
     expect(lifecycle).toHaveBeenCalledWith(
       "opencode_starting",
       expect.objectContaining({
