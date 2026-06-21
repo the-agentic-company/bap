@@ -4,6 +4,10 @@ const BETTER_AUTH_SESSION_COOKIE_NAMES = new Set([
   "better-auth.session_token",
   "__Secure-better-auth.session_token",
 ]);
+const BETTER_AUTH_SESSION_COOKIE_NAME_ALTERNATES = {
+  "better-auth.session_token": "__Secure-better-auth.session_token",
+  "__Secure-better-auth.session_token": "better-auth.session_token",
+} as const;
 const SERVER_SESSION_COOKIE_NAME = "better-auth.session_token";
 type RequestSession = Awaited<ReturnType<typeof auth.api.getSession>>;
 
@@ -78,23 +82,52 @@ export function getSessionCookieHeaders(headers: Headers): Headers[] {
   for (const cookie of cookieHeader
     .split(";")
     .map((value) => value.trim())
-    .filter(Boolean)) {
+    .filter(Boolean)
+    .toReversed()) {
     const pair = splitCookiePair(cookie);
-    if (!pair || !BETTER_AUTH_SESSION_COOKIE_NAMES.has(pair.name) || seen.has(pair.value)) {
+    if (!pair || !BETTER_AUTH_SESSION_COOKIE_NAMES.has(pair.name)) {
       continue;
     }
 
-    seen.add(pair.value);
-    const nextHeaders = new Headers(headers);
-    nextHeaders.set("cookie", `${SERVER_SESSION_COOKIE_NAME}=${pair.value}`);
-    sessionHeaders.push(nextHeaders);
+    const candidateNames = [
+      pair.name,
+      BETTER_AUTH_SESSION_COOKIE_NAME_ALTERNATES[
+        pair.name as keyof typeof BETTER_AUTH_SESSION_COOKIE_NAME_ALTERNATES
+      ],
+    ];
+
+    for (const candidateName of candidateNames) {
+      const candidateCookie = `${candidateName}=${pair.value}`;
+      if (seen.has(candidateCookie)) {
+        continue;
+      }
+
+      seen.add(candidateCookie);
+      const nextHeaders = new Headers(headers);
+      nextHeaders.set("cookie", candidateCookie);
+      sessionHeaders.push(nextHeaders);
+    }
   }
 
   return sessionHeaders;
 }
 
 export async function getRequestSession(headers: Headers) {
-  return auth.api.getSession({ headers: normalizeSessionCookieHeaders(headers) }).catch(() => null);
+  const directSession = await auth.api.getSession({ headers }).catch(() => null);
+  if (directSession?.user?.id && directSession?.session) {
+    return directSession;
+  }
+
+  const candidateHeaders = getSessionCookieHeaders(headers);
+  const candidateSessions = await Promise.all(
+    candidateHeaders.map((sessionHeaders) =>
+      auth.api.getSession({ headers: sessionHeaders }).catch(() => null),
+    ),
+  );
+
+  return (
+    candidateSessions.find((sessionData) => sessionData?.user?.id && sessionData?.session) ?? null
+  );
 }
 
 export async function getRequestSessionCandidates(headers: Headers) {

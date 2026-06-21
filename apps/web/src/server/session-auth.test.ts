@@ -32,7 +32,7 @@ describe("normalizeSessionCookieHeaders", () => {
     expect(normalizeSessionCookieHeaders(headers)).toBe(headers);
   });
 
-  it("extracts every unique Better Auth session cookie as server-readable headers", () => {
+  it("extracts every unique Better Auth session cookie as server-readable headers in newest-first resolution order", () => {
     const headers = new Headers({
       cookie:
         "better-auth.session_token=stale; theme=light; __Secure-better-auth.session_token=current; better-auth.session_token=current",
@@ -41,7 +41,24 @@ describe("normalizeSessionCookieHeaders", () => {
     const sessionHeaders = getSessionCookieHeaders(headers);
 
     expect(sessionHeaders.map((header) => header.get("cookie"))).toEqual([
+      "better-auth.session_token=current",
+      "__Secure-better-auth.session_token=current",
       "better-auth.session_token=stale",
+      "__Secure-better-auth.session_token=stale",
+    ]);
+  });
+});
+
+describe("getSessionCookieHeaders", () => {
+  it("preserves secure session cookie candidates before trying regular-cookie compatibility", () => {
+    const headers = new Headers({
+      cookie: "__Secure-better-auth.session_token=current",
+    });
+
+    const sessionHeaders = getSessionCookieHeaders(headers);
+
+    expect(sessionHeaders.map((header) => header.get("cookie"))).toEqual([
+      "__Secure-better-auth.session_token=current",
       "better-auth.session_token=current",
     ]);
   });
