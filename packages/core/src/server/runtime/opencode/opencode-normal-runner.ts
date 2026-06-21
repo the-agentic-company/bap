@@ -182,29 +182,32 @@ export class OpenCodeNormalRunner {
       const runtimeNoProgressTimeoutMs = resolveRuntimeNoProgressTimeoutMs(ctx);
       const forceRuntimeNoProgress =
         ctx.executionPolicy.debugForceRuntimeNoProgressAfterPrompt === true;
-      const promptTimeoutId = setTimeout(() => {
-        promptTimeoutTriggered = true;
-        promptTimeoutController.abort();
-        logger.error({
-          event: "OPENCODE_PROMPT_TIMEOUT",
-          ...{
-            source: "generation-manager",
-            traceId: ctx.traceId,
-            generationId: ctx.id,
-            conversationId: ctx.conversationId,
-            userId: ctx.userId,
-            sessionId: activeSessionId,
-          },
-          ...{ timeoutMs: remainingRunTimeMs },
-        });
-        void runtimeClient.abort({ sessionID: activeSessionId }).catch((err) => {
-          console.error("[GenerationManager] Failed to abort timed out OpenCode session:", err);
-        });
-      }, remainingRunTimeMs);
-      clearPromptTimeout = () => {
-        clearTimeout(promptTimeoutId);
-        clearPromptTimeout = undefined;
-      };
+      const promptDeadlinePromise = new Promise<{ type: "run_deadline" }>((resolve) => {
+        const promptTimeoutId = setTimeout(() => {
+          promptTimeoutTriggered = true;
+          promptTimeoutController.abort();
+          logger.error({
+            event: "OPENCODE_PROMPT_TIMEOUT",
+            ...{
+              source: "generation-manager",
+              traceId: ctx.traceId,
+              generationId: ctx.id,
+              conversationId: ctx.conversationId,
+              userId: ctx.userId,
+              sessionId: activeSessionId,
+            },
+            ...{ timeoutMs: remainingRunTimeMs },
+          });
+          void runtimeClient.abort({ sessionID: activeSessionId }).catch((err) => {
+            console.error("[GenerationManager] Failed to abort timed out OpenCode session:", err);
+          });
+          resolve({ type: "run_deadline" });
+        }, remainingRunTimeMs);
+        clearPromptTimeout = () => {
+          clearTimeout(promptTimeoutId);
+          clearPromptTimeout = undefined;
+        };
+      });
       const promptResultPromise = runtimeClient
         .prompt({
           sessionID: activeSessionId,
@@ -298,9 +301,15 @@ export class OpenCodeNormalRunner {
         eventLoopConsumePromise,
         runtimeNoProgressPromise,
         promptCancellationPoll.promise,
+        promptDeadlinePromise,
       ]);
       if (eventLoopConsumeOutcome.type === "cancelled") {
         await finishPromptCancellation();
+        return;
+      }
+      if (eventLoopConsumeOutcome.type === "run_deadline") {
+        stopPromptLevelWatchers();
+        await this.callbacks.parkGenerationForRunDeadline(ctx, runtimeClient);
         return;
       }
       let deferredSessionError: Error | null = null;
@@ -368,9 +377,15 @@ export class OpenCodeNormalRunner {
           }).then((value) => ({ type: "terminal" as const, value })),
           runtimeNoProgressPromise,
           promptCancellationPoll.promise,
+          promptDeadlinePromise,
         ]);
         if (terminalOutcomeResult.type === "cancelled") {
           await finishPromptCancellation();
+          return;
+        }
+        if (terminalOutcomeResult.type === "run_deadline") {
+          stopPromptLevelWatchers();
+          await this.callbacks.parkGenerationForRunDeadline(ctx, runtimeClient);
           return;
         }
         if (terminalOutcomeResult.type === "runtime_no_progress") {
@@ -403,6 +418,7 @@ export class OpenCodeNormalRunner {
         this.callbacks.awaitPromiseUntilRunDeadline(ctx, promptResultPromise),
         runtimeNoProgressPromise,
         promptCancellationPoll.promise,
+        promptDeadlinePromise,
       ]);
       stopPromptLevelWatchers();
       if (promptResultOutcome.type === "cancelled") {
@@ -414,6 +430,10 @@ export class OpenCodeNormalRunner {
       }
       if (promptResultOutcome.type === "runtime_no_progress") {
         await watchdog.finishFailure(promptResultOutcome.reason);
+        return;
+      }
+      if (promptResultOutcome.type === "run_deadline") {
+        await this.callbacks.parkGenerationForRunDeadline(ctx, runtimeClient);
         return;
       }
       if (promptResultOutcome.type === "timed_out" || promptTimeoutTriggered) {

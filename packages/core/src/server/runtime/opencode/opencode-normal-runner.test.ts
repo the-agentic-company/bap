@@ -747,5 +747,56 @@ describe("OpenCodeNormalRunner", () => {
     }
   });
 
+  it("parks when the run deadline fires while prompt and event stream are both pending", async () => {
+    vi.useFakeTimers();
+    try {
+      const promptStarted = createDeferred<void>();
+      const releaseEventStream = createDeferred<void>();
+      async function* openEventStream(): AsyncIterable<RuntimeEvent> {
+        await releaseEventStream.promise;
+      }
+      const hangingPrompt = vi.fn(() => {
+        promptStarted.resolve(undefined);
+        return new Promise<never>(() => undefined);
+      });
+      const runtimeClient = createRuntimeClient({
+        subscribe: vi.fn().mockResolvedValue({ stream: openEventStream() }),
+        prompt: hangingPrompt,
+      });
+      mockSandboxRuntime({ client: runtimeClient });
+      const runner = createRunner();
+      const ctx = createContext({
+        id: "gen-deadline-open-stream",
+        conversationId: "conv-deadline-open-stream",
+        deadlineAt: new Date(Date.now() + 50),
+      });
+
+      const runPromise = runner.runner.run(ctx);
+      await promptStarted.promise;
+      await vi.advanceTimersByTimeAsync(60);
+
+      let resolved = false;
+      const observedRun = runPromise.then(() => {
+        resolved = true;
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      try {
+        expect(resolved).toBe(true);
+        expect(runner.parkGenerationForRunDeadline).toHaveBeenCalledWith(
+          ctx,
+          runtimeClient,
+        );
+        expect(runner.finishGeneration).not.toHaveBeenCalled();
+      } finally {
+        releaseEventStream.resolve(undefined);
+        await observedRun;
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
 
 });
