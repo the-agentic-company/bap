@@ -1,11 +1,12 @@
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { asc, eq } from "drizzle-orm";
 import { env } from "../../env";
+import { parseModelReference } from "../../lib/model-reference";
 import { db } from "@bap/db/client";
 import { conversationRuntime, message, type ContentPart } from "@bap/db/schema";
 import { COMPACTION_SUMMARY_PREFIX, SESSION_BOUNDARY_PREFIX } from "../services/session-constants";
 import { resolveSandboxRuntimeAppUrl } from "./prep/runtime-env-prep";
-import { getSandboxReadinessUrl } from "./opencode-runtime";
+import { getSandboxReadinessUrl, joinUrlPath } from "./opencode-runtime";
 import type { OpenCodeSessionConfig } from "./opencode-session-types";
 
 const OPENCODE_READINESS_FETCH_TIMEOUT_MS = 2_000;
@@ -38,6 +39,69 @@ export function appendDaytonaAuth(url: string, token?: string): string {
     parsed.searchParams.set("DAYTONA_SANDBOX_AUTH_KEY", token);
   }
   return parsed.toString();
+}
+
+function redactDaytonaAuth(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.searchParams.has("DAYTONA_SANDBOX_AUTH_KEY")) {
+      parsed.searchParams.set("DAYTONA_SANDBOX_AUTH_KEY", "[REDACTED]");
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+type OpenCodeConfigProvidersPayload = {
+  providers?: Array<{
+    id?: unknown;
+    models?: Record<string, unknown>;
+  }>;
+};
+
+async function waitForConfiguredModel(input: {
+  url: string;
+  model: string;
+  token?: string;
+  timeoutMs: number;
+}): Promise<void> {
+  const parsedModel = parseModelReference(input.model);
+  if (parsedModel.providerID === "anthropic") {
+    return;
+  }
+
+  const providersUrl = appendDaytonaAuth(joinUrlPath(input.url, "/config/providers"), input.token);
+  const response = await fetch(providersUrl, {
+    method: "GET",
+    signal: AbortSignal.timeout(input.timeoutMs),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `OpenCode provider catalog check failed (url=${redactDaytonaAuth(providersUrl)}, status=${response.status})`,
+    );
+  }
+
+  const payload = (await response.json()) as OpenCodeConfigProvidersPayload;
+  const provider = payload.providers?.find((candidate) => candidate.id === parsedModel.providerID);
+  if (!provider) {
+    const availableProviders = payload.providers
+      ?.map((candidate) => candidate.id)
+      .filter((id): id is string => typeof id === "string")
+      .sort();
+    throw new Error(
+      `OpenCode provider "${parsedModel.providerID}" is not configured; available=${availableProviders?.join(",") || "-"}`,
+    );
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(provider.models ?? {}, parsedModel.modelID)) {
+    const availableModels = Object.keys(provider.models ?? {})
+      .sort()
+      .slice(0, 20);
+    throw new Error(
+      `OpenCode model "${parsedModel.providerID}/${parsedModel.modelID}" is not configured; providerModels=${availableModels.join(",") || "-"}`,
+    );
+  }
 }
 
 export async function getConversationRuntimeState(conversationId: string): Promise<{
@@ -73,12 +137,10 @@ export async function waitForServer(
 ): Promise<void> {
   const readinessUrl = appendDaytonaAuth(getSandboxReadinessUrl(url, model), token);
   const startedAt = Date.now();
+  let lastReadinessError: unknown;
   while (Date.now() - startedAt < maxWait) {
     const remainingMs = maxWait - (Date.now() - startedAt);
-    const fetchTimeoutMs = Math.max(
-      1,
-      Math.min(OPENCODE_READINESS_FETCH_TIMEOUT_MS, remainingMs),
-    );
+    const fetchTimeoutMs = Math.max(1, Math.min(OPENCODE_READINESS_FETCH_TIMEOUT_MS, remainingMs));
     try {
       // eslint-disable-next-line no-await-in-loop -- readiness polling is intentional
       const response = await fetch(readinessUrl, {
@@ -86,17 +148,25 @@ export async function waitForServer(
         signal: AbortSignal.timeout(fetchTimeoutMs),
       });
       if (response.ok) {
+        await waitForConfiguredModel({
+          url,
+          model,
+          token,
+          timeoutMs: Math.max(1, Math.min(OPENCODE_READINESS_FETCH_TIMEOUT_MS, remainingMs)),
+        });
         return;
       }
-    } catch {
+    } catch (error) {
       // The server is still starting.
+      lastReadinessError = error;
     }
     // eslint-disable-next-line no-await-in-loop -- readiness polling is intentional
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
+  const errorDetail = lastReadinessError instanceof Error ? `: ${lastReadinessError.message}` : "";
   throw new Error(
-    `OpenCode server failed readiness check (url=${readinessUrl}, waitedMs=${maxWait})`,
+    `OpenCode server failed readiness check (url=${redactDaytonaAuth(readinessUrl)}, waitedMs=${maxWait})${errorDetail}`,
   );
 }
 

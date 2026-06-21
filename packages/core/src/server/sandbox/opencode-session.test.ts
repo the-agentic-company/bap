@@ -72,8 +72,16 @@ describe("getOrCreateSandboxForCloudProvider", () => {
       sessionId: null,
     });
     daytonaGetMock.mockResolvedValue(sandbox);
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-    fetchMock.mockResolvedValueOnce({ ok: false });
+    const fetchMock = vi.fn();
+    fetchMock
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          providers: [{ id: "openai", models: { "gpt-5.4": {} } }],
+        }),
+      });
     vi.stubGlobal("fetch", fetchMock);
 
     const lifecycle = vi.fn();
@@ -93,6 +101,7 @@ describe("getOrCreateSandboxForCloudProvider", () => {
 
     expect(executeCommandMock).toHaveBeenCalledTimes(1);
     expect(executeCommandMock.mock.calls[0]?.[0]).toContain("opencode serve --port 4096");
+    expect(executeCommandMock.mock.calls[0]?.[0]).toContain("opencode models openai --refresh");
     expect(executeCommandMock.mock.calls[0]?.[0]).toContain("SANDBOX_ID=sandbox-1");
     expect(executeCommandMock.mock.calls[0]?.[0]).toContain(
       "OPENCODE_ENABLE_EXPERIMENTAL_MODELS=true",
@@ -113,6 +122,6 @@ describe("getOrCreateSandboxForCloudProvider", () => {
         serverUrl: "https://4096-sandbox-1.daytona.example",
       }),
     );
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
