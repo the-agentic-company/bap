@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch, tag, or commit SHA to release"
-        required: true
-        default: "main"
+        description: "Branch, tag, or commit SHA to release. Leave empty to release the selected workflow ref."
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && (inputs.ref || github.ref) || github.sha }}
           fetch-depth: 0
 
       - name: Resolve release commit
@@ -47,7 +47,11 @@ jobs:
           git fetch origin main --force
           commit_sha="$(git rev-parse "HEAD^{commit}")"
           if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            source_ref="${INPUT_REF}"
+            if [ -n "${INPUT_REF}" ]; then
+              source_ref="${INPUT_REF}"
+            else
+              source_ref="${GITHUB_REF_NAME:-${commit_sha}}"
+            fi
           else
             source_ref="${GITHUB_REF_NAME:-${commit_sha}}"
           fi
