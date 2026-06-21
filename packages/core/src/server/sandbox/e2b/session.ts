@@ -381,5 +381,3 @@ async function replayConversationHistory(
     noReply: true,
   });
 }
-
-export { injectProviderAuth };

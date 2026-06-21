@@ -13,6 +13,6 @@
 
 export type { SandboxConfig } from "./e2b/runtime";
 export { getOrCreateBareSandbox, getSandboxStateDurable } from "./e2b/provisioning";
-export { getOrCreateSession, injectProviderAuth } from "./e2b/session";
+export { getOrCreateSession } from "./e2b/session";
 export { isE2BConfigured, killSandbox, listAllE2BSandboxes, killE2BSandboxById } from "./e2b/admin";
 export { E2BSandboxBackend } from "./e2b/backend";
