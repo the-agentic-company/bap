@@ -95,7 +95,17 @@ function getStatusClassName(status?: string) {
   return "border-border bg-muted text-muted-foreground";
 }
 
-function EmptyPreview({ latestMessage }: { latestMessage?: string }) {
+function isInProgressStatus(status?: string | null) {
+  return status === "running";
+}
+
+function EmptyPreview({
+  latestMessage,
+  runStatus,
+}: {
+  latestMessage?: string;
+  runStatus?: string | null;
+}) {
   if (latestMessage?.trim()) {
     return (
       <div className="bg-background h-full overflow-auto p-5">
@@ -108,6 +118,10 @@ function EmptyPreview({ latestMessage }: { latestMessage?: string }) {
         </div>
       </div>
     );
+  }
+
+  if (isInProgressStatus(runStatus)) {
+    return <LoadingState />;
   }
 
   return (
@@ -483,7 +497,7 @@ export function CoworkerInfoPrototype({ coworkerSlug }: Props) {
             {outputFile ? (
               <AgenticAppFrame outputFile={outputFile} />
             ) : (
-              <EmptyPreview latestMessage={latestCoworkerMessage} />
+              <EmptyPreview latestMessage={latestCoworkerMessage} runStatus={run.data?.status} />
             )}
           </div>
 

@@ -168,6 +168,10 @@ function isCompletedStatus(status?: string | null) {
   return status === "completed" || status === "success";
 }
 
+function isInProgressStatus(status?: string | null) {
+  return status === "running";
+}
+
 function readableToolName(part: MessagePart) {
   if (part.type === "tool_call") {
     if (part.integration && part.operation) {
@@ -250,7 +254,13 @@ export function LoadingState() {
   );
 }
 
-function EmptyPreview({ latestMessage }: { latestMessage?: string }) {
+function EmptyPreview({
+  latestMessage,
+  runStatus,
+}: {
+  latestMessage?: string;
+  runStatus?: string | null;
+}) {
   if (latestMessage?.trim()) {
     return (
       <div className="bg-background h-full overflow-auto p-5">
@@ -265,6 +275,10 @@ function EmptyPreview({ latestMessage }: { latestMessage?: string }) {
         </div>
       </div>
     );
+  }
+
+  if (isInProgressStatus(runStatus)) {
+    return <LoadingState />;
   }
 
   return (
@@ -589,11 +603,13 @@ export function OutputPanel({
   outputFile,
   conversationId,
   latestCoworkerMessage,
+  runStatus,
   showOutputToolbar = true,
 }: {
   outputFile?: SandboxFileData | null;
   conversationId?: string;
   latestCoworkerMessage?: string;
+  runStatus?: string | null;
   showOutputToolbar?: boolean;
 }) {
   const sendAgenticAppPrompt = useSendAgenticAppPrompt(conversationId);
@@ -606,7 +622,7 @@ export function OutputPanel({
       showToolbar={showOutputToolbar}
     />
   ) : (
-    <EmptyPreview latestMessage={latestCoworkerMessage} />
+    <EmptyPreview latestMessage={latestCoworkerMessage} runStatus={runStatus} />
   );
 }
 
