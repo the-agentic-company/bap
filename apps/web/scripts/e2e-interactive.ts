@@ -16,7 +16,6 @@ const SERVICE_TOKENS = [
   "slack",
   "discord",
   "telegram",
-  "whatsapp",
   "email",
   "sms",
   "github",

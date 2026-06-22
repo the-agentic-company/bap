@@ -52,9 +52,7 @@ export type CoworkerIntegrationType =
   | "hubspot"
   | "linkedin"
   | "salesforce"
-  | "dynamics"
-  | "reddit"
-  | "twitter";
+  | "dynamics";
 
 const integrationTypes = new Set<CoworkerIntegrationType>([
   "google_gmail",
@@ -72,8 +70,6 @@ const integrationTypes = new Set<CoworkerIntegrationType>([
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 
 export type CoworkerSchedule =

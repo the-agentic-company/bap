@@ -26,7 +26,6 @@ const CLI_TO_INTEGRATION: Record<string, string> = {
   linkedin: "linkedin",
   salesforce: "salesforce",
   dynamics: "dynamics",
-  twitter: "twitter",
   discord: "discord",
   "agent-browser": "agent-browser",
 };
@@ -143,30 +142,6 @@ const TOOL_PERMISSIONS: Record<string, { read: string[]; write: string[] }> = {
     read: ["whoami", "tables.list", "tables.get", "rows.list", "rows.get"],
     write: ["rows.create", "rows.update", "rows.delete"],
   },
-  twitter: {
-    read: [
-      "me",
-      "user",
-      "user-id",
-      "timeline",
-      "mentions",
-      "search",
-      "likes",
-      "followers",
-      "following",
-    ],
-    write: [
-      "post",
-      "reply",
-      "quote",
-      "like",
-      "unlike",
-      "retweet",
-      "unretweet",
-      "follow",
-      "unfollow",
-    ],
-  },
   discord: {
     read: ["guilds", "channels", "messages"],
     write: ["send"],
@@ -190,7 +165,6 @@ const TOKEN_ENV_VARS: Record<string, string> = {
   linkedin: "LINKEDIN_ACCOUNT_ID",
   salesforce: "SALESFORCE_ACCESS_TOKEN",
   dynamics: "DYNAMICS_ACCESS_TOKEN",
-  twitter: "TWITTER_ACCESS_TOKEN",
   discord: "DISCORD_BOT_TOKEN",
 };
 
@@ -211,7 +185,6 @@ const INTEGRATION_NAMES: Record<string, string> = {
   linkedin: "LinkedIn",
   salesforce: "Salesforce",
   dynamics: "Microsoft Dynamics 365",
-  twitter: "X (Twitter)",
   discord: "Discord",
   "agent-browser": "Agent Browser",
 };

@@ -85,6 +85,6 @@ describe("routeMcpRequest", () => {
   });
 
   it("returns null for unknown slugs", () => {
-    expect(routeMcpRequest(new URL("https://mcp.heybap.com/reddit"), env)).toBeNull();
+    expect(routeMcpRequest(new URL("https://mcp.heybap.com/unknown"), env)).toBeNull();
   });
 });

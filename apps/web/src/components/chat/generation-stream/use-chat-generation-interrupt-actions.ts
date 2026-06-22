@@ -33,9 +33,7 @@ type AuthIntegrationType =
   | "hubspot"
   | "linkedin"
   | "salesforce"
-  | "dynamics"
-  | "reddit"
-  | "twitter";
+  | "dynamics";
 
 export function useChatGenerationInterruptActions({
   activeGeneration,

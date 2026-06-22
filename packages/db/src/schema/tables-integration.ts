@@ -670,16 +670,6 @@ export const integrationSkillPreference = pgTable(
   ],
 );
 
-export const whatsappAuthState = pgTable(
-  "whatsapp_auth_state",
-  {
-    id: text("id").primaryKey(),
-    data: text("data").notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [index("whatsapp_auth_state_updated_at_idx").on(table.updatedAt)],
-);
-
 export const providerOauthState = pgTable(
   "provider_oauth_state",
   {
@@ -748,70 +738,6 @@ export const controlPlaneAuthRequest = pgTable(
     completedAt: timestamp("completed_at"),
   },
   (table) => [index("control_plane_auth_request_created_at_idx").on(table.createdAt)],
-);
-
-export const whatsappUserLink = pgTable(
-  "whatsapp_user_link",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    waJid: text("wa_jid").notNull(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex("whatsapp_user_link_wa_jid_idx").on(table.waJid),
-    uniqueIndex("whatsapp_user_link_user_id_idx").on(table.userId),
-  ],
-);
-
-export const whatsappLinkCode = pgTable(
-  "whatsapp_link_code",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    code: text("code").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    usedAt: timestamp("used_at"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("whatsapp_link_code_code_idx").on(table.code),
-    index("whatsapp_link_code_user_id_idx").on(table.userId),
-  ],
-);
-
-export const whatsappConversation = pgTable(
-  "whatsapp_conversation",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    waJid: text("wa_jid").notNull(),
-    conversationId: text("conversation_id")
-      .notNull()
-      .references(() => conversation.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("whatsapp_conversation_wa_jid_idx").on(table.waJid),
-    index("whatsapp_conversation_conversation_id_idx").on(table.conversationId),
-    index("whatsapp_conversation_user_id_idx").on(table.userId),
-  ],
 );
 
 export const slackUserLink = pgTable(

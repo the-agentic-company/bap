@@ -23,8 +23,6 @@ export const integrationTypeSchema = z.enum([
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 
 export const DEFAULT_COWORKER_INTEGRATIONS = [...COWORKER_AVAILABLE_INTEGRATION_TYPES];

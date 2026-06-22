@@ -72,8 +72,6 @@ const AUTH_INTEGRATION_TYPES = [
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ] as const;
 
 type AuthIntegrationType = (typeof AUTH_INTEGRATION_TYPES)[number];

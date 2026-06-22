@@ -20,10 +20,8 @@ const INTEGRATION_SKILL_DIRS = new Set([
   "notion",
   "outlook-calendar",
   "outlook-mail",
-  "reddit",
   "salesforce",
   "slack",
-  "twitter",
 ]);
 
 export type PlatformSkillOption = {

@@ -254,13 +254,8 @@ export async function handleOAuthCallback(request: Request): Promise<Response> {
       "Content-Type": "application/x-www-form-urlencoded",
     };
 
-    // Notion, Airtable, Reddit, and Twitter require Basic auth header
-    if (
-      stateData.type === "notion" ||
-      stateData.type === "airtable" ||
-      stateData.type === "reddit" ||
-      stateData.type === "twitter"
-    ) {
+    // Notion and Airtable require Basic auth header
+    if (stateData.type === "notion" || stateData.type === "airtable") {
       headers["Authorization"] = `Basic ${Buffer.from(
         `${config.clientId}:${config.clientSecret}`,
       ).toString("base64")}`;

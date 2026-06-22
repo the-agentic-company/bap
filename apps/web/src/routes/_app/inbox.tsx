@@ -351,9 +351,7 @@ function InboxPageContent() {
             | "hubspot"
             | "linkedin"
             | "salesforce"
-            | "dynamics"
-            | "reddit"
-            | "twitter",
+            | "dynamics",
           redirectUrl: `${window.location.origin}/inbox?auth_complete=${integration}&interrupt_id=${interruptId}`,
         });
         window.location.href = result.authUrl;

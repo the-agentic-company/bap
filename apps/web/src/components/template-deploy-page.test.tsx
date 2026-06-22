@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import * as jestDomVitest from "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type VitestProcedure = Extract<
   NonNullable<Parameters<typeof vi.fn>[0]>,
@@ -45,6 +45,10 @@ vi.mock("@/orpc/client", () => ({
 import { TemplateDeployPage } from "./template-deploy-page";
 
 describe("TemplateDeployPage", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     mockCreateCoworkerMutateAsync.mockReset();
     mockGetOrCreateBuilderConversation.mockReset();

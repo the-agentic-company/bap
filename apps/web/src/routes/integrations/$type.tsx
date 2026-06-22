@@ -98,21 +98,6 @@ const integrationConfig: Record<string, { name: string; description: string; ico
     description: msg("Manage Dataverse tables and CRM rows"),
     icon: "/integrations/dynamics.svg",
   },
-  reddit: {
-    name: "Reddit",
-    description: msg("Browse, vote, comment, and post on Reddit"),
-    icon: "/integrations/reddit.svg",
-  },
-  twitter: {
-    name: "X (Twitter)",
-    description: msg("Post tweets, manage followers, and search content"),
-    icon: "/integrations/twitter.svg",
-  },
-  whatsapp: {
-    name: "WhatsApp",
-    description: msg("Link WhatsApp and pair the bridge with QR"),
-    icon: "/integrations/whatsapp.svg",
-  },
 };
 
 type GoogleIntegrationType =
@@ -172,15 +157,11 @@ function IntegrationDetailPage() {
     [config, m],
   );
 
-  const isWhatsApp = type === "whatsapp";
   const lacksGoogleAccess = googleAccessStatus?.allowed === false;
-  const isGoogleType = !isWhatsApp && isGoogleIntegrationType(type);
+  const isGoogleType = isGoogleIntegrationType(type);
   const showGoogleRequest = !integration && isGoogleType && lacksGoogleAccess;
 
   const handleConnect = useCallback(async () => {
-    if (isWhatsApp) {
-      return;
-    }
     if (!isOAuthIntegrationType(type)) {
       setConnectError("This integration is connected through Workspace MCP settings.");
       return;
@@ -204,12 +185,9 @@ function IntegrationDetailPage() {
             : "Failed to start connection. Please try again.",
       );
     }
-  }, [getAuthUrl, isWhatsApp, type]);
+  }, [getAuthUrl, type]);
 
   const handleConnectAnother = useCallback(async () => {
-    if (isWhatsApp) {
-      return;
-    }
     if (!isOAuthIntegrationType(type)) {
       setConnectError("This integration is connected through Workspace MCP settings.");
       return;
@@ -234,7 +212,7 @@ function IntegrationDetailPage() {
             : "Failed to start connection. Please try again.",
       );
     }
-  }, [getAuthUrl, isWhatsApp, type]);
+  }, [getAuthUrl, type]);
 
   const handleToggle = useCallback(
     async (enabled: boolean) => {
@@ -313,7 +291,6 @@ function IntegrationDetailPage() {
         config={translatedConfig ?? config}
         integration={integration}
         integrations={integrationsForType}
-        isWhatsApp={isWhatsApp}
         connectError={connectError}
         showGoogleRequest={showGoogleRequest}
         isConnecting={isConnecting}

@@ -34,8 +34,6 @@ vi.mock("@bap/core/server/integrations/remote-integrations", () => {
     "hubspot",
     "salesforce",
     "dynamics",
-    "reddit",
-    "twitter",
   ]);
   return {
     getLocalRemoteIntegrationCredentials: getLocalRemoteIntegrationCredentialsMock,

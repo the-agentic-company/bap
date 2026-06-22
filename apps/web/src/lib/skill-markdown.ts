@@ -23,8 +23,6 @@ const ALLOWED_TOOL_INTEGRATION_MAP: Record<string, string> = {
   linkedin: "linkedin",
   salesforce: "salesforce",
   dynamics: "dynamics",
-  reddit: "reddit",
-  twitter: "twitter",
 };
 
 type ParsedFrontmatterField = {

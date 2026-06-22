@@ -24,8 +24,6 @@ const REMOTE_INTEGRATION_SUPPORTED_TYPES = [
   "hubspot",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ] as const satisfies readonly IntegrationType[];
 
 type RemoteIntegrationSupportedType = (typeof REMOTE_INTEGRATION_SUPPORTED_TYPES)[number];

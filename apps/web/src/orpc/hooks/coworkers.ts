@@ -179,8 +179,6 @@ export function useCreateCoworker() {
         | "linkedin"
         | "salesforce"
         | "dynamics"
-        | "reddit"
-        | "twitter"
       )[];
       allowedWorkspaceMcpServerIds?: string[];
       allowedSkillSlugs?: string[];
@@ -232,8 +230,6 @@ export function useUpdateCoworker() {
         | "linkedin"
         | "salesforce"
         | "dynamics"
-        | "reddit"
-        | "twitter"
       )[];
       allowedWorkspaceMcpServerIds?: string[];
       allowedSkillSlugs?: string[];

@@ -32,8 +32,6 @@ const SUPPORTED_TYPES = new Set<IntegrationType>([
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 
 function createState(payload: Record<string, string | undefined>) {
@@ -101,10 +99,6 @@ export async function connectHandler(request: Request): Promise<Response> {
 
     if (type === "notion") {
       params.set("owner", "user");
-    }
-
-    if (type === "reddit") {
-      params.set("duration", "permanent");
     }
 
     return redirectResponse(`${config.authUrl}?${params}`);

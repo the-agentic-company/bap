@@ -247,7 +247,7 @@ describe("token-refresh", () => {
     );
   });
 
-  it("uses provider-specific refresh headers for notion, airtable, reddit, and twitter", async () => {
+  it("uses provider-specific refresh headers for notion and airtable", async () => {
     const captured: Array<{ headers: Headers; body: URLSearchParams }> = [];
     mswServer.use(
       http.post("https://oauth.example.com/token", async ({ request }) => {
@@ -275,33 +275,13 @@ describe("token-refresh", () => {
       type: "airtable",
     });
 
-    await getValidAccessToken({
-      accessToken: "old-reddit",
-      refreshToken: "refresh-reddit",
-      expiresAt: new Date(Date.now() - 1),
-      integrationId: "int-reddit",
-      type: "reddit",
-    });
-
-    await getValidAccessToken({
-      accessToken: "old-twitter",
-      refreshToken: "refresh-twitter",
-      expiresAt: new Date(Date.now() - 1),
-      integrationId: "int-twitter",
-      type: "twitter",
-    });
-
-    for (const [index] of ["notion", "airtable", "reddit", "twitter"].entries()) {
+    for (const [index] of ["notion", "airtable"].entries()) {
       const request = captured[index];
       expect(request).toBeDefined();
       expect(request!.headers.get("authorization")).toMatch(/^Basic /);
       expect(request!.body.get("client_id")).toBeNull();
       expect(request!.body.get("client_secret")).toBeNull();
     }
-
-    const redditRequest = captured[2];
-    expect(redditRequest).toBeDefined();
-    expect(redditRequest!.headers.get("user-agent")).toContain("bap-app:v1.0.0");
   });
 
   it("throws when refresh fails", async () => {

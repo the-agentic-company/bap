@@ -6,7 +6,7 @@ import { requireSession } from "@/lib/route-guards";
  * Protected layout route for the `/integrations/**` shell.
  *
  * Replaces the previous `integrations/layout.tsx`. Shell selection is route nesting: the
- * generic detail page and the specific Reddit / Twitter / WhatsApp pages all render inside
+ * generic detail pages render inside
  * this centered container via `<Outlet />`, rather than a global pathname switch.
  *
  * Access is protected: `beforeLoad` runs the shared session guard, redirecting
