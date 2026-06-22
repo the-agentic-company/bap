@@ -4,6 +4,7 @@ import { T } from "gt-react";
 import { Loader2 } from "lucide-react";
 import { ImpersonationRequiredPage } from "@/components/impersonation/impersonation-required-page";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getCoworkerInfoHref } from "@/lib/coworker-routes";
 import {
   CoworkerEditorDesktopLayout,
   CoworkerEditorMobileLayout,
@@ -72,6 +73,10 @@ export default function CoworkerEditorPage({
     );
   }
 
+  const backHref = embedded
+    ? undefined
+    : getCoworkerInfoHref({ id: coworker.id, username: coworker.username });
+
   if (isMobile) {
     return (
       <CoworkerEditorMobileLayout
@@ -82,6 +87,7 @@ export default function CoworkerEditorPage({
         isRunning={isRunning}
         isDeleting={isDeleting}
         showDeleteDialog={showDeleteDialog}
+        backHref={backHref}
         chatPanel={chatPanel}
         renderSettingsPanel={renderSettingsPanel}
         autoApproveDialog={autoApproveDialog}
