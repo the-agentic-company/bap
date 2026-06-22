@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { T, useGT } from "gt-react";
 import {
+  ArrowLeft,
   CirclePlay,
   FileText,
   Loader2,
@@ -24,7 +25,23 @@ import {
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Switch } from "@/components/ui/switch";
 import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
+import { AppLink as Link } from "../../-lib/app-link";
 import type { CoworkerTab } from "./types";
+
+function BackToRunLink({ href, label }: { href: string | undefined; label: string }) {
+  if (!href) {
+    return null;
+  }
+  return (
+    <Link
+      href={href}
+      className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors"
+      aria-label={label}
+    >
+      <ArrowLeft className="h-4 w-4" />
+    </Link>
+  );
+}
 
 type CoworkerEditorMobileLayoutProps = {
   activeTab: CoworkerTab;
@@ -34,6 +51,7 @@ type CoworkerEditorMobileLayoutProps = {
   isRunning: boolean;
   isDeleting: boolean;
   showDeleteDialog: boolean;
+  backHref?: string;
   chatPanel: ReactNode;
   renderSettingsPanel: (options?: { hideHeader?: boolean }) => ReactNode;
   autoApproveDialog: ReactNode;
@@ -53,6 +71,7 @@ export function CoworkerEditorMobileLayout({
   isRunning,
   isDeleting,
   showDeleteDialog,
+  backHref,
   chatPanel,
   renderSettingsPanel,
   autoApproveDialog,
@@ -69,6 +88,7 @@ export function CoworkerEditorMobileLayout({
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div className="border-border/40 flex items-center justify-between gap-1 border-b px-2 py-1.5">
+        <BackToRunLink href={backHref} label={t("Back to run view")} />
         <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange} className="gap-0">
           <AnimatedTab value="chat" className="px-2.5">
             <MessageSquare className="h-4 w-4" aria-label={t("Chat")} />

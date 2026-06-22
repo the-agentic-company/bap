@@ -1,6 +1,6 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { T, useGT } from "gt-react";
-import { AlertTriangle, Loader2, Play, RotateCcw, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, Play, RotateCcw, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
 import type { IntegrationType } from "@/lib/integration-icons";
@@ -8,7 +8,9 @@ import type { ProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-ava
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
+import { getCoworkerInfoHref } from "@/lib/coworker-routes";
 import { cn } from "@/lib/utils";
+import { AppLink as Link } from "../../-lib/app-link";
 import type {
   AvailableSkillEntry,
   CoworkerDocumentRecord,
@@ -268,7 +270,19 @@ export function CoworkerSettingsPanel({
     <div className="flex h-full flex-col">
       {!hideHeader && (
         <div className="flex items-center justify-between gap-3 px-3 py-1.5">
-          <div className="min-w-0 flex-1 overflow-x-auto">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
+            {coworkerId ? (
+              <Link
+                href={getCoworkerInfoHref({ id: coworkerId, username })}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors"
+                aria-label={t("Back to run view")}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden md:inline">
+                  <T>Back to run</T>
+                </span>
+              </Link>
+            ) : null}
             <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
               <AnimatedTab value="instruction">
                 <T>Instruction</T>
