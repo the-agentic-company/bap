@@ -28,6 +28,21 @@ import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import { AppLink as Link } from "../../-lib/app-link";
 import type { CoworkerTab } from "./types";
 
+function BackToRunLink({ href, label }: { href: string | undefined; label: string }) {
+  if (!href) {
+    return null;
+  }
+  return (
+    <Link
+      href={href}
+      className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors"
+      aria-label={label}
+    >
+      <ArrowLeft className="h-4 w-4" />
+    </Link>
+  );
+}
+
 type CoworkerEditorMobileLayoutProps = {
   activeTab: CoworkerTab;
   status: "on" | "off";
@@ -73,15 +88,7 @@ export function CoworkerEditorMobileLayout({
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div className="border-border/40 flex items-center justify-between gap-1 border-b px-2 py-1.5">
-        {backHref ? (
-          <Link
-            href={backHref}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors"
-            aria-label={t("Back to run view")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        ) : null}
+        <BackToRunLink href={backHref} label={t("Back to run view")} />
         <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange} className="gap-0">
           <AnimatedTab value="chat" className="px-2.5">
             <MessageSquare className="h-4 w-4" aria-label={t("Chat")} />
