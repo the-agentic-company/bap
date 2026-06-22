@@ -1,7 +1,12 @@
 import type { ExecuteResult, SandboxBackend } from "./types";
+import { generationLifecyclePolicy } from "../services/lifecycle-policy";
 
 const DEFAULT_DAYTONA_SNAPSHOT = "bap-agent-dev";
 const DEFAULT_WORKDIR = "/app";
+const DAYTONA_AUTO_STOP_INTERVAL_MINUTES = Math.ceil(
+  generationLifecyclePolicy.runDeadlineMs / 60_000,
+);
+const DAYTONA_AUTO_DELETE_GRACE_MINUTES = 5;
 
 export type DaytonaClientConfig = {
   apiKey?: string;
@@ -32,6 +37,16 @@ type DaytonaSandboxHandle = {
   delete: () => Promise<void>;
 };
 
+export function getDaytonaSandboxLifecycleIntervals(): {
+  autoStopInterval: number;
+  autoDeleteInterval: number;
+} {
+  return {
+    autoStopInterval: DAYTONA_AUTO_STOP_INTERVAL_MINUTES,
+    autoDeleteInterval: DAYTONA_AUTO_DELETE_GRACE_MINUTES,
+  };
+}
+
 export function getDaytonaClientConfig(): DaytonaClientConfig {
   return {
     ...(process.env.DAYTONA_API_KEY ? { apiKey: process.env.DAYTONA_API_KEY } : {}),
@@ -48,8 +63,11 @@ export class DaytonaSandboxBackend implements SandboxBackend {
     const daytona = new Daytona(getDaytonaClientConfig());
 
     const snapshot = process.env.E2B_DAYTONA_SANDBOX_NAME || DEFAULT_DAYTONA_SNAPSHOT;
+    const lifecycleIntervals = getDaytonaSandboxLifecycleIntervals();
     this.sandbox = (await daytona.create({
       snapshot,
+      autoStopInterval: lifecycleIntervals.autoStopInterval,
+      autoDeleteInterval: lifecycleIntervals.autoDeleteInterval,
     })) as DaytonaSandboxHandle;
   }
 

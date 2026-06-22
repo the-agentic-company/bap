@@ -20,6 +20,7 @@ const {
   }));
   const queueMock = {
     upsertJobScheduler: vi.fn(async () => undefined),
+    removeJobScheduler: vi.fn(async () => true),
   };
   const getDaytonaRunawayCleanupQueueMock = vi.fn(() => queueMock);
   const dbMock = {
@@ -103,6 +104,7 @@ describe("daytona-stopped-sandbox-delete", () => {
     vi.clearAllMocks();
     recordedUpdates.length = 0;
     queueMock.upsertJobScheduler.mockResolvedValue(undefined);
+    queueMock.removeJobScheduler.mockResolvedValue(true);
     getDaytonaRunawayCleanupQueueMock.mockReturnValue(queueMock);
     sandboxDeleteMock.mockResolvedValue(undefined);
     fallbackDeleteMock.mockResolvedValue(undefined);
@@ -225,20 +227,13 @@ describe("daytona-stopped-sandbox-delete", () => {
     expect(sandboxDeleteMock).toHaveBeenCalledWith(60);
   });
 
-  it("registers a repeating BullMQ scheduler for stopped sandbox deletion", async () => {
+  it("removes the repeating BullMQ scheduler for stopped sandbox deletion", async () => {
     await syncStoppedDaytonaSandboxDeleteJob();
 
     expect(getDaytonaRunawayCleanupQueueMock).toHaveBeenCalledOnce();
-    expect(queueMock.upsertJobScheduler).toHaveBeenCalledWith(
+    expect(queueMock.removeJobScheduler).toHaveBeenCalledWith(
       DAYTONA_STOPPED_SANDBOX_DELETE_SCHEDULER_ID,
-      expect.objectContaining({
-        pattern: "*/5 * * * *",
-        tz: expect.any(String),
-      }),
-      {
-        name: "daytona:stopped-sandbox-delete",
-        data: {},
-      },
     );
+    expect(queueMock.upsertJobScheduler).not.toHaveBeenCalled();
   });
 });

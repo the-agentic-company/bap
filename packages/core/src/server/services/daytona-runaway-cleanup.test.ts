@@ -29,6 +29,7 @@ const {
   }));
   const queueMock = {
     upsertJobScheduler: vi.fn(async () => undefined),
+    removeJobScheduler: vi.fn(async () => true),
   };
   const getDaytonaRunawayCleanupQueueMock = vi.fn(() => queueMock);
   const dbMock = {
@@ -107,6 +108,7 @@ describe("daytona-runaway-cleanup", () => {
     recordedUpdates.length = 0;
     recordedInserts.length = 0;
     queueMock.upsertJobScheduler.mockResolvedValue(undefined);
+    queueMock.removeJobScheduler.mockResolvedValue(true);
     getDaytonaRunawayCleanupQueueMock.mockReturnValue(queueMock);
     sandboxRefreshDataMock.mockResolvedValue(undefined);
     sandboxStopMock.mockResolvedValue(undefined);
@@ -326,20 +328,11 @@ describe("daytona-runaway-cleanup", () => {
     expect(recordedInserts).toHaveLength(0);
   });
 
-  it("registers a repeating BullMQ scheduler on the dedicated cleanup queue", async () => {
+  it("removes the automatic BullMQ scheduler from the dedicated cleanup queue", async () => {
     await syncDaytonaRunawayCleanupJob();
 
     expect(getDaytonaRunawayCleanupQueueMock).toHaveBeenCalledOnce();
-    expect(queueMock.upsertJobScheduler).toHaveBeenCalledWith(
-      DAYTONA_RUNAWAY_CLEANUP_SCHEDULER_ID,
-      expect.objectContaining({
-        pattern: "*/5 * * * *",
-        tz: expect.any(String),
-      }),
-      {
-        name: "daytona:runaway-cleanup",
-        data: {},
-      },
-    );
+    expect(queueMock.removeJobScheduler).toHaveBeenCalledWith(DAYTONA_RUNAWAY_CLEANUP_SCHEDULER_ID);
+    expect(queueMock.upsertJobScheduler).not.toHaveBeenCalled();
   });
 });

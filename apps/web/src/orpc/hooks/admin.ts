@@ -124,11 +124,18 @@ export function useGrantAdminAccessByEmail() {
 // Admin sandboxes
 // ---------------------------------------------------------------------------
 
+const ADMIN_SANDBOXES_QUERY_KEY = ["admin", "sandboxes"] as const;
+
+type AdminSandboxListResult = Awaited<ReturnType<typeof client.admin.listSandboxes>>;
+
 export function useAdminListSandboxes() {
   return useQuery({
-    queryKey: ["admin", "sandboxes"],
+    queryKey: ADMIN_SANDBOXES_QUERY_KEY,
     queryFn: () => client.admin.listSandboxes(),
-    refetchInterval: 15_000,
+    enabled: false,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -137,8 +144,22 @@ export function useAdminKillSandbox() {
   return useMutation({
     mutationFn: (input: { sandboxId: string; provider: "e2b" | "daytona" }) =>
       client.admin.killSandbox(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "sandboxes"] });
+    onSuccess: (_result, input) => {
+      queryClient.setQueryData<AdminSandboxListResult>(ADMIN_SANDBOXES_QUERY_KEY, (current) => {
+        if (!current) {
+          return current;
+        }
+
+        const sandboxes = current.sandboxes.filter(
+          (sandbox) => sandbox.sandboxId !== input.sandboxId || sandbox.provider !== input.provider,
+        );
+
+        return {
+          ...current,
+          sandboxes,
+          totalCount: sandboxes.length,
+        };
+      });
     },
   });
 }

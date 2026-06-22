@@ -9,14 +9,10 @@ import {
 } from "@bap/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { getDaytonaClientConfig } from "../sandbox/daytona";
-import {
-  DAYTONA_RUNAWAY_CLEANUP_JOB_NAME,
-  getDaytonaRunawayCleanupQueue,
-} from "../queues/daytona-runaway-cleanup-client";
+import { getDaytonaRunawayCleanupQueue } from "../queues/daytona-runaway-cleanup-client";
 import { generationInterruptService } from "./generation-interrupt-service";
 
 const DAYTONA_RUNAWAY_MAX_IDLE_MS = 25 * 60 * 1000;
-const DAYTONA_RUNAWAY_CLEANUP_SCHEDULE = "*/5 * * * *";
 const DAYTONA_RUNAWAY_CLEANUP_ERROR_MESSAGE =
   "Runaway job was stopped by the Daytona cleanup worker after no sandbox activity was recorded for over 25 minutes.";
 
@@ -29,10 +25,6 @@ type DaytonaSandboxLike = {
   refreshData?: () => Promise<void>;
   stop?: (timeout?: number, force?: boolean) => Promise<void>;
 };
-
-function resolveSchedulerTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || process.env.TZ || "UTC";
-}
 
 function parseDate(value: string | null | undefined): Date | null {
   if (!value) {
@@ -248,15 +240,5 @@ export async function cleanupRunawayDaytonaJobs(now = new Date()): Promise<{
 
 export async function syncDaytonaRunawayCleanupJob(): Promise<void> {
   const queue = getDaytonaRunawayCleanupQueue();
-  await queue.upsertJobScheduler(
-    DAYTONA_RUNAWAY_CLEANUP_SCHEDULER_ID,
-    {
-      pattern: DAYTONA_RUNAWAY_CLEANUP_SCHEDULE,
-      tz: resolveSchedulerTimezone(),
-    },
-    {
-      name: DAYTONA_RUNAWAY_CLEANUP_JOB_NAME,
-      data: {},
-    },
-  );
+  await queue.removeJobScheduler(DAYTONA_RUNAWAY_CLEANUP_SCHEDULER_ID);
 }

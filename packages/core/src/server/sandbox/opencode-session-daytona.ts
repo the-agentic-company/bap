@@ -2,6 +2,7 @@ import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { env } from "../../env";
 import {
   getDaytonaClientConfig,
+  getDaytonaSandboxLifecycleIntervals,
   listDaytonaSandboxPages,
   type DaytonaListedSandbox,
 } from "./daytona";
@@ -14,7 +15,6 @@ import {
 } from "./opencode-runtime";
 import { injectProviderAuth } from "./provider-auth-injection";
 import { conversationRuntimeService } from "../services/conversation-runtime-service";
-import { generationLifecyclePolicy } from "../services/lifecycle-policy";
 import type {
   OpenCodeSandbox,
   OpenCodeSandboxInitResult,
@@ -37,10 +37,6 @@ const DEFAULT_DAYTONA_SNAPSHOT = "bap-agent-dev";
 const DAYTONA_CREATE_TIMEOUT_SECONDS = 30;
 const DAYTONA_CREATE_MAX_ATTEMPTS = 2;
 const DAYTONA_CREATE_RETRY_DELAY_MS = 1_000;
-const DAYTONA_AUTO_STOP_INTERVAL_MINUTES = Math.ceil(
-  generationLifecyclePolicy.runDeadlineMs / 60_000,
-);
-const DAYTONA_AUTO_DELETE_INTERVAL_MINUTES = DAYTONA_AUTO_STOP_INTERVAL_MINUTES + 5;
 
 export type DaytonaSandboxLike = {
   id: string;
@@ -76,16 +72,6 @@ type DaytonaClientLike = {
   get: (sandboxIdOrName: string) => Promise<DaytonaSandboxLike>;
   list: (...args: unknown[]) => unknown;
 };
-
-export function getDaytonaSandboxLifecycleIntervals(): {
-  autoStopInterval: number;
-  autoDeleteInterval: number;
-} {
-  return {
-    autoStopInterval: DAYTONA_AUTO_STOP_INTERVAL_MINUTES,
-    autoDeleteInterval: DAYTONA_AUTO_DELETE_INTERVAL_MINUTES,
-  };
-}
 
 function buildDaytonaSandboxLabels(config: OpenCodeSessionConfig): Record<string, string> {
   return {

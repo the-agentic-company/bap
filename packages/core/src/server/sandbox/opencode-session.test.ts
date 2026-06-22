@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getOrCreateSandboxForCloudProvider } from "./opencode-session";
+import { getDaytonaSandboxLifecycleIntervals } from "./daytona";
 
 const {
   conversationRuntimeFindFirstMock,
@@ -193,6 +194,14 @@ describe("getOrCreateSandboxForCloudProvider", () => {
 
     await init.connectAgent({ onLifecycle: lifecycle });
 
+    const lifecycleIntervals = getDaytonaSandboxLifecycleIntervals();
+    expect(daytonaCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoStopInterval: lifecycleIntervals.autoStopInterval,
+        autoDeleteInterval: lifecycleIntervals.autoDeleteInterval,
+      }),
+      { timeout: 30 },
+    );
     expect(events).toEqual(["health", "auth", "providers"]);
     expect(injectProviderAuthMock).toHaveBeenCalledWith(expect.anything(), "user-1", {
       openAIAuthSource: "shared",

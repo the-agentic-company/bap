@@ -6,12 +6,7 @@ import {
   getDaytonaClientConfig,
   listDaytonaSandboxPages,
 } from "../sandbox/daytona";
-import {
-  DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME,
-  getDaytonaRunawayCleanupQueue,
-} from "../queues/daytona-runaway-cleanup-client";
-
-const DAYTONA_STOPPED_SANDBOX_DELETE_SCHEDULE = "*/5 * * * *";
+import { getDaytonaRunawayCleanupQueue } from "../queues/daytona-runaway-cleanup-client";
 
 export const DAYTONA_STOPPED_SANDBOX_DELETE_SCHEDULER_ID = "daytona:stopped-sandbox-delete";
 
@@ -20,10 +15,6 @@ type DaytonaSandboxSummary = {
   state?: string;
   delete?: (timeout?: number) => Promise<void>;
 };
-
-function resolveSchedulerTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || process.env.TZ || "UTC";
-}
 
 function isDeletableTerminalState(state: string | undefined): boolean {
   const normalized = (state ?? "").toLowerCase();
@@ -123,15 +114,5 @@ export async function cleanupStoppedDaytonaSandboxes(): Promise<{
 
 export async function syncStoppedDaytonaSandboxDeleteJob(): Promise<void> {
   const queue = getDaytonaRunawayCleanupQueue();
-  await queue.upsertJobScheduler(
-    DAYTONA_STOPPED_SANDBOX_DELETE_SCHEDULER_ID,
-    {
-      pattern: DAYTONA_STOPPED_SANDBOX_DELETE_SCHEDULE,
-      tz: resolveSchedulerTimezone(),
-    },
-    {
-      name: DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME,
-      data: {},
-    },
-  );
+  await queue.removeJobScheduler(DAYTONA_STOPPED_SANDBOX_DELETE_SCHEDULER_ID);
 }

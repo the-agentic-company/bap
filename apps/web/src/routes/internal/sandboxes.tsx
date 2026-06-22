@@ -51,7 +51,7 @@ const PROVIDER_FILTERS: Array<{ key: "all" | Provider; label: string }> = [
 ];
 
 function AdminSandboxesPage() {
-  const { data, isLoading, error, refetch } = useAdminListSandboxes();
+  const { data, isFetching, error, refetch } = useAdminListSandboxes();
   const killMutation = useAdminKillSandbox();
   const [killingId, setKillingId] = useState<string | null>(null);
   const [killingAll, setKillingAll] = useState(false);
@@ -60,6 +60,7 @@ function AdminSandboxesPage() {
   const [providerFilter, setProviderFilter] = useState<"all" | Provider>("all");
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const confirmActionRef = useRef<(() => Promise<void>) | null>(null);
+  const hasLoadedSandboxes = data !== undefined;
 
   const rawSandboxes = useMemo(() => (data?.sandboxes ?? []) as SandboxRow[], [data]);
 
@@ -206,7 +207,7 @@ function AdminSandboxesPage() {
         <div>
           <h2 className="text-xl font-semibold">
             Sandboxes{" "}
-            {!isLoading && (
+            {hasLoadedSandboxes && (
               <span className="text-muted-foreground text-base font-normal">
                 ({sandboxes.length}
                 {providerFilter !== "all" ? ` / ${rawSandboxes.length}` : ""})
@@ -214,12 +215,12 @@ function AdminSandboxesPage() {
             )}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Live sandboxes across E2B and Daytona, with rolling credit burn.
+            Provider sandbox snapshots across E2B and Daytona, with rolling credit burn.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
-            <RefreshCw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} />
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
+            <RefreshCw className={cn("mr-2 h-4 w-4", isFetching && "animate-spin")} />
             Refresh
           </Button>
           {sandboxes.length > 0 && (
@@ -261,7 +262,7 @@ function AdminSandboxesPage() {
           })}
         </div>
 
-        {!isLoading && sandboxes.length > 0 && (
+        {hasLoadedSandboxes && sandboxes.length > 0 && (
           <>
             <span className="text-muted-foreground">·</span>
             <span className="text-green-600 dark:text-green-400">{runningCount} running</span>
@@ -283,9 +284,13 @@ function AdminSandboxesPage() {
       </div>
 
       <div className="bg-card rounded-lg border">
-        {isLoading ? (
+        {isFetching && !hasLoadedSandboxes ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+          </div>
+        ) : !hasLoadedSandboxes ? (
+          <div className="text-muted-foreground py-12 text-center text-sm">
+            Sandbox snapshot not loaded.
           </div>
         ) : sandboxes.length === 0 ? (
           <div className="text-muted-foreground py-12 text-center text-sm">

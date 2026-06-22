@@ -9,12 +9,8 @@ import {
   stopQueues,
 } from "./server/queues";
 import {
-  DAYTONA_RUNAWAY_CLEANUP_JOB_NAME,
-  DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME,
-  getDaytonaRunawayCleanupQueue,
-  startDaytonaRunawayCleanupQueue,
-  stopDaytonaRunawayCleanupQueue,
-} from "./server/queues/daytona-runaway-cleanup";
+  closeDaytonaRunawayCleanupQueue,
+} from "./server/queues/daytona-runaway-cleanup-client";
 import {
   startSandboxUsageSnapshotQueue,
   stopSandboxUsageSnapshotQueue,
@@ -33,12 +29,6 @@ export async function startWorkerRuntime(): Promise<void> {
     queueName,
     redisUrl,
   } = startQueues();
-  const {
-    worker: daytonaCleanupWorker,
-    queueEvents: daytonaCleanupQueueEvents,
-    queueName: daytonaCleanupQueueName,
-    redisUrl: daytonaCleanupRedisUrl,
-  } = startDaytonaRunawayCleanupQueue();
   const {
     worker: sandboxSnapshotWorker,
     queueEvents: sandboxSnapshotQueueEvents,
@@ -90,32 +80,6 @@ export async function startWorkerRuntime(): Promise<void> {
     );
   }
 
-  async function enqueueDaytonaRunawayCleanupJob(): Promise<void> {
-    const queue = getDaytonaRunawayCleanupQueue();
-    await queue.add(
-      DAYTONA_RUNAWAY_CLEANUP_JOB_NAME,
-      {},
-      {
-        jobId: buildQueueJobId([DAYTONA_RUNAWAY_CLEANUP_JOB_NAME, Date.now()]),
-        removeOnComplete: true,
-        removeOnFail: 200,
-      },
-    );
-  }
-
-  async function enqueueStoppedDaytonaSandboxDeleteJob(): Promise<void> {
-    const queue = getDaytonaRunawayCleanupQueue();
-    await queue.add(
-      DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME,
-      {},
-      {
-        jobId: buildQueueJobId([DAYTONA_STOPPED_SANDBOX_DELETE_JOB_NAME, Date.now()]),
-        removeOnComplete: true,
-        removeOnFail: 200,
-      },
-    );
-  }
-
   const shutdown = async () => {
     if (shutdownPromise) {
       return shutdownPromise;
@@ -134,7 +98,7 @@ export async function startWorkerRuntime(): Promise<void> {
       }
       await Promise.allSettled([
         stopQueues(worker, queueEvents),
-        stopDaytonaRunawayCleanupQueue(daytonaCleanupWorker, daytonaCleanupQueueEvents),
+        closeDaytonaRunawayCleanupQueue(),
         stopSandboxUsageSnapshotQueue(sandboxSnapshotWorker, sandboxSnapshotQueueEvents),
         closePool(),
       ]);
@@ -152,9 +116,6 @@ export async function startWorkerRuntime(): Promise<void> {
   });
 
   console.log(`[worker] listening on "${queueName}" with redis "${redisUrl}"`);
-  console.log(
-    `[worker] Daytona cleanup listening on "${daytonaCleanupQueueName}" with redis "${daytonaCleanupRedisUrl}"`,
-  );
   console.log(
     `[worker] Sandbox usage snapshot listening on "${sandboxSnapshotQueueName}" with redis "${sandboxSnapshotRedisUrl}"`,
   );
@@ -182,16 +143,16 @@ export async function startWorkerRuntime(): Promise<void> {
 
   try {
     await syncDaytonaRunawayCleanupJob();
-    console.log("[worker] synced Daytona runaway cleanup schedule");
+    console.log("[worker] removed Daytona runaway cleanup schedule");
   } catch (error) {
-    console.error("[worker] failed to sync Daytona runaway cleanup schedule", error);
+    console.error("[worker] failed to remove Daytona runaway cleanup schedule", error);
   }
 
   try {
     await syncStoppedDaytonaSandboxDeleteJob();
-    console.log("[worker] synced Daytona stopped sandbox delete schedule");
+    console.log("[worker] removed Daytona stopped sandbox delete schedule");
   } catch (error) {
-    console.error("[worker] failed to sync Daytona stopped sandbox delete schedule", error);
+    console.error("[worker] failed to remove Daytona stopped sandbox delete schedule", error);
   }
 
   try {
@@ -231,15 +192,4 @@ export async function startWorkerRuntime(): Promise<void> {
     console.error("[worker] failed to enqueue conversation loading cleanup job", error);
   }
 
-  try {
-    await enqueueDaytonaRunawayCleanupJob();
-  } catch (error) {
-    console.error("[worker] failed to enqueue Daytona runaway cleanup job", error);
-  }
-
-  try {
-    await enqueueStoppedDaytonaSandboxDeleteJob();
-  } catch (error) {
-    console.error("[worker] failed to enqueue Daytona stopped sandbox delete job", error);
-  }
 }

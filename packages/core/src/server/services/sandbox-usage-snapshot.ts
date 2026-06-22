@@ -1,7 +1,6 @@
 import { db } from "@bap/db/client";
 import { sandboxUsageSnapshot } from "@bap/db/schema";
 import { SANDBOX_CREDITS_PER_MINUTE } from "../../lib/billing-plans";
-import { isDaytonaConfigured, listAllDaytonaSandboxes } from "../sandbox/daytona";
 import {
   SANDBOX_USAGE_SNAPSHOT_JOB_NAME,
   getSandboxUsageSnapshotQueue,
@@ -76,39 +75,9 @@ async function collectE2B(now: Date): Promise<ProviderSnapshotResult> {
   }
 }
 
-async function collectDaytona(now: Date): Promise<ProviderSnapshotResult> {
-  if (!isDaytonaConfigured()) {
-    return { rows: [], failed: false };
-  }
-  try {
-    const rows = await listAllDaytonaSandboxes();
-    return {
-      rows: rows.map((s) => {
-        const startedAt = s.startedAt ?? null;
-        const runtimeSeconds =
-          s.state === "running" && startedAt ? toSeconds(now.getTime() - startedAt.getTime()) : 0;
-        return {
-          snapshotAt: now,
-          provider: "daytona" as const,
-          sandboxId: s.sandboxId,
-          state: s.state,
-          startedAt,
-          runtimeSeconds,
-          credits: computeCredits(runtimeSeconds),
-          metadata: {
-            ...s.metadata,
-            lastActivityAt: s.lastActivityAt?.toISOString() ?? null,
-          },
-        };
-      }),
-      failed: false,
-    };
-  } catch (error) {
-    console.warn("[sandbox-usage-snapshot] Daytona listing failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return { rows: [], failed: true };
-  }
+async function collectDaytona(): Promise<ProviderSnapshotResult> {
+  // Daytona lifecycle is provider-managed; automatic listing can refresh sandbox activity.
+  return { rows: [], failed: false };
 }
 
 export async function collectSandboxUsageSnapshot(now: Date = new Date()): Promise<{
@@ -118,7 +87,7 @@ export async function collectSandboxUsageSnapshot(now: Date = new Date()): Promi
   failed: number;
   providerFailures: Array<"e2b" | "daytona">;
 }> {
-  const [e2bResult, daytonaResult] = await Promise.all([collectE2B(now), collectDaytona(now)]);
+  const [e2bResult, daytonaResult] = await Promise.all([collectE2B(now), collectDaytona()]);
   const e2bRows = e2bResult.rows;
   const daytonaRows = daytonaResult.rows;
   const rows = [...e2bRows, ...daytonaRows].filter((r) => r.sandboxId);

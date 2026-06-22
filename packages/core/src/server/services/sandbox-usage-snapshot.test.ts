@@ -96,32 +96,48 @@ describe("sandbox-usage-snapshot", () => {
     listAllE2BSandboxesMock.mockResolvedValue([]);
   });
 
-  it("inserts Daytona sandbox usage rows", async () => {
+  it("inserts E2B sandbox usage rows", async () => {
+    isE2BConfiguredMock.mockReturnValue(true);
+    listAllE2BSandboxesMock.mockResolvedValue([
+      {
+        sandboxId: "e2b-1",
+        templateId: "template-1",
+        state: "running",
+        startedAt: new Date("2026-04-21T18:00:00.000Z"),
+        endAt: null,
+        cpuCount: 2,
+        memoryMB: 4096,
+        metadata: { "bap-conversation-id": "conv-1" },
+      },
+    ]);
+
     const summary = await collectSandboxUsageSnapshot(new Date("2026-04-21T18:30:00.000Z"));
 
     expect(summary).toEqual({
       inserted: 1,
-      e2b: 0,
-      daytona: 1,
+      e2b: 1,
+      daytona: 0,
       failed: 0,
       providerFailures: [],
     });
     expect(insertMock).toHaveBeenCalledOnce();
     expect(insertedRows[0]).toEqual([
       expect.objectContaining({
-        provider: "daytona",
-        sandboxId: "daytona-1",
+        provider: "e2b",
+        sandboxId: "e2b-1",
         state: "running",
         runtimeSeconds: 30 * 60,
         metadata: expect.objectContaining({
           "bap-conversation-id": "conv-1",
-          lastActivityAt: "2026-04-21T18:20:00.000Z",
+          templateId: "template-1",
+          cpuCount: 2,
+          memoryMB: 4096,
         }),
       }),
     ]);
   });
 
-  it("reports configured Daytona listing failures instead of a healthy empty snapshot", async () => {
+  it("does not poll Daytona during automatic snapshots", async () => {
     listAllDaytonaSandboxesMock.mockRejectedValue(new Error("Daytona list unavailable"));
 
     const summary = await collectSandboxUsageSnapshot(new Date("2026-04-21T18:30:00.000Z"));
@@ -131,8 +147,10 @@ describe("sandbox-usage-snapshot", () => {
       e2b: 0,
       daytona: 0,
       failed: 0,
-      providerFailures: ["daytona"],
+      providerFailures: [],
     });
+    expect(isDaytonaConfiguredMock).not.toHaveBeenCalled();
+    expect(listAllDaytonaSandboxesMock).not.toHaveBeenCalled();
     expect(insertMock).not.toHaveBeenCalled();
   });
 
