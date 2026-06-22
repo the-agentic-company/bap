@@ -1,29 +1,17 @@
 import { T, useGT } from "gt-react";
 import { Download, Loader2, RefreshCw, X } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import type { AgenticAppHtmlErrorCode } from "@/server/services/agentic-app-html";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
-import { createActivationGate } from "./agentic-app-activation-gate";
-import {
-  type AgenticAppPromptRejectionReason,
-  buildAgenticAppPromptResult,
-  parseAgenticAppPromptMessage,
-} from "./agentic-app-protocol";
 import type { SandboxFileData } from "./message-list";
+import { useAgenticAppPromptBridge } from "./use-agentic-app-prompt-bridge";
 
 type Props = {
   outputFile: SandboxFileData;
   onClose: () => void;
   onSendPrompt: (prompt: string) => Promise<unknown>;
 };
-
-// Programmatic focus (autofocus, scripted `.focus()`) fires synchronously around the
-// iframe load; a genuine user focus-entry comes seconds later. Ignoring focus-entry
-// engagement inside this grace window prevents a hostile Agentic-App from self-arming
-// the gate on load.
-const FOCUS_ENGAGEMENT_LOAD_GRACE_MS = 1000;
 
 function readAgenticAppErrorCode(error: unknown): AgenticAppHtmlErrorCode | "" {
   const record = error && typeof error === "object" ? (error as { data?: unknown }) : null;
@@ -63,124 +51,13 @@ function getAgenticAppErrorCopy(
 
 export function AgenticAppPanel({ outputFile, onClose, onSendPrompt }: Props) {
   const t = useGT();
-  const posthog = usePostHog();
 
   const appHtml = useAgenticAppHtml(outputFile.fileId);
   const { mutateAsync: downloadSandboxFile, isPending: isDownloading } = useDownloadSandboxFile();
-
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const gateRef = useRef<ReturnType<typeof createActivationGate> | null>(null);
-  if (gateRef.current === null) {
-    gateRef.current = createActivationGate();
-  }
-  const loadedAtRef = useRef<number | null>(null);
-  const onSendPromptRef = useRef(onSendPrompt);
-  onSendPromptRef.current = onSendPrompt;
-  const posthogRef = useRef(posthog);
-  posthogRef.current = posthog;
-
-  const recordGesture = useCallback(() => {
-    gateRef.current?.recordGesture(Date.now());
-  }, []);
-
-  const handleIframeLoad = useCallback(() => {
-    loadedAtRef.current = Date.now();
-  }, []);
-
-  useEffect(() => {
-    // Clicks inside the sandboxed iframe never reach this document; focus moving into
-    // the iframe fires a window blur with the iframe as the active element, which is
-    // the parent-side evidence the user clicked into the app. The gate only arms when
-    // a real gesture preceded this focus-entry (see createActivationGate).
-    const handleWindowBlur = () => {
-      if (!iframeRef.current || document.activeElement !== iframeRef.current) {
-        return;
-      }
-      const now = Date.now();
-      const loadedAt = loadedAtRef.current;
-      if (loadedAt !== null && now - loadedAt < FOCUS_ENGAGEMENT_LOAD_GRACE_MS) {
-        return;
-      }
-      gateRef.current?.recordFocusEntry(now);
-    };
-    window.addEventListener("blur", handleWindowBlur);
-    return () => window.removeEventListener("blur", handleWindowBlur);
-  }, []);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const iframe = iframeRef.current;
-      if (!iframe?.contentWindow || event.source !== iframe.contentWindow) {
-        return;
-      }
-
-      const sourceWindow = event.source as Window;
-      const postResult = (
-        status: "sent" | "rejected",
-        reason?: AgenticAppPromptRejectionReason,
-      ) => {
-        // The iframe may have detached (unmount, reload) before we reply; never let a
-        // failed ack throw, and never ack a window that is no longer our iframe.
-        if (iframeRef.current?.contentWindow !== sourceWindow) {
-          return;
-        }
-        try {
-          sourceWindow.postMessage(buildAgenticAppPromptResult(status, reason), "*");
-        } catch {
-          // window gone — nothing to do
-        }
-      };
-
-      const capture = (status: "sent" | "rejected", reason?: AgenticAppPromptRejectionReason) => {
-        posthogRef.current?.capture("agentic_app_prompt", {
-          status,
-          reason: reason ?? null,
-          file_id: outputFile.fileId,
-        });
-      };
-
-      const parsed = parseAgenticAppPromptMessage(event.data);
-      if (parsed.kind === "ignored") {
-        return;
-      }
-      if (parsed.kind === "invalid") {
-        capture("rejected", "invalid");
-        postResult("rejected", "invalid");
-        return;
-      }
-
-      const gate = gateRef.current;
-      const focused = document.activeElement === iframe;
-      const verdict = gate
-        ? gate.evaluate(Date.now(), focused)
-        : ({ allowed: false, reason: "no_user_activation" } as const);
-      if (!verdict.allowed) {
-        capture("rejected", verdict.reason);
-        postResult("rejected", verdict.reason);
-        return;
-      }
-
-      void Promise.resolve()
-        .then(() => onSendPromptRef.current(parsed.prompt))
-        .then((sendResult) => {
-          if (sendResult) {
-            gate?.recordAccepted(Date.now());
-            capture("sent");
-            postResult("sent");
-          } else {
-            capture("rejected");
-            postResult("rejected");
-          }
-        })
-        .catch(() => {
-          capture("rejected");
-          postResult("rejected");
-        });
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [outputFile.fileId]);
+  const { iframeRef, handleIframeLoad, recordGesture } = useAgenticAppPromptBridge({
+    outputFileId: outputFile.fileId,
+    onSendPrompt,
+  });
 
   const handleRefresh = useCallback(() => {
     void appHtml.refetch();
@@ -278,6 +155,9 @@ export function AgenticAppPanel({ outputFile, onClose, onSendPrompt }: Props) {
             sandbox="allow-scripts allow-forms"
             srcDoc={appHtml.data?.html ?? ""}
             onLoad={handleIframeLoad}
+            onPointerDownCapture={recordGesture}
+            onPointerMoveCapture={recordGesture}
+            onKeyDownCapture={recordGesture}
           />
         )}
       </div>

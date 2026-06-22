@@ -20,7 +20,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
+import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
 
 export type InfoTab = "summary" | "chat";
 export type MobilePanel = "app" | InfoTab;
@@ -282,9 +284,11 @@ function EmptyPreview({ latestMessage }: { latestMessage?: string }) {
 
 function AgenticAppFrame({
   outputFile,
+  onSendPrompt,
   showToolbar = true,
 }: {
   outputFile: SandboxFileData;
+  onSendPrompt: (prompt: string) => Promise<unknown> | unknown;
   showToolbar?: boolean;
 }) {
   const t = useGT();
@@ -292,6 +296,22 @@ function AgenticAppFrame({
   const preview = useAgenticAppHtml(outputFile.fileId);
   const { mutateAsync: downloadSandboxFile, isPending: isDownloading } = useDownloadSandboxFile();
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const {
+    iframeRef: inlineIframeRef,
+    handleIframeLoad: handleInlineIframeLoad,
+    recordGesture: recordInlineGesture,
+  } = useAgenticAppPromptBridge({
+    outputFileId: outputFile.fileId,
+    onSendPrompt,
+  });
+  const {
+    iframeRef: fullscreenIframeRef,
+    handleIframeLoad: handleFullscreenIframeLoad,
+    recordGesture: recordFullscreenGesture,
+  } = useAgenticAppPromptBridge({
+    outputFileId: outputFile.fileId,
+    onSendPrompt,
+  });
 
   const handleRefresh = useCallback(() => {
     void preview.refetch();
@@ -312,7 +332,12 @@ function AgenticAppFrame({
   }, []);
 
   return (
-    <div className="bg-background flex h-full min-h-0 flex-col">
+    <div
+      className="bg-background flex h-full min-h-0 flex-col"
+      onPointerDownCapture={recordInlineGesture}
+      onPointerMoveCapture={recordInlineGesture}
+      onKeyDownCapture={recordInlineGesture}
+    >
       {showToolbar ? (
         <div className="border-border/70 flex h-11 shrink-0 items-center gap-2 border-b px-3">
           <FileCode2 className="text-muted-foreground h-4 w-4" />
@@ -382,10 +407,15 @@ function AgenticAppFrame({
               <Maximize2 className="h-4 w-4" />
             </Button>
             <iframe
+              ref={inlineIframeRef}
               title={t("output.html Agentic-App")}
               className="bg-background h-full w-full border-0"
               sandbox="allow-scripts allow-forms"
               srcDoc={preview.data?.html ?? ""}
+              onLoad={handleInlineIframeLoad}
+              onPointerDownCapture={recordInlineGesture}
+              onPointerMoveCapture={recordInlineGesture}
+              onKeyDownCapture={recordInlineGesture}
             />
           </>
         )}
@@ -394,6 +424,9 @@ function AgenticAppFrame({
         <DialogContent
           className="h-[calc(100dvh-2rem)] max-h-none w-[calc(100vw-2rem)] max-w-none gap-0 overflow-hidden p-0 sm:rounded-xl"
           showCloseButton
+          onPointerDownCapture={recordFullscreenGesture}
+          onPointerMoveCapture={recordFullscreenGesture}
+          onKeyDownCapture={recordFullscreenGesture}
         >
           <DialogTitle className="sr-only">
             <T>output.html Agentic-App fullscreen</T>
@@ -402,10 +435,15 @@ function AgenticAppFrame({
             <T>Fullscreen view of the generated output.html file.</T>
           </DialogDescription>
           <iframe
+            ref={fullscreenIframeRef}
             title={t("output.html Agentic-App fullscreen")}
             className="bg-background h-full w-full border-0"
             sandbox="allow-scripts allow-forms"
             srcDoc={preview.data?.html ?? ""}
+            onLoad={handleFullscreenIframeLoad}
+            onPointerDownCapture={recordFullscreenGesture}
+            onPointerMoveCapture={recordFullscreenGesture}
+            onKeyDownCapture={recordFullscreenGesture}
           />
         </DialogContent>
       </Dialog>
@@ -549,15 +587,24 @@ export function RunSummaryPanel({
 
 export function OutputPanel({
   outputFile,
+  conversationId,
   latestCoworkerMessage,
   showOutputToolbar = true,
 }: {
   outputFile?: SandboxFileData | null;
+  conversationId?: string;
   latestCoworkerMessage?: string;
   showOutputToolbar?: boolean;
 }) {
+  const sendAgenticAppPrompt = useSendAgenticAppPrompt(conversationId);
+
   return outputFile ? (
-    <AgenticAppFrame outputFile={outputFile} showToolbar={showOutputToolbar} />
+    <AgenticAppFrame
+      key={outputFile.fileId}
+      outputFile={outputFile}
+      onSendPrompt={sendAgenticAppPrompt}
+      showToolbar={showOutputToolbar}
+    />
   ) : (
     <EmptyPreview latestMessage={latestCoworkerMessage} />
   );

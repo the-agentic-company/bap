@@ -307,6 +307,52 @@ export function useEnqueueConversationMessage() {
   });
 }
 
+const activeAgenticAppPromptStatuses = new Set([
+  "generating",
+  "awaiting_approval",
+  "awaiting_auth",
+  "paused",
+]);
+
+export function useSendAgenticAppPrompt(conversationId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useCallback(
+    async (prompt: string): Promise<boolean> => {
+      if (!conversationId || prompt.trim().length === 0) {
+        return false;
+      }
+
+      const activeGeneration = await client.generation.getActiveGeneration({ conversationId });
+      if (activeGeneration.status && activeAgenticAppPromptStatuses.has(activeGeneration.status)) {
+        await client.generation.enqueueConversationMessage({
+          conversationId,
+          content: prompt,
+          replaceExisting: false,
+        });
+      } else {
+        await client.generation.startGeneration({
+          conversationId,
+          content: prompt,
+        });
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["conversation", "get", conversationId] }),
+        queryClient.invalidateQueries({ queryKey: ["conversation"] }),
+        queryClient.invalidateQueries({ queryKey: ["generation"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["generation", "queuedMessages", conversationId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["coworker"] }),
+      ]);
+
+      return true;
+    },
+    [conversationId, queryClient],
+  );
+}
+
 export function useRemoveConversationQueuedMessage() {
   const queryClient = useQueryClient();
   return useMutation({
