@@ -15,7 +15,6 @@ const redisOptions = {
 export const SCHEDULED_COWORKER_JOB_NAME = "coworker:scheduled-trigger";
 export const LEGACY_SCHEDULED_COWORKER_JOB_NAME = "workflow:scheduled-trigger";
 export const GMAIL_COWORKER_JOB_NAME = "coworker:gmail-trigger";
-export const X_DM_COWORKER_JOB_NAME = "coworker:x-dm-trigger";
 export const EMAIL_FORWARDED_COWORKER_JOB_NAME = "coworker:email-forwarded-trigger";
 export const CHAT_GENERATION_JOB_NAME = "generation:chat-run";
 export const COWORKER_GENERATION_JOB_NAME = "generation:coworker-run";

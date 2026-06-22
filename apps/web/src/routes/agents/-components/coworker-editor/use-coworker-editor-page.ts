@@ -19,7 +19,6 @@ import {
   INTEGRATION_DISPLAY_NAMES,
   INTEGRATION_LOGOS,
   COWORKER_AVAILABLE_INTEGRATION_TYPES,
-  isComingSoonIntegration,
   type IntegrationType,
 } from "@/lib/integration-icons";
 import { buildProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
@@ -379,14 +378,8 @@ export function useCoworkerEditorPage({
     [activeCoworker?.triggerType],
   );
   const triggers = useMemo(
-    () => [
-      ...BASE_TRIGGERS,
-      ...persistedLegacyTriggers,
-      ...(isAdmin || !isComingSoonIntegration("twitter")
-        ? ([{ value: "twitter.new_dm", label: msg("New X (Twitter) DM") }] as const)
-        : []),
-    ],
-    [isAdmin, persistedLegacyTriggers],
+    () => [...BASE_TRIGGERS, ...persistedLegacyTriggers],
+    [persistedLegacyTriggers],
   );
   const skillSelectionScopeKey = useMemo(
     () => (coworkerId ? `coworker-builder:${coworkerId}` : "coworker-builder"),

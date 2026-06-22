@@ -47,7 +47,6 @@ import { Route as OnboardingIntegrationsRouteImport } from './routes/onboarding/
 import { Route as LegalTermsRouteImport } from './routes/legal/terms'
 import { Route as LegalPrivacyPolicyRouteImport } from './routes/legal/privacy-policy'
 import { Route as InternalWorkspacesRouteImport } from './routes/internal/workspaces'
-import { Route as InternalWhatsappRouteImport } from './routes/internal/whatsapp'
 import { Route as InternalUsageRouteImport } from './routes/internal/usage'
 import { Route as InternalToolsRouteImport } from './routes/internal/tools'
 import { Route as InternalTemplatesRouteImport } from './routes/internal/templates'
@@ -61,9 +60,6 @@ import { Route as InternalMcpRouteImport } from './routes/internal/mcp'
 import { Route as InternalCreditsRouteImport } from './routes/internal/credits'
 import { Route as InternalCoworkerOverviewRouteImport } from './routes/internal/coworker-overview'
 import { Route as InternalChatOverviewRouteImport } from './routes/internal/chat-overview'
-import { Route as IntegrationsWhatsappRouteImport } from './routes/integrations/whatsapp'
-import { Route as IntegrationsTwitterRouteImport } from './routes/integrations/twitter'
-import { Route as IntegrationsRedditRouteImport } from './routes/integrations/reddit'
 import { Route as IntegrationsTypeRouteImport } from './routes/integrations/$type'
 import { Route as ApiReportRouteImport } from './routes/api/report'
 import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
@@ -97,9 +93,6 @@ import { Route as ToolboxSourcesNewRouteImport } from './routes/toolbox/sources/
 import { Route as ToolboxSourcesIdRouteImport } from './routes/toolbox/sources/$id'
 import { Route as SkillsCommunitySkillIdRouteImport } from './routes/skills/community/$skillId'
 import { Route as ApiZeroQueryRouteImport } from './routes/api/zero/query'
-import { Route as ApiWhatsappStatusRouteImport } from './routes/api/whatsapp/status'
-import { Route as ApiWhatsappStartRouteImport } from './routes/api/whatsapp/start'
-import { Route as ApiWhatsappLinkCodeRouteImport } from './routes/api/whatsapp/link-code'
 import { Route as ApiSlackLinkRouteImport } from './routes/api/slack/link'
 import { Route as ApiSlackEventsRouteImport } from './routes/api/slack/events'
 import { Route as ApiSettingsPhoneNumberRouteImport } from './routes/api/settings/phone-number'
@@ -367,11 +360,6 @@ const InternalWorkspacesRoute = InternalWorkspacesRouteImport.update({
   path: '/workspaces',
   getParentRoute: () => InternalRouteRoute,
 } as any)
-const InternalWhatsappRoute = InternalWhatsappRouteImport.update({
-  id: '/whatsapp',
-  path: '/whatsapp',
-  getParentRoute: () => InternalRouteRoute,
-} as any)
 const InternalUsageRoute = InternalUsageRouteImport.update({
   id: '/usage',
   path: '/usage',
@@ -437,21 +425,6 @@ const InternalChatOverviewRoute = InternalChatOverviewRouteImport.update({
   id: '/chat-overview',
   path: '/chat-overview',
   getParentRoute: () => InternalRouteRoute,
-} as any)
-const IntegrationsWhatsappRoute = IntegrationsWhatsappRouteImport.update({
-  id: '/whatsapp',
-  path: '/whatsapp',
-  getParentRoute: () => IntegrationsRouteRoute,
-} as any)
-const IntegrationsTwitterRoute = IntegrationsTwitterRouteImport.update({
-  id: '/twitter',
-  path: '/twitter',
-  getParentRoute: () => IntegrationsRouteRoute,
-} as any)
-const IntegrationsRedditRoute = IntegrationsRedditRouteImport.update({
-  id: '/reddit',
-  path: '/reddit',
-  getParentRoute: () => IntegrationsRouteRoute,
 } as any)
 const IntegrationsTypeRoute = IntegrationsTypeRouteImport.update({
   id: '/$type',
@@ -616,21 +589,6 @@ const SkillsCommunitySkillIdRoute = SkillsCommunitySkillIdRouteImport.update({
 const ApiZeroQueryRoute = ApiZeroQueryRouteImport.update({
   id: '/api/zero/query',
   path: '/api/zero/query',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiWhatsappStatusRoute = ApiWhatsappStatusRouteImport.update({
-  id: '/api/whatsapp/status',
-  path: '/api/whatsapp/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiWhatsappStartRoute = ApiWhatsappStartRouteImport.update({
-  id: '/api/whatsapp/start',
-  path: '/api/whatsapp/start',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiWhatsappLinkCodeRoute = ApiWhatsappLinkCodeRouteImport.update({
-  id: '/api/whatsapp/link-code',
-  path: '/api/whatsapp/link-code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSlackLinkRoute = ApiSlackLinkRouteImport.update({
@@ -1112,9 +1070,6 @@ export interface FileRoutesByFullPath {
   '/api/openapi': typeof ApiOpenapiRoute
   '/api/report': typeof ApiReportRoute
   '/integrations/$type': typeof IntegrationsTypeRoute
-  '/integrations/reddit': typeof IntegrationsRedditRoute
-  '/integrations/twitter': typeof IntegrationsTwitterRoute
-  '/integrations/whatsapp': typeof IntegrationsWhatsappRoute
   '/internal/chat-overview': typeof InternalChatOverviewRoute
   '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
   '/internal/credits': typeof InternalCreditsRoute
@@ -1128,7 +1083,6 @@ export interface FileRoutesByFullPath {
   '/internal/templates': typeof InternalTemplatesRoute
   '/internal/tools': typeof InternalToolsRoute
   '/internal/usage': typeof InternalUsageRoute
-  '/internal/whatsapp': typeof InternalWhatsappRoute
   '/internal/workspaces': typeof InternalWorkspacesRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms': typeof LegalTermsRoute
@@ -1175,9 +1129,6 @@ export interface FileRoutesByFullPath {
   '/api/settings/phone-number': typeof ApiSettingsPhoneNumberRoute
   '/api/slack/events': typeof ApiSlackEventsRoute
   '/api/slack/link': typeof ApiSlackLinkRoute
-  '/api/whatsapp/link-code': typeof ApiWhatsappLinkCodeRoute
-  '/api/whatsapp/start': typeof ApiWhatsappStartRoute
-  '/api/whatsapp/status': typeof ApiWhatsappStatusRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
@@ -1272,9 +1223,6 @@ export interface FileRoutesByTo {
   '/api/openapi': typeof ApiOpenapiRoute
   '/api/report': typeof ApiReportRoute
   '/integrations/$type': typeof IntegrationsTypeRoute
-  '/integrations/reddit': typeof IntegrationsRedditRoute
-  '/integrations/twitter': typeof IntegrationsTwitterRoute
-  '/integrations/whatsapp': typeof IntegrationsWhatsappRoute
   '/internal/chat-overview': typeof InternalChatOverviewRoute
   '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
   '/internal/credits': typeof InternalCreditsRoute
@@ -1288,7 +1236,6 @@ export interface FileRoutesByTo {
   '/internal/templates': typeof InternalTemplatesRoute
   '/internal/tools': typeof InternalToolsRoute
   '/internal/usage': typeof InternalUsageRoute
-  '/internal/whatsapp': typeof InternalWhatsappRoute
   '/internal/workspaces': typeof InternalWorkspacesRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms': typeof LegalTermsRoute
@@ -1333,9 +1280,6 @@ export interface FileRoutesByTo {
   '/api/settings/phone-number': typeof ApiSettingsPhoneNumberRoute
   '/api/slack/events': typeof ApiSlackEventsRoute
   '/api/slack/link': typeof ApiSlackLinkRoute
-  '/api/whatsapp/link-code': typeof ApiWhatsappLinkCodeRoute
-  '/api/whatsapp/start': typeof ApiWhatsappStartRoute
-  '/api/whatsapp/status': typeof ApiWhatsappStatusRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
@@ -1442,9 +1386,6 @@ export interface FileRoutesById {
   '/api/openapi': typeof ApiOpenapiRoute
   '/api/report': typeof ApiReportRoute
   '/integrations/$type': typeof IntegrationsTypeRoute
-  '/integrations/reddit': typeof IntegrationsRedditRoute
-  '/integrations/twitter': typeof IntegrationsTwitterRoute
-  '/integrations/whatsapp': typeof IntegrationsWhatsappRoute
   '/internal/chat-overview': typeof InternalChatOverviewRoute
   '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
   '/internal/credits': typeof InternalCreditsRoute
@@ -1458,7 +1399,6 @@ export interface FileRoutesById {
   '/internal/templates': typeof InternalTemplatesRoute
   '/internal/tools': typeof InternalToolsRoute
   '/internal/usage': typeof InternalUsageRoute
-  '/internal/whatsapp': typeof InternalWhatsappRoute
   '/internal/workspaces': typeof InternalWorkspacesRoute
   '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
   '/legal/terms': typeof LegalTermsRoute
@@ -1506,9 +1446,6 @@ export interface FileRoutesById {
   '/api/settings/phone-number': typeof ApiSettingsPhoneNumberRoute
   '/api/slack/events': typeof ApiSlackEventsRoute
   '/api/slack/link': typeof ApiSlackLinkRoute
-  '/api/whatsapp/link-code': typeof ApiWhatsappLinkCodeRoute
-  '/api/whatsapp/start': typeof ApiWhatsappStartRoute
-  '/api/whatsapp/status': typeof ApiWhatsappStatusRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
@@ -1614,9 +1551,6 @@ export interface FileRouteTypes {
     | '/api/openapi'
     | '/api/report'
     | '/integrations/$type'
-    | '/integrations/reddit'
-    | '/integrations/twitter'
-    | '/integrations/whatsapp'
     | '/internal/chat-overview'
     | '/internal/coworker-overview'
     | '/internal/credits'
@@ -1630,7 +1564,6 @@ export interface FileRouteTypes {
     | '/internal/templates'
     | '/internal/tools'
     | '/internal/usage'
-    | '/internal/whatsapp'
     | '/internal/workspaces'
     | '/legal/privacy-policy'
     | '/legal/terms'
@@ -1677,9 +1610,6 @@ export interface FileRouteTypes {
     | '/api/settings/phone-number'
     | '/api/slack/events'
     | '/api/slack/link'
-    | '/api/whatsapp/link-code'
-    | '/api/whatsapp/start'
-    | '/api/whatsapp/status'
     | '/api/zero/query'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
@@ -1774,9 +1704,6 @@ export interface FileRouteTypes {
     | '/api/openapi'
     | '/api/report'
     | '/integrations/$type'
-    | '/integrations/reddit'
-    | '/integrations/twitter'
-    | '/integrations/whatsapp'
     | '/internal/chat-overview'
     | '/internal/coworker-overview'
     | '/internal/credits'
@@ -1790,7 +1717,6 @@ export interface FileRouteTypes {
     | '/internal/templates'
     | '/internal/tools'
     | '/internal/usage'
-    | '/internal/whatsapp'
     | '/internal/workspaces'
     | '/legal/privacy-policy'
     | '/legal/terms'
@@ -1835,9 +1761,6 @@ export interface FileRouteTypes {
     | '/api/settings/phone-number'
     | '/api/slack/events'
     | '/api/slack/link'
-    | '/api/whatsapp/link-code'
-    | '/api/whatsapp/start'
-    | '/api/whatsapp/status'
     | '/api/zero/query'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
@@ -1943,9 +1866,6 @@ export interface FileRouteTypes {
     | '/api/openapi'
     | '/api/report'
     | '/integrations/$type'
-    | '/integrations/reddit'
-    | '/integrations/twitter'
-    | '/integrations/whatsapp'
     | '/internal/chat-overview'
     | '/internal/coworker-overview'
     | '/internal/credits'
@@ -1959,7 +1879,6 @@ export interface FileRouteTypes {
     | '/internal/templates'
     | '/internal/tools'
     | '/internal/usage'
-    | '/internal/whatsapp'
     | '/internal/workspaces'
     | '/legal/privacy-policy'
     | '/legal/terms'
@@ -2007,9 +1926,6 @@ export interface FileRouteTypes {
     | '/api/settings/phone-number'
     | '/api/slack/events'
     | '/api/slack/link'
-    | '/api/whatsapp/link-code'
-    | '/api/whatsapp/start'
-    | '/api/whatsapp/status'
     | '/api/zero/query'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
@@ -2114,9 +2030,6 @@ export interface RootRouteChildren {
   ApiSettingsPhoneNumberRoute: typeof ApiSettingsPhoneNumberRoute
   ApiSlackEventsRoute: typeof ApiSlackEventsRoute
   ApiSlackLinkRoute: typeof ApiSlackLinkRoute
-  ApiWhatsappLinkCodeRoute: typeof ApiWhatsappLinkCodeRoute
-  ApiWhatsappStartRoute: typeof ApiWhatsappStartRoute
-  ApiWhatsappStatusRoute: typeof ApiWhatsappStatusRoute
   ApiZeroQueryRoute: typeof ApiZeroQueryRoute
   ApiRpcIndexRoute: typeof ApiRpcIndexRoute
   ApiAuthPasswordStartRoute: typeof ApiAuthPasswordStartRoute
@@ -2435,13 +2348,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalWorkspacesRouteImport
       parentRoute: typeof InternalRouteRoute
     }
-    '/internal/whatsapp': {
-      id: '/internal/whatsapp'
-      path: '/whatsapp'
-      fullPath: '/internal/whatsapp'
-      preLoaderRoute: typeof InternalWhatsappRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
     '/internal/usage': {
       id: '/internal/usage'
       path: '/usage'
@@ -2532,27 +2438,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/internal/chat-overview'
       preLoaderRoute: typeof InternalChatOverviewRouteImport
       parentRoute: typeof InternalRouteRoute
-    }
-    '/integrations/whatsapp': {
-      id: '/integrations/whatsapp'
-      path: '/whatsapp'
-      fullPath: '/integrations/whatsapp'
-      preLoaderRoute: typeof IntegrationsWhatsappRouteImport
-      parentRoute: typeof IntegrationsRouteRoute
-    }
-    '/integrations/twitter': {
-      id: '/integrations/twitter'
-      path: '/twitter'
-      fullPath: '/integrations/twitter'
-      preLoaderRoute: typeof IntegrationsTwitterRouteImport
-      parentRoute: typeof IntegrationsRouteRoute
-    }
-    '/integrations/reddit': {
-      id: '/integrations/reddit'
-      path: '/reddit'
-      fullPath: '/integrations/reddit'
-      preLoaderRoute: typeof IntegrationsRedditRouteImport
-      parentRoute: typeof IntegrationsRouteRoute
     }
     '/integrations/$type': {
       id: '/integrations/$type'
@@ -2783,27 +2668,6 @@ declare module '@tanstack/react-router' {
       path: '/api/zero/query'
       fullPath: '/api/zero/query'
       preLoaderRoute: typeof ApiZeroQueryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/whatsapp/status': {
-      id: '/api/whatsapp/status'
-      path: '/api/whatsapp/status'
-      fullPath: '/api/whatsapp/status'
-      preLoaderRoute: typeof ApiWhatsappStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/whatsapp/start': {
-      id: '/api/whatsapp/start'
-      path: '/api/whatsapp/start'
-      fullPath: '/api/whatsapp/start'
-      preLoaderRoute: typeof ApiWhatsappStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/whatsapp/link-code': {
-      id: '/api/whatsapp/link-code'
-      path: '/api/whatsapp/link-code'
-      fullPath: '/api/whatsapp/link-code'
-      preLoaderRoute: typeof ApiWhatsappLinkCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/slack/link': {
@@ -3458,16 +3322,10 @@ const AgentsRouteRouteWithChildren = AgentsRouteRoute._addFileChildren(
 
 interface IntegrationsRouteRouteChildren {
   IntegrationsTypeRoute: typeof IntegrationsTypeRoute
-  IntegrationsRedditRoute: typeof IntegrationsRedditRoute
-  IntegrationsTwitterRoute: typeof IntegrationsTwitterRoute
-  IntegrationsWhatsappRoute: typeof IntegrationsWhatsappRoute
 }
 
 const IntegrationsRouteRouteChildren: IntegrationsRouteRouteChildren = {
   IntegrationsTypeRoute: IntegrationsTypeRoute,
-  IntegrationsRedditRoute: IntegrationsRedditRoute,
-  IntegrationsTwitterRoute: IntegrationsTwitterRoute,
-  IntegrationsWhatsappRoute: IntegrationsWhatsappRoute,
 }
 
 const IntegrationsRouteRouteWithChildren =
@@ -3487,7 +3345,6 @@ interface InternalRouteRouteChildren {
   InternalTemplatesRoute: typeof InternalTemplatesRoute
   InternalToolsRoute: typeof InternalToolsRoute
   InternalUsageRoute: typeof InternalUsageRoute
-  InternalWhatsappRoute: typeof InternalWhatsappRoute
   InternalWorkspacesRoute: typeof InternalWorkspacesRoute
   InternalIndexRoute: typeof InternalIndexRoute
 }
@@ -3506,7 +3363,6 @@ const InternalRouteRouteChildren: InternalRouteRouteChildren = {
   InternalTemplatesRoute: InternalTemplatesRoute,
   InternalToolsRoute: InternalToolsRoute,
   InternalUsageRoute: InternalUsageRoute,
-  InternalWhatsappRoute: InternalWhatsappRoute,
   InternalWorkspacesRoute: InternalWorkspacesRoute,
   InternalIndexRoute: InternalIndexRoute,
 }
@@ -3752,9 +3608,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSettingsPhoneNumberRoute: ApiSettingsPhoneNumberRoute,
   ApiSlackEventsRoute: ApiSlackEventsRoute,
   ApiSlackLinkRoute: ApiSlackLinkRoute,
-  ApiWhatsappLinkCodeRoute: ApiWhatsappLinkCodeRoute,
-  ApiWhatsappStartRoute: ApiWhatsappStartRoute,
-  ApiWhatsappStatusRoute: ApiWhatsappStatusRoute,
   ApiZeroQueryRoute: ApiZeroQueryRoute,
   ApiRpcIndexRoute: ApiRpcIndexRoute,
   ApiAuthPasswordStartRoute: ApiAuthPasswordStartRoute,

@@ -40,10 +40,8 @@ const TOOL_ENV_REQUIREMENTS: Record<string, string[]> = {
   notion: ["NOTION_ACCESS_TOKEN"],
   "outlook-calendar": ["OUTLOOK_CALENDAR_ACCESS_TOKEN"],
   "outlook-mail": ["OUTLOOK_ACCESS_TOKEN"],
-  reddit: ["REDDIT_ACCESS_TOKEN"],
   salesforce: ["SALESFORCE_ACCESS_TOKEN", "SALESFORCE_INSTANCE_URL"],
   slack: ["SLACK_ACCESS_TOKEN"],
-  twitter: ["TWITTER_ACCESS_TOKEN"],
 };
 
 const TOOL_INTEGRATION_TYPES: Partial<Record<string, string>> = {
@@ -59,10 +57,8 @@ const TOOL_INTEGRATION_TYPES: Partial<Record<string, string>> = {
   notion: "notion",
   "outlook-calendar": "outlook_calendar",
   "outlook-mail": "outlook",
-  reddit: "reddit",
   salesforce: "salesforce",
   slack: "slack",
-  twitter: "twitter",
 };
 
 const TOOL_SPECS = Object.fromEntries(

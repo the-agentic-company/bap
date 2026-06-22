@@ -19,8 +19,6 @@ import {
   Users,
   Linkedin,
   Cloud,
-  MessageCircle,
-  Twitter,
   Globe,
   type LucideIcon,
 } from "lucide-react";
@@ -41,9 +39,7 @@ export type IntegrationType =
   | "hubspot"
   | "linkedin"
   | "salesforce"
-  | "dynamics"
-  | "reddit"
-  | "twitter";
+  | "dynamics";
 
 type ExecutorDisplayOnlyIntegrationType = never;
 
@@ -70,14 +66,9 @@ export const ALL_INTEGRATION_TYPES: IntegrationType[] = [
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ];
 
-export const COMING_SOON_INTEGRATIONS: ReadonlySet<IntegrationType> = new Set([
-  "reddit",
-  "twitter",
-]);
+export const COMING_SOON_INTEGRATIONS: ReadonlySet<IntegrationType> = new Set();
 
 export function isComingSoonIntegration(integration: IntegrationType): boolean {
   return COMING_SOON_INTEGRATIONS.has(integration);
@@ -104,8 +95,6 @@ const INTEGRATION_ICONS: Record<IntegrationType, LucideIcon> = {
   linkedin: Linkedin,
   salesforce: Cloud,
   dynamics: Cloud,
-  reddit: MessageCircle,
-  twitter: Twitter,
 };
 
 export const INTEGRATION_DISPLAY_NAMES: Record<IntegrationType, string> = {
@@ -125,8 +114,6 @@ export const INTEGRATION_DISPLAY_NAMES: Record<IntegrationType, string> = {
   linkedin: "LinkedIn",
   salesforce: "Salesforce",
   dynamics: "Microsoft Dynamics 365",
-  reddit: "Reddit",
-  twitter: "X (Twitter)",
 };
 
 const INTEGRATION_COLORS: Record<IntegrationType, string> = {
@@ -146,8 +133,6 @@ const INTEGRATION_COLORS: Record<IntegrationType, string> = {
   linkedin: "text-[#0A66C2]",
   salesforce: "text-[#00A1E0]",
   dynamics: "text-[#0F6CBD]",
-  reddit: "text-[#FF4500]",
-  twitter: "text-gray-900 dark:text-gray-100",
 };
 
 export const INTEGRATION_LOGOS: Record<IntegrationType, string> = {
@@ -167,8 +152,6 @@ export const INTEGRATION_LOGOS: Record<IntegrationType, string> = {
   linkedin: "/integrations/linkedin.svg",
   salesforce: "/integrations/salesforce.svg",
   dynamics: "/integrations/dynamics.svg",
-  reddit: "/integrations/reddit.svg",
-  twitter: "/integrations/twitter.svg",
 };
 
 // Human-readable descriptions for integration operations
@@ -344,48 +327,6 @@ export const INTEGRATION_OPERATION_LABELS: Record<IntegrationType, Record<string
     "rows.create": "Creating row",
     "rows.update": "Updating row",
     "rows.delete": "Deleting row",
-  },
-  reddit: {
-    feed: "Getting home feed",
-    subreddit: "Getting subreddit posts",
-    post: "Getting post",
-    user: "Getting user profile",
-    search: "Searching Reddit",
-    multireddit: "Getting multireddit",
-    vote: "Voting",
-    comment: "Adding comment",
-    reply: "Replying to comment",
-    save: "Saving content",
-    unsave: "Unsaving content",
-    submit: "Submitting post",
-    delete: "Deleting content",
-    edit: "Editing content",
-    inbox: "Listing messages",
-    message: "Sending message",
-    read: "Marking as read",
-    subscriptions: "Listing subscriptions",
-    subscribe: "Subscribing",
-    unsubscribe: "Unsubscribing",
-  },
-  twitter: {
-    me: "Getting my profile",
-    user: "Getting user profile",
-    "user-id": "Getting user by ID",
-    timeline: "Getting timeline",
-    mentions: "Getting mentions",
-    search: "Searching tweets",
-    likes: "Getting liked tweets",
-    followers: "Listing followers",
-    following: "Listing following",
-    post: "Posting tweet",
-    reply: "Replying to tweet",
-    quote: "Quoting tweet",
-    like: "Liking tweet",
-    unlike: "Unliking tweet",
-    retweet: "Retweeting",
-    unretweet: "Removing retweet",
-    follow: "Following user",
-    unfollow: "Unfollowing user",
   },
 };
 

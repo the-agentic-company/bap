@@ -63,11 +63,9 @@ const PROVIDER_DEFINITIVE_PATTERNS: Partial<Record<IntegrationType, RegExp[]>> =
   github: [/bad_refresh_token/i],
   hubspot: [/refresh token.*invalid/i],
   notion: [/revoked/i],
-  reddit: [/invalid_grant/i],
   salesforce: [/invalid_grant/i],
   dynamics: [/invalid_grant/i],
   slack: [/invalid refresh token/i],
-  twitter: [/invalid_grant/i],
 };
 
 function parseOAuthErrorPayload(raw: string): { code: string | null; description: string | null } {
@@ -233,13 +231,8 @@ async function refreshAccessToken(token: TokenWithMetadata): Promise<string> {
       "Content-Type": "application/x-www-form-urlencoded",
     };
 
-    // Notion, Airtable, Reddit, and Twitter require Basic auth header for token refresh
-    if (
-      token.type === "notion" ||
-      token.type === "airtable" ||
-      token.type === "reddit" ||
-      token.type === "twitter"
-    ) {
+    // Notion and Airtable require Basic auth header for token refresh
+    if (token.type === "notion" || token.type === "airtable") {
       headers["Authorization"] = `Basic ${Buffer.from(
         `${config.clientId}:${config.clientSecret}`,
       ).toString("base64")}`;
@@ -247,11 +240,6 @@ async function refreshAccessToken(token: TokenWithMetadata): Promise<string> {
       tokenBody.delete("client_id");
       // eslint-disable-next-line drizzle/enforce-delete-with-where -- URLSearchParams.delete, not a Drizzle query
       tokenBody.delete("client_secret");
-    }
-
-    // Reddit requires User-Agent header for all API calls
-    if (token.type === "reddit") {
-      headers["User-Agent"] = "bap-app:v1.0.0 (by /u/bap-integration)";
     }
 
     const now = new Date();

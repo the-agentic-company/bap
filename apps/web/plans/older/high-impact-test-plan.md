@@ -25,7 +25,6 @@ Target: core execution paths that can quickly lift coverage and reduce productio
 | `src/server/services/generation-manager.ts` | 47.7% | 634 | Central generation orchestration; regressions here affect all chat flows | `src/server/services/generation-manager.test.ts` (expand) |
 | `src/server/sandbox/e2b.ts` | 0.0% | 249 | Sandbox lifecycle/session replay/env injection are critical for tool execution | `src/server/sandbox/e2b.test.ts` |
 | `src/server/services/workflow-gmail-watcher.ts` | 0.0% | 102 | Workflow triggers from Gmail; token/error handling is high-risk | `src/server/services/workflow-gmail-watcher.test.ts` |
-| `src/server/services/workflow-x-dm-watcher.ts` | 0.0% | 99 | Workflow triggers from X DMs; dedupe/order/scope checks are critical | `src/server/services/workflow-x-dm-watcher.test.ts` |
 | `src/server/ws/server.ts` | 0.0% | 98 | Device auth, request/response routing, heartbeat timeout logic | `src/server/ws/server.test.ts` |
 | `src/server/queues/index.ts` | 0.0% | 78 | Worker job routing and conflict handling for scheduled/inbound triggers | `src/server/queues/index.test.ts` |
 
@@ -33,9 +32,9 @@ P0 key scenarios:
 
 - `generation-manager.ts`: active-run conflict handling, cancellation path, stream completion, error path cleanup.
 - `e2b.ts`: cached sandbox reuse, stale sandbox replacement, OpenCode readiness timeout, env propagation.
-- watchers (`gmail`/`x-dm`): auth failures disable integration, dedupe against previous runs, payload shape correctness.
+- watchers (`gmail`): auth failures disable integration, dedupe against previous runs, payload shape correctness.
 - `ws/server.ts`: invalid token reject, authenticated connect updates status, pending request timeout and resolution.
-- `queues/index.ts`: unknown job failure, workflowId validation, active run conflict swallowed for Gmail/X DM jobs.
+- `queues/index.ts`: unknown job failure, workflowId validation, active run conflict swallowed for Gmail jobs.
 
 Estimated impact if P0 reaches ~70% line coverage: about **+709 covered lines**.
 
@@ -43,7 +42,6 @@ Estimated impact if P0 reaches ~70% line coverage: about **+709 covered lines**.
 
 | File | Current coverage | Missed lines | Why this matters | Test file to add |
 |---|---:|---:|---|---|
-| `src/server/services/whatsapp-bot.ts` | 0.0% | 127 | Real user message ingestion and link-code/auth flows | `src/server/services/whatsapp-bot.test.ts` |
 | `src/server/services/integration-skill-service.ts` | 0.0% | 103 | Slug/file validation, skill resolution, preference updates | `src/server/services/integration-skill-service.test.ts` |
 | `src/server/integrations/cli-env.ts` | 0.0% | 89 | Runtime env injection for integrations (token and metadata handling) | `src/server/integrations/cli-env.test.ts` |
 | `src/server/services/slack-bot.ts` | 0.0% | 89 | External event bridge; dedupe and response robustness | `src/server/services/slack-bot.test.ts` |

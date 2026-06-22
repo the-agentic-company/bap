@@ -245,7 +245,7 @@ describe("integrationRouter", () => {
     ]);
   });
 
-  it("builds provider-specific auth URL params (slack user_scope, reddit duration, PKCE)", async () => {
+  it("builds provider-specific auth URL params (slack user_scope and PKCE)", async () => {
     const context = createContext();
 
     const slack = (await integrationRouterAny.getAuthUrl({
@@ -258,16 +258,6 @@ describe("integrationRouter", () => {
     const slackUrl = new URL(slack.authUrl);
     expect(slackUrl.searchParams.get("user_scope")).toBe("scope:read scope:write");
     expect(slackUrl.searchParams.get("scope")).toBeNull();
-
-    const reddit = (await integrationRouterAny.getAuthUrl({
-      input: {
-        type: "reddit",
-        redirectUrl: "https://app.example.com/integrations",
-      },
-      context,
-    })) as { authUrl: string };
-    const redditUrl = new URL(reddit.authUrl);
-    expect(redditUrl.searchParams.get("duration")).toBe("permanent");
 
     const airtable = (await integrationRouterAny.getAuthUrl({
       input: {
@@ -435,51 +425,6 @@ describe("integrationRouter", () => {
         context,
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
-  });
-
-  it("uses basic auth and user-agent headers for reddit callback", async () => {
-    const context = createContext();
-    context.db.query.integration.findFirst.mockResolvedValue({
-      id: "integration-existing",
-      connectedIdentityId: "connected-identity-1",
-    });
-    context.db.query.connectedIdentity.findFirst.mockResolvedValue({
-      id: "connected-identity-1",
-      label: "provider-user",
-    });
-
-    let headers: Headers | undefined;
-    let body: URLSearchParams | undefined;
-    mswServer.use(
-      http.post("https://oauth.example.com/token", async ({ request }) => {
-        headers = request.headers;
-        body = new URLSearchParams(await request.text());
-        return HttpResponse.json({ access_token: "reddit-access" });
-      }),
-    );
-
-    const state = encodeState({
-      userId: "user-1",
-      type: "reddit",
-      redirectUrl: "/integrations",
-      codeVerifier: "pkce-verifier",
-    });
-
-    const result = await integrationRouterAny.handleCallback({
-      input: { code: "oauth-code", state },
-      context,
-    });
-
-    expect(headers?.get("authorization")).toMatch(/^Basic /);
-    expect(headers?.get("user-agent")).toContain("bap-app");
-    expect(body?.get("client_id")).toBeNull();
-    expect(body?.get("client_secret")).toBeNull();
-    expect(body?.get("code_verifier")).toBe("pkce-verifier");
-    expect(result).toEqual({
-      success: true,
-      integrationId: "integration-existing",
-      redirectUrl: "/integrations",
-    });
   });
 
   it("throws when token exchange fails", async () => {

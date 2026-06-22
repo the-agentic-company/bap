@@ -162,8 +162,6 @@ export const integrationTypeSchema = z.enum([
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 
 export const googleIntegrationTypeSchema = z.enum([

@@ -39,8 +39,6 @@ const integrationTypeSchema = z.enum([
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 const toolAccessModeSchema = z.enum(COWORKER_TOOL_ACCESS_MODES);
 const providerAuthSourceSchema = z.enum(["user", "shared"]);

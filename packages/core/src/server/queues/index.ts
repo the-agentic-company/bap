@@ -24,7 +24,6 @@ import {
   PAUSED_SANDBOX_CLEANUP_JOB_NAME,
   SCHEDULED_COWORKER_JOB_NAME,
   SLACK_EVENT_JOB_NAME,
-  X_DM_COWORKER_JOB_NAME,
   closeQueue,
   createRedisConnectionOptions,
   getCurrentQueue,
@@ -60,7 +59,6 @@ export {
   PAUSED_SANDBOX_CLEANUP_JOB_NAME,
   SCHEDULED_COWORKER_JOB_NAME,
   SLACK_EVENT_JOB_NAME,
-  X_DM_COWORKER_JOB_NAME,
   buildQueueJobId,
   getQueue,
   queueName,
@@ -140,28 +138,6 @@ const handlers: Record<string, JobHandler> = {
       if (isSkippedCoworkerTriggerError(error)) {
         console.warn(
           `[worker] skipped gmail coworker trigger for coworker ${coworkerId}: ${formatSkippedCoworkerTriggerReason(error)}`,
-        );
-        return;
-      }
-      throw error;
-    }
-  },
-  [X_DM_COWORKER_JOB_NAME]: async (job) => {
-    const coworkerId = job.data?.coworkerId;
-    if (!coworkerId || typeof coworkerId !== "string") {
-      throw new Error(`Missing coworkerId in x dm job "${job.id}"`);
-    }
-
-    try {
-      return await triggerCoworkerRun({
-        coworkerId,
-        triggerPayload: job.data?.triggerPayload ?? {},
-        startKind: "external_trigger",
-      });
-    } catch (error) {
-      if (isSkippedCoworkerTriggerError(error)) {
-        console.warn(
-          `[worker] skipped x dm coworker trigger for coworker ${coworkerId}: ${formatSkippedCoworkerTriggerReason(error)}`,
         );
         return;
       }

@@ -45,9 +45,6 @@ import {
   user,
   userDailyActivity,
   webPushSubscription,
-  whatsappConversation,
-  whatsappLinkCode,
-  whatsappUserLink,
   workspace,
   workspaceMcpAuthorization,
   workspaceMcpServer,
@@ -85,9 +82,6 @@ export const userRelations = relations(user, ({ many }) => ({
   workspaceMcpAuthorizations: many(workspaceMcpAuthorization),
   integrationSkillsCreated: many(integrationSkill),
   integrationSkillPreferences: many(integrationSkillPreference),
-  whatsappLinks: many(whatsappUserLink),
-  whatsappConversations: many(whatsappConversation),
-  whatsappLinkCodes: many(whatsappLinkCode),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -586,33 +580,6 @@ export const integrationSkillPreferenceRelations = relations(
     }),
   }),
 );
-
-// ─── WhatsApp ───────────────────────────────────────────────
-
-export const whatsappUserLinkRelations = relations(whatsappUserLink, ({ one }) => ({
-  user: one(user, {
-    fields: [whatsappUserLink.userId],
-    references: [user.id],
-  }),
-}));
-
-export const whatsappLinkCodeRelations = relations(whatsappLinkCode, ({ one }) => ({
-  user: one(user, {
-    fields: [whatsappLinkCode.userId],
-    references: [user.id],
-  }),
-}));
-
-export const whatsappConversationRelations = relations(whatsappConversation, ({ one }) => ({
-  conversation: one(conversation, {
-    fields: [whatsappConversation.conversationId],
-    references: [conversation.id],
-  }),
-  user: one(user, {
-    fields: [whatsappConversation.userId],
-    references: [user.id],
-  }),
-}));
 
 // ─── Slack Bot ───────────────────────────────────────────────
 

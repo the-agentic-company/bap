@@ -25,7 +25,6 @@ import { syncStoppedDaytonaSandboxDeleteJob } from "./server/services/daytona-st
 import { syncSandboxUsageSnapshotJob } from "./server/services/sandbox-usage-snapshot";
 import { reconcileScheduledCoworkerJobs } from "./server/services/coworker-scheduler";
 import { syncDailyTelemetryDigestJob } from "./server/services/telemetry-digest";
-import { startXDmCoworkerWatcher } from "./server/services/coworker-x-dm-watcher";
 
 export async function startWorkerRuntime(): Promise<void> {
   const {
@@ -46,7 +45,6 @@ export async function startWorkerRuntime(): Promise<void> {
     queueName: sandboxSnapshotQueueName,
     redisUrl: sandboxSnapshotRedisUrl,
   } = startSandboxUsageSnapshotQueue();
-  const stopXDmWatcher = startXDmCoworkerWatcher();
   const staleReaperIntervalMs = 10 * 60 * 1000;
   const pausedSandboxCleanupIntervalMs = 60 * 60 * 1000;
   let staleReaperInterval: ReturnType<typeof setInterval> | null = null;
@@ -126,7 +124,6 @@ export async function startWorkerRuntime(): Promise<void> {
     shutdownPromise = (async () => {
       console.log("[worker] shutting down...");
 
-      stopXDmWatcher();
       if (staleReaperInterval) {
         clearInterval(staleReaperInterval);
         staleReaperInterval = null;

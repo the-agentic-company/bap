@@ -353,20 +353,6 @@
         "count": 4
       }
     },
-    "apps/sandbox/src/common/skills/reddit/src/reddit.ts": {
-      "complexity_critical": {
-        "count": 1
-      },
-      "crap_critical": {
-        "count": 1
-      },
-      "crap_high": {
-        "count": 1
-      },
-      "crap_moderate": {
-        "count": 5
-      }
-    },
     "apps/sandbox/src/common/skills/salesforce/src/salesforce.ts": {
       "complexity_critical": {
         "count": 1
@@ -384,20 +370,6 @@
       },
       "crap_critical": {
         "count": 4
-      },
-      "crap_moderate": {
-        "count": 2
-      }
-    },
-    "apps/sandbox/src/common/skills/twitter/src/twitter.ts": {
-      "complexity_critical": {
-        "count": 1
-      },
-      "crap_critical": {
-        "count": 4
-      },
-      "crap_high": {
-        "count": 2
       },
       "crap_moderate": {
         "count": 2
@@ -1182,14 +1154,6 @@
         "count": 2
       }
     },
-    "apps/web/src/routes/admin/whatsapp.tsx": {
-      "crap_high": {
-        "count": 1
-      },
-      "crap_moderate": {
-        "count": 1
-      }
-    },
     "apps/web/src/routes/admin/workspaces.tsx": {
       "crap_high": {
         "count": 1
@@ -1386,14 +1350,6 @@
     "apps/web/src/routes/integrations/$type.tsx": {
       "crap_high": {
         "count": 3
-      }
-    },
-    "apps/web/src/routes/integrations/whatsapp.tsx": {
-      "crap_critical": {
-        "count": 1
-      },
-      "crap_high": {
-        "count": 1
       }
     },
     "apps/web/src/routes/internal/-readme-preview-demo.tsx": {
@@ -2097,14 +2053,6 @@
         "count": 2
       }
     },
-    "packages/core/src/server/services/coworker-x-dm-watcher.ts": {
-      "crap_critical": {
-        "count": 1
-      },
-      "crap_moderate": {
-        "count": 2
-      }
-    },
     "packages/core/src/server/services/daytona-runaway-cleanup.ts": {
       "complexity_high": {
         "count": 1
@@ -2503,7 +2451,6 @@
     "packages/core/src/server/sandbox/runtime/runtime-client/agent-sdk.ts:complexity",
     "apps/sandbox/scripts/test-sandbox.ts:complexity",
     "apps/sandbox/src/common/skills/linkedin/src/linkedin.ts:complexity",
-    "apps/sandbox/src/common/skills/dynamics/src/dynamics.ts:complexity",
-    "apps/sandbox/src/common/skills/twitter/src/twitter.ts:complexity"
+    "apps/sandbox/src/common/skills/dynamics/src/dynamics.ts:complexity"
   ]
 }

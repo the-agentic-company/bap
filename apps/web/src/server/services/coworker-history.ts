@@ -65,8 +65,6 @@ const HISTORY_INTEGRATIONS = new Set<string>([
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 
 type CoworkerRunEventOrderHelpers = {

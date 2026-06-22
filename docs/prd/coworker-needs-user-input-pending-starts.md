@@ -24,7 +24,7 @@ The coworker builder can enable or disable the requirement and generate the User
 6. As a User, I want scheduled coworkers that need input to appear in my inbox, so that automation can wait for my details without disappearing.
 7. As a User, I want webhook-triggered coworkers that need input to appear in my inbox, so that external events can wait for human context.
 8. As a User, I want email-forwarded coworkers that need input to appear in my inbox, so that forwarded work can wait for missing details.
-9. As a User, I want X DM-triggered coworkers that need input to appear in my inbox, so that social-message work can wait for my instruction.
+9. As a User, I want externally triggered coworkers that need input to appear in my inbox, so that automated work can wait for my instruction.
 10. As a User, I want manual "Run now" on a coworker that needs input to open the pending conversation, so that I can answer the coworker directly.
 11. As a User, I want multiple trigger events to create multiple pending starts, so that no event is silently lost.
 12. As a User, I want existing Pending Starts to remain available when a coworker is turned off, so that already-routed work is not invalidated.
@@ -102,7 +102,7 @@ The coworker builder can enable or disable the requirement and generate the User
 - When a Pending Start starts, use current coworker instructions/tool settings, plus the pending run's original trigger context and prompt snapshot.
 - Direct Bap-owned human input paths can start immediately by providing trusted user input.
 - Trusted user input paths are web chat reply to a Pending Start, inbox coworker composer typed by a logged-in User, and authenticated CLI `--user-input`.
-- Raw webhook, schedule, email-forwarding, X DM, and generic trigger payload fields are not trusted user input, even if they contain a `userInput` property.
+- Raw webhook, schedule, email-forwarding, and generic trigger payload fields are not trusted user input, even if they contain a `userInput` property.
 - Trusted `userInput` is a separate internal parameter, not read from arbitrary trigger payload.
 - Stored `triggerPayload` for an executed user-input run should distinguish the original trigger from trusted user input and the prompt snapshot:
 

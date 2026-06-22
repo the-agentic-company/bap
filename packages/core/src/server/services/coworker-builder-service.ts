@@ -14,7 +14,7 @@ import { generateCoworkerMetadataOnFirstPromptFill } from "./coworker-metadata";
 import { syncCoworkerScheduleJob } from "./coworker-scheduler";
 import { logger } from "../utils/observability";
 
-const BUILDER_ALLOWED_TRIGGER_TYPES = ["manual", "schedule", "twitter.new_dm"] as const;
+const BUILDER_ALLOWED_TRIGGER_TYPES = ["manual", "schedule"] as const;
 
 const LEGACY_READ_ONLY_TRIGGER_TYPES = [EMAIL_FORWARDED_TRIGGER_TYPE, "gmail.new_email"] as const;
 
@@ -513,9 +513,6 @@ export async function applyCoworkerEdit(params: {
   }
   if (nextTriggerType === "schedule" && !nextSchedule) {
     details.push("schedule is required when triggerType is schedule");
-  }
-  if (nextTriggerType === "twitter.new_dm" && params.userRole !== "admin") {
-    details.push("twitter.new_dm trigger requires admin role");
   }
   if (
     params.changes.model !== undefined &&

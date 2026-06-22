@@ -114,16 +114,6 @@ describe("parseCliCommand", () => {
         integration: "salesforce",
         operation: "objects",
       },
-      {
-        command: "reddit feed -l 10",
-        integration: "reddit",
-        operation: "feed",
-      },
-      {
-        command: "twitter timeline -l 5",
-        integration: "twitter",
-        operation: "timeline",
-      },
     ];
 
     for (const item of cases) {

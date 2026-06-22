@@ -437,7 +437,7 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
     );
   });
 
-  it("uses Basic auth and omits client credentials in body for twitter token exchange", async () => {
+  it("uses Basic auth and omits client credentials in body for Airtable token exchange", async () => {
     let authHeader: string | null = null;
     let bodyClientId: string | null = null;
     let bodyClientSecret: string | null = null;
@@ -449,15 +449,15 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
         bodyClientId = body.get("client_id")?.toString() ?? null;
         bodyClientSecret = body.get("client_secret")?.toString() ?? null;
         return HttpResponse.json({
-          access_token: "twitter-access",
-          refresh_token: "twitter-refresh",
+          access_token: "airtable-access",
+          refresh_token: "airtable-refresh",
         });
       }),
     );
 
     const state = encodeState({
       userId: "user-1",
-      type: "twitter",
+      type: "airtable",
       redirectUrl: "/integrations",
     });
 

@@ -3,7 +3,6 @@ import { T, useGT } from "gt-react";
 import { Check, ExternalLink, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AppImage } from "@/components/app-image";
-import { AppLink } from "@/components/app-link";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { getIntegrationActions } from "@/lib/integration-icons";
@@ -26,7 +25,6 @@ export type IntegrationDetailProps = {
   config: { name: string; description: string; icon: string };
   integration: IntegrationInfo | null;
   integrations?: IntegrationInfo[];
-  isWhatsApp: boolean;
   connectError?: string;
   showGoogleRequest: boolean;
   isConnecting: boolean;
@@ -47,7 +45,6 @@ export function IntegrationDetailContent({
   config,
   integration,
   integrations = integration ? [integration] : [],
-  isWhatsApp,
   connectError,
   showGoogleRequest,
   isConnecting,
@@ -60,7 +57,7 @@ export function IntegrationDetailContent({
   onRequestGoogleAccess,
   onRenameAccountLabel,
 }: IntegrationDetailProps) {
-  const actions = isWhatsApp ? [] : getIntegrationActions(type);
+  const actions = getIntegrationActions(type);
   const isConnected = !!integration;
   const isEnabled = integration?.enabled ?? false;
   const connectedAccounts =
@@ -172,13 +169,6 @@ export function IntegrationDetailContent({
                   </Button>
                 ) : null}
               </>
-            ) : isWhatsApp ? (
-              <Button className="gap-1.5 rounded-lg px-5" asChild>
-                <AppLink href="/integrations/whatsapp">
-                  <T>Setup</T>
-                  <ExternalLink className="size-3.5" />
-                </AppLink>
-              </Button>
             ) : showGoogleRequest ? (
               <Button
                 variant="outline"

@@ -632,13 +632,10 @@ export function ToolboxPage() {
     [integrationConnectErrors],
   );
 
-  const isWhatsAppType = useCallback((type: string) => type === "whatsapp", []);
-
   const showGoogleRequestForType = useCallback(
     (type: string) => {
       const integration = connectedIntegrations.get(type);
-      const isGoogleType =
-        type !== "whatsapp" && isGoogleIntegrationType(type as OAuthIntegrationType);
+      const isGoogleType = isGoogleIntegrationType(type as OAuthIntegrationType);
       return !integration && isGoogleType && lacksGoogleAccess;
     },
     [connectedIntegrations, lacksGoogleAccess],
@@ -651,7 +648,7 @@ export function ToolboxPage() {
     const parsed = previewId.startsWith("integration:")
       ? previewId.slice("integration:".length)
       : null;
-    if (parsed && parsed !== "whatsapp") {
+    if (parsed) {
       void handleIntegrationConnect(parsed as OAuthIntegrationType);
     }
   }, [handleIntegrationConnect, previewId]);
@@ -663,7 +660,7 @@ export function ToolboxPage() {
     const parsed = previewId.startsWith("integration:")
       ? previewId.slice("integration:".length)
       : null;
-    if (parsed && parsed !== "whatsapp") {
+    if (parsed) {
       void handleIntegrationConnect(parsed as OAuthIntegrationType, { mode: "connect" });
     }
   }, [handleIntegrationConnect, previewId]);
@@ -721,7 +718,6 @@ export function ToolboxPage() {
       getIntegration,
       getIntegrations: getIntegrationsForType,
       getConnectError,
-      isWhatsApp: isWhatsAppType,
       showGoogleRequest: showGoogleRequestForType,
       isConnecting: !!connectingType,
       onConnect: handlePreviewConnect,
@@ -746,7 +742,6 @@ export function ToolboxPage() {
       handlePreviewToggle,
       handleIntegrationToggle,
       handleIntegrationDisconnect,
-      isWhatsAppType,
       renameAccountLabel.mutate,
       showGoogleRequestForType,
     ],

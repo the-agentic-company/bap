@@ -48,8 +48,6 @@ const CLI_TO_INTEGRATION: Record<string, string> = {
   linkedin: "linkedin",
   salesforce: "salesforce",
   dynamics: "dynamics",
-  reddit: "reddit",
-  twitter: "twitter",
   coworker: "coworker",
   "agent-browser": "agent-browser",
 };

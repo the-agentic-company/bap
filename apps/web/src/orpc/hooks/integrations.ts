@@ -361,9 +361,7 @@ export function useGetAuthUrl() {
         | "hubspot"
         | "linkedin"
         | "salesforce"
-        | "dynamics"
-        | "reddit"
-        | "twitter";
+        | "dynamics";
       redirectUrl: string;
       mode?: "connect" | "connect_to_label" | "reauth";
       accountLabel?: string;

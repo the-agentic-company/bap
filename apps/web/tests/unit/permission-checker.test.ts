@@ -33,20 +33,9 @@ describe("parseBashCommand", () => {
     });
   });
 
-  test("parses twitter and reddit operations", () => {
-    expect(parseBashCommand("twitter post --text hello")).toEqual({
-      integration: "twitter",
-      operation: "post",
-      integrationName: "X (Twitter)",
-      isWrite: true,
-    });
-
-    expect(parseBashCommand("reddit feed --limit 5")).toEqual({
-      integration: "reddit",
-      operation: "feed",
-      integrationName: "Reddit",
-      isWrite: false,
-    });
+  test("does not parse unsupported commands", () => {
+    expect(parseBashCommand("mastodon post --text hello")).toBeNull();
+    expect(parseBashCommand("forum feed --limit 5")).toBeNull();
   });
 
   test("supports google-* command names", () => {
@@ -220,31 +209,31 @@ describe("checkToolPermissions", () => {
     });
   });
 
-  test("requires auth for twitter when integration token is missing", () => {
-    expect(checkToolPermissions("bash", { command: "twitter timeline -l 5" }, [])).toEqual({
+  test("requires auth for github when integration token is missing", () => {
+    expect(checkToolPermissions("bash", { command: "github repos" }, [])).toEqual({
       allowed: false,
       needsApproval: false,
       needsAuth: true,
-      integration: "twitter",
-      integrationName: "X (Twitter)",
-      reason: "X (Twitter) authentication required",
+      integration: "github",
+      integrationName: "GitHub",
+      reason: "GitHub authentication required",
     });
   });
 
-  test("requires approval for reddit write operations with auth", () => {
+  test("requires approval for slack write operations with auth", () => {
     expect(
-      checkToolPermissions("bash", { command: "reddit comment --id t3_123 --text hi" }, ["reddit"]),
+      checkToolPermissions("bash", { command: "slack send --channel general -t hi" }, ["slack"]),
     ).toEqual({
       allowed: false,
       needsApproval: true,
       needsAuth: false,
-      integration: "reddit",
-      integrationName: "Reddit",
+      integration: "slack",
+      integrationName: "Slack",
     });
   });
 
-  test("allows reddit read operations when auth exists", () => {
-    expect(checkToolPermissions("bash", { command: "reddit feed -l 10" }, ["reddit"])).toEqual({
+  test("allows slack read operations when auth exists", () => {
+    expect(checkToolPermissions("bash", { command: "slack history general" }, ["slack"])).toEqual({
       allowed: true,
       needsApproval: false,
       needsAuth: false,

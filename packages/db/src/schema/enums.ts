@@ -92,8 +92,6 @@ export const integrationTypeEnum = pgEnum("integration_type", [
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 
 export const integrationAuthStatusEnum = pgEnum("integration_auth_status", [

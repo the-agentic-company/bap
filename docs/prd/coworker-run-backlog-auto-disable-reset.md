@@ -38,7 +38,7 @@ External automated triggers remain guarded. If a coworker already has five backl
 20. As a workspace User, I want to reset a coworker I can run, so that recovery is not limited to the owner or an admin.
 21. As a workspace User, I want reset actions recorded with my user identity, so that destructive recovery is auditable.
 22. As an operator, I want scheduled trigger jobs that auto-disable a coworker to be acknowledged, so that the queue does not retry a deliberate skip.
-23. As an operator, I want Gmail, forwarded email, X DM, and webhook triggers to use the same backlog cap, so that all external automation is bounded consistently.
+23. As an operator, I want Gmail, forwarded email, and webhook triggers to use the same backlog cap, so that all external automation is bounded consistently.
 24. As an operator, I want no synthetic skipped run row when auto-disable happens, so that run history does not gain another confusing state.
 25. As a developer, I want start classification to be explicit, so that guard behavior is not inferred from fragile trigger payload conventions.
 26. As a developer, I want user-intent starts and external triggers to share one policy module, so that the guard is easy to test and reason about.
@@ -58,7 +58,7 @@ External automated triggers remain guarded. If a coworker already has five backl
 - Add an explicit coworker start classification, such as `user_intent` and `external_trigger`.
 - Direct Run Now starts are `user_intent`.
 - **Runtime-Originated Runs** through the **Bap MCP Server** are `user_intent` because they carry user intent.
-- Scheduled, Gmail, forwarded email, X DM, webhook, and other external automation starts are `external_trigger`.
+- Scheduled, Gmail, forwarded email, webhook, and other external automation starts are `external_trigger`.
 - `user_intent` starts can run a coworker whose status is off, including an **Auto-Disabled Coworker**.
 - `external_trigger` starts require the coworker to be on.
 - All start classifications are still blocked by an existing `running` **Coworker Run** for the same coworker.

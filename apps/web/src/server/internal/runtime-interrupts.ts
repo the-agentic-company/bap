@@ -26,8 +26,6 @@ const integrationEnum = z.enum([
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 
 const interruptCreateSchema = z.discriminatedUnion("kind", [

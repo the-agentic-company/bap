@@ -71,7 +71,7 @@ export function ToolboxPreviewModal({
   previewId: string | null;
   integrationProps?: Omit<
     IntegrationDetailProps,
-    "type" | "config" | "integration" | "isWhatsApp" | "connectError" | "showGoogleRequest"
+    "type" | "config" | "integration" | "connectError" | "showGoogleRequest"
   > & {
     getIntegrationConfig: (
       type: string,
@@ -79,7 +79,6 @@ export function ToolboxPreviewModal({
     getIntegration: (type: string) => IntegrationDetailProps["integration"];
     getIntegrations?: (type: string) => NonNullable<IntegrationDetailProps["integrations"]>;
     getConnectError: (type: string) => string | undefined;
-    isWhatsApp: (type: string) => boolean;
     showGoogleRequest: (type: string) => boolean;
   };
   communitySkillProps?: {
@@ -202,7 +201,6 @@ export function ToolboxPreviewModal({
                   config={config}
                   integration={integrationProps.getIntegration(target.type)}
                   integrations={integrationProps.getIntegrations?.(target.type)}
-                  isWhatsApp={integrationProps.isWhatsApp(target.type)}
                   connectError={integrationProps.getConnectError(target.type)}
                   showGoogleRequest={integrationProps.showGoogleRequest(target.type)}
                   isConnecting={integrationProps.isConnecting}

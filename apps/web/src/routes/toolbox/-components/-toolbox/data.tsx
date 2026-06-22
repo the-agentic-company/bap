@@ -9,9 +9,9 @@ import {
 
 export type FilterTab = "all" | "active" | "needs_setup";
 
-export type IntegrationType = IntegrationIconType | "whatsapp";
+export type IntegrationType = IntegrationIconType;
 
-export type OAuthIntegrationType = Exclude<IntegrationIconType, "linear">;
+export type OAuthIntegrationType = Exclude<IntegrationType, "linear">;
 
 export type GoogleIntegrationType =
   | "google_gmail"
@@ -108,30 +108,10 @@ export const integrationConfig: Record<
     description: msg("Manage Dataverse tables and CRM rows"),
     icon: "/integrations/dynamics.svg",
   },
-  reddit: {
-    name: "Reddit",
-    description: msg("Browse, vote, comment, and post on Reddit"),
-    icon: "/integrations/reddit.svg",
-  },
-  twitter: {
-    name: "X (Twitter)",
-    description: msg("Post tweets, manage followers, and search content"),
-    icon: "/integrations/twitter.svg",
-  },
-  whatsapp: {
-    name: "WhatsApp",
-    description: msg("Link WhatsApp and pair the bridge with QR"),
-    icon: "/integrations/whatsapp.svg",
-  },
 };
 
 export const adminPreviewOnlyIntegrations = new Set<IntegrationType>(
-  (Object.keys(integrationConfig) as IntegrationType[]).filter((type) => {
-    if (type === "whatsapp") {
-      return true;
-    }
-    return isComingSoonIntegration(type as IntegrationIconType);
-  }),
+  (Object.keys(integrationConfig) as IntegrationType[]).filter(isComingSoonIntegration),
 );
 
 // ─── Community skills ───────────────────────────────────────────────────────────

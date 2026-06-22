@@ -19,8 +19,6 @@ export const templateIntegrationTypeSchema = z.enum([
   "linkedin",
   "salesforce",
   "dynamics",
-  "reddit",
-  "twitter",
 ]);
 
 export const templateCatalogSummaryBlockSchema = z.object({
