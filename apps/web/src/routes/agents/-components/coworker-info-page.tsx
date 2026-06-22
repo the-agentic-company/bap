@@ -142,10 +142,11 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         outputFile={outputFile}
         conversationId={conversationId}
         latestCoworkerMessage={latestCoworkerMessage}
+        runStatus={run.data?.status}
         showOutputToolbar={false}
       />
     ),
-    [conversationId, latestCoworkerMessage, outputFile],
+    [conversationId, latestCoworkerMessage, outputFile, run.data?.status],
   );
 
   const handleHistorySelect = useCallback(
