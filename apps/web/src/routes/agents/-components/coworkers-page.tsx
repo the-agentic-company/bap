@@ -58,8 +58,8 @@ export default function CoworkersPage({
   const {
     t,
     openRecentDrawer,
-    coworkerList,
     folderList,
+    hasInventoryData,
     visibleCoworkerCount,
     connectedIntegrationTypes,
     sharedByMeCount,
@@ -135,8 +135,7 @@ export default function CoworkersPage({
 
   return (
     <div className="space-y-10">
-      {coworkerList.length === 0 &&
-      folderList.length === 0 &&
+      {!hasInventoryData &&
       !currentFolderId &&
       !searchQuery.trim() &&
       !isInventoryLoading ? (
