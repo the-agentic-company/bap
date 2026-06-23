@@ -74,6 +74,7 @@ export const zeroQueries = defineQueries({
         .related("messages", (messages) =>
           messages
             .where("role", "IN", ["user", "assistant"])
+            .related("attachments", (attachments) => attachments.orderBy("createdAt", "asc"))
             .related("sandboxFiles", (files) => files.orderBy("createdAt", "asc"))
             .orderBy("createdAt", "asc"),
         )

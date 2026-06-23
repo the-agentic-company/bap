@@ -19,9 +19,9 @@ polling to Zero reads — no long-lived dual read path.
 
 ## Scope (what Zero owns)
 
-- **Synced tables:** `conversation`, `message`, `coworker`, `coworkerRun`,
-  `coworkerFolder`, and `workspaceMember` (replicated for permission checks only,
-  hidden from clients by a read rule). Coworker folders are the synced coworker
+- **Synced tables:** `conversation`, `message`, `messageAttachment`, `coworker`,
+  `coworkerRun`, `coworkerFolder`, and `workspaceMember` (replicated for permission
+  checks only, hidden from clients by a read rule). Coworker folders are the synced coworker
   organization model; folder reads remain on Zero and must encode private vs.
   workspace-visible access in their named query. The previous coworker tag tables
   are intentionally no longer synced because tags were removed from the coworker
@@ -53,8 +53,8 @@ polling to Zero reads — no long-lived dual read path.
   `text` UUIDs (`crypto.randomUUID()`), with no Postgres-default IDs.
 - **Working set:** eager-sync a recent window (~90 days / a few hundred conversations,
   capped) for an all-local feel; older history loads on-demand.
-- **Schema:** generate Zero's `schema.ts` from the existing Drizzle schema via
-  `drizzle-zero`.
+- **Schema:** keep Zero's `schema.ts` as an explicit audited client-facing schema
+  for the synced slice.
 
 ## Considered options
 

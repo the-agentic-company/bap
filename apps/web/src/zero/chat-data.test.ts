@@ -85,6 +85,15 @@ describe("Zero chat data adapters", () => {
           role: "user",
           content: "first",
           createdAt: 1781130100000,
+          attachments: [
+            {
+              id: "attachment-1",
+              fileAssetId: "asset-1",
+              filename: "brief.txt",
+              mimeType: "text/plain",
+              sizeBytes: 128,
+            },
+          ],
         },
       ],
     });
@@ -94,7 +103,14 @@ describe("Zero chat data adapters", () => {
     expect(conversation?.messages.map((message) => message.id)).toEqual(["msg-1", "msg-2"]);
     expect(conversation?.messages[0]).toEqual(
       expect.objectContaining({
-        attachments: [],
+        attachments: [
+          {
+            id: "attachment-1",
+            filename: "brief.txt",
+            mimeType: "text/plain",
+            sizeBytes: 128,
+          },
+        ],
         sandboxFiles: [],
       }),
     );

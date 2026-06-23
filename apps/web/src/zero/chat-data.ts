@@ -9,7 +9,16 @@ type ZeroMessageLike = {
   readonly parentMessageId?: string | null;
   readonly opencodeMessageId?: string | null;
   readonly createdAt: number | string | Date;
+  readonly attachments?: readonly ZeroMessageAttachmentLike[];
   readonly sandboxFiles?: readonly ZeroSandboxFileLike[];
+};
+
+type ZeroMessageAttachmentLike = {
+  readonly id: string;
+  readonly fileAssetId?: string | null;
+  readonly filename: string;
+  readonly mimeType: string;
+  readonly sizeBytes: number;
 };
 
 type ZeroSandboxFileLike = {
@@ -61,7 +70,12 @@ function mapMessage(message: ZeroMessageLike) {
     parentMessageId: message.parentMessageId ?? null,
     opencodeMessageId: message.opencodeMessageId ?? null,
     createdAt: asDate(message.createdAt),
-    attachments: [],
+    attachments: (message.attachments ?? []).map((attachment) => ({
+      id: attachment.id,
+      filename: attachment.filename,
+      mimeType: attachment.mimeType,
+      sizeBytes: attachment.sizeBytes,
+    })),
     sandboxFiles: (message.sandboxFiles ?? []).map((file) => ({
       fileId: file.id,
       path: file.path,

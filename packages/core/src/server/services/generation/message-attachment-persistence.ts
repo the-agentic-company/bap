@@ -1,6 +1,6 @@
 import { db } from "@bap/db/client";
 import { conversation, messageAttachment } from "@bap/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   assertMessageAttachmentLimits,
   assertReadyFileAssetsForWorkspace,
@@ -71,7 +71,26 @@ export async function persistMessageAttachments(params: {
   assertReadyMessageAttachmentLimits(readyAssets);
   assertMessageAttachmentLimits(readyAssets);
 
+  const existingAttachments = await db.query.messageAttachment.findMany({
+    where: and(
+      eq(messageAttachment.messageId, params.messageId),
+      inArray(messageAttachment.fileAssetId, fileAssetAttachmentIds),
+    ),
+    columns: {
+      fileAssetId: true,
+    },
+  });
+  const existingFileAssetIds = new Set(
+    existingAttachments
+      .map((attachment) => attachment.fileAssetId)
+      .filter((fileAssetId): fileAssetId is string => typeof fileAssetId === "string"),
+  );
+
   for (const asset of readyAssets) {
+    if (existingFileAssetIds.has(asset.id)) {
+      continue;
+    }
+
     const [created] = await db
       .insert(messageAttachment)
       .values({

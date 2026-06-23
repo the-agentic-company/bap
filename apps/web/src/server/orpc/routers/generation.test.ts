@@ -511,6 +511,43 @@ describe("generationRouter", () => {
     );
   });
 
+  it("passes start-generation file attachments through to generationManager", async () => {
+    const fileAttachments = [
+      {
+        fileAssetId: "asset-1",
+        name: "brief.txt",
+        mimeType: "text/plain",
+        sizeBytes: 128,
+      },
+    ];
+    generationManagerMock.startGeneration.mockResolvedValueOnce({
+      generationId: "gen-start",
+      conversationId: "conv-start",
+      traceId: "trace-start",
+    });
+
+    const result = await generationRouterAny.startGeneration({
+      input: {
+        content: "read this file",
+        model: "openai/gpt-5.4-mini",
+        fileAttachments,
+      },
+      context,
+    });
+
+    expect(result).toEqual({
+      generationId: "gen-start",
+      conversationId: "conv-start",
+      traceId: "trace-start",
+    });
+    expect(generationManagerMock.startGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "read this file",
+        fileAttachments,
+      }),
+    );
+  });
+
   it("routes the first reply in a pending coworker conversation to startPendingCoworkerRun", async () => {
     coworkerRunFindFirstMock.mockResolvedValueOnce({ id: "run-pending" });
 

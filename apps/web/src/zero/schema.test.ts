@@ -24,6 +24,21 @@ describe("Zero schema allowlist", () => {
     expect(columns).not.toContain("storageKey");
   });
 
+  it("limits message attachments to display and download metadata", () => {
+    const columns = Object.keys(schema.tables.messageAttachment.columns);
+
+    expect(columns).toEqual([
+      "id",
+      "messageId",
+      "fileAssetId",
+      "filename",
+      "mimeType",
+      "sizeBytes",
+      "createdAt",
+    ]);
+    expect(columns).not.toContain("storageKey");
+  });
+
   it("limits coworker run rows to list-safe columns", () => {
     const columns = Object.keys(schema.tables.coworkerRun.columns);
 
