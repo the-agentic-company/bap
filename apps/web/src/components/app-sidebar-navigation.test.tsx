@@ -282,7 +282,7 @@ describe("AppSidebar navigation", () => {
   });
 
   it("switches workspaces from the sidebar switcher and keeps the current route", async () => {
-    const router = renderWithRouterAt("/inbox");
+    const router = renderWithRouterAt("/inbox?view=unread#top");
 
     fireEvent.pointerDown(await screen.findByRole("button", { name: "Switch workspace" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: /Beta/ }));
@@ -290,6 +290,8 @@ describe("AppSidebar navigation", () => {
     await waitFor(() => {
       expect(mocks.switchWorkspace).toHaveBeenCalledWith("ws-2");
       expect(router.state.location.pathname).toBe("/inbox");
+      expect(router.state.location.search).toEqual({ view: "unread" });
+      expect(router.state.location.hash).toBe("top");
     });
   });
 });

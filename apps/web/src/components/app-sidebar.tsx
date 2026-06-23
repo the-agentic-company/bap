@@ -349,7 +349,13 @@ type AppSidebarProps = {
 export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   const t = useGT();
 
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { pathname, search, hash } = useRouterState({
+    select: (state) => ({
+      hash: state.location.hash,
+      pathname: state.location.pathname,
+      search: state.location.search,
+    }),
+  });
   const navigate = useNavigate();
   const [session, setSession] = useState<SessionData | undefined>(undefined);
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(readStoredSidebarMode);
@@ -475,12 +481,12 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     async (workspaceId: string) => {
       try {
         await switchWorkspace.mutateAsync(workspaceId);
-        void navigate({ to: pathname || "/", search: location.search, hash: location.hash });
+        void navigate({ to: pathname || "/", search, hash });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to switch workspace.");
       }
     },
-    [navigate, pathname, switchWorkspace],
+    [hash, navigate, pathname, search, switchWorkspace],
   );
 
   const isActive = (href: string) => {
