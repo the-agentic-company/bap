@@ -1,4 +1,4 @@
-export function replacePlaceholder(template: string, placeholder: string, value: string): string {
+function replacePlaceholder(template: string, placeholder: string, value: string): string {
   return template.replaceAll(`{{${placeholder}}}`, value);
 }
 
