@@ -281,7 +281,7 @@ describe("AppSidebar navigation", () => {
     expect(image).toHaveAttribute("src", "/api/workspaces/ws-1/image?v=1");
   });
 
-  it("switches workspaces from the sidebar switcher", async () => {
+  it("switches workspaces from the sidebar switcher and keeps the current route", async () => {
     const router = renderWithRouterAt("/inbox");
 
     fireEvent.pointerDown(await screen.findByRole("button", { name: "Switch workspace" }));
@@ -289,7 +289,7 @@ describe("AppSidebar navigation", () => {
 
     await waitFor(() => {
       expect(mocks.switchWorkspace).toHaveBeenCalledWith("ws-2");
-      expect(router.state.location.pathname).toBe("/");
+      expect(router.state.location.pathname).toBe("/inbox");
     });
   });
 });
