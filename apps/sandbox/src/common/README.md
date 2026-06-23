@@ -6,7 +6,7 @@ The sandbox runtime currently pins OpenCode to `1.3.0`.
 
 ## Contents
 
-- `agents/` - Project-local OpenCode agent definitions.
+- **OpenCode Agent Definitions** live in `@bap/prompts` and are copied into `/app/.opencode/agents`.
 - `skills/` - Built-in platform and integration skills.
 - `plugins/` - OpenCode plugins shared by providers.
 - `tools/` - OpenCode custom tools shared by providers.

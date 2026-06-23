@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { and, eq, ne } from "drizzle-orm";
+import { buildCoworkerMetadataPrompt } from "@bap/prompts";
 import { coworker } from "@bap/db/schema";
 
 const COWORKER_USERNAME_MAX_LENGTH = 64;
@@ -234,46 +235,15 @@ async function generateCoworkerMetadataWithGemini(params: {
       },
     });
 
-    const prompt = [
-      "Generate missing metadata for a coworker.",
-      "Use null for any field you cannot infer.",
-      "IMPORTANT: The username MUST be a personified handle with a human first name followed by the role or specialty. Examples: sam-from-hr, lucie-the-linkedin-geek, max-the-data-cruncher, emma-the-sales-whisperer. NEVER use a generic slug like friendly-greeter or sales-follow-up.",
-      "",
-      `Missing fields: ${params.missingFields.join(", ")}`,
-      "",
-      "Current coworker JSON:",
-      JSON.stringify(
-        {
-          name: params.current.name,
-          description: params.current.description,
-          username: params.current.username,
-          prompt: params.current.prompt,
-          triggerType: params.current.triggerType,
-          allowedIntegrations: params.current.allowedIntegrations,
-          allowedCustomIntegrations: params.current.allowedCustomIntegrations,
-          schedule: params.current.schedule,
-          autoApprove: params.current.autoApprove,
-        },
-        null,
-        2,
+    const result = await withMetadataGenerationTimeout(
+      model.generateContent(
+        buildCoworkerMetadataPrompt({
+          missingFields: params.missingFields,
+          current: params.current,
+          next: params.next,
+        }),
       ),
-      "",
-      "Next coworker JSON:",
-      JSON.stringify(
-        {
-          prompt: params.next.prompt,
-          triggerType: params.next.triggerType,
-          allowedIntegrations: params.next.allowedIntegrations,
-          allowedCustomIntegrations: params.next.allowedCustomIntegrations,
-          schedule: params.next.schedule,
-          autoApprove: params.next.autoApprove,
-        },
-        null,
-        2,
-      ),
-    ].join("\n");
-
-    const result = await withMetadataGenerationTimeout(model.generateContent(prompt));
+    );
     const text = result.response.text();
     if (!text) {
       return null;

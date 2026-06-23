@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { and, eq, inArray } from "drizzle-orm";
+import { buildCoworkerModelInput as buildCoworkerModelInputFrame } from "@bap/prompts";
 import type { IntegrationType } from "../oauth/config";
 import { db } from "@bap/db/client";
 import {
@@ -146,20 +147,13 @@ function buildCoworkerModelInput(params: {
   triggerPayload: unknown;
   trustedUserInput?: string | null;
 }): string {
-  const coworkerSections = [
-    params.coworkerPrompt?.trim()
-      ? `## Coworker Instructions\n${sanitizePostgresText(params.coworkerPrompt)}`
+  return buildCoworkerModelInputFrame({
+    coworkerPrompt: params.coworkerPrompt?.trim()
+      ? sanitizePostgresText(params.coworkerPrompt)
       : null,
-  ].filter(Boolean);
-  const sections = [
-    ...coworkerSections,
-    "## Trigger Payload",
-    JSON.stringify(sanitizeJsonForPostgres(params.triggerPayload ?? {}), null, 2),
-  ];
-  if (params.trustedUserInput) {
-    sections.push("", "## User Input", params.trustedUserInput);
-  }
-  return sections.join("\n");
+    triggerPayload: sanitizeJsonForPostgres(params.triggerPayload ?? {}),
+    trustedUserInput: params.trustedUserInput,
+  });
 }
 
 export function isDisabledCoworkerTriggerError(error: unknown): boolean {

@@ -1,14 +1,10 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { getTemplateDeployPromptTemplate } from "@bap/prompts";
 import { getTemplateDeployPrompt } from "./template-deploy";
 
 describe("getTemplateDeployPrompt (GET /api/prompts/template-deploy)", () => {
   it("returns the template deploy prompt as cacheable plain text", async () => {
-    const expected = await readFile(
-      path.join(process.cwd(), "prompts", "template-deploy.txt"),
-      "utf8",
-    );
+    const expected = getTemplateDeployPromptTemplate();
 
     const response = await getTemplateDeployPrompt();
 

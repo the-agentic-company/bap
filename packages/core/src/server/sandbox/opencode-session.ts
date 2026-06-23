@@ -3,6 +3,11 @@ import {
   getOrCreateBareSandbox as getOrCreateBareE2BSandbox,
   getOrCreateSession as getOrCreateE2BSession,
 } from "./e2b";
+import { buildCustomSkillsAgentsFile } from "@bap/prompts";
+export {
+  buildIntegrationSkillsSystemPrompt as getIntegrationSkillsSystemPrompt,
+  buildSkillsSystemPrompt as getSkillsSystemPrompt,
+} from "@bap/prompts";
 import { getPreferredCloudSandboxProvider } from "./factory";
 import { resolvePreferredCommunitySkillsForUser } from "../services/integration-skill-service";
 import { listAccessibleEnabledSkillsForUser } from "../services/workspace-skill-service";
@@ -263,16 +268,11 @@ export async function writeSkillsToSandbox(
   await sandbox.commands.run("mkdir -p /app/.opencode/skills");
 
   const writtenSkills: string[] = [];
-  let agentsContent = "# Custom Skills\n\n";
 
   await filteredSkills.reduce<Promise<void>>(async (prev, s) => {
     await prev;
     const skillDir = `/app/.opencode/skills/${s.name}`;
     await sandbox.commands.run(`mkdir -p "${skillDir}"`);
-
-    agentsContent += `## ${s.displayName}\n\n`;
-    agentsContent += `${s.description}\n\n`;
-    agentsContent += `Files available in: /app/.opencode/skills/${s.name}/\n\n`;
 
     await Promise.all(
       s.files.map(async (file) => {
@@ -310,7 +310,7 @@ export async function writeSkillsToSandbox(
     writtenSkills.push(s.name);
   }, Promise.resolve());
 
-  await sandbox.files.write("/app/.opencode/AGENTS.md", agentsContent);
+  await sandbox.files.write("/app/.opencode/AGENTS.md", buildCustomSkillsAgentsFile(filteredSkills));
 
   return writtenSkills;
 }
@@ -350,43 +350,6 @@ export async function writeResolvedIntegrationSkillsToSandbox(
   );
 
   return written;
-}
-
-export function getSkillsSystemPrompt(skillNames: string[]): string {
-  if (skillNames.length === 0) {
-    return "";
-  }
-
-  return `
-# Custom Skills
-
-You have access to custom skills in /app/.opencode/skills/. Each skill directory contains:
-- A SKILL.md file with instructions
-- Any associated documents (PDFs, images, etc.) at the same level
-
-Available skills:
-${skillNames.map((name) => `- ${name}`).join("\n")}
-
-Read the SKILL.md file in each skill directory when relevant to the user's request.
-`;
-}
-
-export function getIntegrationSkillsSystemPrompt(skillSlugs: string[]): string {
-  if (skillSlugs.length === 0) {
-    return "";
-  }
-
-  return `
-# Community Integration Skills
-
-Use community integration skills for these slugs (preferred over official skill variants):
-${skillSlugs.map((slug) => `- ${slug}`).join("\n")}
-
-Community files are available in:
-/app/.opencode/integration-skills/<slug>/
-
-When a slug is listed above, prioritize that community skill's SKILL.md and resources for that integration.
-`;
 }
 
 function wrapE2BSession(

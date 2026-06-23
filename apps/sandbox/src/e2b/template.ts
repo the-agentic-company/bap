@@ -1,7 +1,8 @@
 import { Template } from "e2b";
 import { OPENCODE_VERSION } from "../common/versions";
 
-const COMMON_ROOT = "common";
+const COMMON_ROOT = "apps/sandbox/src/common";
+const OPENCODE_AGENT_DEFINITIONS_ROOT = "packages/prompts/src/assets/opencode-agents";
 const OPENCODE_PORT = 4096;
 const SANDBOX_AGENT_PORT = 2468;
 
@@ -51,7 +52,7 @@ const templateStartCommand = `bash -lc ${shellQuote(templateStartScript)}`;
 const templateReadyCommand = `bash -lc ${shellQuote(templateReadyScript)}`;
 
 export const template = Template({
-  fileContextPath: "src",
+  fileContextPath: "../..",
 })
   .fromUbuntuImage("24.04")
   // Install base dependencies
@@ -81,7 +82,7 @@ export const template = Template({
   .runCmd(
     "mkdir -p /app/.opencode/agents /app/.opencode/plugins /app/.opencode/tools /app/.opencode/lib",
   )
-  .copy(`${COMMON_ROOT}/agents`, "/app/.opencode/agents")
+  .copy(OPENCODE_AGENT_DEFINITIONS_ROOT, "/app/.opencode/agents")
   .copy(`${COMMON_ROOT}/plugins`, "/app/.opencode/plugins")
   .copy(`${COMMON_ROOT}/tools`, "/app/.opencode/tools")
   .copy(`${COMMON_ROOT}/lib`, "/app/.opencode/lib")

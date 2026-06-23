@@ -1,8 +1,9 @@
 import {
   SANDBOX_COMMON_ROOT as COMMON_TEMPLATE_ROOT,
   SANDBOX_DOCKER_RUNTIME_DOCKERFILE as DOCKERFILE_RUNTIME_ABSOLUTE,
-  SANDBOX_TEMPLATE_ROOT as TEMPLATE_ROOT,
+  SANDBOX_REPO_ROOT as TEMPLATE_ROOT,
 } from "@bap/sandbox/paths";
+import { OPENCODE_AGENT_DEFINITIONS_DIR } from "@bap/prompts";
 import type { Headers as TarHeader } from "tar-stream";
 import Dockerode from "dockerode";
 import { spawn } from "node:child_process";
@@ -15,7 +16,7 @@ import { PassThrough } from "node:stream";
 import { finished } from "node:stream/promises";
 import tar from "tar-stream";
 
-const DOCKERFILE_RUNTIME_RELATIVE = "docker/Dockerfile.runtime";
+const DOCKERFILE_RUNTIME_RELATIVE = "apps/sandbox/src/docker/Dockerfile.runtime";
 const DOCKER_BUILD_TIMEOUT_MS = 15 * 60 * 1000;
 const DOCKER_BUILD_TRANSCRIPT_LIMIT = 200;
 
@@ -39,7 +40,8 @@ async function listFilesRecursive(rootDir: string): Promise<string[]> {
 async function computeTemplateHash(): Promise<string> {
   const hasher = createHash("sha256");
   const commonFiles = (await listFilesRecursive(COMMON_TEMPLATE_ROOT)).toSorted();
-  const included = [DOCKERFILE_RUNTIME_ABSOLUTE, ...commonFiles];
+  const agentDefinitionFiles = (await listFilesRecursive(OPENCODE_AGENT_DEFINITIONS_DIR)).toSorted();
+  const included = [DOCKERFILE_RUNTIME_ABSOLUTE, ...commonFiles, ...agentDefinitionFiles];
 
   const entries = await Promise.all(
     included.map(async (absolutePath) => ({

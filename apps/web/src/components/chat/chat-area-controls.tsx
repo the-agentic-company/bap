@@ -2,6 +2,7 @@ import { T } from "gt-react";
 import { Check, CircleCheck, Search, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type React from "react";
+import { buildSelectedSkillInstructionBlock } from "@bap/prompts/browser";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -40,14 +41,7 @@ type AccessibleSkill = {
 };
 
 export const CUSTOM_SKILL_PREFIX = "custom:";
-
-export function buildSkillInstructionBlock(skillSlugs: string[], isFrench: boolean): string {
-  const heading = isFrench
-    ? "Utilise les skills suivants pour résoudre la tâche:"
-    : "use the following skills to solve the task:";
-  const skillsList = skillSlugs.map((skillSlug) => `- "${skillSlug}"`).join("\n");
-  return `${heading}\n${skillsList}`;
-}
+export const buildSkillInstructionBlock = buildSelectedSkillInstructionBlock;
 
 export function useChatAreaControls({
   accessibleSkills,

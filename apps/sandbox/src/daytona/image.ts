@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Image } from "@daytonaio/sdk";
+import { OPENCODE_AGENT_DEFINITIONS_DIR } from "@bap/prompts";
 import { OPENCODE_PLUGIN_VERSION, OPENCODE_VERSION } from "../common/versions";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,7 +21,7 @@ const runtimePackageJson = JSON.stringify({
 
 export const image = Image.debianSlim()
   .addLocalFile(`${COMMON_ROOT}/opencode.json`, "/app/opencode.json")
-  .addLocalDir(`${COMMON_ROOT}/agents`, "/app/.opencode/agents")
+  .addLocalDir(OPENCODE_AGENT_DEFINITIONS_DIR, "/app/.opencode/agents")
   .addLocalDir(`${COMMON_ROOT}/plugins`, "/app/.opencode/plugins")
   .addLocalDir(`${COMMON_ROOT}/tools`, "/app/.opencode/tools")
   .addLocalDir(`${COMMON_ROOT}/lib`, "/app/.opencode/lib")
