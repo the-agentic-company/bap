@@ -3,15 +3,15 @@ import {
   DEFAULT_MODEL,
   coworkerRouterAny,
   createContext,
+  createFileAssetFromBufferMock,
   downloadFromS3Mock,
-  ensureBucketMock,
   generateCoworkerMetadataOnFirstPromptFillMock,
+  markFileAssetReferenceMock,
   normalizeAndEnsureUniqueCoworkerUsernameMock,
   removeCoworkerScheduleJobMock,
   resetCoworkerRouterTestHarness,
   syncCoworkerScheduleJobMock,
   uploadCoworkerDocumentMock,
-  uploadToS3Mock,
 } from "./coworker.test-harness";
 
 describe("coworkerRouter", () => {
@@ -545,7 +545,8 @@ describe("coworkerRouter", () => {
           status: "off",
         },
       ])
-      .mockResolvedValueOnce([{ id: "conv-imported-builder" }]);
+      .mockResolvedValueOnce([{ id: "conv-imported-builder" }])
+      .mockResolvedValueOnce([{ id: "sandbox-file-imported" }]);
 
     const artifactContent = "<!doctype html><p>Imported preview</p>";
     const result = await coworkerRouterAny.importDefinition({
@@ -592,11 +593,15 @@ describe("coworkerRouter", () => {
       username: "imported-coworker",
       status: "off",
     });
-    expect(ensureBucketMock).toHaveBeenCalled();
-    expect(uploadToS3Mock).toHaveBeenCalledWith(
-      expect.stringMatching(/^sandbox-files\/conv-imported-builder\/\d+-output\.html$/),
-      Buffer.from(artifactContent),
-      "text/html",
+    expect(createFileAssetFromBufferMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        database: context.db,
+        userId: "user-1",
+        workspaceId: "ws-1",
+        filename: "output.html",
+        mimeType: "text/html",
+        content: Buffer.from(artifactContent),
+      }),
     );
     expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -611,15 +616,20 @@ describe("coworkerRouter", () => {
     expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         conversationId: "conv-imported-builder",
+        fileAssetId: "asset-1",
         path: "/app/output.html",
         filename: "output.html",
         mimeType: "text/html",
         sizeBytes: artifactContent.length,
-        storageKey: expect.stringMatching(
-          /^sandbox-files\/conv-imported-builder\/\d+-output\.html$/,
-        ),
+        storageKey: "file-assets/ws-1/server/asset-1",
       }),
     );
+    expect(markFileAssetReferenceMock).toHaveBeenCalledWith({
+      database: context.db,
+      fileAssetId: "asset-1",
+      kind: "sandbox_file",
+      referenceId: "sandbox-file-imported",
+    });
   });
 
   it("imports shared coworker definitions through artifact restore rules", async () => {
@@ -683,7 +693,8 @@ describe("coworkerRouter", () => {
           status: "off",
         },
       ])
-      .mockResolvedValueOnce([{ id: "conv-imported-builder" }]);
+      .mockResolvedValueOnce([{ id: "conv-imported-builder" }])
+      .mockResolvedValueOnce([{ id: "sandbox-file-shared" }]);
 
     const result = await coworkerRouterAny.importShared({
       input: { sourceCoworkerId: "wf-shared" },
@@ -703,19 +714,31 @@ describe("coworkerRouter", () => {
         allowedWorkspaceMcpServerIds: ["target-slack-source"],
       }),
     );
-    expect(ensureBucketMock).toHaveBeenCalled();
-    expect(uploadToS3Mock).toHaveBeenCalledWith(
-      expect.stringMatching(/^sandbox-files\/conv-imported-builder\/\d+-shared\.html$/),
-      Buffer.from("<!doctype html><p>Shared</p>"),
-      "text/html",
+    expect(createFileAssetFromBufferMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        database: context.db,
+        userId: "user-1",
+        workspaceId: "ws-1",
+        filename: "shared.html",
+        mimeType: "text/html",
+        content: Buffer.from("<!doctype html><p>Shared</p>"),
+      }),
     );
     expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         conversationId: "conv-imported-builder",
+        fileAssetId: "asset-1",
         path: "/app/shared.html",
         filename: "shared.html",
+        storageKey: "file-assets/ws-1/server/asset-1",
       }),
     );
+    expect(markFileAssetReferenceMock).toHaveBeenCalledWith({
+      database: context.db,
+      fileAssetId: "asset-1",
+      kind: "sandbox_file",
+      referenceId: "sandbox-file-shared",
+    });
   });
 
   it("returns INTERNAL_SERVER_ERROR when scheduler cleanup fails during delete", async () => {
