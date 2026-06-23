@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { buildConversationTitlePrompt } from "@bap/prompts";
 import { env } from "../../env";
 
 /**
@@ -17,15 +18,9 @@ export async function generateConversationTitle(
     const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-    const prompt = [
-      "Generate a short title (3-6 words) for this conversation. Return ONLY the title, no quotes or punctuation.",
-      "",
-      "User: " + userMessage.slice(0, 500),
-      "",
-      "Assistant: " + assistantMessage.slice(0, 500),
-    ].join("\n");
-
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(
+      buildConversationTitlePrompt({ userMessage, assistantMessage }),
+    );
     const response = result.response;
     const text = response.text();
 

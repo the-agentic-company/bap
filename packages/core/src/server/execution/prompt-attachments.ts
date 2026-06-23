@@ -1,3 +1,8 @@
+import {
+  buildCoworkerDocumentAttachmentPrompt,
+  buildUserUploadedFilePrompt,
+  buildUserUploadFailurePrompt,
+} from "@bap/prompts";
 import type { RuntimePromptPart } from "../sandbox/core/types";
 import { writeCoworkerDocumentsToSandbox } from "../sandbox/prep/coworker-documents-prep";
 
@@ -57,11 +62,7 @@ export async function stageRuntimePromptAttachments(input: {
       stagedCoworkerDocumentCount = coworkerDocumentPaths.length;
       promptParts.push({
         type: "text",
-        text: [
-          "Persistent coworker documents are available in the sandbox for this run:",
-          ...coworkerDocumentPaths.map((filePath) => `- ${filePath}`),
-          "Read them from disk when they are relevant to the task.",
-        ].join("\n"),
+        text: buildCoworkerDocumentAttachmentPrompt(coworkerDocumentPaths),
       });
     }
   }
@@ -84,7 +85,10 @@ export async function stageRuntimePromptAttachments(input: {
             input.userStagedFilePaths?.add(sandboxPath);
             promptParts.push({
               type: "text",
-              text: `The user uploaded a file: ${sandboxPath} (${attachment.mimeType}).`,
+              text: buildUserUploadedFilePrompt({
+                sandboxPath,
+                mimeType: attachment.mimeType,
+              }),
             });
             stagedUploadCount += 1;
             if (attachment.mimeType.startsWith("image/")) {
@@ -100,7 +104,7 @@ export async function stageRuntimePromptAttachments(input: {
             input.logAttachmentWriteError?.(sandboxPath, error);
             promptParts.push({
               type: "text",
-              text: `The user tried to upload a file "${attachment.name}" but it could not be written to the sandbox.`,
+              text: buildUserUploadFailurePrompt(attachment.name),
             });
           }
         }),

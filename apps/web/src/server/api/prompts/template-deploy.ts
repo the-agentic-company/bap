@@ -1,7 +1,4 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
-const TEMPLATE_DEPLOY_PROMPT_PATH = path.join(process.cwd(), "prompts", "template-deploy.txt");
+import { getTemplateDeployPromptTemplate } from "@bap/prompts";
 
 /**
  * Framework-neutral handler for `GET /api/prompts/template-deploy`.
@@ -12,7 +9,7 @@ const TEMPLATE_DEPLOY_PROMPT_PATH = path.join(process.cwd(), "prompts", "templat
  */
 export async function getTemplateDeployPrompt(): Promise<Response> {
   try {
-    const prompt = await readFile(TEMPLATE_DEPLOY_PROMPT_PATH, "utf8");
+    const prompt = getTemplateDeployPromptTemplate();
 
     return new Response(prompt, {
       headers: {

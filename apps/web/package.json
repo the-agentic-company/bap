@@ -60,6 +60,7 @@
     "@bap/core": "workspace:*",
     "@bap/db": "workspace:*",
     "@bap/message-format": "workspace:*",
+    "@bap/prompts": "workspace:*",
     "@bap/sandbox": "workspace:*",
     "@daytonaio/sdk": "^0.186.0",
     "@dicebear/collection": "^9.4.2",

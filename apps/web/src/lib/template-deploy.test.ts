@@ -1,18 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { getTemplateDeployPromptTemplate } from "@bap/prompts";
 import { buildTemplateDeployPayload, renderTemplateDeployPrompt } from "@/lib/template-deploy";
 import { callFollowUpTemplate } from "@/test/template-catalog-fixtures";
 
-const PROMPT_TEMPLATE = `Create it with name {{name}}
-
-Trigger
-
-{{trigger_title}}
-
-{{trigger_description}}
-
-Instructions
-
-{{instructions}}`;
+const PROMPT_TEMPLATE = getTemplateDeployPromptTemplate();
 
 describe("renderTemplateDeployPrompt", () => {
   it("fills all placeholders and keeps the required sections", () => {
@@ -36,7 +27,8 @@ Generate a 2-3 sentence call summary and explicit action items for both parties.
 If contact email exists, create a Gmail draft with friendly greeting, short summary, bullet action items, and professional closing.
 Create a HubSpot task with subject 'Follow up on call with [Contact Name]', include summary + actions, and schedule for tomorrow at 9 AM.
 If contact exists, associate task to contact using HUBSPOT_DEFINED association type 204.
-If no contact is found, skip Gmail draft and still create the HubSpot task with the phone number in the body.`);
+If no contact is found, skip Gmail draft and still create the HubSpot task with the phone number in the body.
+`);
   });
 });
 

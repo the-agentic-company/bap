@@ -5,6 +5,7 @@ import {
   renderMessageToSlackPayload,
   type SlackBlock,
 } from "@bap/message-format";
+import { buildSlackBotBridgeMessage } from "@bap/prompts";
 import { db } from "@bap/db/client";
 import {
   slackUserLink,
@@ -190,15 +191,13 @@ export async function handleSlackEvent(payload: SlackEvent) {
     // Start generation via generation manager
     const { generationId } = await generationManager.startGeneration({
       conversationId: convId,
-      content: [
-        `[Slack message from ${displayName}]`,
-        `channel_id: ${channel}`,
-        `thread_ts: ${threadTs}`,
-        `message_ts: ${event.ts}`,
-        `context: You are already replying in this exact Slack thread via the bot bridge. For simple text requests (for example "repeat <text>"), answer directly in plain text without using tools. If you do use Slack tools, use channel_id and thread_ts from this prompt and do not ask the user for them.`,
-        "",
+      content: buildSlackBotBridgeMessage({
+        displayName,
+        channelId: channel,
+        threadTs,
+        messageTs: event.ts,
         messageText,
-      ].join("\n"),
+      }),
       userId: link.userId,
       autoApprove: true,
     });

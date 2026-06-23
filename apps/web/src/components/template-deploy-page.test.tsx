@@ -2,6 +2,7 @@
 
 import * as jestDomVitest from "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { getTemplateDeployPromptTemplate } from "@bap/prompts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type VitestProcedure = Extract<
@@ -61,17 +62,7 @@ describe("TemplateDeployPage", () => {
     mockStartGeneration.mockResolvedValue({ generationId: "gen-1" });
     fetchMock.mockResolvedValue({
       ok: true,
-      text: async () => `Create it with name {{name}}
-
-Trigger
-
-{{trigger_title}}
-
-{{trigger_description}}
-
-Instructions
-
-{{instructions}}`,
+      text: async () => getTemplateDeployPromptTemplate(),
     });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     Object.defineProperty(window, "location", {

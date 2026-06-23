@@ -76,14 +76,14 @@ RUN ln -s /root/.bun/bin/tsx /usr/local/bin/tsx
 RUN npm install -g @sandbox-agent/cli@0.2.x \
   && sandbox-agent install-agent opencode
 
-COPY common/opencode.json /app/opencode.json
-COPY common/agents /app/.opencode/agents
-COPY common/plugins /app/.opencode/plugins
-COPY common/tools /app/.opencode/tools
-COPY common/lib /app/.opencode/lib
-COPY common/skills /app/.agents/skills
-COPY common/lib /app/.agents/lib
-COPY common/setup.sh /app/setup.sh
+COPY apps/sandbox/src/common/opencode.json /app/opencode.json
+COPY packages/prompts/src/assets/opencode-agents /app/.opencode/agents
+COPY apps/sandbox/src/common/plugins /app/.opencode/plugins
+COPY apps/sandbox/src/common/tools /app/.opencode/tools
+COPY apps/sandbox/src/common/lib /app/.opencode/lib
+COPY apps/sandbox/src/common/skills /app/.agents/skills
+COPY apps/sandbox/src/common/lib /app/.agents/lib
+COPY apps/sandbox/src/common/setup.sh /app/setup.sh
 
 RUN mkdir -p /app/.claude \
   && ln -sfn /app/.agents/skills /app/.claude/skills \

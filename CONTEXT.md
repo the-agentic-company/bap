@@ -100,6 +100,18 @@ _Avoid_: logs, telemetry
 One agent execution lifecycle for a conversation turn, including preparation, model streaming, tool use, interruption handling, and terminal completion or failure.
 _Avoid_: run, request
 
+**Authored Prompt Asset**:
+Bap-authored reusable text that instructs or seeds an agent, runtime, or product flow before user-specific context is added. An **Authored Prompt Asset** is source material, not the final per-**Generation** model input and not a message from a **User**.
+_Avoid_: prompt, system prompt, template
+
+**Prompt Composition**:
+The assembled model-facing instruction set for one **Generation**, built from **Authored Prompt Assets** and run-specific context. **Prompt Composition** is distinct from **Parameter Prompt**, **Agentic-App Prompt**, and **Start Message**, which are user-facing conversation concepts.
+_Avoid_: system prompt, prompt file, agent prompt
+
+**OpenCode Agent Definition**:
+An **Authored Prompt Asset** that names one OpenCode runtime persona for Bap chat, **Builder Chat**, or **Coworker Run** behavior. An **OpenCode Agent Definition** is not a **Coworker Definition**.
+_Avoid_: agent definition, coworker definition, agent markdown
+
 **Coworker**:
 A user-configured agent that can start a **Coworker Run** from a manual, scheduled, email, or webhook trigger.
 _Avoid_: bot, automation, worker

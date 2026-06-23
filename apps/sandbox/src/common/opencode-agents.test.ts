@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { OPENCODE_AGENT_DEFINITIONS_DIR } from "@bap/prompts";
 
 function readAgent(agentFileName: string): string {
-  return readFileSync(path.join(__dirname, "agents", agentFileName), "utf8");
+  return readFileSync(path.join(OPENCODE_AGENT_DEFINITIONS_DIR, agentFileName), "utf8");
 }
 
 describe("OpenCode agent definitions", () => {

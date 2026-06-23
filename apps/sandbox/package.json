@@ -33,6 +33,7 @@
   "dependencies": {
     "@bap/db": "workspace:*",
     "@bap/message-format": "workspace:*",
+    "@bap/prompts": "workspace:*",
     "@daytonaio/sdk": "^0.186.0",
     "@opencode-ai/plugin": "^1.17.3",
     "@opencode-ai/sdk": "^1.17.3",

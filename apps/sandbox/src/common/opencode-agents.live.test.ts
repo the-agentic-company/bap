@@ -2,7 +2,7 @@ import {
   BAP_CHAT_AGENT_ID,
   BAP_COWORKER_BUILDER_AGENT_ID,
   BAP_COWORKER_RUNNER_AGENT_ID,
-} from "../../../../packages/core/src/server/prompts/opencode-agent-ids";
+} from "@bap/prompts";
 import { Daytona } from "@daytonaio/sdk";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { beforeAll, describe, expect, test } from "vitest";

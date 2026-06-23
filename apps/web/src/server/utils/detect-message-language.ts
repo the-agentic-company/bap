@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { buildDetectMessageLanguagePrompt } from "@bap/prompts";
 
 export type DetectedMessageLanguage = "french" | "other";
 
@@ -18,14 +19,7 @@ export async function detectMessageLanguage(text: string): Promise<DetectedMessa
     const genAI = new GoogleGenerativeAI(geminiApiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = [
-      "Detect the language of this user message.",
-      'Respond with exactly one lowercase token: "french" or "other".',
-      "",
-      `Message: ${normalizedText.slice(0, 4000)}`,
-    ].join("\n");
-
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(buildDetectMessageLanguagePrompt(normalizedText));
     const responseText = result.response.text().trim().toLowerCase();
 
     return responseText.includes("french") ? "french" : "other";

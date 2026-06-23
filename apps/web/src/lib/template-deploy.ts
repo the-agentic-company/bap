@@ -1,3 +1,8 @@
+import {
+  buildTemplateInstructionsText,
+  renderTemplateDeployPrompt as renderPromptTemplateDeployPrompt,
+  type TemplateDeployPromptInput,
+} from "@bap/prompts/browser";
 import type { TemplateCatalogTemplate } from "@bap/db/template-catalog";
 
 export type TemplateDeployPayload = {
@@ -9,45 +14,34 @@ export type TemplateDeployPayload = {
   initialBuilderMessage: string;
 };
 
-function replacePlaceholder(template: string, placeholder: string, value: string) {
-  return template.replaceAll(`{{${placeholder}}}`, value);
-}
-
-function buildTemplateInstructionsText(template: TemplateCatalogTemplate) {
-  return template.agentInstructions.join("\n");
+function toPromptTemplateInput(template: TemplateCatalogTemplate): TemplateDeployPromptInput {
+  return {
+    name: template.title,
+    triggerTitle: template.triggerTitle,
+    triggerDescription: template.triggerDescription,
+    instructions: template.agentInstructions,
+  };
 }
 
 export function renderTemplateDeployPrompt(
   templateSource: string,
   template: TemplateCatalogTemplate,
 ) {
-  const instructions = buildTemplateInstructionsText(template);
-
-  return replacePlaceholder(
-    replacePlaceholder(
-      replacePlaceholder(
-        replacePlaceholder(templateSource, "name", template.title),
-        "trigger_title",
-        template.triggerTitle,
-      ),
-      "trigger_description",
-      template.triggerDescription,
-    ),
-    "instructions",
-    instructions,
-  );
+  return renderPromptTemplateDeployPrompt(templateSource, toPromptTemplateInput(template));
 }
 
 export function buildTemplateDeployPayload(
   template: TemplateCatalogTemplate,
   templateSource: string,
 ): TemplateDeployPayload {
+  const promptInput = toPromptTemplateInput(template);
+
   return {
     createPayload: {
       name: template.title,
       triggerType: template.triggerType,
-      prompt: buildTemplateInstructionsText(template),
+      prompt: buildTemplateInstructionsText(template.agentInstructions),
     },
-    initialBuilderMessage: renderTemplateDeployPrompt(templateSource, template),
+    initialBuilderMessage: renderPromptTemplateDeployPrompt(templateSource, promptInput),
   };
 }
