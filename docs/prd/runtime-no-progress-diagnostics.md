@@ -8,7 +8,7 @@ This makes production failures hard to debug. Operators can see repeated stream 
 
 ## Solution
 
-Bap should enforce a lifecycle invariant: every non-terminal **Generation** must either show **Runtime Progress** or be a **Waiting Generation** backed by durable human action. A post-prompt runtime turn that produces no **Runtime Progress** within 90 seconds should fail terminally with a precise normalized code, capture a redacted **Runtime Diagnostic Snapshot**, and surface clear user/admin feedback.
+Bap should enforce a lifecycle invariant: every non-terminal **Generation** must either show **Runtime Progress** or be a **Waiting Generation** backed by durable human action. A post-prompt runtime turn that produces no **Runtime Progress** within 3 minutes should fail terminally with a precise normalized code, capture a redacted **Runtime Diagnostic Snapshot**, and surface clear user/admin feedback.
 
 Normal users should see: "The runtime stopped responding before producing any output. Please retry."
 
@@ -43,13 +43,13 @@ Admin and operator surfaces should show the actual failure code, phase, runtime 
 25. As an engineer, I want the terminal finalizer to remain the owner of terminal **Generation** state, so that diagnostics do not create duplicate terminal paths.
 26. As an engineer, I want this failure path to update metrics and terminal telemetry consistently with other failed **Generations**, so that SLOs stay accurate.
 27. As an engineer, I want the UI to show user-safe copy while admin surfaces show diagnostic details, so that internal runtime details are not exposed to normal users.
-28. As an engineer, I want the watchdog threshold to be fixed at 90 seconds for normal production traffic, so that behavior is predictable and easy to reason about.
+28. As an engineer, I want the watchdog threshold to be fixed at 3 minutes for normal production traffic, so that behavior is predictable and easy to reason about.
 29. As an engineer, I want diagnostic artifacts to have a retention strategy, so that storage does not grow indefinitely.
 30. As an engineer, I want failures caused by missing **Runtime Progress** to be easy to reproduce in tests, so that future runtime integration changes do not reintroduce limbo states.
 
 ## Implementation Decisions
 
-- Add a 90-second post-prompt watchdog that starts immediately after the prompt is sent to the runtime.
+- Add a 3-minute post-prompt watchdog that starts immediately after the prompt is sent to the runtime.
 - The watchdog is satisfied only by **Runtime Progress**: tracked turn events, actionable runtime events, prompt completion, prompt rejection, explicit runtime idle, or explicit runtime error.
 - Transport-only activity, event-stream subscription, sandbox preparation, session creation, session replay, cache work, and runtime connection events do not satisfy the watchdog.
 - If the watchdog fires, finish the **Generation** as a terminal error rather than parking it.
@@ -105,4 +105,4 @@ Admin and operator surfaces should show the actual failure code, phase, runtime 
 - The agreed lifecycle invariant is: every non-terminal **Generation** must either be terminalizing, show **Runtime Progress**, or be a **Waiting Generation** backed by durable human action. Anything else is a **Dormant Generation** and should be treated as a product bug.
 - This PRD relies on the glossary terms **Generation**, **Waiting Generation**, **Dormant Generation**, **Runtime Progress**, **Runtime Diagnostic Snapshot**, **Canonical Service Event**, and **Client Observation**.
 - Runtime Diagnostic Snapshot storage is covered by ADR 0004.
-- The initial threshold is 90 seconds. This should be treated as a product reliability constant for this failure mode, not as a substitute for the existing full run deadline.
+- The initial threshold is 3 minutes. This should be treated as a product reliability constant for this failure mode, not as a substitute for the existing full run deadline.

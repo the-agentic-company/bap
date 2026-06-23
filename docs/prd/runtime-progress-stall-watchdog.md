@@ -8,7 +8,7 @@ From the user's perspective, this looks like a fast query becoming inexplicably 
 
 ## Solution
 
-Bap should treat "progress happened, then stopped" as a first-class runtime failure: **Runtime Progress Stall**. A **Generation** that has observed **Runtime Progress** but then receives no further **Runtime Progress** for 90 seconds should fail terminally with `runtime_progress_stalled`, capture a redacted **Runtime Diagnostic Snapshot**, abort the OpenCode session, and archive the diagnostic sandbox when eligible.
+Bap should treat "progress happened, then stopped" as a first-class runtime failure: **Runtime Progress Stall**. A **Generation** that has observed **Runtime Progress** but then receives no further **Runtime Progress** for 3 minutes should fail terminally with `runtime_progress_stalled`, capture a redacted **Runtime Diagnostic Snapshot**, abort the OpenCode session, and archive the diagnostic sandbox when eligible.
 
 The fix should also tighten the domain model by renaming the persisted and in-memory "last runtime event" concept to **Last Runtime Progress**. Transport events, empty assistant message creation, session setup, cache work, and stream reconnects must not keep a **Dormant Generation** alive.
 
@@ -59,7 +59,7 @@ Suggested Linear label/status: `ready-for-agent`.
 - Map `runtime_progress_stalled` to terminal outcome `timed_out`.
 - Map `runtime_progress_stalled` to failure phase `runtime`.
 - Use `runtime_progress_stalled` as the normalized error code.
-- Use a 90-second default threshold for detecting a **Runtime Progress Stall**.
+- Use a 3-minute default threshold for detecting a **Runtime Progress Stall**.
 - Replace the current one-shot no-progress suppression behavior with a sliding watchdog that repeatedly evaluates stale **Runtime Progress** while the prompt is active.
 - Preserve the existing no-initial-progress behavior: if no **Runtime Progress** occurs after prompt send within the threshold, fail as `runtime_no_progress_after_prompt`.
 - Add a distinct progress-stalled branch: if **Runtime Progress** has happened and `now - lastRuntimeProgressAt` reaches the threshold, fail as `runtime_progress_stalled`.
@@ -96,7 +96,7 @@ Suggested Linear label/status: `ready-for-agent`.
 
 - Tests should assert external lifecycle behavior: terminal status, completion reason, stream status, diagnostic index shape, runtime abort, canonical telemetry fields, and sandbox archival eligibility.
 - Tests should not duplicate internal implementation logic in a way that becomes a second watchdog implementation.
-- Add a runtime lifecycle test where a prompt emits **Runtime Progress**, completes a tool result, then emits no further meaningful progress for 90 seconds.
+- Add a runtime lifecycle test where a prompt emits **Runtime Progress**, completes a tool result, then emits no further meaningful progress for 3 minutes.
 - That test should assert terminal status `error`, completion reason `runtime_progress_stalled`, runtime abort called, diagnostic snapshot captured, and no `run_deadline` parking.
 - Add a complementary no-initial-progress test proving no **Runtime Progress** still yields `runtime_no_progress_after_prompt`.
 - Add translator or runtime driver tests proving completed tool result marks **Runtime Progress**.

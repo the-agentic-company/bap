@@ -24,6 +24,7 @@ describe("generationLifecyclePolicy", () => {
     expect(generationLifecyclePolicy.authTimeoutMs).toBeLessThan(
       generationLifecyclePolicy.runDeadlineMs,
     );
+    expect(generationLifecyclePolicy.runtimeProgressStallMs).toBe(3 * 60 * 1000);
     expect(generationLifecyclePolicy.maxRecoveryAttempts).toBe(1);
   });
 
