@@ -475,7 +475,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     async (workspaceId: string) => {
       try {
         await switchWorkspace.mutateAsync(workspaceId);
-        void navigate({ to: pathname || "/" });
+        void navigate({ to: pathname || "/", search: location.search, hash: location.hash });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to switch workspace.");
       }
