@@ -7,7 +7,7 @@
     "dev": "bun --watch --env-file=../../.env index.ts",
     "dev:selfhost": "bun --watch --env-file=../../.env.selfhost index.ts",
     "start": "bun --env-file=../../.env index.ts",
-    "bundle": "rm -rf dist && bun build index.ts --target bun --outdir dist --external cpu-features --external sharp --external '@bap/sandbox/*'",
+    "bundle": "rm -rf dist && bun build index.ts --target bun --outdir dist --external cpu-features --external sharp --external '@bap/sandbox/*' && cp -R ../../packages/prompts/src/assets dist/assets",
     "build": "bunx tsc --noEmit -p tsconfig.json",
     "check": "bunx tsc --noEmit -p tsconfig.json"
   },
