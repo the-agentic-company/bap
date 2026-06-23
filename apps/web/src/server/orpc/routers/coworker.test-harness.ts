@@ -29,6 +29,8 @@ const coworkerRouterMocks = vi.hoisted(() => ({
   uploadCoworkerDocumentMock: vi.fn<VitestProcedure>(),
   updateCoworkerDocumentMock: vi.fn<VitestProcedure>(),
   deleteCoworkerDocumentMock: vi.fn<VitestProcedure>(),
+  createFileAssetFromBufferMock: vi.fn<VitestProcedure>(),
+  markFileAssetReferenceMock: vi.fn<VitestProcedure>(),
   downloadFromS3Mock: vi.fn<VitestProcedure>(),
   ensureBucketMock: vi.fn<VitestProcedure>(),
   getPresignedDownloadUrlMock: vi.fn<VitestProcedure>(),
@@ -50,6 +52,8 @@ export const {
   uploadCoworkerDocumentMock,
   updateCoworkerDocumentMock,
   deleteCoworkerDocumentMock,
+  createFileAssetFromBufferMock,
+  markFileAssetReferenceMock,
   downloadFromS3Mock,
   ensureBucketMock,
   getPresignedDownloadUrlMock,
@@ -101,6 +105,11 @@ vi.mock("@/server/services/coworker-document", () => ({
   deleteCoworkerDocument: coworkerRouterMocks.deleteCoworkerDocumentMock,
   updateCoworkerDocument: coworkerRouterMocks.updateCoworkerDocumentMock,
   uploadCoworkerDocument: coworkerRouterMocks.uploadCoworkerDocumentMock,
+}));
+
+vi.mock("@bap/core/server/services/file-asset-service", () => ({
+  createFileAssetFromBuffer: coworkerRouterMocks.createFileAssetFromBufferMock,
+  markFileAssetReference: coworkerRouterMocks.markFileAssetReferenceMock,
 }));
 
 vi.mock("@bap/core/server/storage/s3-client", () => ({
@@ -329,6 +338,31 @@ export function resetCoworkerRouterTestHarness() {
     success: true,
     filename: "brief.pdf",
   });
+  let fileAssetSequence = 0;
+  createFileAssetFromBufferMock.mockImplementation(
+    async ({
+      workspaceId,
+      filename,
+      mimeType,
+      content,
+    }: {
+      workspaceId: string;
+      filename: string;
+      mimeType: string;
+      content: Buffer;
+    }) => {
+      fileAssetSequence += 1;
+      const fileAssetId = `asset-${fileAssetSequence}`;
+      return {
+        id: fileAssetId,
+        filename,
+        mimeType,
+        sizeBytes: content.length,
+        storageKey: `file-assets/${workspaceId}/server/${fileAssetId}`,
+      };
+    },
+  );
+  markFileAssetReferenceMock.mockResolvedValue(undefined);
   downloadFromS3Mock.mockResolvedValue(Buffer.from("hello world"));
   getPresignedDownloadUrlMock.mockResolvedValue("https://storage.example.com/brief.pdf");
   listConfiguredRemoteIntegrationTargetsMock.mockReturnValue(["staging", "prod"]);

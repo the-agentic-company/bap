@@ -11,7 +11,7 @@ const {
   getOrCreateConversationSandboxMock,
   resolveRuntimeEnvironmentForTurnMock,
   stagePrePromptAssetsMock,
-  writeCoworkerDocumentsToSandboxMock,
+  stageRuntimePromptAttachmentsMock,
   resolveWorkspaceMcpServersForGenerationMock,
   resolveBapPlatformMcpServerMock,
   captureRuntimeNoProgressDiagnosticSnapshotMock,
@@ -22,7 +22,7 @@ const {
   getOrCreateConversationSandboxMock: vi.fn(),
   resolveRuntimeEnvironmentForTurnMock: vi.fn(),
   stagePrePromptAssetsMock: vi.fn(),
-  writeCoworkerDocumentsToSandboxMock: vi.fn(),
+  stageRuntimePromptAttachmentsMock: vi.fn(),
   resolveWorkspaceMcpServersForGenerationMock: vi.fn(),
   resolveBapPlatformMcpServerMock: vi.fn(),
   captureRuntimeNoProgressDiagnosticSnapshotMock: vi.fn(),
@@ -57,8 +57,8 @@ vi.mock("../../sandbox/prep/memory-prep", () => ({
   syncMemoryFilesToSandbox: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("../../sandbox/prep/coworker-documents-prep", () => ({
-  writeCoworkerDocumentsToSandbox: writeCoworkerDocumentsToSandboxMock,
+vi.mock("../../execution/prompt-attachments", () => ({
+  stageRuntimePromptAttachments: stageRuntimePromptAttachmentsMock,
 }));
 
 vi.mock("../../executor/workspace-sources", () => ({
@@ -371,7 +371,35 @@ describe("OpenCodeNormalRunner", () => {
       prePromptCacheHit: false,
       startPostPromptCacheWrite: null,
     });
-    writeCoworkerDocumentsToSandboxMock.mockResolvedValue([]);
+    stageRuntimePromptAttachmentsMock.mockImplementation(
+      async (input: { attachments?: unknown[] | null; userStagedFilePaths?: Set<string> }) => {
+        if (!input.attachments || input.attachments.length === 0) {
+          return {
+            promptParts: [],
+            stagedCoworkerDocumentCount: 0,
+            stagedUploadCount: 0,
+            stagedUploadFailureCount: 0,
+          };
+        }
+        input.userStagedFilePaths?.add("/home/user/uploads/image.png");
+        input.userStagedFilePaths?.add("/home/user/uploads/notes.txt");
+        return {
+          promptParts: [
+            {
+              type: "text",
+              text: "The user uploaded a file: /home/user/uploads/image.png (image/png).",
+            },
+            {
+              type: "text",
+              text: "The user uploaded a file: /home/user/uploads/notes.txt (text/plain).",
+            },
+          ],
+          stagedCoworkerDocumentCount: 0,
+          stagedUploadCount: 2,
+          stagedUploadFailureCount: 0,
+        };
+      }
+    );
     resolveWorkspaceMcpServersForGenerationMock.mockResolvedValue({
       requestedServers: [],
       unavailableServers: [],
@@ -412,14 +440,16 @@ describe("OpenCodeNormalRunner", () => {
       assistantContent: "The generated file is report.txt.",
       attachments: [
         {
+          fileAssetId: "asset-image",
           name: "image.png",
           mimeType: "image/png",
-          dataUrl: "data:image/png;base64,aGVsbG8=",
+          sizeBytes: 5,
         },
         {
+          fileAssetId: "asset-notes",
           name: "notes.txt",
           mimeType: "text/plain",
-          dataUrl: "data:text/plain;base64,aGVsbG8=",
+          sizeBytes: 5,
         },
       ],
     });
@@ -465,11 +495,21 @@ describe("OpenCodeNormalRunner", () => {
           text: expect.stringContaining("/home/user/uploads/image.png"),
         }),
         expect.objectContaining({
-          type: "file",
-          mime: "image/png",
-          filename: "image.png",
+          type: "text",
+          text: expect.stringContaining("/home/user/uploads/notes.txt"),
         }),
       ]),
+    );
+    expect(promptInput.parts).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: "file" })]),
+    );
+    expect(stageRuntimePromptAttachmentsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeSandbox: sandbox,
+        workspaceId: "ws-1",
+        attachments: ctx.attachments,
+        userStagedFilePaths: ctx.userStagedFilePaths,
+      }),
     );
     expect(ctx.userStagedFilePaths).toEqual(
       new Set(["/home/user/uploads/image.png", "/home/user/uploads/notes.txt"]),
