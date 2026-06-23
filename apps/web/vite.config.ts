@@ -8,6 +8,7 @@ import { nitro } from "nitro/vite";
 import { fileURLToPath } from "node:url";
 import * as tslibRuntime from "tslib";
 import { defineConfig, type Plugin } from "vite";
+import { copyPromptAssetsToNitroServer } from "./scripts/lib/prompt-assets";
 // Validate environment variables at config load.
 import * as envConfig from "./src/env.js";
 
@@ -17,6 +18,12 @@ void tslibRuntime;
 // Resolve the `@/*` -> `src/*` alias directly here rather than scanning every workspace
 // tsconfig (vite-tsconfig-paths trips over the monorepo's extended base configs).
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
+const promptAssetsDir = fileURLToPath(
+	new URL("../../packages/prompts/src/assets", import.meta.url),
+);
+const nitroSsrDir = fileURLToPath(
+	new URL("./.output/server/_ssr", import.meta.url),
+);
 
 const SELF_HOST_PORT = 3001;
 const DEFAULT_PORT = 3000;
@@ -157,6 +164,14 @@ export default defineConfig(({ isSsrBuild }) => ({
 		// Nitro owns the production Node server output (`.output/server/index.mjs`), matching
 		// the current TanStack Start starter shape.
 		nitro({
+			hooks: {
+				compiled() {
+					copyPromptAssetsToNitroServer({
+						sourceDir: promptAssetsDir,
+						serverSsrDir: nitroSsrDir,
+					});
+				},
+			},
 			rollupConfig: {
 				external: [
 					/^tslib$/,
