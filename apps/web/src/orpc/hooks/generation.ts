@@ -11,6 +11,13 @@ const STREAM_NOT_READY_ERROR =
 const STREAM_RETRY_DELAY_MS = 1500;
 const STREAM_MAX_RETRIES = 80;
 
+export type GenerationFileAttachment = {
+  fileAssetId: string;
+  name?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+};
+
 function isStreamNotReadyError(message: string | undefined): boolean {
   return (message ?? "").trim() === STREAM_NOT_READY_ERROR;
 }
@@ -52,7 +59,7 @@ export function useGeneration() {
         debugRunDeadlineMs?: number;
         debugApprovalHotWaitMs?: number;
         selectedPlatformSkillSlugs?: string[];
-        fileAttachments?: { name: string; mimeType: string; dataUrl: string }[];
+        fileAttachments?: GenerationFileAttachment[];
       },
       callbacks: GenerationCallbacks,
     ): Promise<{ generationId: string; conversationId: string } | null> => {
@@ -289,7 +296,7 @@ export function useEnqueueConversationMessage() {
       conversationId: string;
       content: string;
       selectedPlatformSkillSlugs?: string[];
-      fileAttachments?: { name: string; mimeType: string; dataUrl: string }[];
+      fileAttachments?: GenerationFileAttachment[];
       replaceExisting?: boolean;
     }) =>
       client.generation.enqueueConversationMessage({
@@ -389,7 +396,7 @@ export function useUpdateConversationQueuedMessage() {
       conversationId: string;
       content: string;
       selectedPlatformSkillSlugs?: string[];
-      fileAttachments?: { name: string; mimeType: string; dataUrl: string }[];
+      fileAttachments?: GenerationFileAttachment[];
     }) =>
       client.generation.updateConversationQueuedMessage({
         queuedMessageId,

@@ -16,6 +16,7 @@
     "experiment:sandbox-agent:quickstart": "bun experiments/sandbox-agent-quickstart.ts",
     "experiment:sandbox-agent:sdk-overview": "bun experiments/sandbox-agent-sdk-overview.ts",
     "experiment:sandbox-agent:skills-config": "bun experiments/sandbox-agent-skills-config.ts",
+    "file-assets:backfill": "bun --env-file=../../.env scripts/file-assets-backfill.ts",
     "format": "bunx --bun oxfmt --write \"**/*.{ts,tsx,js,jsx,mdx}\"",
     "format:check": "bunx --bun oxfmt --check \"**/*.{ts,tsx,js,jsx,mdx}\"",
     "format:write": "bunx --bun oxfmt --write \"**/*.{ts,tsx,js,jsx,mdx}\"",

@@ -11,6 +11,7 @@ const coworkerFindManyMock = vi.fn<VitestProcedure>();
 const userFindFirstMock = vi.fn<VitestProcedure>();
 const triggerCoworkerRunMock = vi.fn<VitestProcedure>();
 const uploadCoworkerDocumentMock = vi.fn<VitestProcedure>();
+const createFileAssetFromBufferMock = vi.fn<VitestProcedure>();
 const resolveCoworkerBuilderContextByConversationMock = vi.fn<VitestProcedure>();
 const applyCoworkerEditMock = vi.fn<VitestProcedure>();
 
@@ -38,6 +39,10 @@ vi.mock("@bap/db/client", () => ({
 
 vi.mock("@bap/core/server/services/coworker-service", () => ({
   triggerCoworkerRun: triggerCoworkerRunMock,
+}));
+
+vi.mock("@bap/core/server/services/file-asset-service", () => ({
+  createFileAssetFromBuffer: createFileAssetFromBufferMock,
 }));
 
 vi.mock("@bap/core/server/services/coworker-metadata", () => ({
@@ -311,8 +316,16 @@ describe("coworker runtime handlers", () => {
         id: "cw-1",
         name: "LinkedIn Digest",
         username: "linkedin-digest",
+        workspaceId: "ws-1",
       });
       coworkerFindManyMock.mockResolvedValue([]);
+      createFileAssetFromBufferMock.mockResolvedValue({
+        id: "asset-voice-note",
+        filename: "voice-note.m4a",
+        mimeType: "audio/mp4",
+        sizeBytes: 4,
+        storageKey: "file-assets/ws-1/asset-voice-note",
+      });
       triggerCoworkerRunMock.mockResolvedValue({
         coworkerId: "cw-1",
         runId: "run-1",
@@ -347,6 +360,14 @@ describe("coworker runtime handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
+      expect(createFileAssetFromBufferMock).toHaveBeenCalledWith({
+        database: expect.anything(),
+        userId: "user-1",
+        workspaceId: "ws-1",
+        filename: "voice-note.m4a",
+        mimeType: "audio/mp4",
+        content: Buffer.from("fake"),
+      });
       expect(triggerCoworkerRunMock).toHaveBeenCalledWith({
         coworkerId: "cw-1",
         startKind: "user_intent",
@@ -361,9 +382,10 @@ describe("coworker runtime handlers", () => {
         },
         fileAttachments: [
           {
+            fileAssetId: "asset-voice-note",
             name: "voice-note.m4a",
             mimeType: "audio/mp4",
-            dataUrl: "data:audio/mp4;base64,ZmFrZQ==",
+            sizeBytes: 4,
           },
         ],
       });

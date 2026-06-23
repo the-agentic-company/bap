@@ -641,6 +641,7 @@ export async function runNormalRunnerBootstrap(
   const stagedPromptAttachments = await stageRuntimePromptAttachments({
     runtimeSandbox,
     coworkerId: ctx.coworkerId,
+    workspaceId: ctx.workspaceId,
     attachments: ctx.attachments,
     userStagedFilePaths: ctx.userStagedFilePaths,
     runStep: runPrePromptStep,

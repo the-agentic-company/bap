@@ -4,9 +4,10 @@ const ATTACHMENT_ONLY_INITIAL_MESSAGE =
   "Use the attached files as context while building this coworker.";
 
 export type PendingCoworkerAttachment = {
+  fileAssetId: string;
   name: string;
   mimeType: string;
-  dataUrl: string;
+  sizeBytes: number;
 };
 
 export type PendingCoworkerPrompt = {
@@ -37,12 +38,21 @@ function normalizeAttachments(
     return [];
   }
 
-  return attachments.filter(
-    (attachment) =>
-      attachment.name.trim().length > 0 &&
-      attachment.mimeType.trim().length > 0 &&
-      attachment.dataUrl.trim().length > 0,
-  );
+  return attachments
+    .filter(
+      (attachment) =>
+        attachment.fileAssetId.trim().length > 0 &&
+        attachment.name.trim().length > 0 &&
+        attachment.mimeType.trim().length > 0 &&
+        Number.isInteger(attachment.sizeBytes) &&
+        attachment.sizeBytes >= 0,
+    )
+    .map((attachment) => ({
+      fileAssetId: attachment.fileAssetId,
+      name: attachment.name,
+      mimeType: attachment.mimeType,
+      sizeBytes: attachment.sizeBytes,
+    }));
 }
 
 function isValidAttachment(value: unknown): value is PendingCoworkerAttachment {
@@ -52,9 +62,10 @@ function isValidAttachment(value: unknown): value is PendingCoworkerAttachment {
 
   const attachment = value as Partial<PendingCoworkerAttachment>;
   return (
+    typeof attachment.fileAssetId === "string" &&
     typeof attachment.name === "string" &&
     typeof attachment.mimeType === "string" &&
-    typeof attachment.dataUrl === "string"
+    typeof attachment.sizeBytes === "number"
   );
 }
 

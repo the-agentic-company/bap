@@ -155,19 +155,18 @@ export type GenerationExecutionPolicy = {
   debugApprovalHotWaitMs?: number;
   debugRuntimeNoProgressTimeoutMs?: number;
   debugForceRuntimeNoProgressAfterPrompt?: boolean;
-  queuedFileAttachments?: Array<{
-    name: string;
-    mimeType: string;
-    dataUrl: string;
-  }>;
+  queuedFileAttachments?: QueuedMessageAttachment[];
   queuedUserMessageContent?: string;
 };
 
-export type QueuedMessageAttachment = {
-  name: string;
-  mimeType: string;
-  dataUrl: string;
+export type QueuedFileAssetAttachment = {
+  fileAssetId: string;
+  name?: string;
+  mimeType?: string;
+  sizeBytes?: number;
 };
+
+export type QueuedMessageAttachment = QueuedFileAssetAttachment;
 
 export type GenerationInterruptDisplay = {
   title: string;

@@ -2,6 +2,7 @@ export * from "./hooks/admin";
 export * from "./hooks/billing";
 export * from "./hooks/conversation";
 export * from "./hooks/coworkers";
+export * from "./hooks/file-assets";
 export * from "./hooks/generation";
 export * from "./hooks/inbox";
 export * from "./hooks/integrations";

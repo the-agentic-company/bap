@@ -60,11 +60,15 @@ const MIME_MAP: Record<string, string> = {
   ".csv": "text/csv",
 };
 
-export function fileToAttachment(filePath: string): {
+export async function fileToAttachment(
+  client: RouterClient<AppRouter>,
+  filePath: string,
+): Promise<{
+  fileAssetId: string;
   name: string;
   mimeType: string;
-  dataUrl: string;
-} {
+  sizeBytes: number;
+}> {
   const resolved = resolve(filePath);
   if (!existsSync(resolved)) {
     throw new Error(`File not found: ${resolved}`);
@@ -72,11 +76,29 @@ export function fileToAttachment(filePath: string): {
   const ext = extname(resolved).toLowerCase();
   const mimeType = MIME_MAP[ext] || "application/octet-stream";
   const data = readFileSync(resolved);
-  const base64 = data.toString("base64");
-  return {
-    name: basename(resolved),
+  const session = await client.fileAsset.createUpload({
+    filename: basename(resolved),
     mimeType,
-    dataUrl: `data:${mimeType};base64,${base64}`,
+    sizeBytes: data.byteLength,
+  });
+  const response = await fetch(session.uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": mimeType,
+    },
+    body: data,
+  });
+  if (!response.ok) {
+    throw new Error(`Upload failed for ${resolved}: ${response.status} ${response.statusText}`);
+  }
+  const asset = await client.fileAsset.completeUpload({
+    uploadSessionId: session.uploadSessionId,
+  });
+  return {
+    fileAssetId: asset.id,
+    name: asset.filename,
+    mimeType: asset.mimeType,
+    sizeBytes: asset.sizeBytes,
   };
 }
 

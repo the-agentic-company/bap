@@ -44,7 +44,7 @@ type Props = {
 const NOOP = () => {};
 
 function getAttachmentKey(a: AttachmentData): string {
-  return a.id ?? `${a.name}-${a.mimeType}-${a.dataUrl}`;
+  return a.id ?? a.fileAssetId ?? `${a.name}-${a.mimeType}-${a.previewUrl ?? ""}`;
 }
 
 function getSandboxFileDedupeKey(file: SandboxFileData): string {
@@ -104,7 +104,7 @@ export function MessageItem({
         const result = await downloadAttachment(attachment.id);
         return result.url;
       }
-      return attachment.dataUrl || null;
+      return attachment.previewUrl || null;
     },
     [downloadAttachment],
   );
@@ -431,16 +431,16 @@ export function MessageItem({
         {attachments && attachments.length > 0 && (
           <div className="flex flex-wrap justify-end gap-2">
             {attachments.map((a) =>
-              a.mimeType.startsWith("image/") && a.dataUrl ? (
+              a.mimeType.startsWith("image/") && a.previewUrl ? (
                 <div key={getAttachmentKey(a)} className="group relative">
                   <AppImage
-                    src={a.dataUrl}
+                    src={a.previewUrl}
                     alt={a.name}
                     width={320}
                     height={192}
                     className="max-h-48 max-w-xs rounded-lg border object-cover"
                   />
-                  {(a.id || a.dataUrl) && (
+                  {(a.id || a.previewUrl) && (
                     <div className="absolute top-1 right-1 flex items-center gap-1 rounded-md bg-black/50 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         type="button"

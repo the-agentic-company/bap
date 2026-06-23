@@ -10,6 +10,7 @@ import {
 import { useBapZeroRuntime } from "@/zero/provider";
 import { zeroQueries } from "@/zero/queries";
 import { client } from "../client";
+import { uploadFileAsset } from "./file-assets";
 
 type CoworkerToolAccessMode = "all" | "selected";
 
@@ -273,26 +274,16 @@ export function useUploadCoworkerDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      coworkerId,
-      filename,
-      mimeType,
-      content,
-      description,
-    }: {
-      coworkerId: string;
-      filename: string;
-      mimeType: string;
-      content: string;
-      description?: string;
-    }) =>
-      client.coworker.uploadDocument({
-        coworkerId,
-        filename,
-        mimeType,
-        content,
-        description,
-      }),
+    mutationFn: async (input: { coworkerId: string; file: File; description?: string }) => {
+      const asset = await uploadFileAsset(input.file);
+      return await client.coworker.uploadDocument({
+        coworkerId: input.coworkerId,
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        fileAssetId: asset.id,
+        description: input.description,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["coworker"] });
     },
@@ -324,7 +315,12 @@ export function useTriggerCoworker() {
       id: string;
       payload?: unknown;
       trustedUserInput?: string;
-      fileAttachments?: { name: string; mimeType: string; dataUrl: string }[];
+      fileAttachments?: {
+        fileAssetId: string;
+        name?: string;
+        mimeType?: string;
+        sizeBytes?: number;
+      }[];
       remoteIntegrationSource?: {
         targetEnv: "staging" | "prod";
         remoteUserId: string;

@@ -73,7 +73,7 @@ function mapDoneArtifactsAttachments(artifacts: DoneArtifactsData | undefined) {
     id: attachment.id,
     name: attachment.filename,
     mimeType: attachment.mimeType,
-    dataUrl: "",
+    sizeBytes: attachment.sizeBytes,
   }));
 }
 

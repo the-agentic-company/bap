@@ -18,9 +18,10 @@ describe("pending-coworker-prompt", () => {
       initialMessage: "  Draft my onboarding coworker  ",
       attachments: [
         {
+          fileAssetId: "file-brief",
           name: "brief.pdf",
           mimeType: "application/pdf",
-          dataUrl: "data:application/pdf;base64,ZmFrZQ==",
+          sizeBytes: 4,
         },
       ],
     });
@@ -29,9 +30,10 @@ describe("pending-coworker-prompt", () => {
       initialMessage: "Draft my onboarding coworker",
       attachments: [
         {
+          fileAssetId: "file-brief",
           name: "brief.pdf",
           mimeType: "application/pdf",
-          dataUrl: "data:application/pdf;base64,ZmFrZQ==",
+          sizeBytes: 4,
         },
       ],
     });
@@ -69,9 +71,10 @@ describe("pending-coworker-prompt", () => {
       initialMessage: "",
       attachments: [
         {
+          fileAssetId: "file-notes",
           name: "notes.txt",
           mimeType: "text/plain",
-          dataUrl: "data:text/plain;base64,bm90ZXM=",
+          sizeBytes: 5,
         },
       ],
     };

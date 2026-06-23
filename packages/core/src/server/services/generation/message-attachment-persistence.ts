@@ -1,12 +1,34 @@
 import { db } from "@bap/db/client";
-import { messageAttachment } from "@bap/db/schema";
-import type { UserFileAttachment } from "./queue/conversation-turn-queue";
+import { conversation, messageAttachment } from "@bap/db/schema";
+import { eq } from "drizzle-orm";
+import {
+  assertMessageAttachmentLimits,
+  assertReadyFileAssetsForWorkspace,
+  FILE_ASSET_LIMITS,
+  FileAssetError,
+  markFileAssetReference,
+  type ReadyFileAsset,
+} from "../file-asset-service";
+import { isFileAssetUserAttachment, type UserFileAttachment } from "./attachments";
+
+function assertReadyMessageAttachmentLimits(assets: ReadyFileAsset[]): void {
+  if (assets.length > FILE_ASSET_LIMITS.maxMessageAttachmentCount) {
+    throw new FileAssetError("invalid_file", "Too many message attachments");
+  }
+  const totalSize = assets.reduce((sum, asset) => {
+    if (asset.sizeBytes > FILE_ASSET_LIMITS.maxFileSizeBytes) {
+      throw new FileAssetError("file_too_large", "File size exceeds maximum");
+    }
+    return sum + asset.sizeBytes;
+  }, 0);
+  if (totalSize > FILE_ASSET_LIMITS.maxMessageAttachmentTotalBytes) {
+    throw new FileAssetError("file_too_large", "Message attachments exceed total size limit");
+  }
+}
 
 /**
- * Upload each user file attachment for a message to object storage and record a
- * `messageAttachment` row pointing at it. The S3 client is imported lazily so the
- * storage dependency is only pulled in when an attachment actually needs saving.
- * A no-op when there are no attachments.
+ * Record Message Attachment product rows for user-supplied files. Browser-created
+ * attachments must already be Ready File Assets.
  */
 export async function persistMessageAttachments(params: {
   conversationId: string;
@@ -18,23 +40,57 @@ export async function persistMessageAttachments(params: {
     return;
   }
 
-  const { uploadToS3, ensureBucket } = await import("../../storage/s3-client");
-  await ensureBucket();
+  const conv = await db.query.conversation.findFirst({
+    where: eq(conversation.id, params.conversationId),
+    columns: {
+      id: true,
+      userId: true,
+      workspaceId: true,
+    },
+  });
+  if (!conv?.workspaceId || !conv.userId) {
+    throw new FileAssetError("file_asset_not_found", "Conversation workspace not found");
+  }
 
-  await Promise.all(
-    attachments.map(async (attachment) => {
-      const base64Data = attachment.dataUrl.split(",")[1] || "";
-      const buffer = Buffer.from(base64Data, "base64");
-      const sanitizedFilename = attachment.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-      const storageKey = `attachments/${params.conversationId}/${params.messageId}/${Date.now()}-${sanitizedFilename}`;
-      await uploadToS3(storageKey, buffer, attachment.mimeType);
-      await db.insert(messageAttachment).values({
+  const fileAssetAttachmentIds = attachments
+    .filter(isFileAssetUserAttachment)
+    .map((attachment) => attachment.fileAssetId);
+  if (fileAssetAttachmentIds.length !== attachments.length) {
+    throw new FileAssetError("invalid_file", "Message attachments must reference File Assets");
+  }
+
+  const readyAssets =
+    fileAssetAttachmentIds.length > 0
+      ? await assertReadyFileAssetsForWorkspace({
+          database: db,
+          workspaceId: conv.workspaceId,
+          fileAssetIds: fileAssetAttachmentIds,
+        })
+      : [];
+
+  assertReadyMessageAttachmentLimits(readyAssets);
+  assertMessageAttachmentLimits(readyAssets);
+
+  for (const asset of readyAssets) {
+    const [created] = await db
+      .insert(messageAttachment)
+      .values({
         messageId: params.messageId,
-        filename: attachment.name,
-        mimeType: attachment.mimeType,
-        sizeBytes: buffer.length,
-        storageKey,
+        fileAssetId: asset.id,
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        sizeBytes: asset.sizeBytes,
+        storageKey: asset.storageKey,
+      })
+      .returning({ id: messageAttachment.id });
+
+    if (created) {
+      await markFileAssetReference({
+        database: db,
+        fileAssetId: asset.id,
+        kind: "message_attachment",
+        referenceId: created.id,
       });
-    }),
-  );
+    }
+  }
 }

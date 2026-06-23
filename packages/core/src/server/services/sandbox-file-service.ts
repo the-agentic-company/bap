@@ -3,8 +3,9 @@ import { lookup as mimeLookup } from "mime-types";
 import path from "path";
 import type { SandboxBackend } from "../sandbox/types";
 import { db } from "@bap/db/client";
-import { sandboxFile } from "@bap/db/schema";
-import { uploadToS3, ensureBucket } from "../storage/s3-client";
+import { conversation, sandboxFile } from "@bap/db/schema";
+import { eq } from "drizzle-orm";
+import { createFileAssetFromBuffer, markFileAssetReference } from "./file-asset-service";
 
 export interface SandboxFileUpload {
   path: string;
@@ -96,24 +97,45 @@ async function readE2BSandboxFileAsBuffer(sandbox: Sandbox, filePath: string): P
 export async function uploadSandboxFile(file: SandboxFileUpload): Promise<SandboxFileRecord> {
   const filename = path.basename(file.path);
   const mimeType = mimeLookup(filename) || "application/octet-stream";
-  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, "_");
-  const storageKey = `sandbox-files/${file.conversationId}/${Date.now()}-${sanitizedFilename}`;
-
-  await ensureBucket();
-  await uploadToS3(storageKey, file.content, mimeType);
+  const conv = await db.query.conversation.findFirst({
+    where: eq(conversation.id, file.conversationId),
+    columns: {
+      userId: true,
+      workspaceId: true,
+    },
+  });
+  if (!conv?.userId || !conv.workspaceId) {
+    throw new Error("Cannot upload sandbox file without conversation ownership");
+  }
+  const asset = await createFileAssetFromBuffer({
+    database: db,
+    userId: conv.userId,
+    workspaceId: conv.workspaceId,
+    filename,
+    mimeType,
+    content: file.content,
+  });
 
   const [record] = await db
     .insert(sandboxFile)
     .values({
       conversationId: file.conversationId,
       messageId: file.messageId,
+      fileAssetId: asset.id,
       path: file.path,
-      filename,
-      mimeType,
-      sizeBytes: file.content.length,
-      storageKey,
+      filename: asset.filename,
+      mimeType: asset.mimeType,
+      sizeBytes: asset.sizeBytes,
+      storageKey: asset.storageKey,
     })
     .returning();
+
+  await markFileAssetReference({
+    database: db,
+    fileAssetId: asset.id,
+    kind: "sandbox_file",
+    referenceId: record.id,
+  });
 
   return {
     id: record.id,

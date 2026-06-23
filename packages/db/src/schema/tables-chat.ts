@@ -37,6 +37,7 @@ import type {
   QueuedMessageAttachment,
 } from "./types";
 import {
+  fileAsset,
   user,
   workspace,
 } from "./tables";
@@ -396,13 +397,17 @@ export const messageAttachment = pgTable(
     messageId: text("message_id")
       .notNull()
       .references(() => message.id, { onDelete: "cascade" }),
+    fileAssetId: text("file_asset_id").references(() => fileAsset.id, { onDelete: "set null" }),
     filename: text("filename").notNull(),
     mimeType: text("mime_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     storageKey: text("storage_key").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("message_attachment_message_id_idx").on(table.messageId)],
+  (table) => [
+    index("message_attachment_message_id_idx").on(table.messageId),
+    index("message_attachment_file_asset_id_idx").on(table.fileAssetId),
+  ],
 );
 
 // Sandbox files created by the AI agent that are surfaced to users
@@ -420,6 +425,7 @@ export const sandboxFile = pgTable(
       .references(() => conversation.id, { onDelete: "cascade" }),
     path: text("path").notNull(), // Original sandbox path: /app/output.pdf
     filename: text("filename").notNull(), // Just the filename: output.pdf
+    fileAssetId: text("file_asset_id").references(() => fileAsset.id, { onDelete: "set null" }),
     mimeType: text("mime_type").notNull(),
     sizeBytes: integer("size_bytes"),
     storageKey: text("storage_key"), // S3 key for uploaded file
@@ -428,6 +434,7 @@ export const sandboxFile = pgTable(
   (table) => [
     index("sandbox_file_message_id_idx").on(table.messageId),
     index("sandbox_file_conversation_id_idx").on(table.conversationId),
+    index("sandbox_file_file_asset_id_idx").on(table.fileAssetId),
   ],
 );
 
@@ -454,4 +461,3 @@ export const sandboxUsageSnapshot = pgTable(
     index("sandbox_usage_snapshot_sandbox_id_at_idx").on(table.sandboxId, table.snapshotAt),
   ],
 );
-

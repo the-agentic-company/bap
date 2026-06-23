@@ -6,6 +6,7 @@ import {
   type QueuedMessageAttachment,
 } from "@bap/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
+import type { UserFileAttachment } from "../attachments";
 import {
   buildQueueJobId,
   CONVERSATION_QUEUED_MESSAGE_PROCESS_JOB_NAME,
@@ -13,8 +14,6 @@ import {
 } from "../../../queues/queue-client";
 
 const QUEUEABLE_CONVERSATION_TYPES = ["chat", "coworker"] as const;
-
-export type UserFileAttachment = { name: string; mimeType: string; dataUrl: string };
 
 export type ConversationQueuedMessageRecord = {
   id: string;

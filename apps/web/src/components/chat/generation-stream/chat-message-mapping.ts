@@ -139,7 +139,7 @@ export function mapPersistedMessageToChatMessage(m: PersistedConversationMessage
             id: a.id,
             name: a.filename,
             mimeType: a.mimeType,
-            dataUrl: "",
+            sizeBytes: a.sizeBytes,
           }),
         )
       : undefined;

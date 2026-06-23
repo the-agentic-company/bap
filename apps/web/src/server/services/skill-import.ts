@@ -1,11 +1,13 @@
 import type { db as database } from "@bap/db/client";
+import {
+  createFileAssetFromBuffer,
+  markFileAssetReference,
+} from "@bap/core/server/services/file-asset-service";
 import { resolveUniqueSkillNameInWorkspace } from "@bap/core/server/services/workspace-skill-service";
-import { ensureBucket, generateStorageKey, uploadToS3 } from "@bap/core/server/storage/s3-client";
 import { skill, skillDocument, skillFile } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { lookup as lookupMimeType } from "mime-types";
 import { Buffer } from "node:buffer";
-import { randomUUID } from "node:crypto";
 import path from "node:path";
 import * as yauzl from "yauzl";
 import { parseSkillContent } from "@/lib/skill-markdown";
@@ -480,8 +482,6 @@ export async function importSkill(
     resolvedSlug,
   );
 
-  await ensureBucket();
-
   return await database.transaction(async (tx) => {
     const [createdSkill] = await tx
       .insert(skill)
@@ -520,27 +520,40 @@ export async function importSkill(
     }
 
     if (binaryEntries.length > 0) {
-      const documentsToInsert = await Promise.all(
+      await Promise.all(
         binaryEntries.map(async (entry) => {
-          const storageKey = generateStorageKey(
+          const asset = await createFileAssetFromBuffer({
+            database: tx as unknown as typeof database,
             userId,
-            createdSkill.id,
-            `${randomUUID()}-${entry.filename}`,
-          );
-          await uploadToS3(storageKey, entry.content, entry.mimeType);
-          return {
-            skillId: createdSkill.id,
+            workspaceId,
             filename: entry.filename,
-            path: entry.path,
             mimeType: entry.mimeType,
-            sizeBytes: entry.content.length,
-            storageKey,
-            description: null,
-          };
+            content: entry.content,
+          });
+          const [document] = await tx
+            .insert(skillDocument)
+            .values({
+              skillId: createdSkill.id,
+              fileAssetId: asset.id,
+              filename: asset.filename,
+              path: entry.path,
+              mimeType: asset.mimeType,
+              sizeBytes: asset.sizeBytes,
+              storageKey: asset.storageKey,
+              description: null,
+            })
+            .returning({ id: skillDocument.id });
+
+          if (document) {
+            await markFileAssetReference({
+              database: tx as unknown as typeof database,
+              fileAssetId: asset.id,
+              kind: "skill_document",
+              referenceId: document.id,
+            });
+          }
         }),
       );
-
-      await tx.insert(skillDocument).values(documentsToInsert);
     }
 
     return {

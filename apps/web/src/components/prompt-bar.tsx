@@ -9,13 +9,28 @@ import { getChatDraftKey, useChatDraftStore } from "@/components/chat/chat-draft
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { uploadFileAsset } from "@/orpc/hooks/file-assets";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type AttachmentData = {
+  fileAssetId: string;
   name: string;
   mimeType: string;
-  dataUrl: string;
+  sizeBytes: number;
+  previewUrl?: string;
+};
+
+type AttachmentUploadState = {
+  localId: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: "uploading" | "ready" | "failed";
+  progress: number;
+  fileAssetId?: string;
+  previewUrl?: string;
+  error?: string;
 };
 
 type PromptBarProps = {
@@ -53,8 +68,8 @@ type PromptBarProps = {
   className?: string;
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_FILES = 5;
+const MAX_FILE_SIZE = 1024 * 1024 * 1024;
+const MAX_FILES = 10;
 const HERO_PROMPT_MIN_HEIGHT_CLASS = "min-h-[4.6rem]";
 const DEFAULT_PROMPT_MIN_HEIGHT_CLASS = "min-h-[2.8rem]";
 const PROMPT_MAX_HEIGHT_CLASS = "max-h-[min(40dvh,18rem)]";
@@ -113,13 +128,34 @@ function RichPlaceholderOverlay({
 
 // ─── File helpers ───────────────────────────────────────────────────────────
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(reader.result as string), { once: true });
-    reader.addEventListener("error", () => reject(reader.error), { once: true });
-    reader.readAsDataURL(file);
-  });
+function createLocalAttachmentId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+}
+
+function isReadyAttachment(
+  attachment: AttachmentUploadState,
+): attachment is AttachmentUploadState & {
+  fileAssetId: string;
+} {
+  return attachment.status === "ready" && typeof attachment.fileAssetId === "string";
+}
+
+function toSubmitAttachment(
+  attachment: AttachmentUploadState & { fileAssetId: string },
+): AttachmentData {
+  return {
+    fileAssetId: attachment.fileAssetId,
+    name: attachment.name,
+    mimeType: attachment.mimeType,
+    sizeBytes: attachment.sizeBytes,
+    previewUrl: attachment.previewUrl,
+  };
+}
+
+function revokeAttachmentPreview(attachment: AttachmentUploadState): void {
+  if (attachment.previewUrl) {
+    URL.revokeObjectURL(attachment.previewUrl);
+  }
 }
 
 // ─── PromptBar ──────────────────────────────────────────────────────────────
@@ -154,9 +190,21 @@ export function PromptBar({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
-  const [attachments, setAttachments] = useState<AttachmentData[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentUploadState[]>([]);
+  const attachmentsRef = useRef<AttachmentUploadState[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [attachPopoverOpen, setAttachPopoverOpen] = useState(false);
+
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  useEffect(
+    () => () => {
+      attachmentsRef.current.forEach(revokeAttachmentPreview);
+    },
+    [],
+  );
 
   // ── Draft persistence ──
   const draftKey = getChatDraftKey(conversationId);
@@ -171,7 +219,10 @@ export function PromptBar({
     }
     const draft = readDraft(draftKey);
     setText(draft?.text ?? "");
-    setAttachments([]);
+    setAttachments((current) => {
+      current.forEach(revokeAttachmentPreview);
+      return [];
+    });
     setLoadedDraftKey(draftKey);
   }, [draftKey, isDraftHydrated, readDraft, variant]);
 
@@ -314,38 +365,95 @@ export function PromptBar({
   const addFiles = useCallback(
     async (files: FileList | File[]) => {
       const slots = Math.max(0, MAX_FILES - attachments.length);
-      const toRead = Array.from(files)
-        .slice(0, slots)
-        .filter((f) => f.size <= MAX_FILE_SIZE);
-      const added = await Promise.all(
-        toRead.map(async (f) => ({
-          name: f.name,
-          mimeType: f.type,
-          dataUrl: await readFileAsDataUrl(f),
-        })),
-      );
-      if (added.length) {
-        setAttachments((prev) => [...prev, ...added]);
+      const selectedFiles = Array.from(files).slice(0, slots);
+      const nextAttachments = selectedFiles.map((file): AttachmentUploadState => {
+        const mimeType = file.type || "application/octet-stream";
+        const previewUrl = mimeType.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+        return {
+          localId: createLocalAttachmentId(),
+          name: file.name,
+          mimeType,
+          sizeBytes: file.size,
+          status: file.size > MAX_FILE_SIZE ? "failed" : "uploading",
+          progress: 0,
+          previewUrl,
+          error: file.size > MAX_FILE_SIZE ? t("File is over 1 GB") : undefined,
+        };
+      });
+
+      if (nextAttachments.length === 0) {
+        return;
       }
+
+      setAttachments((prev) => [...prev, ...nextAttachments]);
+
+      nextAttachments.forEach((attachment, index) => {
+        if (attachment.status === "failed") {
+          return;
+        }
+        const file = selectedFiles[index];
+        void uploadFileAsset(file, {
+          onProgress: ({ percent }) => {
+            setAttachments((prev) =>
+              prev.map((item) =>
+                item.localId === attachment.localId ? { ...item, progress: percent } : item,
+              ),
+            );
+          },
+        })
+          .then((result) => {
+            setAttachments((prev) =>
+              prev.map((item) =>
+                item.localId === attachment.localId
+                  ? {
+                      ...item,
+                      status: "ready",
+                      progress: 100,
+                      fileAssetId: result.id,
+                      name: result.filename,
+                      mimeType: result.mimeType,
+                      sizeBytes: result.sizeBytes,
+                    }
+                  : item,
+              ),
+            );
+          })
+          .catch((error) => {
+            setAttachments((prev) =>
+              prev.map((item) =>
+                item.localId === attachment.localId
+                  ? {
+                      ...item,
+                      status: "failed",
+                      error: error instanceof Error ? error.message : t("Upload failed"),
+                    }
+                  : item,
+              ),
+            );
+          });
+      });
     },
-    [attachments.length],
+    [attachments.length, t],
   );
 
-  const removeAttachment = useCallback((idx: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== idx));
+  const removeAttachment = useCallback((localId: string) => {
+    setAttachments((prev) => {
+      const target = prev.find((attachment) => attachment.localId === localId);
+      if (target) {
+        revokeAttachmentPreview(target);
+      }
+      return prev.filter((attachment) => attachment.localId !== localId);
+    });
   }, []);
   const handleRemoveAttachmentClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
-      const attachmentUrl = event.currentTarget.dataset.attachmentUrl;
-      if (!attachmentUrl) {
+      const attachmentId = event.currentTarget.dataset.attachmentId;
+      if (!attachmentId) {
         return;
       }
-      const index = attachments.findIndex((attachment) => attachment.dataUrl === attachmentUrl);
-      if (index >= 0) {
-        removeAttachment(index);
-      }
+      removeAttachment(attachmentId);
     },
-    [attachments, removeAttachment],
+    [removeAttachment],
   );
 
   const handleOpenFilePicker = useCallback(() => {
@@ -384,13 +492,27 @@ export function PromptBar({
   );
 
   // ── Submit ──
+  const readyAttachments = useMemo(
+    () => attachments.filter(isReadyAttachment).map(toSubmitAttachment),
+    [attachments],
+  );
+  const hasUnreadyAttachments = attachments.some((attachment) => attachment.status !== "ready");
+
   const handleSubmit = useCallback(async () => {
     const trimmed = text.trim();
-    if ((!trimmed && attachments.length === 0) || disabled || isSubmitting) {
+    if (
+      (!trimmed && readyAttachments.length === 0) ||
+      disabled ||
+      isSubmitting ||
+      hasUnreadyAttachments
+    ) {
       return;
     }
     try {
-      const result = await onSubmit(trimmed, attachments.length > 0 ? attachments : undefined);
+      const result = await onSubmit(
+        trimmed,
+        readyAttachments.length > 0 ? readyAttachments : undefined,
+      );
       if (result === false) {
         return;
       }
@@ -398,12 +520,15 @@ export function PromptBar({
       console.error("Prompt submit failed:", error);
       return;
     }
-    setAttachments([]);
+    setAttachments((current) => {
+      current.forEach(revokeAttachmentPreview);
+      return [];
+    });
     setText("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [text, attachments, disabled, isSubmitting, onSubmit]);
+  }, [text, readyAttachments, disabled, isSubmitting, hasUnreadyAttachments, onSubmit]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -489,7 +614,11 @@ export function PromptBar({
 
   // ── Derived ──
   const isHero = variant === "hero";
-  const canSend = (text.trim().length > 0 || attachments.length > 0) && !disabled && !isSubmitting;
+  const canSend =
+    (text.trim().length > 0 || readyAttachments.length > 0) &&
+    !disabled &&
+    !isSubmitting &&
+    !hasUnreadyAttachments;
   const showVoice = Boolean(onStartRecording && onStopRecording);
   const isToggleVoice = voiceInteractionMode === "toggle";
 
@@ -512,24 +641,34 @@ export function PromptBar({
           <div className="flex flex-wrap gap-2 px-4 pt-3">
             {attachments.map((a) => (
               <div
-                key={a.dataUrl}
+                key={a.localId}
                 className="group border-border/50 relative flex items-center gap-1.5 rounded-lg border bg-white px-2.5 py-1.5 text-xs shadow-sm"
               >
-                {a.mimeType.startsWith("image/") ? (
+                {a.mimeType.startsWith("image/") && a.previewUrl ? (
                   <AppImage
-                    src={a.dataUrl}
+                    src={a.previewUrl}
                     alt={a.name}
                     width={28}
                     height={28}
                     className="h-7 w-7 rounded object-cover"
                   />
+                ) : a.status === "uploading" ? (
+                  <Loader2 className="text-muted-foreground h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Paperclip className="text-muted-foreground h-3.5 w-3.5" />
                 )}
-                <span className="text-foreground/80 max-w-[100px] truncate">{a.name}</span>
+                <span className="text-foreground/80 max-w-[100px] truncate">
+                  {a.name}
+                  {a.status === "uploading" ? ` ${a.progress}%` : ""}
+                </span>
+                {a.status === "failed" ? (
+                  <span className="max-w-[120px] truncate text-destructive">
+                    {a.error ?? t("Upload failed")}
+                  </span>
+                ) : null}
                 <button
                   type="button"
-                  data-attachment-url={a.dataUrl}
+                  data-attachment-id={a.localId}
                   onClick={handleRemoveAttachmentClick}
                   className="hover:bg-muted ml-0.5 rounded-full p-0.5"
                 >

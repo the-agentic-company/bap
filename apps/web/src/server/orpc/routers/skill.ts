@@ -5,12 +5,11 @@ import {
   resolveUniqueSkillNameInWorkspace,
 } from "@bap/core/server/services/workspace-skill-service";
 import {
-  deleteFromS3,
-  ensureBucket,
-  generateStorageKey,
-  getPresignedDownloadUrl,
-  uploadToS3,
-} from "@bap/core/server/storage/s3-client";
+  assertReadyFileAssetsForWorkspace,
+  getFileAssetDownloadUrl,
+  markFileAssetReference,
+} from "@bap/core/server/services/file-asset-service";
+import { deleteFromS3, getPresignedDownloadUrl } from "@bap/core/server/storage/s3-client";
 import { skill, skillDocument, skillFile } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, count, eq } from "drizzle-orm";
@@ -617,39 +616,46 @@ const uploadDocument = protectedProcedure
       skillId: z.string(),
       filename: z.string().min(1).max(256),
       mimeType: z.string(),
-      content: z.string(),
+      fileAssetId: z.string().min(1),
       description: z.string().max(1024).optional(),
     }),
   )
   .handler(async ({ input, context }) => {
-    await requireOwnedSkillInActiveWorkspace(context, input.skillId);
-
-    const fileBuffer = Buffer.from(input.content, "base64");
-    const sizeBytes = fileBuffer.length;
+    const { workspaceId } = await requireOwnedSkillInActiveWorkspace(context, input.skillId);
 
     const [{ value: docCount }] = await context.db
       .select({ value: count() })
       .from(skillDocument)
       .where(eq(skillDocument.skillId, input.skillId));
 
-    validateFileUpload(input.filename, input.mimeType, sizeBytes, docCount);
+    const [asset] = await assertReadyFileAssetsForWorkspace({
+      database: context.db as typeof import("@bap/db/client").db,
+      workspaceId,
+      fileAssetIds: [input.fileAssetId],
+    });
 
-    await ensureBucket();
-    const storageKey = generateStorageKey(context.user.id, input.skillId, input.filename);
-    await uploadToS3(storageKey, fileBuffer, input.mimeType);
+    validateFileUpload(asset.filename, asset.mimeType, asset.sizeBytes, docCount);
 
     const [newDocument] = await context.db
       .insert(skillDocument)
       .values({
         skillId: input.skillId,
-        filename: input.filename,
-        path: input.filename,
-        mimeType: input.mimeType,
-        sizeBytes,
-        storageKey,
+        fileAssetId: asset.id,
+        filename: asset.filename,
+        path: asset.filename,
+        mimeType: asset.mimeType,
+        sizeBytes: asset.sizeBytes,
+        storageKey: asset.storageKey,
         description: input.description,
       })
       .returning();
+
+    await markFileAssetReference({
+      database: context.db as typeof import("@bap/db/client").db,
+      fileAssetId: asset.id,
+      kind: "skill_document",
+      referenceId: newDocument.id,
+    });
 
     return {
       id: newDocument.id,
@@ -681,7 +687,18 @@ const getDocumentUrl = protectedProcedure
       throw new ORPCError("NOT_FOUND", { message: "Document not found" });
     }
 
-    const url = await getPresignedDownloadUrl(document.storageKey);
+    const url = document.fileAssetId
+      ? (
+          await getFileAssetDownloadUrl({
+            database: context.db as typeof import("@bap/db/client").db,
+            workspaceId,
+            fileAssetId: document.fileAssetId,
+          })
+        ).url
+      : await getPresignedDownloadUrl(document.storageKey, 300, {
+          filename: document.filename,
+          contentType: document.mimeType,
+        });
 
     return { url, filename: document.filename };
   });
@@ -706,7 +723,9 @@ const deleteDocument = protectedProcedure
       throw new ORPCError("NOT_FOUND", { message: "Document not found" });
     }
 
-    await deleteFromS3(document.storageKey);
+    if (!document.fileAssetId) {
+      await deleteFromS3(document.storageKey);
+    }
     await context.db.delete(skillDocument).where(eq(skillDocument.id, input.id));
 
     return { success: true };

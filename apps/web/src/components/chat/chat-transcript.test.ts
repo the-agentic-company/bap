@@ -9,7 +9,7 @@ describe("formatChatTranscript", () => {
         id: "m1",
         role: "user",
         content: "Please generate a report",
-        attachments: [{ name: "input.csv", mimeType: "text/csv", dataUrl: "" }],
+        attachments: [{ name: "input.csv", mimeType: "text/csv", fileAssetId: "asset-input" }],
       },
       {
         id: "m2",

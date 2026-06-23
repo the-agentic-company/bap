@@ -27,9 +27,10 @@ export async function triggerCoworkerFromWeb(input: {
   coworkerId: string;
   payload?: unknown;
   fileAttachments?: Array<{
-    name: string;
-    mimeType: string;
-    dataUrl: string;
+    fileAssetId: string;
+    name?: string;
+    mimeType?: string;
+    sizeBytes?: number;
   }>;
   trustedUserInput?: string;
   remoteIntegrationSource?: RemoteIntegrationSourceInput;

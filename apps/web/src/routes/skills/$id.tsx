@@ -427,14 +427,9 @@ function SkillEditorPageContent() {
 
       setIsUploading(true);
       try {
-        const buffer = await file.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString("base64");
-
         await uploadDocument.mutateAsync({
           skillId,
-          filename: file.name,
-          mimeType: file.type,
-          content: base64,
+          file,
         });
 
         setNotification({ type: "success", message: "Document uploaded" });

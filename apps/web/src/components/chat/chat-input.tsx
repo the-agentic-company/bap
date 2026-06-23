@@ -1,21 +1,36 @@
 // oxlint-disable jsx-a11y/control-has-associated-label
 
 import { useGT } from "gt-react";
-import { Send, Square, Mic, Paperclip, X, Clock3 } from "lucide-react";
+import { Send, Square, Mic, Paperclip, X, Clock3, Loader2 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { AppImage } from "@/components/chat/app-image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { uploadFileAsset } from "@/orpc/hooks/file-assets";
 import { getChatDraftKey, useChatDraftStore } from "./chat-draft-store";
 
 type AttachmentData = {
+  fileAssetId: string;
   name: string;
   mimeType: string;
-  dataUrl: string;
+  sizeBytes: number;
+  previewUrl?: string;
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_FILES = 5;
+type AttachmentUploadState = {
+  localId: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: "uploading" | "ready" | "failed";
+  progress: number;
+  fileAssetId?: string;
+  previewUrl?: string;
+  error?: string;
+};
+
+const MAX_FILE_SIZE = 1024 * 1024 * 1024;
+const MAX_FILES = 10;
 const CHAT_INPUT_MAX_HEIGHT = 260;
 
 type Props = {
@@ -34,13 +49,34 @@ type Props = {
   conversationId?: string;
 };
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(reader.result as string), { once: true });
-    reader.addEventListener("error", () => reject(reader.error), { once: true });
-    reader.readAsDataURL(file);
-  });
+function createLocalAttachmentId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+}
+
+function isReadyAttachment(
+  attachment: AttachmentUploadState,
+): attachment is AttachmentUploadState & {
+  fileAssetId: string;
+} {
+  return attachment.status === "ready" && typeof attachment.fileAssetId === "string";
+}
+
+function toSubmitAttachment(
+  attachment: AttachmentUploadState & { fileAssetId: string },
+): AttachmentData {
+  return {
+    fileAssetId: attachment.fileAssetId,
+    name: attachment.name,
+    mimeType: attachment.mimeType,
+    sizeBytes: attachment.sizeBytes,
+    previewUrl: attachment.previewUrl,
+  };
+}
+
+function revokeAttachmentPreview(attachment: AttachmentUploadState): void {
+  if (attachment.previewUrl) {
+    URL.revokeObjectURL(attachment.previewUrl);
+  }
 }
 
 export function ChatInput({
@@ -62,10 +98,22 @@ export function ChatInput({
   const isDraftStoreHydrated = useChatDraftStore((state) => state.hasHydrated);
   const [loadedDraftKey, setLoadedDraftKey] = useState<string | null>(null);
   const [value, setValue] = useState("");
-  const [attachments, setAttachments] = useState<AttachmentData[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentUploadState[]>([]);
+  const attachmentsRef = useRef<AttachmentUploadState[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  useEffect(
+    () => () => {
+      attachmentsRef.current.forEach(revokeAttachmentPreview);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!isDraftStoreHydrated) {
@@ -73,7 +121,10 @@ export function ChatInput({
     }
     const draft = readDraft(draftKey);
     setValue(draft?.text ?? "");
-    setAttachments([]);
+    setAttachments((current) => {
+      current.forEach(revokeAttachmentPreview);
+      return [];
+    });
     setLoadedDraftKey(draftKey);
   }, [draftKey, isDraftStoreHydrated, readDraft]);
 
@@ -118,44 +169,105 @@ export function ChatInput({
     async (files: FileList | File[]) => {
       const fileArray = Array.from(files);
       const slotsRemaining = Math.max(0, MAX_FILES - attachments.length);
-      const filesToRead = fileArray
-        .slice(0, slotsRemaining)
-        .filter((file) => file.size <= MAX_FILE_SIZE);
-
-      const added = await Promise.all(
-        filesToRead.map(async (file) => ({
+      const selectedFiles = fileArray.slice(0, slotsRemaining);
+      const nextAttachments = selectedFiles.map((file): AttachmentUploadState => {
+        const mimeType = file.type || "application/octet-stream";
+        const previewUrl = mimeType.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+        return {
+          localId: createLocalAttachmentId(),
           name: file.name,
-          mimeType: file.type,
-          dataUrl: await readFileAsDataUrl(file),
-        })),
-      );
+          mimeType,
+          sizeBytes: file.size,
+          status: file.size > MAX_FILE_SIZE ? "failed" : "uploading",
+          progress: 0,
+          previewUrl,
+          error: file.size > MAX_FILE_SIZE ? t("File is over 1 GB") : undefined,
+        };
+      });
 
-      if (added.length === 0) {
+      if (nextAttachments.length === 0) {
         return;
       }
 
-      setAttachments((prev) => [...prev, ...added]);
+      setAttachments((prev) => [...prev, ...nextAttachments]);
+      nextAttachments.forEach((attachment, index) => {
+        if (attachment.status === "failed") {
+          return;
+        }
+        const file = selectedFiles[index];
+        void uploadFileAsset(file, {
+          onProgress: ({ percent }) => {
+            setAttachments((prev) =>
+              prev.map((item) =>
+                item.localId === attachment.localId ? { ...item, progress: percent } : item,
+              ),
+            );
+          },
+        })
+          .then((result) => {
+            setAttachments((prev) =>
+              prev.map((item) =>
+                item.localId === attachment.localId
+                  ? {
+                      ...item,
+                      status: "ready",
+                      progress: 100,
+                      fileAssetId: result.id,
+                      name: result.filename,
+                      mimeType: result.mimeType,
+                      sizeBytes: result.sizeBytes,
+                    }
+                  : item,
+              ),
+            );
+          })
+          .catch((error) => {
+            setAttachments((prev) =>
+              prev.map((item) =>
+                item.localId === attachment.localId
+                  ? {
+                      ...item,
+                      status: "failed",
+                      error: error instanceof Error ? error.message : t("Upload failed"),
+                    }
+                  : item,
+              ),
+            );
+          });
+      });
     },
-    [attachments.length],
+    [attachments.length, t],
   );
 
-  const removeAttachment = useCallback((index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  const removeAttachment = useCallback((localId: string) => {
+    setAttachments((prev) => {
+      const target = prev.find((attachment) => attachment.localId === localId);
+      if (target) {
+        revokeAttachmentPreview(target);
+      }
+      return prev.filter((attachment) => attachment.localId !== localId);
+    });
   }, []);
+
+  const readyAttachments = attachments.filter(isReadyAttachment).map(toSubmitAttachment);
+  const hasUnreadyAttachments = attachments.some((attachment) => attachment.status !== "ready");
 
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
-    if ((!trimmedValue && attachments.length === 0) || disabled) {
+    if ((!trimmedValue && readyAttachments.length === 0) || disabled || hasUnreadyAttachments) {
       return;
     }
 
-    onSend(trimmedValue, attachments.length > 0 ? attachments : undefined);
-    setAttachments([]);
+    onSend(trimmedValue, readyAttachments.length > 0 ? readyAttachments : undefined);
+    setAttachments((current) => {
+      current.forEach(revokeAttachmentPreview);
+      return [];
+    });
     setValue("");
     if (textareaRef.current) {
       textareaRef.current.style.overflowY = "hidden";
     }
-  }, [attachments, disabled, onSend, value]);
+  }, [disabled, hasUnreadyAttachments, onSend, readyAttachments, value]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -190,9 +302,9 @@ export function ChatInput({
 
   const handleRemoveAttachmentClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
-      const index = Number(e.currentTarget.dataset.attachmentIndex);
-      if (Number.isFinite(index)) {
-        removeAttachment(index);
+      const attachmentId = e.currentTarget.dataset.attachmentId;
+      if (attachmentId) {
+        removeAttachment(attachmentId);
       }
     },
     [removeAttachment],
@@ -279,26 +391,36 @@ export function ChatInput({
       {/* Attachment previews */}
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2 px-1">
-          {attachments.map((a, i) => (
+          {attachments.map((a) => (
             <div
-              key={`${a.name}-${a.mimeType}-${a.dataUrl.slice(0, 48)}`}
+              key={a.localId}
               className="group bg-background relative flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
             >
-              {a.mimeType.startsWith("image/") ? (
+              {a.mimeType.startsWith("image/") && a.previewUrl ? (
                 <AppImage
-                  src={a.dataUrl}
+                  src={a.previewUrl}
                   alt={a.name}
                   width={32}
                   height={32}
                   className="h-8 w-8 rounded object-cover"
                 />
+              ) : a.status === "uploading" ? (
+                <Loader2 className="text-muted-foreground h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Paperclip className="text-muted-foreground h-3.5 w-3.5" />
               )}
-              <span className="max-w-[120px] truncate">{a.name}</span>
+              <span className="max-w-[120px] truncate">
+                {a.name}
+                {a.status === "uploading" ? ` ${a.progress}%` : ""}
+              </span>
+              {a.status === "failed" ? (
+                <span className="max-w-[120px] truncate text-destructive">
+                  {a.error ?? t("Upload failed")}
+                </span>
+              ) : null}
               <button
                 type="button"
-                data-attachment-index={i}
+                data-attachment-id={a.localId}
                 onClick={handleRemoveAttachmentClick}
                 className="hover:bg-muted ml-0.5 rounded-full p-0.5"
               >
@@ -372,7 +494,9 @@ export function ChatInput({
           data-testid={isStreaming ? "chat-queue" : "chat-send"}
           aria-label={isStreaming ? "Queue message" : "Send message"}
           title={isStreaming ? "Queue next message" : "Send message"}
-          disabled={disabled || (!value.trim() && attachments.length === 0)}
+          disabled={
+            disabled || hasUnreadyAttachments || (!value.trim() && readyAttachments.length === 0)
+          }
           size="icon"
           variant={isStreaming ? "secondary" : "default"}
           className="h-9 w-9"

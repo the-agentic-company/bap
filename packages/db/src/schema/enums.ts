@@ -75,6 +75,28 @@ export const conversationQueuedMessageStatusEnum = pgEnum("conversation_queued_m
   "failed",
 ]);
 
+export const fileAssetStatusEnum = pgEnum("file_asset_status", [
+  "ready",
+  "cleanup_pending",
+  "deleted",
+  "purged",
+]);
+
+export const uploadSessionStatusEnum = pgEnum("upload_session_status", [
+  "pending",
+  "completed",
+  "failed",
+  "expired",
+]);
+
+export const fileAssetReferenceKindEnum = pgEnum("file_asset_reference_kind", [
+  "message_attachment",
+  "coworker_document",
+  "skill_document",
+  "sandbox_file",
+  "generation",
+]);
+
 export const integrationTypeEnum = pgEnum("integration_type", [
   "google_gmail",
   "outlook",

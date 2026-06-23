@@ -16,7 +16,8 @@ const uploadDocument = protectedProcedure
       coworkerId: z.string(),
       filename: z.string().min(1).max(256),
       mimeType: z.string().min(1),
-      content: z.string().min(1),
+      content: z.string().min(1).optional(),
+      fileAssetId: z.string().min(1).optional(),
       description: z.string().max(1024).optional(),
     }),
   )
@@ -29,6 +30,7 @@ const uploadDocument = protectedProcedure
       filename: input.filename,
       mimeType: input.mimeType,
       contentBase64: input.content,
+      fileAssetId: input.fileAssetId,
       description: input.description,
     });
   });
@@ -60,6 +62,7 @@ const updateDocument = protectedProcedure
       filename: z.string().min(1).max(256).optional(),
       mimeType: z.string().min(1).optional(),
       content: z.string().min(1).optional(),
+      fileAssetId: z.string().min(1).optional(),
       description: z.string().max(1024).nullish(),
     }),
   )
@@ -81,6 +84,7 @@ const updateDocument = protectedProcedure
       filename: input.filename,
       mimeType: input.mimeType,
       contentBase64: input.content,
+      fileAssetId: input.fileAssetId,
       description: input.description,
     });
   });

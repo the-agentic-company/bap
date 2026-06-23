@@ -29,6 +29,7 @@ import {
 } from "./enums";
 import {
   conversation,
+  fileAsset,
   user,
   workspace,
 } from "./tables";
@@ -196,6 +197,7 @@ export const skillDocument = pgTable(
     skillId: text("skill_id")
       .notNull()
       .references(() => skill.id, { onDelete: "cascade" }),
+    fileAssetId: text("file_asset_id").references(() => fileAsset.id, { onDelete: "set null" }),
     // Original filename uploaded by user
     filename: text("filename").notNull(),
     // Relative path within the skill directory
@@ -214,7 +216,10 @@ export const skillDocument = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("skill_document_skill_id_idx").on(table.skillId)],
+  (table) => [
+    index("skill_document_skill_id_idx").on(table.skillId),
+    index("skill_document_file_asset_id_idx").on(table.fileAssetId),
+  ],
 );
 
 export const templateCatalog = pgTable(

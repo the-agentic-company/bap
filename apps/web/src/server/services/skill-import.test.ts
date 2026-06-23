@@ -8,18 +8,16 @@ type VitestProcedure = Extract<
   (...args: never[]) => unknown
 >;
 
-const { ensureBucketMock, generateStorageKeyMock, uploadToS3Mock, resolveUniqueSkillNameMock } =
+const { createFileAssetFromBufferMock, markFileAssetReferenceMock, resolveUniqueSkillNameMock } =
   vi.hoisted(() => ({
-    ensureBucketMock: vi.fn<VitestProcedure>(),
-    generateStorageKeyMock: vi.fn<VitestProcedure>(),
-    uploadToS3Mock: vi.fn<VitestProcedure>(),
+    createFileAssetFromBufferMock: vi.fn<VitestProcedure>(),
+    markFileAssetReferenceMock: vi.fn<VitestProcedure>(),
     resolveUniqueSkillNameMock: vi.fn<VitestProcedure>(),
   }));
 
-vi.mock("@bap/core/server/storage/s3-client", () => ({
-  ensureBucket: ensureBucketMock,
-  generateStorageKey: generateStorageKeyMock,
-  uploadToS3: uploadToS3Mock,
+vi.mock("@bap/core/server/services/file-asset-service", () => ({
+  createFileAssetFromBuffer: createFileAssetFromBufferMock,
+  markFileAssetReference: markFileAssetReferenceMock,
 }));
 
 vi.mock("@bap/core/server/services/workspace-skill-service", () => ({
@@ -57,9 +55,12 @@ function createDatabase() {
 
       if (table === skillDocument) {
         return {
-          values: async (values: Array<Record<string, unknown>>) => {
-            insertedDocuments.push(values);
-          },
+          values: (values: Record<string, unknown>) => ({
+            returning: async () => {
+              insertedDocuments.push([values]);
+              return [{ id: "document-1", ...values }];
+            },
+          }),
         };
       }
 
@@ -94,9 +95,24 @@ function encodeZip(files: Record<string, Uint8Array | string>) {
 describe("importSkill", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    generateStorageKeyMock.mockImplementation(
-      (_userId: string, skillId: string, filename: string) => `skills/${skillId}/${filename}`,
+    createFileAssetFromBufferMock.mockImplementation(
+      async ({
+        filename,
+        mimeType,
+        content,
+      }: {
+        filename: string;
+        mimeType: string;
+        content: Buffer;
+      }) => ({
+        id: "asset-logo",
+        filename,
+        mimeType,
+        sizeBytes: content.length,
+        storageKey: `file-assets/ws-1/server/${filename}`,
+      }),
     );
+    markFileAssetReferenceMock.mockResolvedValue(undefined);
     resolveUniqueSkillNameMock.mockImplementation(
       async (_database: unknown, _workspaceId: string, baseName: string) => baseName,
     );
@@ -142,15 +158,27 @@ description: Build a weekly report
     );
     expect(database.insertedDocuments[0]).toEqual([
       expect.objectContaining({
+        fileAssetId: "asset-logo",
         filename: "logo.png",
         path: "assets/logo.png",
         mimeType: "image/png",
+        storageKey: "file-assets/ws-1/server/logo.png",
       }),
     ]);
-    expect(uploadToS3Mock).toHaveBeenCalledWith(
-      expect.stringContaining("logo.png"),
-      expect.any(Buffer),
-      "image/png",
+    expect(createFileAssetFromBufferMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        workspaceId: "ws-1",
+        filename: "logo.png",
+        mimeType: "image/png",
+      }),
+    );
+    expect(markFileAssetReferenceMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileAssetId: "asset-logo",
+        kind: "skill_document",
+        referenceId: "document-1",
+      }),
     );
   });
 

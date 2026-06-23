@@ -6,6 +6,7 @@ import { conversationRouter } from "./routers/conversation";
 import { coworkerFolderRouter } from "./routers/coworker-folder";
 import { coworkerRouter } from "./routers/coworker";
 import { workspaceMcpServerRouter } from "./routers/executor-source";
+import { fileAssetRouter } from "./routers/file-asset";
 import { galienRouter } from "./routers/galien";
 import { generationRouter } from "./routers/generation";
 import { inboxRouter } from "./routers/inbox";
@@ -28,6 +29,7 @@ export const appRouter = {
   adminSharedProviderAuth: adminSharedProviderAuthRouter,
   billing: billingRouter,
   conversation: conversationRouter,
+  fileAsset: fileAssetRouter,
   generation: generationRouter,
   galien: galienRouter,
   inbox: inboxRouter,

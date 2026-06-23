@@ -81,7 +81,14 @@ describe("Generation terminal canonical event", () => {
       executionPolicy: {
         autoApprove: false,
         selectedPlatformSkillSlugs: ["gmail"],
-        queuedFileAttachments: [{ name: "a.txt", mimeType: "text/plain", dataUrl: "data:" }],
+        queuedFileAttachments: [
+          {
+            fileAssetId: "asset-a",
+            name: "a.txt",
+            mimeType: "text/plain",
+            sizeBytes: 1,
+          },
+        ],
       },
       sandboxId: "sandbox-1",
       runtimeId: "runtime-1",

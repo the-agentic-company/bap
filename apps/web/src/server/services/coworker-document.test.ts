@@ -5,18 +5,24 @@ type VitestProcedure = Extract<
   (...args: never[]) => unknown
 >;
 
-const { ensureBucketMock, uploadToS3Mock, deleteFromS3Mock, validateFileUploadMock } = vi.hoisted(
-  () => ({
-    ensureBucketMock: vi.fn<VitestProcedure>(),
-    uploadToS3Mock: vi.fn<VitestProcedure>(),
-    deleteFromS3Mock: vi.fn<VitestProcedure>(),
-    validateFileUploadMock: vi.fn<VitestProcedure>(),
-  }),
-);
+const {
+  createFileAssetFromBufferMock,
+  markFileAssetReferenceMock,
+  deleteFromS3Mock,
+  validateFileUploadMock,
+} = vi.hoisted(() => ({
+  createFileAssetFromBufferMock: vi.fn<VitestProcedure>(),
+  markFileAssetReferenceMock: vi.fn<VitestProcedure>(),
+  deleteFromS3Mock: vi.fn<VitestProcedure>(),
+  validateFileUploadMock: vi.fn<VitestProcedure>(),
+}));
+
+vi.mock("@bap/core/server/services/file-asset-service", () => ({
+  createFileAssetFromBuffer: createFileAssetFromBufferMock,
+  markFileAssetReference: markFileAssetReferenceMock,
+}));
 
 vi.mock("@bap/core/server/storage/s3-client", () => ({
-  ensureBucket: ensureBucketMock,
-  uploadToS3: uploadToS3Mock,
   deleteFromS3: deleteFromS3Mock,
 }));
 
@@ -51,16 +57,18 @@ function createDatabase() {
     mimeType: "application/pdf",
     sizeBytes: 4,
     storageKey: "coworkers/user-1/cw-1/documents/old-brief.pdf",
+    fileAssetId: null,
     description: "Old description",
   });
-  database.query.coworker.findFirst.mockResolvedValue({ id: "cw-1" });
+  database.query.coworker.findFirst.mockResolvedValue({ id: "cw-1", workspaceId: "ws-1" });
   updateReturningMock.mockResolvedValue([
     {
       id: "doc-1",
+      fileAssetId: "asset-new",
       filename: "brief-v2.pdf",
       mimeType: "application/pdf",
       sizeBytes: 7,
-      storageKey: "coworkers/user-1/cw-1/documents/new-brief.pdf",
+      storageKey: "file-assets/ws-1/server/asset-new",
       description: null,
     },
   ]);
@@ -77,8 +85,24 @@ function createDatabase() {
 describe("coworker document service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    ensureBucketMock.mockResolvedValue(undefined);
-    uploadToS3Mock.mockResolvedValue(undefined);
+    createFileAssetFromBufferMock.mockImplementation(
+      async ({
+        filename,
+        mimeType,
+        content,
+      }: {
+        filename: string;
+        mimeType: string;
+        content: Buffer;
+      }) => ({
+        id: "asset-new",
+        filename,
+        mimeType,
+        sizeBytes: content.length,
+        storageKey: "file-assets/ws-1/server/asset-new",
+      }),
+    );
+    markFileAssetReferenceMock.mockResolvedValue(undefined);
     deleteFromS3Mock.mockResolvedValue(undefined);
     validateFileUploadMock.mockReturnValue(undefined);
   });
@@ -92,6 +116,7 @@ describe("coworker document service", () => {
         mimeType: "application/pdf",
         sizeBytes: 4,
         storageKey: "coworkers/user-1/cw-1/documents/old-brief.pdf",
+        fileAssetId: null,
         description: null,
       },
     ]);
@@ -108,10 +133,11 @@ describe("coworker document service", () => {
       filename: "brief-renamed.pdf",
       description: null,
     });
-    expect(uploadToS3Mock).not.toHaveBeenCalled();
+    expect(createFileAssetFromBufferMock).not.toHaveBeenCalled();
     expect(deleteFromS3Mock).not.toHaveBeenCalled();
     expect(result).toEqual({
       id: "doc-1",
+      fileAssetId: null,
       filename: "brief-renamed.pdf",
       mimeType: "application/pdf",
       sizeBytes: 4,
@@ -133,24 +159,36 @@ describe("coworker document service", () => {
     });
 
     expect(validateFileUploadMock).toHaveBeenCalledWith("brief-v2.pdf", "application/pdf", 7, 0);
-    expect(ensureBucketMock).toHaveBeenCalled();
-    expect(uploadToS3Mock).toHaveBeenCalledWith(
-      expect.stringContaining("coworkers/user-1/cw-1/documents/"),
-      Buffer.from("updated"),
-      "application/pdf",
+    expect(createFileAssetFromBufferMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        workspaceId: "ws-1",
+        filename: "brief-v2.pdf",
+        mimeType: "application/pdf",
+        content: Buffer.from("updated"),
+      }),
     );
     expect(mocks.updateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        fileAssetId: "asset-new",
         filename: "brief-v2.pdf",
         mimeType: "application/pdf",
         sizeBytes: 7,
         description: null,
-        storageKey: expect.stringContaining("brief-v2.pdf"),
+        storageKey: "file-assets/ws-1/server/asset-new",
+      }),
+    );
+    expect(markFileAssetReferenceMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileAssetId: "asset-new",
+        kind: "coworker_document",
+        referenceId: "doc-1",
       }),
     );
     expect(deleteFromS3Mock).toHaveBeenCalledWith("coworkers/user-1/cw-1/documents/old-brief.pdf");
     expect(result).toEqual({
       id: "doc-1",
+      fileAssetId: "asset-new",
       filename: "brief-v2.pdf",
       mimeType: "application/pdf",
       sizeBytes: 7,
@@ -158,7 +196,7 @@ describe("coworker document service", () => {
     });
   });
 
-  it("cleans up newly uploaded storage when the database update fails", async () => {
+  it("keeps existing storage when the database update fails", async () => {
     const { database, mocks } = createDatabase();
     mocks.updateReturningMock.mockRejectedValue(new Error("database down"));
 
@@ -173,10 +211,7 @@ describe("coworker document service", () => {
       }),
     ).rejects.toThrow("database down");
 
-    expect(deleteFromS3Mock).toHaveBeenCalledWith(expect.stringContaining("brief-v2.pdf"));
-    expect(deleteFromS3Mock).not.toHaveBeenCalledWith(
-      "coworkers/user-1/cw-1/documents/old-brief.pdf",
-    );
+    expect(deleteFromS3Mock).not.toHaveBeenCalled();
   });
 
   it("rejects an empty document update", async () => {

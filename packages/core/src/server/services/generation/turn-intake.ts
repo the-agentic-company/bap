@@ -34,7 +34,7 @@ import { createGenerationLifecycle, generationLifecyclePolicy } from "../lifecyc
 import type { GenerationDebugInfo } from "./types";
 import type { GenerationLifecycleStore } from "./core/lifecycle-store";
 import { checkModelAccessForUser } from "./model-access";
-import type { UserFileAttachment } from "./queue/conversation-turn-queue";
+import type { UserFileAttachment } from "./attachments";
 
 export type StartGenerationInput = {
   conversationId?: string;
@@ -412,6 +412,7 @@ export class TurnIntake {
             error: formatErrorMessage(err),
           },
         });
+        throw err;
       }
     }
 

@@ -1,6 +1,6 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { parseModelReference } from "@bap/core/lib/model-reference";
-import { defaultProfileStore } from "@bap/client";
+import { defaultProfileStore, type BapApiClient } from "@bap/client";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, extname, resolve } from "node:path";
 import type readline from "node:readline";
@@ -78,11 +78,15 @@ const MIME_MAP: Record<string, string> = {
   ".csv": "text/csv",
 };
 
-function fileToAttachment(filePath: string): {
+async function fileToAttachment(
+  client: BapApiClient,
+  filePath: string,
+): Promise<{
+  fileAssetId: string;
   name: string;
   mimeType: string;
-  dataUrl: string;
-} {
+  sizeBytes: number;
+}> {
   const resolved = resolve(filePath);
   if (!existsSync(resolved)) {
     throw new Error(`File not found: ${resolved}`);
@@ -90,11 +94,29 @@ function fileToAttachment(filePath: string): {
   const ext = extname(resolved).toLowerCase();
   const mimeType = MIME_MAP[ext] || "application/octet-stream";
   const data = readFileSync(resolved);
-  const base64 = data.toString("base64");
-  return {
-    name: basename(resolved),
+  const session = await client.fileAsset.createUpload({
+    filename: basename(resolved),
     mimeType,
-    dataUrl: `data:${mimeType};base64,${base64}`,
+    sizeBytes: data.byteLength,
+  });
+  const response = await fetch(session.uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": mimeType,
+    },
+    body: data,
+  });
+  if (!response.ok) {
+    throw new Error(`Upload failed for ${resolved}: ${response.status} ${response.statusText}`);
+  }
+  const asset = await client.fileAsset.completeUpload({
+    uploadSessionId: session.uploadSessionId,
+  });
+  return {
+    fileAssetId: asset.id,
+    name: asset.filename,
+    mimeType: asset.mimeType,
+    sizeBytes: asset.sizeBytes,
   };
 }
 
@@ -164,7 +186,9 @@ async function runChatLoop(
       continue;
     }
 
-    const attachments = pendingFiles.map((file) => fileToAttachment(file));
+    const attachments = await Promise.all(
+      pendingFiles.map((file) => fileToAttachment(client, file)),
+    );
     pendingFiles = [];
 
     const nextConversationId = await runOneGeneration(stdout, client, rl, state, {
@@ -317,7 +341,9 @@ export default async function (this: LocalContext, flags: ChatFlags): Promise<vo
     if (rl) {
       attachSigintHandler(rl);
     }
-    const attachments = state.file.map((file) => fileToAttachment(file));
+    const attachments = await Promise.all(
+      state.file.map((file) => fileToAttachment(client, file)),
+    );
     const conversationId = await runOneGeneration(this.process.stdout, client, rl, state, {
       kind: "start",
       content: state.message,

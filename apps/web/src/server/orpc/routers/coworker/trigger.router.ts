@@ -13,9 +13,10 @@ const trigger = protectedProcedure
       fileAttachments: z
         .array(
           z.object({
-            name: z.string(),
-            mimeType: z.string(),
-            dataUrl: z.string(),
+            fileAssetId: z.string().min(1),
+            name: z.string().optional(),
+            mimeType: z.string().optional(),
+            sizeBytes: z.number().int().nonnegative().optional(),
           }),
         )
         .optional(),

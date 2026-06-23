@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { client } from "../client";
+import { uploadFileAsset } from "./file-assets";
 
 function encodeRpcContent(content: string): string {
   const bytes = new TextEncoder().encode(content);
@@ -195,26 +196,16 @@ export function useUploadSkillDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      skillId,
-      filename,
-      mimeType,
-      content,
-      description,
-    }: {
-      skillId: string;
-      filename: string;
-      mimeType: string;
-      content: string; // base64
-      description?: string;
-    }) =>
-      client.skill.uploadDocument({
-        skillId,
-        filename,
-        mimeType,
-        content,
-        description,
-      }),
+    mutationFn: async (input: { skillId: string; file: File; description?: string }) => {
+      const asset = await uploadFileAsset(input.file);
+      return await client.skill.uploadDocument({
+        skillId: input.skillId,
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        fileAssetId: asset.id,
+        description: input.description,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skill"] });
     },

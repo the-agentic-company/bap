@@ -9,8 +9,6 @@ import type { CoworkerDocumentRecord, UploadAttachment } from "./types";
 import {
   buildCoworkerDocumentBuilderMessage,
   buildCoworkerDocumentRemovalBuilderMessage,
-  inferUploadMimeType,
-  readFileAsDataUrl,
 } from "./coworker-editor-utils";
 
 type BuilderChatActions = {
@@ -50,24 +48,20 @@ export function useCoworkerDocuments({ coworkerId, builderChat }: UseCoworkerDoc
 
       setIsUploadingDocuments(true);
       try {
-        const attachments: UploadAttachment[] = await Promise.all(
-          nextFiles.map(async (file) => ({
-            name: file.name,
-            mimeType: inferUploadMimeType(file),
-            dataUrl: await readFileAsDataUrl(file),
-          })),
-        );
-
         const uploadedDocuments = await Promise.all(
-          attachments.map((attachment) =>
+          nextFiles.map((file) =>
             uploadCoworkerDocument.mutateAsync({
               coworkerId,
-              filename: attachment.name,
-              mimeType: attachment.mimeType,
-              content: attachment.dataUrl.split(",")[1] ?? "",
+              file,
             }),
           ),
         );
+        const attachments: UploadAttachment[] = uploadedDocuments.map((document) => ({
+          fileAssetId: document.fileAssetId,
+          name: document.filename,
+          mimeType: document.mimeType,
+          sizeBytes: document.sizeBytes,
+        }));
 
         const builderPrompt = buildCoworkerDocumentBuilderMessage(
           uploadedDocuments.map((document) => document.filename),

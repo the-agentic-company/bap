@@ -51,7 +51,9 @@ export type MessagePart =
 export type AttachmentData = {
   name: string;
   mimeType: string;
-  dataUrl: string;
+  fileAssetId?: string;
+  sizeBytes?: number;
+  previewUrl?: string;
   /** Set for persisted attachments loaded from DB */
   id?: string;
 };

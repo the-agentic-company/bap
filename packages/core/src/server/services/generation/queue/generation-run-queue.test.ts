@@ -397,9 +397,10 @@ describe("GenerationRunQueue", () => {
 
   it("rehydrates queued file attachments into the Generation context", async () => {
     const queuedAttachment = {
+      fileAssetId: "asset-questionnaire",
       name: "questionnaire.pdf",
       mimeType: "application/pdf",
-      dataUrl: "data:application/pdf;base64,JVBERi0xLjQK",
+      sizeBytes: 42,
     };
     const loader = new TurnRunnerContextLoader({
       getExecutionPolicyFromRecord: vi.fn(() => ({

@@ -34,12 +34,9 @@ import {
   type CoworkerStartKind,
 } from "./coworker-run-policy";
 import { emitPreGenerationCoworkerRunFailureSloEvent } from "./slo-journey";
+import { isUserFileAttachment, type UserFileAttachment } from "./generation/attachments";
 
-type CoworkerFileAttachment = {
-  name: string;
-  mimeType: string;
-  dataUrl: string;
-};
+type CoworkerFileAttachment = UserFileAttachment;
 
 type CoworkerRecord = typeof coworker.$inferSelect;
 type CoworkerRunRecord = typeof coworkerRun.$inferSelect;
@@ -106,18 +103,7 @@ function normalizeFileAttachments(value: unknown): CoworkerFileAttachment[] {
     return [];
   }
 
-  return value.filter((attachment): attachment is CoworkerFileAttachment => {
-    if (!attachment || typeof attachment !== "object") {
-      return false;
-    }
-
-    const candidate = attachment as Record<string, unknown>;
-    return (
-      typeof candidate.name === "string" &&
-      typeof candidate.mimeType === "string" &&
-      typeof candidate.dataUrl === "string"
-    );
-  });
+  return value.filter(isUserFileAttachment);
 }
 
 function buildUserInputRunPayload(params: {

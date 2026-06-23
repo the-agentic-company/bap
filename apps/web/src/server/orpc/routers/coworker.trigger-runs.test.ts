@@ -105,9 +105,10 @@ describe("coworkerRouter", () => {
         payload: { source: "manual_inbox", message: "Check this" },
         fileAttachments: [
           {
+            fileAssetId: "asset-notes",
             name: "notes.txt",
             mimeType: "text/plain",
-            dataUrl: "data:text/plain;base64,bm90ZXM=",
+            sizeBytes: 5,
           },
         ],
       },
@@ -121,9 +122,10 @@ describe("coworkerRouter", () => {
         triggerPayload: { source: "manual_inbox", message: "Check this" },
         fileAttachments: [
           {
+            fileAssetId: "asset-notes",
             name: "notes.txt",
             mimeType: "text/plain",
-            dataUrl: "data:text/plain;base64,bm90ZXM=",
+            sizeBytes: 5,
           },
         ],
         userId: "user-1",

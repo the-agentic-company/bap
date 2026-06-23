@@ -521,9 +521,10 @@ describe("generationRouter", () => {
         model: "openai/gpt-5.4-mini",
         fileAttachments: [
           {
+            fileAssetId: "asset-recipient",
             name: "recipient.txt",
             mimeType: "text/plain",
-            dataUrl: "data:text/plain;base64,YWxpY2VAZXhhbXBsZS5jb20=",
+            sizeBytes: 17,
           },
         ],
       },
@@ -541,9 +542,10 @@ describe("generationRouter", () => {
       userInput: "",
       fileAttachments: [
         {
+          fileAssetId: "asset-recipient",
           name: "recipient.txt",
           mimeType: "text/plain",
-          dataUrl: "data:text/plain;base64,YWxpY2VAZXhhbXBsZS5jb20=",
+          sizeBytes: 17,
         },
       ],
     });
@@ -660,9 +662,10 @@ describe("generationRouter", () => {
         selectedPlatformSkillSlugs: ["slack"],
         fileAttachments: [
           {
+            fileAssetId: "asset-brief",
             name: "brief.txt",
             mimeType: "text/plain",
-            dataUrl: "data:text/plain;base64,Zm9v",
+            sizeBytes: 3,
           },
         ],
       },
@@ -677,9 +680,10 @@ describe("generationRouter", () => {
       selectedPlatformSkillSlugs: ["slack"],
       fileAttachments: [
         {
+          fileAssetId: "asset-brief",
           name: "brief.txt",
           mimeType: "text/plain",
-          dataUrl: "data:text/plain;base64,Zm9v",
+          sizeBytes: 3,
         },
       ],
       replaceExisting: undefined,
@@ -744,9 +748,10 @@ describe("generationRouter", () => {
         selectedPlatformSkillSlugs: ["slack"],
         fileAttachments: [
           {
+            fileAssetId: "asset-brief",
             name: "brief.txt",
             mimeType: "text/plain",
-            dataUrl: "data:text/plain;base64,Zm9v",
+            sizeBytes: 3,
           },
         ],
       },
@@ -762,9 +767,10 @@ describe("generationRouter", () => {
       selectedPlatformSkillSlugs: ["slack"],
       fileAttachments: [
         {
+          fileAssetId: "asset-brief",
           name: "brief.txt",
           mimeType: "text/plain",
-          dataUrl: "data:text/plain;base64,Zm9v",
+          sizeBytes: 3,
         },
       ],
     });

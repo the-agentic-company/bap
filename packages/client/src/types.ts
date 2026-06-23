@@ -176,7 +176,12 @@ export type GenerationStartInput = {
   debugRuntimeNoProgressTimeoutMs?: number;
   debugForceRuntimeNoProgressAfterPrompt?: boolean;
   selectedPlatformSkillSlugs?: string[];
-  fileAttachments?: { name: string; mimeType: string; dataUrl: string }[];
+  fileAttachments?: Array<{
+    fileAssetId: string;
+    name?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+  }>;
 };
 
 export type GenerationStreamEvent = {
@@ -538,6 +543,25 @@ export interface BapApiClient {
       success: boolean;
     }): Promise<{ success: boolean }>;
     cancelGeneration(input: { generationId: string }): Promise<{ success: boolean }>;
+  };
+  fileAsset: {
+    createUpload(input: {
+      filename: string;
+      mimeType: string;
+      sizeBytes: number;
+    }): Promise<{
+      uploadSessionId: string;
+      uploadUrl: string;
+      fileAssetId: string;
+      expiresAt: Date;
+    }>;
+    completeUpload(input: { uploadSessionId: string }): Promise<{
+      id: string;
+      filename: string;
+      mimeType: string;
+      sizeBytes: number;
+      status: "ready";
+    }>;
   };
   integration: {
     getAuthUrl(input: { type: string; redirectUrl: string }): Promise<{ authUrl: string }>;

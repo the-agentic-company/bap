@@ -156,9 +156,41 @@ _Avoid_: agent avatar, profile picture, icon
 A chat attached to one **Coworker** that a **User** uses to iteratively edit that **Coworker**. A **Builder Chat** is distinct from a chat created by running the **Coworker**.
 _Avoid_: coworker builder conversation, builder conversation, editor chat
 
+**File Asset**:
+A private stored, agent-usable file in Bap that belongs to a workspace and records the **User** who created it. A **File Asset** is identified by Bap, not by its filename; multiple **File Assets** can have the same filename, its bytes do not change after upload, and access comes through product concepts that reference it.
+_Avoid_: blob, object, raw upload
+
+**Unattached File Asset**:
+A **Ready File Asset** that is not referenced by any product concept. An **Unattached File Asset** can exist briefly after upload but is eligible for cleanup if it remains unused.
+_Avoid_: orphan upload, dangling file
+
+**Ready File Asset**:
+A **File Asset** whose upload has completed and that Bap can attach to product concepts and stage into a runtime sandbox when a **Generation** starts.
+_Avoid_: processed file, staged file
+
+**Upload Session**:
+A short-lived Bap-controlled upload flow that lets a **User** create a **File Asset** by sending file bytes directly to private storage under Bap authorization. A completed **Upload Session** creates a **Ready File Asset**; abandoned sessions expire and are not product-visible files.
+_Avoid_: S3 upload, direct upload, upload token
+
+**Message Attachment**:
+A **File Asset** attached to a user-visible message as task-specific input for that conversation turn. A **Message Attachment** is distinct from a **Coworker Document** because it does not become persistent **Coworker** reference material unless the **User** explicitly promotes it.
+_Avoid_: inline file, data URL, uploaded document
+
+**Staged File Asset**:
+A **File Asset** that Bap has made available at a Bap-owned filesystem path inside a runtime sandbox for a **Generation**. **Message Attachments** and relevant **Coworker Documents** are staged when the **Generation** starts, while the underlying storage mechanism remains private infrastructure.
+_Avoid_: lazy file, remote file, storage path
+
 **Coworker Document**:
-A file a **User** attaches to a **Coworker** so future **Coworker** **Generations** can use it as persistent reference material. A **Coworker Document** belongs to exactly one **Coworker** and is managed separately from the **Coworker**'s instructions, trigger, and **Toolbox**.
+A **File Asset** a **User** attaches to a **Coworker** so future **Coworker** **Generations** can use it as persistent reference material. A **Coworker Document** belongs to exactly one **Coworker** and is managed separately from the **Coworker**'s instructions, trigger, and **Toolbox**.
 _Avoid_: doc, attachment, file upload
+
+**Sandbox File**:
+A **File Asset** produced inside a **Generation** runtime and surfaced to the **User** from the conversation. A **Sandbox File** is distinct from a **Message Attachment** because it is generated output rather than user-provided input.
+_Avoid_: generated attachment, output upload
+
+**Skill Document**:
+A **File Asset** attached to a skill as reference material for agents using that skill. A **Skill Document** is distinct from a **Coworker Document** because it follows the skill rather than one **Coworker**.
+_Avoid_: skill upload, skill attachment
 
 **Coworker Definition**:
 A portable serialized description of a **Coworker**, including instructions, trigger settings, **Toolbox**, optional **Coworker Documents**, and generated artifacts. A **Coworker Definition** does not include runtime state such as **Generations**, **Pending Starts**, or **Run History**.

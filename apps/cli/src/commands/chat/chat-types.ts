@@ -29,7 +29,12 @@ export type ChatGenerationTarget =
       kind: "start";
       content: string;
       conversationId?: string;
-      attachments?: { name: string; mimeType: string; dataUrl: string }[];
+      attachments?: Array<{
+        fileAssetId: string;
+        name?: string;
+        mimeType?: string;
+        sizeBytes?: number;
+      }>;
       debugRunDeadlineMsOverride?: number;
       resumePausedGenerationId?: string;
     }

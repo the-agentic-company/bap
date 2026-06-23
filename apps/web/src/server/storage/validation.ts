@@ -21,11 +21,11 @@ const ALLOWED_MIME_TYPES = [
 
 type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
 
-// Maximum file size: 10MB
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+// Maximum file size: 1GB
+const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
 
 // Maximum files per skill
-const MAX_DOCUMENTS_PER_SKILL = 20;
+const MAX_DOCUMENTS_PER_SKILL = 10;
 
 function normalizeMimeType(mimeType: string): string {
   return mimeType.toLowerCase().split(";")[0]?.trim() ?? "";

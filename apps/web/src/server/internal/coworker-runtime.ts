@@ -7,6 +7,7 @@ import {
   resolveCoworkerBuilderContextByConversation,
 } from "@bap/core/server/services/coworker-builder-service";
 import { triggerCoworkerRun } from "@bap/core/server/services/coworker-service";
+import { createFileAssetFromBuffer } from "@bap/core/server/services/file-asset-service";
 import { db } from "@bap/db/client";
 import { coworker, user } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
@@ -203,6 +204,7 @@ export async function handleCoworkerInvoke(request: Request): Promise<Response> 
         id: true,
         name: true,
         username: true,
+        workspaceId: true,
       },
     });
 
@@ -225,8 +227,29 @@ export async function handleCoworkerInvoke(request: Request): Promise<Response> 
         { status: 404 },
       );
     }
+    if (!targetCoworker.workspaceId) {
+      return Response.json({ error: "coworker_workspace_not_found" }, { status: 400 });
+    }
 
-    const attachments = parsed.data.attachments ?? [];
+    const attachments = await Promise.all(
+      (parsed.data.attachments ?? []).map(async (attachment) => {
+        const base64Data = attachment.dataUrl.split(",")[1] || "";
+        const asset = await createFileAssetFromBuffer({
+          database: db,
+          userId: authorized.userId,
+          workspaceId: targetCoworker.workspaceId!,
+          filename: attachment.name,
+          mimeType: attachment.mimeType,
+          content: Buffer.from(base64Data, "base64"),
+        });
+        return {
+          fileAssetId: asset.id,
+          name: asset.filename,
+          mimeType: asset.mimeType,
+          sizeBytes: asset.sizeBytes,
+        };
+      }),
+    );
     const result = await triggerCoworkerRun({
       coworkerId: targetCoworker.id,
       startKind: "user_intent",

@@ -8,6 +8,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { GenerationCallbacks } from "@/lib/generation-stream";
+import type { GenerationFileAttachment } from "@/orpc/hooks/generation";
 import {
   createGenerationRuntime,
   type GenerationRuntime,
@@ -55,10 +56,32 @@ type StartGeneration = (
     debugRunDeadlineMs?: number;
     debugApprovalHotWaitMs?: number;
     selectedPlatformSkillSlugs: string[];
-    fileAttachments?: AttachmentData[];
+    fileAttachments?: GenerationFileAttachment[];
   },
   callbacks: GenerationCallbacks,
 ) => unknown;
+
+function toGenerationFileAttachments(
+  attachments: AttachmentData[] | undefined,
+): GenerationFileAttachment[] | undefined {
+  if (!attachments || attachments.length === 0) {
+    return undefined;
+  }
+  const mapped = attachments
+    .map((attachment): GenerationFileAttachment | null => {
+      if (attachment.fileAssetId) {
+        return {
+          fileAssetId: attachment.fileAssetId,
+          name: attachment.name,
+          mimeType: attachment.mimeType,
+          sizeBytes: attachment.sizeBytes,
+        };
+      }
+      return null;
+    })
+    .filter((attachment): attachment is GenerationFileAttachment => attachment !== null);
+  return mapped.length > 0 ? mapped : undefined;
+}
 
 export function useChatGenerationActions({
   abort,
@@ -163,7 +186,7 @@ export function useChatGenerationActions({
     conversationId: string;
     content: string;
     selectedPlatformSkillSlugs: string[];
-    fileAttachments?: AttachmentData[];
+    fileAttachments?: GenerationFileAttachment[];
     replaceExisting: boolean;
   }) => Promise<unknown>;
   forceCoworkerQuerySync: boolean;
@@ -250,7 +273,7 @@ export function useChatGenerationActions({
     conversationId: string;
     content: string;
     selectedPlatformSkillSlugs?: string[];
-    fileAttachments?: AttachmentData[];
+    fileAttachments?: GenerationFileAttachment[];
   }) => Promise<unknown>;
   upsertMessageById: Parameters<typeof createChatGenerationStreamHandlers>[0]["upsertMessageById"];
 }) {
@@ -368,6 +391,7 @@ export function useChatGenerationActions({
       const selectedPlatformSkillSlugs = selectedKeys.filter(
         (key) => !key.startsWith(CUSTOM_SKILL_PREFIX),
       );
+      const fileAttachments = toGenerationFileAttachments(attachments);
       const effectiveConversationId = currentConversationIdRef.current ?? conversationId;
       const startInput = {
         conversationId: effectiveConversationId,
@@ -383,7 +407,7 @@ export function useChatGenerationActions({
           ? { debugApprovalHotWaitMs: options.debugApprovalHotWaitMs }
           : {}),
         selectedPlatformSkillSlugs,
-        fileAttachments: attachments,
+        fileAttachments,
       };
       void startGeneration(
         startInput,
@@ -609,7 +633,7 @@ export function useChatGenerationActions({
             conversationId: targetConversationId,
             content: outgoingContent,
             selectedPlatformSkillSlugs: editingQueuedMessage.selectedPlatformSkillSlugs,
-            fileAttachments: editingQueuedMessage.attachments,
+            fileAttachments: toGenerationFileAttachments(editingQueuedMessage.attachments),
           });
           setEditingQueuedMessageId(null);
           clearSelectedSkillSlugs(skillSelectionScopeKey);
@@ -630,7 +654,7 @@ export function useChatGenerationActions({
             conversationId: targetConversationId,
             content: outgoingContent,
             selectedPlatformSkillSlugs,
-            fileAttachments: attachments,
+            fileAttachments: toGenerationFileAttachments(attachments),
             replaceExisting: false,
           });
           clearSelectedSkillSlugs(skillSelectionScopeKey);

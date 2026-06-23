@@ -135,11 +135,7 @@ export type QueuedConversationTurn = {
   createdAt: Date;
 };
 
-export type UserFileAttachment = {
-  name: string;
-  mimeType: string;
-  dataUrl: string;
-};
+export type UserFileAttachment = QueuedMessageAttachment;
 
 export type StartChatGenerationInput = {
   conversationId?: string;

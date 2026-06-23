@@ -1,5 +1,6 @@
 import { writeSessionTranscriptFromConversation } from "@bap/core/server/services/memory-service";
 import { clearConversationSessionSnapshot } from "@bap/core/server/services/opencode-session-snapshot-service";
+import { getFileAssetDownloadUrl } from "@bap/core/server/services/file-asset-service";
 import { conversation, message, messageAttachment, sandboxFile } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { eq, desc, and, isNull, asc, sql, lt, or } from "drizzle-orm";
@@ -621,6 +622,19 @@ const downloadAttachment = protectedProcedure
       attachment.message.conversation.workspaceId !== workspaceId
     ) {
       throw new ORPCError("NOT_FOUND", { message: "Attachment not found" });
+    }
+
+    if (attachment.fileAssetId) {
+      const result = await getFileAssetDownloadUrl({
+        database: context.db,
+        workspaceId,
+        fileAssetId: attachment.fileAssetId,
+      });
+      return {
+        url: result.url,
+        filename: result.filename,
+        mimeType: result.mimeType,
+      };
     }
 
     const { getPresignedDownloadUrl } = await import("@bap/core/server/storage/s3-client");

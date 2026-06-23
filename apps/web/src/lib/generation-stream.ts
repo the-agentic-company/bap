@@ -115,7 +115,12 @@ type GenerationStartInput = {
   debugRunDeadlineMs?: number;
   debugApprovalHotWaitMs?: number;
   selectedPlatformSkillSlugs?: string[];
-  fileAttachments?: { name: string; mimeType: string; dataUrl: string }[];
+  fileAttachments?: Array<{
+    fileAssetId: string;
+    name?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+  }>;
 };
 
 export type GenerationCallbacks = {

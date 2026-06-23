@@ -18,6 +18,8 @@ import {
   customIntegration,
   customIntegrationCredential,
   device,
+  fileAsset,
+  fileAssetReference,
   generation,
   generationInterrupt,
   integration,
@@ -42,6 +44,7 @@ import {
   skillFile,
   slackConversation,
   slackUserLink,
+  uploadSession,
   user,
   userDailyActivity,
   webPushSubscription,
@@ -59,6 +62,8 @@ export const userRelations = relations(user, ({ many }) => ({
   workspacesCreated: many(workspace),
   workspaceMemberships: many(workspaceMember),
   conversations: many(conversation),
+  fileAssetsCreated: many(fileAsset),
+  uploadSessions: many(uploadSession),
   billingLedgers: many(billingLedger),
   integrations: many(integration),
   skills: many(skill),
@@ -105,6 +110,8 @@ export const workspaceRelations = relations(workspace, ({ one, many }) => ({
   }),
   members: many(workspaceMember),
   conversations: many(conversation),
+  fileAssets: many(fileAsset),
+  uploadSessions: many(uploadSession),
   billingLedgers: many(billingLedger),
   billingTopUps: many(billingTopUp),
   skills: many(skill),
@@ -119,6 +126,45 @@ export const workspaceMemberRelations = relations(workspaceMember, ({ one }) => 
   user: one(user, {
     fields: [workspaceMember.userId],
     references: [user.id],
+  }),
+}));
+
+export const fileAssetRelations = relations(fileAsset, ({ one, many }) => ({
+  workspace: one(workspace, {
+    fields: [fileAsset.workspaceId],
+    references: [workspace.id],
+  }),
+  createdByUser: one(user, {
+    fields: [fileAsset.createdByUserId],
+    references: [user.id],
+  }),
+  uploadSessions: many(uploadSession),
+  references: many(fileAssetReference),
+  messageAttachments: many(messageAttachment),
+  coworkerDocuments: many(coworkerDocument),
+  skillDocuments: many(skillDocument),
+  sandboxFiles: many(sandboxFile),
+}));
+
+export const uploadSessionRelations = relations(uploadSession, ({ one }) => ({
+  workspace: one(workspace, {
+    fields: [uploadSession.workspaceId],
+    references: [workspace.id],
+  }),
+  user: one(user, {
+    fields: [uploadSession.userId],
+    references: [user.id],
+  }),
+  fileAsset: one(fileAsset, {
+    fields: [uploadSession.fileAssetId],
+    references: [fileAsset.id],
+  }),
+}));
+
+export const fileAssetReferenceRelations = relations(fileAssetReference, ({ one }) => ({
+  fileAsset: one(fileAsset, {
+    fields: [fileAssetReference.fileAssetId],
+    references: [fileAsset.id],
   }),
 }));
 
@@ -199,6 +245,10 @@ export const messageAttachmentRelations = relations(messageAttachment, ({ one })
     fields: [messageAttachment.messageId],
     references: [message.id],
   }),
+  fileAsset: one(fileAsset, {
+    fields: [messageAttachment.fileAssetId],
+    references: [fileAsset.id],
+  }),
 }));
 
 export const sandboxFileRelations = relations(sandboxFile, ({ one }) => ({
@@ -209,6 +259,10 @@ export const sandboxFileRelations = relations(sandboxFile, ({ one }) => ({
   conversation: one(conversation, {
     fields: [sandboxFile.conversationId],
     references: [conversation.id],
+  }),
+  fileAsset: one(fileAsset, {
+    fields: [sandboxFile.fileAssetId],
+    references: [fileAsset.id],
   }),
 }));
 
@@ -342,6 +396,10 @@ export const coworkerDocumentRelations = relations(coworkerDocument, ({ one }) =
     fields: [coworkerDocument.coworkerId],
     references: [coworker.id],
   }),
+  fileAsset: one(fileAsset, {
+    fields: [coworkerDocument.fileAssetId],
+    references: [fileAsset.id],
+  }),
 }));
 
 export const coworkerRunEventRelations = relations(coworkerRunEvent, ({ one }) => ({
@@ -404,6 +462,10 @@ export const skillDocumentRelations = relations(skillDocument, ({ one }) => ({
   skill: one(skill, {
     fields: [skillDocument.skillId],
     references: [skill.id],
+  }),
+  fileAsset: one(fileAsset, {
+    fields: [skillDocument.fileAssetId],
+    references: [fileAsset.id],
   }),
 }));
 

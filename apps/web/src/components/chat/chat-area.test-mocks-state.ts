@@ -17,7 +17,12 @@ export type ConversationQueuedMessage = {
   id: string;
   content: string;
   status: "queued" | "processing";
-  fileAttachments?: Array<{ name: string; mimeType: string; dataUrl: string }>;
+  fileAttachments?: Array<{
+    fileAssetId: string;
+    name?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+  }>;
   selectedPlatformSkillSlugs?: string[];
   createdAt: string;
 };

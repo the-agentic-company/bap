@@ -469,9 +469,10 @@ describe("triggerCoworkerRun", () => {
       userRole: "admin",
       fileAttachments: [
         {
+          fileAssetId: "asset-call",
           name: "call.m4a",
           mimeType: "audio/mp4",
-          dataUrl: "data:audio/mp4;base64,ZmFrZQ==",
+          sizeBytes: 4,
         },
       ],
     });
@@ -480,9 +481,10 @@ describe("triggerCoworkerRun", () => {
       expect.objectContaining({
         fileAttachments: [
           {
+            fileAssetId: "asset-call",
             name: "call.m4a",
             mimeType: "audio/mp4",
-            dataUrl: "data:audio/mp4;base64,ZmFrZQ==",
+            sizeBytes: 4,
           },
         ],
       }),
@@ -632,9 +634,10 @@ describe("triggerCoworkerRun", () => {
         userInputPrompt: "What should I do with the file?",
         triggerFileAttachments: [
           {
+            fileAssetId: "asset-forwarded",
             name: "forwarded.pdf",
             mimeType: "application/pdf",
-            dataUrl: "data:application/pdf;base64,Zm9yd2FyZGVk",
+            sizeBytes: 9,
           },
         ],
       },
@@ -663,9 +666,10 @@ describe("triggerCoworkerRun", () => {
       userInput: "",
       fileAttachments: [
         {
+          fileAssetId: "asset-answer",
           name: "answer.txt",
           mimeType: "text/plain",
-          dataUrl: "data:text/plain;base64,YW5zd2Vy",
+          sizeBytes: 6,
         },
       ],
     });
@@ -711,14 +715,16 @@ describe("triggerCoworkerRun", () => {
         content: expect.stringContaining("## Coworker Instructions\nReview files"),
         fileAttachments: [
           {
+            fileAssetId: "asset-forwarded",
             name: "forwarded.pdf",
             mimeType: "application/pdf",
-            dataUrl: "data:application/pdf;base64,Zm9yd2FyZGVk",
+            sizeBytes: 9,
           },
           {
+            fileAssetId: "asset-answer",
             name: "answer.txt",
             mimeType: "text/plain",
-            dataUrl: "data:text/plain;base64,YW5zd2Vy",
+            sizeBytes: 6,
           },
         ],
       }),

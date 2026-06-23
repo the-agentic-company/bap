@@ -1,4 +1,5 @@
-import { downloadFromS3 } from "@bap/core/server/storage/s3-client";
+import { getFileAssetDownloadUrl } from "@bap/core/server/services/file-asset-service";
+import { getPresignedDownloadUrl } from "@bap/core/server/storage/s3-client";
 import { db } from "@bap/db/client";
 import { sandboxFile } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
@@ -37,6 +38,14 @@ export async function downloadSandboxFile(request: Request, fileId: string): Pro
       filename: true,
       mimeType: true,
       storageKey: true,
+      fileAssetId: true,
+    },
+    with: {
+      conversation: {
+        columns: {
+          workspaceId: true,
+        },
+      },
     },
   });
 
@@ -44,15 +53,21 @@ export async function downloadSandboxFile(request: Request, fileId: string): Pro
     return Response.json({ error: "File not found" }, { status: 404 });
   }
 
-  const body = await downloadFromS3(file.storageKey);
-  return new Response(new Uint8Array(body), {
-    headers: {
-      "Content-Type": file.mimeType,
-      "Content-Disposition": buildContentDisposition(file.filename),
-      "Content-Length": body.byteLength.toString(),
-      "Cache-Control": "private, no-store",
-    },
-  });
+  const signedUrl =
+    file.fileAssetId && file.conversation.workspaceId
+      ? (
+          await getFileAssetDownloadUrl({
+            database: db,
+            workspaceId: file.conversation.workspaceId,
+            fileAssetId: file.fileAssetId,
+          })
+        ).url
+      : await getPresignedDownloadUrl(file.storageKey, 300, {
+          filename: file.filename,
+          contentType: file.mimeType,
+        });
+
+  return Response.redirect(signedUrl, 302);
 }
 
 function getPublicAppBaseUrl(): string {
@@ -82,20 +97,4 @@ function verifySandboxFileDownload(fileId: string, expiresAt: number, token: str
   const expected = Buffer.from(signSandboxFileDownload(fileId, expiresAt));
   const actual = Buffer.from(token);
   return expected.byteLength === actual.byteLength && timingSafeEqual(expected, actual);
-}
-
-function asciiFilenameFallback(filename: string): string {
-  return (
-    filename
-      .normalize("NFKD")
-      .replace(/[^\x20-\x7E]/g, "")
-      .replace(/["\\]/g, "")
-      .replace(/[/:]/g, "-")
-      .trim() || "sandbox-file"
-  );
-}
-
-function buildContentDisposition(filename: string): string {
-  const fallback = asciiFilenameFallback(filename);
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }

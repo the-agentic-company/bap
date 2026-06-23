@@ -1,14 +1,9 @@
 import { db as defaultDb } from "@bap/db/client";
 import { skill, skillDocument, skillFile } from "@bap/db/schema";
 import { and, eq, inArray, ne, or } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
-import {
-  downloadFromS3,
-  ensureBucket,
-  generateStorageKey,
-  uploadToS3,
-} from "../storage/s3-client";
+import { downloadFromS3 } from "../storage/s3-client";
 import { requireActiveWorkspaceForUser } from "../billing/service";
+import { createFileAssetFromBuffer, markFileAssetReference } from "./file-asset-service";
 
 type DatabaseLike = typeof defaultDb;
 
@@ -86,7 +81,11 @@ export async function listAccessibleEnabledSkillsForUser(
     where: and(...filters),
     with: {
       files: true,
-      documents: true,
+      documents: {
+        with: {
+          fileAsset: true,
+        },
+      },
     },
     orderBy: (table, { asc }) => [asc(table.name)],
   });
@@ -118,7 +117,11 @@ export async function copySkillToWorkspaceOwner(params: {
     where: eq(skill.id, params.sourceSkillId),
     with: {
       files: true,
-      documents: true,
+      documents: {
+        with: {
+          fileAsset: true,
+        },
+      },
     },
   });
 
@@ -131,8 +134,6 @@ export async function copySkillToWorkspaceOwner(params: {
     params.targetWorkspaceId,
     source.name,
   );
-
-  await ensureBucket();
 
   return await params.database.transaction(async (tx) => {
     const [createdSkill] = await tx
@@ -160,28 +161,39 @@ export async function copySkillToWorkspaceOwner(params: {
     }
 
     if (source.documents.length > 0) {
-      const copiedDocuments = await Promise.all(
-        source.documents.map(async (document) => {
-          const buffer = await downloadFromS3(document.storageKey);
-          const storageKey = generateStorageKey(
-            params.targetUserId,
-            createdSkill.id,
-            `${randomUUID()}-${document.filename}`,
-          );
-          await uploadToS3(storageKey, buffer, document.mimeType);
-          return {
+      for (const document of source.documents) {
+        const buffer = await downloadFromS3(document.fileAsset?.storageKey ?? document.storageKey);
+        const asset = await createFileAssetFromBuffer({
+          database: tx as unknown as typeof defaultDb,
+          userId: params.targetUserId,
+          workspaceId: params.targetWorkspaceId,
+          filename: document.filename,
+          mimeType: document.mimeType,
+          content: buffer,
+        });
+        const [createdDocument] = await tx
+          .insert(skillDocument)
+          .values({
             skillId: createdSkill.id,
-            filename: document.filename,
+            fileAssetId: asset.id,
+            filename: asset.filename,
             path: document.path,
-            mimeType: document.mimeType,
-            sizeBytes: document.sizeBytes,
-            storageKey,
+            mimeType: asset.mimeType,
+            sizeBytes: asset.sizeBytes,
+            storageKey: asset.storageKey,
             description: document.description,
-          };
-        }),
-      );
+          })
+          .returning({ id: skillDocument.id });
 
-      await tx.insert(skillDocument).values(copiedDocuments);
+        if (createdDocument) {
+          await markFileAssetReference({
+            database: tx as unknown as typeof defaultDb,
+            fileAssetId: asset.id,
+            kind: "skill_document",
+            referenceId: createdDocument.id,
+          });
+        }
+      }
     }
 
     return createdSkill;

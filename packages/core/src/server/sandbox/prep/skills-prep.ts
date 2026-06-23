@@ -125,7 +125,7 @@ export async function writeSkillsToSandbox(
     await Promise.all(
       s.documents.map(async (doc) => {
         try {
-          const buffer = await downloadFromS3(doc.storageKey);
+          const buffer = await downloadFromS3(doc.fileAsset?.storageKey ?? doc.storageKey);
           const docPath = `${skillDir}/${doc.path ?? doc.filename}`;
           const lastSlash = docPath.lastIndexOf("/");
           const parentDir = docPath.substring(0, lastSlash);

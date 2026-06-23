@@ -29,6 +29,7 @@ import type {
 } from "./enums";
 import {
   conversation,
+  fileAsset,
   generation,
   user,
   workspace,
@@ -218,6 +219,7 @@ export const coworkerDocument = pgTable(
     coworkerId: text("coworker_id")
       .notNull()
       .references(() => coworker.id, { onDelete: "cascade" }),
+    fileAssetId: text("file_asset_id").references(() => fileAsset.id, { onDelete: "set null" }),
     filename: text("filename").notNull(),
     mimeType: text("mime_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
@@ -229,7 +231,10 @@ export const coworkerDocument = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("coworker_document_coworker_id_idx").on(table.coworkerId)],
+  (table) => [
+    index("coworker_document_coworker_id_idx").on(table.coworkerId),
+    index("coworker_document_file_asset_id_idx").on(table.fileAssetId),
+  ],
 );
 
 export const coworkerEmailAlias = pgTable(

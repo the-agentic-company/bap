@@ -10,7 +10,11 @@ import {
   type ProviderAuthSource,
 } from "@bap/core/lib/provider-auth-source";
 import { normalizeAndEnsureUniqueCoworkerUsername } from "@bap/core/server/services/coworker-metadata";
-import { downloadFromS3, ensureBucket, uploadToS3 } from "@bap/core/server/storage/s3-client";
+import {
+  createFileAssetFromBuffer,
+  markFileAssetReference,
+} from "@bap/core/server/services/file-asset-service";
+import { downloadFromS3 } from "@bap/core/server/storage/s3-client";
 import { conversation, coworker, coworkerDocument, coworkerRun, sandboxFile } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { eq, inArray } from "drizzle-orm";
@@ -208,15 +212,6 @@ async function resolveCoworkerUsername(params: {
   return normalized;
 }
 
-function generateImportedArtifactStorageKey(params: {
-  conversationId: string;
-  filename: string;
-}): string {
-  const timestamp = Date.now();
-  const sanitizedFilename = params.filename.replace(/[^a-zA-Z0-9.-]/g, "_");
-  return `sandbox-files/${params.conversationId}/${timestamp}-${sanitizedFilename}`;
-}
-
 async function createBuilderConversationForImportedArtifacts(params: {
   context: DefinitionContext;
   workspaceId: string;
@@ -274,24 +269,39 @@ async function importCoworkerArtifacts(params: {
     authSource: params.authSource,
   });
 
-  await ensureBucket();
   await Promise.all(
     params.artifacts.map(async (artifact) => {
       const fileBuffer = Buffer.from(artifact.contentBase64, "base64");
-      const storageKey = generateImportedArtifactStorageKey({
-        conversationId,
-        filename: artifact.filename,
-      });
-
-      await uploadToS3(storageKey, fileBuffer, artifact.mimeType);
-      await params.context.db.insert(sandboxFile).values({
-        conversationId,
-        path: artifact.path,
+      const asset = await createFileAssetFromBuffer({
+        database: params.context.db,
+        userId: params.context.user.id,
+        workspaceId: params.workspaceId,
         filename: artifact.filename,
         mimeType: artifact.mimeType,
-        sizeBytes: artifact.sizeBytes ?? fileBuffer.length,
-        storageKey,
+        content: fileBuffer,
       });
+
+      const [created] = await params.context.db
+        .insert(sandboxFile)
+        .values({
+          conversationId,
+          fileAssetId: asset.id,
+          path: artifact.path,
+          filename: asset.filename,
+          mimeType: asset.mimeType,
+          sizeBytes: asset.sizeBytes,
+          storageKey: asset.storageKey,
+        })
+        .returning({ id: sandboxFile.id });
+
+      if (created) {
+        await markFileAssetReference({
+          database: params.context.db,
+          fileAssetId: asset.id,
+          kind: "sandbox_file",
+          referenceId: created.id,
+        });
+      }
     }),
   );
 }
@@ -308,6 +318,9 @@ export async function exportCoworkerDefinition(input: {
   const documents = await input.context.db.query.coworkerDocument.findMany({
     where: eq(coworkerDocument.coworkerId, wf.id),
     orderBy: (document, { asc }) => [asc(document.createdAt)],
+    with: {
+      fileAsset: true,
+    },
   });
   const latestRun = await input.context.db.query.coworkerRun.findFirst({
     where: eq(coworkerRun.coworkerId, wf.id),
@@ -325,11 +338,14 @@ export async function exportCoworkerDefinition(input: {
       ? await input.context.db.query.sandboxFile.findMany({
           where: inArray(sandboxFile.conversationId, artifactConversationIds),
           orderBy: (file, { asc }) => [asc(file.createdAt)],
+          with: {
+            fileAsset: true,
+          },
         })
       : [];
   const uniqueArtifactFiles = Array.from(
     new Map(artifactFiles.map((file) => [file.id, file])).values(),
-  ).filter((file) => Boolean(file.storageKey));
+  ).filter((file) => Boolean(file.fileAsset?.storageKey ?? file.storageKey));
 
   return {
     version: 2 as const,
@@ -358,7 +374,9 @@ export async function exportCoworkerDefinition(input: {
         filename: document.filename,
         mimeType: document.mimeType,
         description: document.description,
-        contentBase64: (await downloadFromS3(document.storageKey)).toString("base64"),
+        contentBase64: (
+          await downloadFromS3(document.fileAsset?.storageKey ?? document.storageKey)
+        ).toString("base64"),
       })),
     ),
     artifacts: await Promise.all(
@@ -367,7 +385,9 @@ export async function exportCoworkerDefinition(input: {
         filename: file.filename,
         mimeType: file.mimeType,
         sizeBytes: file.sizeBytes,
-        contentBase64: (await downloadFromS3(file.storageKey as string)).toString("base64"),
+        contentBase64: (
+          await downloadFromS3(file.fileAsset?.storageKey ?? (file.storageKey as string))
+        ).toString("base64"),
       })),
     ),
   };

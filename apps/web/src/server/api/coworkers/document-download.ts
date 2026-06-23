@@ -1,4 +1,5 @@
-import { downloadFromS3 } from "@bap/core/server/storage/s3-client";
+import { getFileAssetDownloadUrl } from "@bap/core/server/services/file-asset-service";
+import { getPresignedDownloadUrl } from "@bap/core/server/storage/s3-client";
 import { db } from "@bap/db/client";
 import { coworker, coworkerDocument } from "@bap/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -29,6 +30,7 @@ export async function downloadCoworkerDocument(
       filename: true,
       mimeType: true,
       storageKey: true,
+      fileAssetId: true,
     },
   });
 
@@ -52,15 +54,20 @@ export async function downloadCoworkerDocument(
     return Response.json({ error: "Document not found" }, { status: 404 });
   }
 
-  const body = await downloadFromS3(existingDocument.storageKey);
-  return new Response(new Uint8Array(body), {
-    headers: {
-      "Content-Type": existingDocument.mimeType,
-      "Content-Disposition": buildContentDisposition(existingDocument.filename),
-      "Content-Length": body.byteLength.toString(),
-      "Cache-Control": "private, no-store",
-    },
-  });
+  const signedUrl = existingDocument.fileAssetId
+    ? (
+        await getFileAssetDownloadUrl({
+          database: db,
+          workspaceId: activeWorkspace.workspace.id,
+          fileAssetId: existingDocument.fileAssetId,
+        })
+      ).url
+    : await getPresignedDownloadUrl(existingDocument.storageKey, 300, {
+        filename: existingDocument.filename,
+        contentType: existingDocument.mimeType,
+      });
+
+  return Response.redirect(signedUrl, 302);
 }
 
 function asciiFilenameFallback(filename: string): string {

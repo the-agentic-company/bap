@@ -33,8 +33,8 @@ import {
 import {
   ConversationTurnQueue,
   type ConversationQueuedMessageRecord,
-  type UserFileAttachment,
 } from "./queue/conversation-turn-queue";
+import type { UserFileAttachment } from "./attachments";
 import { GenerationRunQueue } from "./queue/generation-run-queue";
 import { importIntegrationSkillDraftsFromSandbox } from "./skills/integration-skill-drafts";
 import { GenerationEventLog } from "./streams/generation-event-log";

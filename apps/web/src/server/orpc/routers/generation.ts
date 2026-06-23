@@ -85,6 +85,12 @@ const modelReferenceSchema = z
     }
   }, "Model must use provider/model format");
 const providerAuthSourceSchema = z.enum(PROVIDER_AUTH_SOURCES);
+const fileAttachmentSchema = z.object({
+  fileAssetId: z.string().min(1),
+  name: z.string().optional(),
+  mimeType: z.string().optional(),
+  sizeBytes: z.number().int().nonnegative().optional(),
+});
 
 const startGeneration = protectedProcedure
   .input(
@@ -117,15 +123,7 @@ const startGeneration = protectedProcedure
           .optional(),
         debugForceRuntimeNoProgressAfterPrompt: z.boolean().optional(),
         selectedPlatformSkillSlugs: z.array(z.string().max(128)).max(50).optional(),
-        fileAttachments: z
-          .array(
-            z.object({
-              name: z.string(),
-              mimeType: z.string(),
-              dataUrl: z.string(),
-            }),
-          )
-          .optional(),
+        fileAttachments: z.array(fileAttachmentSchema).optional(),
       })
       .refine(
         (input) => input.content.trim().length > 0 || (input.fileAttachments?.length ?? 0) > 0,
@@ -304,15 +302,7 @@ const enqueueConversationMessage = protectedProcedure
       conversationId: z.string(),
       content: z.string().min(1).max(100000),
       selectedPlatformSkillSlugs: z.array(z.string().max(128)).max(50).optional(),
-      fileAttachments: z
-        .array(
-          z.object({
-            name: z.string(),
-            mimeType: z.string(),
-            dataUrl: z.string(),
-          }),
-        )
-        .optional(),
+      fileAttachments: z.array(fileAttachmentSchema).optional(),
       replaceExisting: z.boolean().optional(),
     }),
   )
@@ -348,15 +338,7 @@ const listConversationQueuedMessages = protectedProcedure
       z.object({
         id: z.string(),
         content: z.string(),
-        fileAttachments: z
-          .array(
-            z.object({
-              name: z.string(),
-              mimeType: z.string(),
-              dataUrl: z.string(),
-            }),
-          )
-          .optional(),
+        fileAttachments: z.array(fileAttachmentSchema).optional(),
         selectedPlatformSkillSlugs: z.array(z.string()).optional(),
         status: z.enum(["queued", "processing"]),
         createdAt: z.string(),
@@ -420,15 +402,7 @@ const updateConversationQueuedMessage = protectedProcedure
       conversationId: z.string(),
       content: z.string().min(1).max(100000),
       selectedPlatformSkillSlugs: z.array(z.string().max(128)).max(50).optional(),
-      fileAttachments: z
-        .array(
-          z.object({
-            name: z.string(),
-            mimeType: z.string(),
-            dataUrl: z.string(),
-          }),
-        )
-        .optional(),
+      fileAttachments: z.array(fileAttachmentSchema).optional(),
     }),
   )
   .output(z.object({ success: z.boolean() }))

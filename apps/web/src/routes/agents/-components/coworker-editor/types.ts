@@ -24,9 +24,10 @@ export type CoworkerDocumentRecord = {
 };
 
 export type UploadAttachment = {
+  fileAssetId: string;
   name: string;
   mimeType: string;
-  dataUrl: string;
+  sizeBytes: number;
 };
 
 export type CoworkerEditorPayload = {

@@ -44,6 +44,9 @@ export async function writeCoworkerDocumentsToSandbox(
   const documents = await db.query.coworkerDocument.findMany({
     where: eq(coworkerDocument.coworkerId, coworkerId),
     orderBy: (row, { asc }) => [asc(row.createdAt), asc(row.filename)],
+    with: {
+      fileAsset: true,
+    },
   });
 
   if (documents.length === 0) {
@@ -59,7 +62,7 @@ export async function writeCoworkerDocumentsToSandbox(
   await Promise.all(
     documents.map(async (document) => {
       try {
-        const buffer = await downloadFromS3(document.storageKey);
+        const buffer = await downloadFromS3(document.fileAsset?.storageKey ?? document.storageKey);
         const sandboxFilename = buildUniqueFilename(document.filename, seenFilenames);
         const sandboxPath = `${targetDir}/${sandboxFilename}`;
         await sandbox.writeFile(

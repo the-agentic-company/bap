@@ -75,6 +75,12 @@ const AUTH_INTEGRATION_TYPES = [
 ] as const;
 
 type AuthIntegrationType = (typeof AUTH_INTEGRATION_TYPES)[number];
+type ChatFileAttachment = {
+  fileAssetId: string;
+  name?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+};
 
 function parseArgs(argv: string[]): Args {
   const args: Args = {
@@ -221,16 +227,25 @@ async function runChatLoop(
 ): Promise<void> {
   let conversationId = options.conversationId;
 
-  let pendingFiles: { name: string; mimeType: string; dataUrl: string }[] = [];
+  let pendingFiles: ChatFileAttachment[] = [];
 
   // Attach files passed via --file on the first message
-  for (const f of options.files) {
-    try {
-      pendingFiles.push(fileToAttachment(f));
-      console.log(`Attached: ${basename(f)}`);
-    } catch (e) {
-      console.error(e instanceof Error ? e.message : String(e));
+  const initialAttachments = await Promise.all(
+    options.files.map(async (f) => {
+      try {
+        return { filePath: f, attachment: await fileToAttachment(client, f) };
+      } catch (e) {
+        console.error(e instanceof Error ? e.message : String(e));
+        return null;
+      }
+    }),
+  );
+  for (const result of initialAttachments) {
+    if (!result) {
+      continue;
     }
+    pendingFiles.push(result.attachment);
+    console.log(`Attached: ${basename(result.filePath)}`);
   }
 
   const runStep = async (): Promise<void> => {
@@ -259,7 +274,7 @@ async function runChatLoop(
     if (input.startsWith("/file ")) {
       const filePath = input.slice(6).trim();
       try {
-        pendingFiles.push(fileToAttachment(filePath));
+        pendingFiles.push(await fileToAttachment(client, filePath));
         console.log(`Attached: ${basename(filePath)} (${pendingFiles.length} file(s) pending)`);
       } catch (e) {
         console.error(e instanceof Error ? e.message : String(e));
@@ -324,7 +339,7 @@ async function runGeneration(
   content: string,
   conversationId: string | undefined,
   options: Args,
-  attachments?: { name: string; mimeType: string; dataUrl: string }[],
+  attachments?: ChatFileAttachment[],
 ): Promise<{ generationId: string; conversationId: string } | null> {
   let outputStarted = false;
   const generationStartedAtMs = Date.now();
@@ -810,7 +825,7 @@ async function main(): Promise<void> {
 
   if (args.message) {
     const interactivePrompt = createSingleMessagePrompt();
-    const attachments = args.files.map((f) => fileToAttachment(f));
+    const attachments = await Promise.all(args.files.map((f) => fileToAttachment(client, f)));
     if (interactivePrompt) {
       attachSigintHandler(interactivePrompt);
     }

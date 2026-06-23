@@ -1,10 +1,11 @@
 // oxlint-disable jsx-a11y/control-has-associated-label
 
 import { T, useGT } from "gt-react";
-import { Paperclip, Plus, X } from "lucide-react";
+import { Loader2, Paperclip, Plus, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import type { AttachmentData } from "@/components/prompt-bar";
 import { Button } from "@/components/ui/button";
+import { uploadFileAsset } from "@/orpc/hooks/file-assets";
 
 type CoworkerOption = {
   id: string;
@@ -21,16 +22,41 @@ type Props = {
   isSubmitting?: boolean;
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_FILES = 5;
+type AttachmentUploadState = {
+  localId: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: "uploading" | "ready" | "failed";
+  progress: number;
+  fileAssetId?: string;
+  error?: string;
+};
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(reader.result as string), { once: true });
-    reader.addEventListener("error", () => reject(reader.error), { once: true });
-    reader.readAsDataURL(file);
-  });
+const MAX_FILE_SIZE = 1024 * 1024 * 1024;
+const MAX_FILES = 10;
+
+function createLocalAttachmentId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+}
+
+function isReadyAttachment(
+  attachment: AttachmentUploadState,
+): attachment is AttachmentUploadState & {
+  fileAssetId: string;
+} {
+  return attachment.status === "ready" && typeof attachment.fileAssetId === "string";
+}
+
+function toSubmitAttachment(
+  attachment: AttachmentUploadState & { fileAssetId: string },
+): AttachmentData {
+  return {
+    fileAssetId: attachment.fileAssetId,
+    name: attachment.name,
+    mimeType: attachment.mimeType,
+    sizeBytes: attachment.sizeBytes,
+  };
 }
 
 export function InboxCreateInput({ coworkers, onSubmit, isSubmitting }: Props) {
@@ -38,23 +64,25 @@ export function InboxCreateInput({ coworkers, onSubmit, isSubmitting }: Props) {
 
   const [message, setMessage] = useState("");
   const [selectedCoworkerId, setSelectedCoworkerId] = useState(coworkers[0]?.id ?? "");
-  const [attachments, setAttachments] = useState<AttachmentData[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentUploadState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const readyAttachments = attachments.filter(isReadyAttachment).map(toSubmitAttachment);
+  const hasUnreadyAttachments = attachments.some((attachment) => attachment.status !== "ready");
 
   const handleSubmit = useCallback(async () => {
     const trimmed = message.trim();
-    if (!selectedCoworkerId || !trimmed) {
+    if (!selectedCoworkerId || !trimmed || hasUnreadyAttachments) {
       return;
     }
 
     await onSubmit({
       coworkerId: selectedCoworkerId,
       message: trimmed,
-      attachments,
+      attachments: readyAttachments,
     });
     setMessage("");
     setAttachments([]);
-  }, [attachments, message, onSubmit, selectedCoworkerId]);
+  }, [hasUnreadyAttachments, message, onSubmit, readyAttachments, selectedCoworkerId]);
 
   const handleAttachClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -69,35 +97,85 @@ export function InboxCreateInput({ coworkers, onSubmit, isSubmitting }: Props) {
     void handleSubmit();
   }, [handleSubmit]);
 
-  const handleFilesChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []);
-    if (files.length === 0) {
-      return;
-    }
+  const handleFilesChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? []);
+      if (files.length === 0) {
+        return;
+      }
 
-    const nextFiles = files.slice(0, Math.max(0, MAX_FILES));
-    const prepared = await Promise.all(
-      nextFiles
-        .filter((file) => file.size <= MAX_FILE_SIZE)
-        .map(async (file) => ({
+      const slotsRemaining = Math.max(0, MAX_FILES - attachments.length);
+      const selectedFiles = files.slice(0, slotsRemaining);
+      const nextAttachments = selectedFiles.map((file): AttachmentUploadState => {
+        const mimeType = file.type || "application/octet-stream";
+        return {
+          localId: createLocalAttachmentId(),
           name: file.name,
-          mimeType: file.type || "application/octet-stream",
-          dataUrl: await readFileAsDataUrl(file),
-        })),
-    );
+          mimeType,
+          sizeBytes: file.size,
+          status: file.size > MAX_FILE_SIZE ? "failed" : "uploading",
+          progress: 0,
+          error: file.size > MAX_FILE_SIZE ? t("File is over 1 GB") : undefined,
+        };
+      });
 
-    setAttachments((current) => [...current, ...prepared].slice(0, MAX_FILES));
-    event.target.value = "";
-  }, []);
+      setAttachments((current) => [...current, ...nextAttachments]);
+      nextAttachments.forEach((attachment, index) => {
+        if (attachment.status === "failed") {
+          return;
+        }
+        const file = selectedFiles[index];
+        void uploadFileAsset(file, {
+          onProgress: ({ percent }) => {
+            setAttachments((current) =>
+              current.map((item) =>
+                item.localId === attachment.localId ? { ...item, progress: percent } : item,
+              ),
+            );
+          },
+        })
+          .then((result) => {
+            setAttachments((current) =>
+              current.map((item) =>
+                item.localId === attachment.localId
+                  ? {
+                      ...item,
+                      status: "ready",
+                      progress: 100,
+                      fileAssetId: result.id,
+                      name: result.filename,
+                      mimeType: result.mimeType,
+                      sizeBytes: result.sizeBytes,
+                    }
+                  : item,
+              ),
+            );
+          })
+          .catch((error) => {
+            setAttachments((current) =>
+              current.map((item) =>
+                item.localId === attachment.localId
+                  ? {
+                      ...item,
+                      status: "failed",
+                      error: error instanceof Error ? error.message : t("Upload failed"),
+                    }
+                  : item,
+              ),
+            );
+          });
+      });
+      event.target.value = "";
+    },
+    [attachments.length, t],
+  );
 
   const handleRemoveAttachment = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    const targetDataUrl = event.currentTarget.dataset.attachmentUrl;
-    if (!targetDataUrl) {
+    const targetId = event.currentTarget.dataset.attachmentId;
+    if (!targetId) {
       return;
     }
-    setAttachments((current) =>
-      current.filter((attachment) => attachment.dataUrl !== targetDataUrl),
-    );
+    setAttachments((current) => current.filter((attachment) => attachment.localId !== targetId));
   }, []);
 
   const handleKeyDown = useCallback(
@@ -146,7 +224,7 @@ export function InboxCreateInput({ coworkers, onSubmit, isSubmitting }: Props) {
           size="sm"
           className="h-8 px-2"
           onClick={handleAttachClick}
-          disabled={isSubmitting || coworkers.length === 0}
+          disabled={isSubmitting || coworkers.length === 0 || attachments.length >= MAX_FILES}
         >
           <Paperclip className="h-4 w-4" />
         </Button>
@@ -156,7 +234,11 @@ export function InboxCreateInput({ coworkers, onSubmit, isSubmitting }: Props) {
           className="h-8"
           onClick={handleSubmitClick}
           disabled={
-            isSubmitting || coworkers.length === 0 || !message.trim() || !selectedCoworkerId
+            isSubmitting ||
+            coworkers.length === 0 ||
+            !message.trim() ||
+            !selectedCoworkerId ||
+            hasUnreadyAttachments
           }
         >
           <T>Run</T>
@@ -174,13 +256,26 @@ export function InboxCreateInput({ coworkers, onSubmit, isSubmitting }: Props) {
         <div className="flex flex-wrap items-center gap-2">
           {attachments.map((attachment) => (
             <div
-              key={attachment.dataUrl}
+              key={attachment.localId}
               className="bg-secondary text-secondary-foreground flex items-center gap-2 rounded-md px-2 py-1 text-[11px]"
             >
-              <span className="max-w-[200px] truncate">{attachment.name}</span>
+              {attachment.status === "uploading" ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Paperclip className="h-3 w-3" />
+              )}
+              <span className="max-w-[200px] truncate">
+                {attachment.name}
+                {attachment.status === "uploading" ? ` ${attachment.progress}%` : ""}
+              </span>
+              {attachment.status === "failed" ? (
+                <span className="max-w-[160px] truncate text-destructive">
+                  {attachment.error ?? t("Upload failed")}
+                </span>
+              ) : null}
               <button
                 type="button"
-                data-attachment-url={attachment.dataUrl}
+                data-attachment-id={attachment.localId}
                 onClick={handleRemoveAttachment}
               >
                 <X className="h-3 w-3" />

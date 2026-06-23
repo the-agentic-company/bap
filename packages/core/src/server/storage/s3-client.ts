@@ -5,6 +5,7 @@ import {
   GetObjectCommand,
   HeadBucketCommand,
   CreateBucketCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../../env";
@@ -218,6 +219,45 @@ export async function uploadToS3(key: string, body: Buffer, contentType: string)
   );
 }
 
+export async function getPresignedUploadUrl(
+  key: string,
+  contentType: string,
+  expiresInSeconds: number = 900,
+): Promise<string> {
+  const client = getS3Client();
+
+  const command = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+    ContentType: contentType,
+  });
+
+  return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
+}
+
+export async function headS3Object(key: string): Promise<{
+  sizeBytes: number;
+  contentType?: string;
+  etag?: string;
+}> {
+  const client = getS3Client();
+
+  const response = await sendS3Operation("HeadObject", key, () =>
+    client.send(
+      new HeadObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      }),
+    ),
+  );
+
+  return {
+    sizeBytes: response.ContentLength ?? 0,
+    contentType: response.ContentType,
+    etag: response.ETag,
+  };
+}
+
 // Delete file from S3
 export async function deleteFromS3(key: string): Promise<void> {
   const client = getS3Client();
@@ -236,15 +276,34 @@ export async function deleteFromS3(key: string): Promise<void> {
 export async function getPresignedDownloadUrl(
   key: string,
   expiresInSeconds: number = 3600,
+  options?: {
+    filename?: string;
+    contentType?: string;
+  },
 ): Promise<string> {
   const client = getS3Client();
 
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
     Key: key,
+    ResponseContentDisposition: options?.filename
+      ? buildDownloadContentDisposition(options.filename)
+      : undefined,
+    ResponseContentType: options?.contentType,
   });
 
   return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
+}
+
+function buildDownloadContentDisposition(filename: string): string {
+  const fallback =
+    filename
+      .normalize("NFKD")
+      .replace(/[^\x20-\x7E]/g, "")
+      .replace(/["\\]/g, "")
+      .replace(/[/:]/g, "-")
+      .trim() || "download";
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
 // Download file content from S3 as Buffer

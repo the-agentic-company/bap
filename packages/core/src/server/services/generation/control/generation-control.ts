@@ -25,7 +25,7 @@ import type {
   GenerationStatus,
   GenerationRunMode,
 } from "../types";
-import type { UserFileAttachment } from "../queue/conversation-turn-queue";
+import { isUserFileAttachment, type UserFileAttachment } from "../attachments";
 
 export function getExecutionPolicyFromRecord(
   genRecord: typeof generation.$inferSelect,
@@ -91,14 +91,7 @@ export function getExecutionPolicyFromRecord(
     debugForceRuntimeNoProgressAfterPrompt:
       policy?.debugForceRuntimeNoProgressAfterPrompt,
     queuedFileAttachments: Array.isArray(policy?.queuedFileAttachments)
-      ? policy.queuedFileAttachments.filter(
-          (entry): entry is UserFileAttachment =>
-            !!entry &&
-            typeof entry === "object" &&
-            typeof entry.name === "string" &&
-            typeof entry.mimeType === "string" &&
-            typeof entry.dataUrl === "string",
-        )
+      ? policy.queuedFileAttachments.filter(isUserFileAttachment)
       : undefined,
     queuedUserMessageContent:
       typeof policy?.queuedUserMessageContent === "string"

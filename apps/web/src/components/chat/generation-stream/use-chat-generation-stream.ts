@@ -36,6 +36,7 @@ import {
   useSubmitApproval,
   useSubmitAuthResult,
   useUpdateConversationQueuedMessage,
+  type GenerationFileAttachment,
 } from "@/orpc/hooks/generation";
 import { useGetAuthUrl } from "@/orpc/hooks/integrations";
 import { useGenerationInitTracker } from "./chat-generation-init-tracker";
@@ -64,6 +65,22 @@ type ExistingConversationForGenerationStream = {
   type?: "chat" | "coworker";
   messages?: PersistedConversationMessage[];
 };
+
+function mapQueuedFileAttachments(
+  attachments: GenerationFileAttachment[] | undefined,
+): AttachmentData[] | undefined {
+  if (!attachments || attachments.length === 0) {
+    return undefined;
+  }
+  return attachments.map(
+    (attachment): AttachmentData => ({
+      fileAssetId: attachment.fileAssetId,
+      name: attachment.name ?? "Attachment",
+      mimeType: attachment.mimeType ?? "application/octet-stream",
+      sizeBytes: attachment.sizeBytes,
+    }),
+  );
+}
 
 function mergeDebugSnapshot(
   previous: ChatDebugSnapshot,
@@ -233,7 +250,7 @@ export function useChatGenerationStream({
         id: queuedMessage.id,
         content: queuedMessage.content,
         status: queuedMessage.status,
-        attachments: queuedMessage.fileAttachments,
+        attachments: mapQueuedFileAttachments(queuedMessage.fileAttachments),
         selectedPlatformSkillSlugs: queuedMessage.selectedPlatformSkillSlugs,
       })),
     [queuedMessages],
