@@ -134,6 +134,8 @@ projects:
                 value: production
               - key: ZERO_PORT
                 value: "4848"
+              - key: ZERO_APP_ID
+                value: zero_staging_20260623
               - key: ZERO_APP_PUBLICATIONS
                 value: zero_bap_staging
               - key: ZERO_CVR_DB
@@ -145,7 +147,7 @@ projects:
                   name: bap-postgres-staging
                   property: connectionString
               - key: ZERO_REPLICA_FILE
-                value: /data/replica.db
+                value: /data/replica-zero-staging-20260623.db
               - key: ZERO_ADMIN_PASSWORD
                 generateValue: true
               - key: ZERO_QUERY_URL

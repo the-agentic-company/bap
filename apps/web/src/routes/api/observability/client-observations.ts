@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { handleClientObservations } from "./-handlers/client-observations";
 
 /**
  * Server route for `/api/observability/client-observations`. Thin adapter over
@@ -9,7 +8,10 @@ import { handleClientObservations } from "./-handlers/client-observations";
 export const Route = createFileRoute("/api/observability/client-observations")({
   server: {
     handlers: {
-      POST: ({ request }) => handleClientObservations(request),
+      POST: async ({ request }) => {
+        const { handleClientObservations } = await import("./-handlers/client-observations");
+        return handleClientObservations(request);
+      },
     },
   },
 });

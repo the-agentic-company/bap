@@ -3,7 +3,7 @@ import { initializeWebObservabilityAtStartup } from "@/server/start/observabilit
 import { requestObservabilityMiddleware } from "@/server/start/request-observability-middleware";
 import { securityHeadersMiddleware } from "@/server/start/security-headers-middleware";
 
-initializeWebObservabilityAtStartup();
+void initializeWebObservabilityAtStartup();
 
 /**
  * TanStack Start instance: the single place for request-wide concerns.
