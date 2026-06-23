@@ -39,11 +39,23 @@ const duplicatedSandboxFilesFixture: SandboxFileData[] = [
 ];
 
 describe("MessageItem", () => {
+  it("keeps persisted message rows shrinkable inside narrow panes", () => {
+    const { container } = render(
+      <MessageItem
+        id="message-1"
+        messageRole="assistant"
+        content="very-long-unbroken-message-token-that-must-not-force-the-chat-pane-to-overlap-output"
+      />,
+    );
+
+    expect(container.firstElementChild).toHaveClass("min-w-0");
+  });
+
   it("does not render a generated sandbox file twice when the assistant text mentions its path", () => {
     render(
       <MessageItem
         id="message-1"
-        role="assistant"
+        messageRole="assistant"
         content="Done - I created `/app/report.pdf`."
         sandboxFiles={sandboxFilesFixture}
       />,
@@ -56,7 +68,7 @@ describe("MessageItem", () => {
     render(
       <MessageItem
         id="message-1"
-        role="assistant"
+        messageRole="assistant"
         content="Done - I created **/app/report.pdf**."
         sandboxFiles={duplicatedSandboxFilesFixture}
       />,

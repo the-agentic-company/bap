@@ -99,13 +99,13 @@ export function ActivityFeed({
   if (items.length === 0) {
     // Show initial loading state
     return (
-      <div className="border-border/50 bg-muted/30 rounded-lg border">
-        <div className="flex items-center gap-2 px-3 py-2">
-          <Activity className="text-muted-foreground h-4 w-4" />
-          <span className="text-muted-foreground text-sm">
+      <div className="border-border/50 bg-muted/30 max-w-full min-w-0 overflow-hidden rounded-lg border">
+        <div className="flex min-w-0 items-center gap-2 px-3 py-2">
+          <Activity className="text-muted-foreground h-4 w-4 shrink-0" />
+          <span className="text-muted-foreground min-w-0 truncate text-sm">
             <T>Processing...</T>
           </span>
-          <div className="ml-auto flex gap-1">
+          <div className="ml-auto flex shrink-0 gap-1">
             <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
             <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
             <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full" />
@@ -116,37 +116,38 @@ export function ActivityFeed({
   }
 
   return (
-    <div className="border-border/50 bg-muted/30 overflow-hidden rounded-lg border">
+    <div className="border-border/50 bg-muted/30 max-w-full min-w-0 overflow-hidden rounded-lg border">
       {/* Header */}
       <button
+        type="button"
         onClick={onToggleExpand}
-        className="hover:bg-muted/50 border-border/30 flex w-full items-center gap-2 border-b px-3 py-2 text-left text-sm transition-colors"
+        className="hover:bg-muted/50 border-border/30 flex min-w-0 w-full items-center gap-2 border-b px-3 py-2 text-left text-sm transition-colors"
       >
-        <Activity className="text-muted-foreground h-4 w-4" />
-        <span className="text-muted-foreground font-medium">
+        <Activity className="text-muted-foreground h-4 w-4 shrink-0" />
+        <span className="text-muted-foreground min-w-0 truncate font-medium">
           <T>Activity</T>
         </span>
         {isStreaming && (
-          <div className="ml-1 flex gap-1">
+          <div className="ml-1 flex shrink-0 gap-1">
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.3s]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.15s]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500" />
           </div>
         )}
-        <div className="flex-1" />
+        <div className="min-w-0 flex-1" />
         {elapsedLabel && (
-          <div className="text-muted-foreground/70 inline-flex items-center gap-1 text-xs">
-            <Timer className="h-3 w-3" />
-            <span>{elapsedLabel}</span>
+          <div className="text-muted-foreground/70 inline-flex min-w-0 shrink items-center gap-1 text-xs">
+            <Timer className="h-3 w-3 shrink-0" />
+            <span className="truncate">{elapsedLabel}</span>
           </div>
         )}
-        <span className="text-muted-foreground/60 text-xs">
+        <span className="text-muted-foreground/60 shrink-0 text-xs">
           {items.length} <T>items</T>
         </span>
         {isExpanded ? (
-          <ChevronUp className="text-muted-foreground h-4 w-4" />
+          <ChevronUp className="text-muted-foreground h-4 w-4 shrink-0" />
         ) : (
-          <ChevronDown className="text-muted-foreground h-4 w-4" />
+          <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" />
         )}
       </button>
 
@@ -155,13 +156,13 @@ export function ActivityFeed({
         initial={false}
         animate={contentAnimate}
         transition={ACTIVITY_FEED_EXPAND_TRANSITION}
-        className="overflow-hidden"
+        className="min-w-0 max-w-full overflow-hidden"
       >
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
           className={cn(
-            "overflow-y-auto px-3 py-2",
+            "max-w-full min-w-0 overflow-x-hidden overflow-y-auto px-3 py-2",
             isExpanded ? `h-[${MAX_EXPANDED_HEIGHT}px]` : `h-[${COLLAPSED_HEIGHT}px]`,
           )}
           style={contentStyle}
@@ -174,6 +175,7 @@ export function ActivityFeed({
                 animate={ACTIVITY_ITEM_ANIMATE}
                 exit={ACTIVITY_ITEM_EXIT}
                 transition={ACTIVITY_ITEM_TRANSITION}
+                className="min-w-0 max-w-full"
               >
                 <ActivityItem item={item} executorSources={executorSources} />
               </motion.div>
@@ -184,8 +186,8 @@ export function ActivityFeed({
 
       {/* Integration badges footer */}
       {displayIntegrations.length > 0 && (
-        <div className="border-border/30 bg-muted/20 border-t px-3 py-1.5">
-          <IntegrationBadges integrations={displayIntegrations} size="sm" />
+        <div className="border-border/30 bg-muted/20 min-w-0 border-t px-3 py-1.5">
+          <IntegrationBadges integrations={displayIntegrations} size="sm" className="min-w-0" />
         </div>
       )}
     </div>

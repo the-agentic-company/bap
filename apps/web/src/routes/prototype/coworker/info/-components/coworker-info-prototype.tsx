@@ -114,7 +114,7 @@ function EmptyPreview({
             <MessageSquareText className="text-muted-foreground h-4 w-4" />
             <p className="text-sm font-medium">Latest coworker message</p>
           </div>
-          <MessageBubble role="assistant" content={latestMessage} />
+          <MessageBubble messageRole="assistant" content={latestMessage} />
         </div>
       </div>
     );

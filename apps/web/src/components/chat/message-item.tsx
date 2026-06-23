@@ -32,7 +32,7 @@ type DisplaySegment = {
 
 type Props = {
   id: string;
-  role: "user" | "assistant" | "system" | "tool";
+  messageRole: "user" | "assistant" | "system" | "tool";
   content: string;
   parts?: MessagePart[];
   integrationsUsed?: string[];
@@ -84,7 +84,7 @@ function parseQuestionAnswersFromResult(result: unknown): string[][] | undefined
 
 export function MessageItem({
   id,
-  role,
+  messageRole,
   content,
   parts,
   integrationsUsed,
@@ -425,9 +425,9 @@ export function MessageItem({
   const hasApprovals = segments.some((seg) => seg.approval !== null);
 
   // For user messages, show simple bubble + attachments
-  if (role === "user") {
+  if (messageRole === "user") {
     return (
-      <div data-testid="chat-message-user" className="space-y-2 py-4">
+      <div data-testid="chat-message-user" className="min-w-0 space-y-2 py-4">
         {attachments && attachments.length > 0 && (
           <div className="flex flex-wrap justify-end gap-2">
             {attachments.map((a) =>
@@ -493,19 +493,19 @@ export function MessageItem({
             )}
           </div>
         )}
-        <MessageBubble role="user" content={content} />
+        <MessageBubble messageRole="user" content={content} />
       </div>
     );
   }
 
   return (
     <div
-      data-testid={role === "assistant" ? "chat-message-assistant" : undefined}
-      className="space-y-3 py-4"
+      data-testid={messageRole === "assistant" ? "chat-message-assistant" : undefined}
+      className="min-w-0 space-y-3 py-4"
     >
       {/* Show segmented trace if there are approvals, otherwise show collapsed trace */}
       {coworkerInvocations.length > 0 && (
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {coworkerInvocations.map((invocation) => (
             <CoworkerInvocationCard
               key={invocation.runId}
@@ -526,7 +526,7 @@ export function MessageItem({
         segments.length > 0 &&
         (hasApprovals ? (
           // Segmented display with approvals between segments
-          <div className="space-y-3">
+          <div className="min-w-0 space-y-3">
             {(() => {
               const renderedSegments = [];
 
@@ -542,7 +542,7 @@ export function MessageItem({
                 const isExpanded = expandedSegments.has(segment.id);
 
                 renderedSegments.push(
-                  <div key={segment.id} className="space-y-3">
+                  <div key={segment.id} className="min-w-0 space-y-3">
                     {segment.items.length > 0 && (
                       <CollapsedTrace
                         messageId={`${id}-${segment.id}`}
@@ -601,7 +601,7 @@ export function MessageItem({
         ))}
 
       {/* Show message bubble if there's text content */}
-      {textContent && <MessageBubble role="assistant" content={textContent} />}
+      {textContent && <MessageBubble messageRole="assistant" content={textContent} />}
 
       {/* Show sandbox files as downloadable attachments */}
       {displaySandboxFiles && displaySandboxFiles.length > 0 && (
@@ -610,6 +610,7 @@ export function MessageItem({
             <button
               key={file.fileId}
               data-file-id={file.fileId}
+              type="button"
               onClick={handleSandboxFileClick}
               className="bg-muted hover:bg-muted/80 flex max-w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors"
             >

@@ -7,6 +7,7 @@ import {
   AGENTIC_APP_PROMPT_RESULT_TYPE,
   AGENTIC_APP_PROMPT_TYPE,
 } from "@/components/chat/agentic-app-protocol";
+import type { Message } from "@/components/chat/message-list";
 
 const {
   mockUseAgenticAppHtml,
@@ -48,7 +49,7 @@ vi.mock("posthog-js/react", () => ({
   usePostHog: () => ({ capture: vi.fn<() => void>() }),
 }));
 
-import { OutputPanel } from "./coworker-info-panels";
+import { OutputPanel, RunDetailsPanel } from "./coworker-info-panels";
 
 const outputFile = {
   fileId: "file-1",
@@ -57,6 +58,8 @@ const outputFile = {
   mimeType: "text/html",
   sizeBytes: 128,
 };
+const runningRun = { status: "running" } as const;
+const emptyMessages: Message[] = [];
 
 let now = 10_000_000;
 
@@ -141,5 +144,23 @@ describe("OutputPanel Agentic-App prompts", () => {
     });
     expect(mockUseSendAgenticAppPrompt).toHaveBeenCalledWith("conv-run-2");
     expect(mockSendAgenticAppPrompt).toHaveBeenCalledExactlyOnceWith("Edit the proposed email");
+  });
+});
+
+describe("RunDetailsPanel layout", () => {
+  it("keeps the chat tab shrinkable inside the split workspace", () => {
+    const { container } = render(
+      <RunDetailsPanel
+        activeTab="chat"
+        onTabChange={vi.fn<() => void>()}
+        isFetchingConversation={false}
+        run={runningRun}
+        messages={emptyMessages}
+        conversationId="conv-run-1"
+      />,
+    );
+
+    expect(container.firstElementChild?.className).toContain("min-w-0");
+    expect(screen.getByTestId("chat-area").parentElement?.className).toContain("min-w-0");
   });
 });

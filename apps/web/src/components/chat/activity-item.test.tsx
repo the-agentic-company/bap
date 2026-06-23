@@ -33,6 +33,56 @@ const textLinkFixture: ActivityItemData = {
   content: "[Google](https://google.com)",
 };
 
+const longStreamingTextFixture: ActivityItemData = {
+  id: "text-long-1",
+  timestamp: 1,
+  type: "text",
+  content:
+    "Streaming content can include a very-long-unbroken-token-that-must-not-expand-the-live-activity-pane-outside-the-window",
+};
+
+const longThinkingFixture: ActivityItemData = {
+  id: "thinking-long-1",
+  timestamp: 1,
+  type: "thinking",
+  content:
+    "Thinking about a very-long-unbroken-token-that-must-not-expand-the-live-activity-pane-outside-the-window",
+};
+
+const longSystemFixture: ActivityItemData = {
+  id: "system-long-1",
+  timestamp: 1,
+  type: "system",
+  content:
+    "warning: very-long-unbroken-system-message-that-must-not-expand-the-live-activity-pane-outside-the-window",
+};
+
+const longToolLabelFixture: ActivityItemData = {
+  id: "tool-long-1",
+  timestamp: 1,
+  type: "tool_call",
+  content: "long-tool",
+  toolName: "long-tool",
+  status: "running",
+  input: {
+    description:
+      "very-long-unbroken-tool-label-that-must-not-expand-the-live-activity-pane-outside-the-window",
+  },
+};
+
+const longToolDetailsFixture: ActivityItemData = {
+  id: "tool-details-long-1",
+  timestamp: 1,
+  type: "tool_call",
+  content: "Bash",
+  toolName: "Bash",
+  status: "complete",
+  input: {
+    command: "command-with-a-very-long-unbroken-token-that-must-wrap-inside-expanded-tool-details",
+  },
+  result: "result-with-a-very-long-unbroken-token-that-must-wrap-inside-expanded-tool-details",
+};
+
 const coworkerToolCallFixture: ActivityItemData = {
   id: "tool-2",
   timestamp: 2,
@@ -109,6 +159,75 @@ describe("ActivityItem", () => {
     expect(link).toHaveAttribute("href", "https://google.com");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("constrains streamed text activity so it wraps inside narrow panes", () => {
+    const { container } = render(<ActivityItem item={longStreamingTextFixture} />);
+
+    expect(container.firstElementChild).toHaveClass(
+      "min-w-0",
+      "overflow-hidden",
+      "break-words",
+      "[overflow-wrap:anywhere]",
+      "prose-pre:max-w-full",
+      "prose-pre:whitespace-pre-wrap",
+      "prose-code:break-words",
+    );
+  });
+
+  it("constrains thinking and system activity so they wrap inside narrow panes", () => {
+    const thinking = render(<ActivityItem item={longThinkingFixture} />);
+
+    expect(thinking.container.firstElementChild).toHaveClass(
+      "min-w-0",
+      "overflow-hidden",
+      "break-words",
+      "[overflow-wrap:anywhere]",
+    );
+
+    cleanup();
+
+    const system = render(<ActivityItem item={longSystemFixture} />);
+
+    expect(system.container.firstElementChild).toHaveClass("min-w-0", "overflow-hidden");
+    expect(
+      screen.getByText(
+        "warning: very-long-unbroken-system-message-that-must-not-expand-the-live-activity-pane-outside-the-window",
+      ),
+    ).toHaveClass("min-w-0", "break-words", "[overflow-wrap:anywhere]");
+  });
+
+  it("constrains tool labels inside the live activity row", () => {
+    render(<ActivityItem item={longToolLabelFixture} />);
+
+    expect(
+      screen.getByText(
+        "very-long-unbroken-tool-label-that-must-not-expand-the-live-activity-pane-outside-the-window",
+      ),
+    ).toHaveClass("min-w-0", "flex-1", "truncate");
+  });
+
+  it("wraps expanded tool details instead of relying on horizontal scrolling", () => {
+    const { container } = render(<ActivityItem item={longToolDetailsFixture} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show tool details" }));
+
+    const details = container.querySelector(".ml-5");
+    const preBlocks = Array.from(container.querySelectorAll("pre"));
+
+    expect(details).toHaveClass("min-w-0", "max-w-full", "overflow-hidden");
+    expect(preBlocks).toHaveLength(2);
+    for (const pre of preBlocks) {
+      expect(pre).toHaveClass(
+        "min-w-0",
+        "max-w-full",
+        "overflow-hidden",
+        "break-words",
+        "[overflow-wrap:anywhere]",
+        "whitespace-pre-wrap",
+      );
+      expect(pre).not.toHaveClass("overflow-x-auto");
+    }
   });
 
   it("uses tool input description as the visible label", () => {

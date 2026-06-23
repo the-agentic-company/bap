@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import type { SandboxFileData } from "./message-list";
 
 type Props = {
-  role: "user" | "assistant";
+  messageRole: "user" | "assistant";
   content: string;
   className?: string;
   sandboxFiles?: SandboxFileData[];
@@ -41,15 +41,21 @@ function MarkdownFileButton({
   }, [file, onFileClick]);
 
   return (
-    <button onClick={handleClick} className={className}>
+    <button type="button" onClick={handleClick} className={className}>
       {label}
       <Download className="h-3 w-3" />
     </button>
   );
 }
 
-export function MessageBubble({ role, content, className, sandboxFiles, onFileClick }: Props) {
-  const isUser = role === "user";
+export function MessageBubble({
+  messageRole,
+  content,
+  className,
+  sandboxFiles,
+  onFileClick,
+}: Props) {
+  const isUser = messageRole === "user";
 
   // Create a map of path -> sandbox file for quick lookup
   const fileMap = useMemo(() => {
@@ -174,8 +180,8 @@ export function MessageBubble({ role, content, className, sandboxFiles, onFileCl
 
   if (isUser) {
     return (
-      <div data-testid="chat-bubble-user" className={cn("flex justify-end", className)}>
-        <div className="bg-primary text-primary-foreground max-w-[80%] min-w-0 rounded-lg px-4 py-2">
+      <div data-testid="chat-bubble-user" className={cn("flex min-w-0 justify-end", className)}>
+        <div className="bg-primary text-primary-foreground max-w-[80%] min-w-0 overflow-hidden rounded-lg px-4 py-2">
           <p className="text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">{content}</p>
         </div>
       </div>
@@ -183,8 +189,8 @@ export function MessageBubble({ role, content, className, sandboxFiles, onFileCl
   }
 
   return (
-    <div data-testid="chat-bubble-assistant" className={className}>
-      <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-code:break-words max-w-none overflow-hidden break-words">
+    <div data-testid="chat-bubble-assistant" className={cn("min-w-0", className)}>
+      <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-words max-w-none min-w-0 overflow-hidden [overflow-wrap:anywhere] break-words">
         <ReactMarkdown remarkPlugins={MARKDOWN_REMARK_PLUGINS} components={markdownComponents}>
           {content}
         </ReactMarkdown>

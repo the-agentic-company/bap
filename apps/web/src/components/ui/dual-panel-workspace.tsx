@@ -236,7 +236,7 @@ export function DualPanelWorkspace({
   );
 
   return (
-    <div className={cn("flex min-h-0 w-full flex-1 flex-col", className)}>
+    <div className={cn("flex min-h-0 min-w-0 w-full flex-1 flex-col", className)}>
       {!hideMobileToggle && (
         <div className="mb-3 flex items-center gap-2 md:hidden">
           <Button
@@ -259,11 +259,11 @@ export function DualPanelWorkspace({
       )}
 
       {!hideMobileToggle && (
-        <div className="flex min-h-0 flex-1 md:hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 md:hidden">
           {mobilePanel === "left" ? (
             <section
               className={cn(
-                "bg-background flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border",
+                "bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border",
                 leftPanelClassName,
               )}
             >
@@ -272,12 +272,12 @@ export function DualPanelWorkspace({
                   {leftTitle}
                 </div>
               )}
-              <div className="flex min-h-0 flex-1 flex-col">{left}</div>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">{left}</div>
             </section>
           ) : (
             <section
               className={cn(
-                "bg-background flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border",
+                "bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border",
                 rightPanelClassName,
               )}
             >
@@ -286,16 +286,16 @@ export function DualPanelWorkspace({
                   {rightTitle}
                 </div>
               )}
-              <div className="flex min-h-0 flex-1 flex-col">{right}</div>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">{right}</div>
             </section>
           )}
         </div>
       )}
 
-      <div ref={containerRef} className="hidden min-h-0 flex-1 md:flex">
+      <div ref={containerRef} className="hidden min-h-0 min-w-0 flex-1 md:flex">
         <section
           className={cn(
-            "bg-background flex min-h-0 flex-col overflow-hidden rounded-l-xl border",
+            "bg-background flex min-h-0 min-w-0 flex-col overflow-hidden rounded-l-xl border",
             isDragging ? "pointer-events-none" : "transition-[width] duration-200 ease-out",
             leftPanelClassName,
           )}
@@ -306,7 +306,7 @@ export function DualPanelWorkspace({
               {leftTitle}
             </div>
           )}
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{left}</div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{left}</div>
         </section>
 
         {/* Separator — hidden when collapsed sidebar mode is active */}
@@ -394,7 +394,7 @@ export function DualPanelWorkspace({
         {!(collapsedSidebar && isCollapsed) && (
           <section
             className={cn(
-              "bg-background flex min-h-0 flex-col overflow-hidden rounded-r-xl border",
+              "bg-background flex min-h-0 min-w-0 flex-col overflow-hidden rounded-r-xl border",
               isDragging ? "pointer-events-none" : "transition-[width] duration-200 ease-out",
               isCollapsed && "border-0",
               rightPanelClassName,
@@ -408,7 +408,7 @@ export function DualPanelWorkspace({
                     {rightTitle}
                   </div>
                 )}
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{right}</div>
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">{right}</div>
               </>
             )}
           </section>

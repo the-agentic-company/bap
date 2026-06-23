@@ -274,7 +274,7 @@ export function ActivityItem({ item, executorSources = EMPTY_EXECUTOR_SOURCES }:
   // Render text content (agent response)
   if (type === "text") {
     return (
-      <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 text-foreground max-w-none py-0.5 text-xs">
+      <div className="prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-1 prose-pre:max-w-full prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-words text-foreground max-w-none min-w-0 overflow-hidden [overflow-wrap:anywhere] break-words py-0.5 text-xs">
         <ReactMarkdown
           remarkPlugins={MARKDOWN_REMARK_PLUGINS}
           components={ACTIVITY_MARKDOWN_COMPONENTS}
@@ -288,7 +288,7 @@ export function ActivityItem({ item, executorSources = EMPTY_EXECUTOR_SOURCES }:
   // Render thinking content
   if (type === "thinking") {
     return (
-      <div className="text-muted-foreground py-0.5 text-xs whitespace-pre-wrap italic">
+      <div className="text-muted-foreground min-w-0 overflow-hidden [overflow-wrap:anywhere] break-words py-0.5 text-xs whitespace-pre-wrap italic">
         {content}
       </div>
     );
@@ -299,9 +299,9 @@ export function ActivityItem({ item, executorSources = EMPTY_EXECUTOR_SOURCES }:
     const isWarning = content.toLowerCase().includes("warning");
     const SystemIcon = isWarning ? AlertCircle : StopCircle;
     return (
-      <div className="flex items-center gap-1.5 py-0.5 text-xs text-orange-600 dark:text-orange-400">
+      <div className="flex min-w-0 items-start gap-1.5 overflow-hidden py-0.5 text-xs text-orange-600 dark:text-orange-400">
         <SystemIcon className="h-3.5 w-3.5 flex-shrink-0" />
-        <span className="font-medium">{content}</span>
+        <span className="min-w-0 [overflow-wrap:anywhere] break-words font-medium">{content}</span>
       </div>
     );
   }
@@ -334,29 +334,27 @@ export function ActivityItem({ item, executorSources = EMPTY_EXECUTOR_SOURCES }:
   const requestLabel = toolName ? `Request (${toolName})` : "Request";
 
   return (
-    <div className="py-0.5 text-xs">
+    <div className="min-w-0 max-w-full py-0.5 text-xs">
       {hasDetails ? (
         <button
           type="button"
           onClick={handleToggleDetails}
-          className="hover:bg-muted/30 -ml-0.5 flex w-full items-center gap-1.5 rounded px-0.5 py-0.5 text-left"
+          className="hover:bg-muted/30 -ml-0.5 flex min-w-0 w-full items-center gap-1.5 rounded px-0.5 py-0.5 text-left"
           aria-label={showDetails ? "Hide tool details" : "Show tool details"}
         >
           {getIcon()}
-          <span className="text-foreground font-mono">{displayName}</span>
-          <span className="inline-flex items-center">
+          <span className="text-foreground min-w-0 flex-1 truncate font-mono">{displayName}</span>
+          <span className="inline-flex shrink-0 items-center">
             <ArrowRight
               className={`text-muted-foreground h-3 w-3 flex-shrink-0 transition-transform duration-200 ${showDetails ? "rotate-90" : ""}`}
             />
           </span>
-          <div className="flex-1" />
           {getStatusIcon()}
         </button>
       ) : (
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           {getIcon()}
-          <span className="text-foreground font-mono">{displayName}</span>
-          <div className="flex-1" />
+          <span className="text-foreground min-w-0 flex-1 truncate font-mono">{displayName}</span>
           {getStatusIcon()}
         </div>
       )}
@@ -367,25 +365,25 @@ export function ActivityItem({ item, executorSources = EMPTY_EXECUTOR_SOURCES }:
             animate={TOOL_DETAILS_ANIMATE}
             exit={TOOL_DETAILS_EXIT}
             transition={TOOL_DETAILS_TRANSITION}
-            className="mt-1 ml-5 overflow-hidden"
+            className="mt-1 ml-5 min-w-0 max-w-full overflow-hidden"
           >
-            <div className="border-border/60 space-y-2 border-l pl-3">
+            <div className="border-border/60 min-w-0 max-w-full space-y-2 border-l pl-3">
               {formattedInput && (
-                <div className="space-y-1">
+                <div className="min-w-0 max-w-full space-y-1">
                   <p className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
                     {requestLabel}
                   </p>
-                  <pre className="bg-muted/40 text-muted-foreground overflow-x-auto rounded-sm px-2 py-1 font-mono text-[11px] leading-relaxed whitespace-pre-wrap">
+                  <pre className="bg-muted/40 text-muted-foreground max-w-full min-w-0 overflow-hidden rounded-sm px-2 py-1 font-mono text-[11px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] break-words">
                     {formattedInput}
                   </pre>
                 </div>
               )}
               {formattedResult && (
-                <div className="space-y-1">
+                <div className="min-w-0 max-w-full space-y-1">
                   <p className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
                     <T>Response</T>
                   </p>
-                  <pre className="bg-muted/40 text-muted-foreground overflow-x-auto rounded-sm px-2 py-1 font-mono text-[11px] leading-relaxed whitespace-pre-wrap">
+                  <pre className="bg-muted/40 text-muted-foreground max-w-full min-w-0 overflow-hidden rounded-sm px-2 py-1 font-mono text-[11px] leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] break-words">
                     {formattedResult}
                   </pre>
                 </div>

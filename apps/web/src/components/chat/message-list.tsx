@@ -90,7 +90,7 @@ export function MessageList({ messages }: Props) {
   const idCounts = new Map<string, number>();
 
   return (
-    <div data-testid="chat-message-list" className="space-y-2">
+    <div data-testid="chat-message-list" className="min-w-0 space-y-2">
       {messages.map((message) => {
         const count = (idCounts.get(message.id) ?? 0) + 1;
         idCounts.set(message.id, count);
@@ -100,7 +100,7 @@ export function MessageList({ messages }: Props) {
           <MessageItem
             key={messageKey}
             id={message.id}
-            role={message.role}
+            messageRole={message.role}
             content={message.content}
             parts={message.parts}
             integrationsUsed={message.integrationsUsed}

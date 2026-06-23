@@ -14,7 +14,36 @@ afterEach(() => {
   cleanup();
 });
 
+const LONG_LEFT_PANEL = (
+  <pre>
+    very-long-unbroken-content-that-should-not-force-the-left-panel-to-overlap-the-right-panel
+  </pre>
+);
+
 describe("DualPanelWorkspace", () => {
+  it("allows percentage-width panels to shrink below their content min-width", () => {
+    const { container } = render(
+      <DualPanelWorkspace
+        left={LONG_LEFT_PANEL}
+        right="Right panel"
+        defaultRightWidth={75}
+        minLeftWidth={25}
+        minRightWidth={40}
+        showTitles={false}
+        hideMobileToggle
+      />,
+    );
+
+    const [leftSection, rightSection] = Array.from(container.querySelectorAll("section"));
+    const leftContent = leftSection?.firstElementChild;
+    const rightContent = rightSection?.firstElementChild;
+
+    expect(leftSection).toHaveClass("min-w-0");
+    expect(rightSection).toHaveClass("min-w-0");
+    expect(leftContent).toHaveClass("min-w-0");
+    expect(rightContent).toHaveClass("min-w-0");
+  });
+
   it("forces the right panel min-width to zero when collapsed", () => {
     const { container } = render(
       <DualPanelWorkspace

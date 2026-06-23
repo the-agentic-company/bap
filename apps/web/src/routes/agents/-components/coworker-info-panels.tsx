@@ -271,7 +271,7 @@ function EmptyPreview({
               <T>Latest coworker message</T>
             </p>
           </div>
-          <MessageBubble role="assistant" content={latestMessage} />
+          <MessageBubble messageRole="assistant" content={latestMessage} />
         </div>
       </div>
     );
@@ -647,8 +647,8 @@ export function RunDetailsPanel({
   conversationId?: string;
 }) {
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex min-h-12 shrink-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+    <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      <div className="flex min-h-12 min-w-0 shrink-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
         <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange}>
           <AnimatedTab value="summary">
             <T>Summary</T>
@@ -665,9 +665,9 @@ export function RunDetailsPanel({
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         {activeTab === "summary" ? (
-          <div className="h-full overflow-auto">
+          <div className="h-full min-w-0 overflow-auto">
             <RunSummaryPanel
               status={run.status}
               startedAt={run.startedAt}
@@ -677,7 +677,7 @@ export function RunDetailsPanel({
             />
           </div>
         ) : conversationId ? (
-          <div className="flex h-full min-h-0 overflow-hidden">
+          <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
             <ChatArea conversationId={conversationId} compact />
           </div>
         ) : (

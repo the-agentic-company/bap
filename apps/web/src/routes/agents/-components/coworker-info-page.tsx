@@ -450,11 +450,11 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
 
   if (!run.data && !coworkerRuns.data?.length) {
     return (
-      <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 flex-col overflow-hidden md:h-dvh">
+      <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 min-w-0 flex-col overflow-hidden md:h-dvh">
         {headerSection}
 
-        <div className="flex min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
-          <div className="flex min-h-0 flex-1 flex-col overflow-auto md:hidden">
+        <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto md:hidden">
             <div className="space-y-3 px-4 pt-4">
               <CoworkerInfoEmptySummary />
             </div>
@@ -469,7 +469,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
             </div>
           </div>
 
-          <div className="hidden min-h-0 flex-1 md:flex">
+          <div className="hidden min-h-0 min-w-0 flex-1 md:flex">
             <DualPanelWorkspace
               storageKey="agent-info-details-output-width-v3"
               defaultRightWidth={75}
@@ -492,10 +492,10 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   }
 
   return (
-    <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 flex-col overflow-hidden md:h-dvh">
+    <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 min-w-0 flex-col overflow-hidden md:h-dvh">
       {headerSection}
 
-      <div className="flex min-h-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
+      <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
 
         {(run.data?.status === "error" || run.data?.status === "cancelled") && (
@@ -512,7 +512,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           </section>
         )}
 
-        <div className="flex min-h-0 flex-1 flex-col md:hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col md:hidden">
           <div
             role="tablist"
             className="border-border bg-background grid shrink-0 grid-cols-3 border-b"
@@ -572,7 +572,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
 
           <section
             data-testid="coworker-info-mobile-panel"
-            className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden"
+            className="bg-background relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
             onPointerDown={handleMobilePanelPointerDown}
             onPointerUp={handleMobilePanelPointerUp}
             onPointerCancel={handleMobilePanelPointerCancel}
@@ -604,7 +604,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                 animate="center"
                 exit="exit"
                 transition={MOBILE_PANEL_TRANSITION}
-                className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
               >
                 {mobilePanel === "app" ? (
                   outputPanel
@@ -717,7 +717,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                     />
                   </div>
                 ) : conversationId ? (
-                  <div className="flex h-full min-h-0 overflow-hidden">
+                  <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
                     <ChatArea conversationId={conversationId} compact />
                   </div>
                 ) : (
@@ -730,7 +730,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           </section>
         </div>
 
-        <div className="hidden min-h-0 flex-1 md:flex">
+        <div className="hidden min-h-0 min-w-0 flex-1 md:flex">
           <DualPanelWorkspace
             storageKey="agent-info-details-output-width-v3"
             defaultRightWidth={75}

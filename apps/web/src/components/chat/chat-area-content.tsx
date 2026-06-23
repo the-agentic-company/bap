@@ -340,13 +340,16 @@ export function ChatAreaContent({
   const m = useMessages();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className={cn("h-0 flex-1 overflow-y-auto", compact ? "p-3" : "p-4")}
+        className={cn(
+          "h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto",
+          compact ? "p-3" : "p-4",
+        )}
       >
-        <div className={cn("mx-auto min-w-0", compact ? "max-w-full" : "max-w-3xl")}>
+        <div className={cn("mx-auto w-full min-w-0", compact ? "max-w-full" : "max-w-3xl")}>
           {showModelSwitchWarning && (
             <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -366,22 +369,22 @@ export function ChatAreaContent({
           {isEmptyChat ? null : (
             <>
               {showLiveActivity && (
-                <div className="space-y-4 py-4">
+                <div className="max-w-full min-w-0 space-y-4 py-4">
                   {showInitialLiveActivity && (
-                    <div className="border-border/50 bg-muted/30 rounded-lg border">
-                      <div className="flex items-center gap-2 px-3 py-2">
-                        <Activity className="text-muted-foreground h-4 w-4" />
-                        <span className="text-muted-foreground text-sm">
+                    <div className="border-border/50 bg-muted/30 max-w-full min-w-0 overflow-hidden rounded-lg border">
+                      <div className="flex min-w-0 items-center gap-2 px-3 py-2">
+                        <Activity className="text-muted-foreground h-4 w-4 shrink-0" />
+                        <span className="text-muted-foreground min-w-0 truncate text-sm">
                           {getAgentInitLabel(agentInitStatus)}
                         </span>
-                        <div className="flex-1" />
+                        <div className="min-w-0 flex-1" />
                         {initElapsedLabel && (
-                          <div className="text-muted-foreground/70 inline-flex items-center gap-1 text-xs">
-                            <Timer className="h-3 w-3" />
-                            <span>{initElapsedLabel}</span>
+                          <div className="text-muted-foreground/70 inline-flex min-w-0 shrink items-center gap-1 text-xs">
+                            <Timer className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{initElapsedLabel}</span>
                           </div>
                         )}
-                        <div className="flex gap-1">
+                        <div className="flex shrink-0 gap-1">
                           <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
                           <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
                           <span className="bg-muted-foreground/50 h-1.5 w-1.5 animate-bounce rounded-full" />
@@ -401,7 +404,7 @@ export function ChatAreaContent({
                     );
 
                     return (
-                      <div key={segment.id} className="space-y-4">
+                      <div key={segment.id} className="max-w-full min-w-0 space-y-4">
                         {visibleSegmentItems.length > 0 && (
                           <ActivityFeed
                             items={visibleSegmentItems}
@@ -458,7 +461,7 @@ export function ChatAreaContent({
         </div>
       </div>
 
-      <div className={cn("bg-background mt-auto shrink-0", compact ? "p-3" : "p-4")}>
+      <div className={cn("bg-background mt-auto min-w-0 shrink-0", compact ? "p-3" : "p-4")}>
         <div
           className={cn("mx-auto w-full min-w-0 space-y-2", compact ? "max-w-full" : "max-w-4xl")}
         >
