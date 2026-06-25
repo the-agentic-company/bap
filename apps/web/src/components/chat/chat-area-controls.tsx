@@ -312,14 +312,15 @@ export function useChatAreaControls({
     [isStreaming, normalizedSelectedModel, providerAvailability, selectedAuthSource, setSelection],
   );
 
-  const autoApprovalNode = useMemo(
-    () => (
+  const autoApprovalNode = useMemo(() => {
+    if (isCoworkerConversation) return null;
+
+    return (
       <div className="flex items-center gap-1.5">
         <Switch
           id="auto-approve"
-          checked={isCoworkerConversation ? false : autoApproveEnabled}
+          checked={autoApproveEnabled}
           onCheckedChange={handleAutoApproveChange}
-          disabled={isCoworkerConversation}
         />
         <label
           htmlFor="auto-approve"
@@ -331,9 +332,8 @@ export function useChatAreaControls({
           </span>
         </label>
       </div>
-    ),
-    [autoApproveEnabled, handleAutoApproveChange, isCoworkerConversation],
-  );
+    );
+  }, [autoApproveEnabled, handleAutoApproveChange, isCoworkerConversation]);
 
   const debugControlNode = useMemo(() => {
     if (!isAdmin || isAdminLoading) {
