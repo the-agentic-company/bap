@@ -1,10 +1,12 @@
 import { auth } from "@/lib/auth";
 import { buildRequestAwareUrl } from "@/lib/request-aware-url";
 import {
-  assertHostedMcpWorkspaceMembership,
   createHostedMcpAuthorizationCode,
   listHostedMcpConsentWorkspaces,
+  normalizeHostedMcpSelectedWorkspaceIds,
   parseHostedMcpAuthorizationRequest,
+  resolveHostedMcpConsentWorkspaceId,
+  resolveHostedMcpWorkspaceConsent,
   renderHostedMcpConsentHtml,
 } from "@/server/hosted-mcp-oauth";
 
@@ -69,14 +71,16 @@ export async function handleHostedMcpAuthorizeGet(request: Request): Promise<Res
         clientId: parsed.clientId,
         clientName: parsed.clientName,
         redirectUri: parsed.redirectUri,
+        audience: parsed.audience,
         resource: parsed.resource,
         resourceName: parsed.resourceName,
         scopes: parsed.scopes,
         state: parsed.state,
         codeChallenge: parsed.codeChallenge,
-        currentWorkspaceId:
-          workspaces.find((workspace) => workspace.active)?.id ?? workspaces[0]?.id ?? null,
+        currentWorkspaceId: resolveHostedMcpConsentWorkspaceId(workspaces),
         workspaces,
+        selectedWorkspaceIds: workspaces.map((workspace) => workspace.id),
+        allowAllWorkspaces: parsed.audience === "bap",
       }),
       {
         headers: {
@@ -125,20 +129,24 @@ export async function handleHostedMcpAuthorizePost(request: Request): Promise<Re
       });
     }
 
-    const workspaceId = String(formData.get("workspace_id") ?? "").trim();
-    if (!workspaceId) {
-      return buildErrorRedirect(parsed.redirectUri, {
-        error: "invalid_request",
-        description: "workspace_id is required.",
-        state: parsed.state,
-      });
-    }
+    const workspaces = await listHostedMcpConsentWorkspaces(sessionData.user.id);
+    const workspaceConsent = await resolveHostedMcpWorkspaceConsent({
+      audience: parsed.audience,
+      userId: sessionData.user.id,
+      workspaces,
+      workspaceAccessMode: String(formData.get("workspace_access_mode") ?? "").trim() || null,
+      selectedWorkspaceIds: normalizeHostedMcpSelectedWorkspaceIds(
+        formData.getAll("workspace_ids"),
+      ),
+      workspaceId: String(formData.get("workspace_id") ?? "").trim() || null,
+    });
 
-    await assertHostedMcpWorkspaceMembership(sessionData.user.id, workspaceId);
     const code = await createHostedMcpAuthorizationCode({
       clientId: parsed.clientId,
       userId: sessionData.user.id,
-      workspaceId,
+      workspaceId: workspaceConsent.workspaceId,
+      allowedWorkspaceIds: workspaceConsent.allowedWorkspaceIds,
+      allowAllWorkspaces: workspaceConsent.allowAllWorkspaces,
       resource: parsed.resource,
       scopes: parsed.scopes,
       redirectUri: parsed.redirectUri,

@@ -90,6 +90,7 @@ vi.mock("@bap/core/server/hosted-mcp-oauth", () => ({
 import {
   exchangeHostedMcpRefreshToken,
   parseHostedMcpAuthorizationRequest,
+  renderHostedMcpConsentHtml,
 } from "./hosted-mcp-oauth";
 
 describe("hosted MCP OAuth refresh tokens", () => {
@@ -109,6 +110,8 @@ describe("hosted MCP OAuth refresh tokens", () => {
       clientId: "client-1",
       userId: "user-1",
       workspaceId: "workspace-1",
+      allowedWorkspaceIds: ["workspace-1", "workspace-2"],
+      allowAllWorkspaces: false,
       audience: "galien",
       resource: "https://mcp.example.com/galien/mcp",
       scopes: ["galien"],
@@ -162,6 +165,8 @@ describe("hosted MCP OAuth refresh tokens", () => {
       clientId: "client-1",
       userId: "user-1",
       workspaceId: "workspace-1",
+      allowedWorkspaceIds: ["workspace-1"],
+      allowAllWorkspaces: false,
       audience: "bap",
       resource: "http://127.0.0.1:3010/bap",
       scopes: ["bap"],
@@ -177,6 +182,8 @@ describe("hosted MCP OAuth refresh tokens", () => {
 
     expect(signHostedMcpAccessTokenMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        allowedWorkspaceIds: ["workspace-1"],
+        allowAllWorkspaces: false,
         audience: "bap",
         issuer: "http://127.0.0.1:3010/bap",
       }),
@@ -223,5 +230,55 @@ describe("hosted MCP OAuth authorization requests", () => {
       resourceName: "Bap MCP",
       scopes: ["bap"],
     });
+  });
+
+  it("hides selected workspace checkboxes when all workspaces are authorized", () => {
+    const html = renderHostedMcpConsentHtml({
+      clientId: "client-1",
+      clientName: "Codex",
+      redirectUri: "http://localhost:34567/callback",
+      audience: "bap",
+      resource: "http://127.0.0.1:3010/bap",
+      resourceName: "Bap MCP",
+      scopes: ["bap"],
+      state: "state-1",
+      codeChallenge: "challenge-1",
+      currentWorkspaceId: "ws-2",
+      workspaces: [
+        { id: "ws-1", name: "Workspace One", active: false },
+        { id: "ws-2", name: "Workspace Two", active: true },
+      ],
+      selectedWorkspaceIds: ["ws-1", "ws-2"],
+      allowAllWorkspaces: true,
+    });
+
+    expect(html).toContain('id="workspace-selection-panel" class="workspace-selection-panel" hidden');
+    expect(html).not.toContain('name="workspace_ids" value="ws-1" checked');
+    expect(html).not.toContain('name="workspace_ids" value="ws-2" checked');
+  });
+
+  it("shows and prechecks the selected workspace panel in selected mode", () => {
+    const html = renderHostedMcpConsentHtml({
+      clientId: "client-1",
+      clientName: "Codex",
+      redirectUri: "http://localhost:34567/callback",
+      audience: "bap",
+      resource: "http://127.0.0.1:3010/bap",
+      resourceName: "Bap MCP",
+      scopes: ["bap"],
+      state: "state-1",
+      codeChallenge: "challenge-1",
+      currentWorkspaceId: "ws-2",
+      workspaces: [
+        { id: "ws-1", name: "Workspace One", active: false },
+        { id: "ws-2", name: "Workspace Two", active: true },
+      ],
+      selectedWorkspaceIds: ["ws-2"],
+      allowAllWorkspaces: false,
+    });
+
+    expect(html).not.toContain('id="workspace-selection-panel" class="workspace-selection-panel" hidden');
+    expect(html).toContain('name="workspace_ids" value="ws-2" checked');
+    expect(html).not.toContain('name="workspace_ids" value="ws-1" checked');
   });
 });

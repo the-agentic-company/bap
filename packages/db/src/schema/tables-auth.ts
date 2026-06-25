@@ -142,6 +142,8 @@ export const hostedMcpOauthGrant = pgTable(
     audience: text("audience").notNull(),
     resource: text("resource").notNull(),
     scopes: text("scopes").array().notNull(),
+    allowedWorkspaceIds: text("allowed_workspace_ids").array().notNull().default([]),
+    allowAllWorkspaces: boolean("allow_all_workspaces").default(false).notNull(),
     revokedAt: timestamp("revoked_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

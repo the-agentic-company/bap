@@ -542,7 +542,11 @@ export interface BapApiClient {
       workspaceId: string;
       emails: string[];
       role?: "admin" | "member";
-    }): Promise<{ added: string[] }>;
+    }): Promise<{
+      added: string[];
+      alreadyMembers: string[];
+      notFound: string[];
+    }>;
   };
   providerAuth: {
     status(): Promise<ProviderAuthStatus>;

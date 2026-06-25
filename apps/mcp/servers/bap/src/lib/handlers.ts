@@ -70,6 +70,23 @@ export async function handleWorkspaceCreate(params: {
   };
 }
 
+function buildWorkspaceAddMembersResponse(params: {
+  workspaceId: string;
+  role?: "admin" | "member";
+  added: string[];
+  alreadyMembers: string[];
+  notFound: string[];
+}) {
+  return {
+    status: "completed" as const,
+    workspaceId: params.workspaceId,
+    role: params.role ?? "member",
+    added: params.added,
+    alreadyMembers: params.alreadyMembers,
+    notFound: params.notFound,
+  };
+}
+
 export async function handleWorkspaceAddMembers(params: {
   client: BapApiClient;
   workspaceId: string;
@@ -82,12 +99,13 @@ export async function handleWorkspaceAddMembers(params: {
     role: params.role,
   });
 
-  return {
-    status: "completed" as const,
+  return buildWorkspaceAddMembersResponse({
     workspaceId: params.workspaceId,
     role: params.role ?? "member",
     added: result.added,
-  };
+    alreadyMembers: result.alreadyMembers,
+    notFound: result.notFound,
+  });
 }
 
 export async function handleCoworkerList(client: BapApiClient) {

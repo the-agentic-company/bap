@@ -36,6 +36,7 @@ type HostedMcpConsentParams = {
   clientId: string;
   clientName: string;
   redirectUri: string;
+  audience: HostedMcpAudience;
   resource: string;
   resourceName: string;
   scopes: string[];
@@ -47,6 +48,8 @@ type HostedMcpConsentParams = {
     name: string;
     active: boolean;
   }>;
+  selectedWorkspaceIds?: string[];
+  allowAllWorkspaces?: boolean;
 };
 
 type HostedMcpClientMetadata = {
@@ -286,6 +289,8 @@ export async function createHostedMcpAuthorizationCode(params: {
   clientId: string;
   userId: string;
   workspaceId: string;
+  allowedWorkspaceIds?: string[];
+  allowAllWorkspaces?: boolean;
   resource: string;
   scopes: string[];
   redirectUri: string;
@@ -326,6 +331,8 @@ export async function createHostedMcpAuthorizationCode(params: {
       audience: resolved.audience,
       resource: resolved.resource,
       scopes,
+      allowedWorkspaceIds: params.allowedWorkspaceIds ?? [],
+      allowAllWorkspaces: params.allowAllWorkspaces ?? false,
     });
 
     await tx.insert(hostedMcpOauthAuthorizationCode).values({
@@ -368,6 +375,8 @@ async function issueHostedMcpTokenSet(params: {
   const accessToken = await signHostedMcpAccessToken({
     userId: params.grant.userId,
     workspaceId: params.grant.workspaceId,
+    allowedWorkspaceIds: params.grant.allowedWorkspaceIds,
+    allowAllWorkspaces: params.grant.allowAllWorkspaces,
     audience: resolveHostedMcpResource(params.grant.resource).audience,
     scope: normalizeHostedMcpScopes(params.grant.scopes),
     clientId: params.clientId,
@@ -510,6 +519,94 @@ export async function assertHostedMcpWorkspaceMembership(userId: string, workspa
   return membership;
 }
 
+export function resolveHostedMcpConsentWorkspaceId(
+  workspaces: Array<{ id: string; active: boolean }>,
+): string | null {
+  return workspaces.find((workspace) => workspace.active)?.id ?? workspaces[0]?.id ?? null;
+}
+
+export function normalizeHostedMcpSelectedWorkspaceIds(
+  value: FormDataEntryValue | Array<FormDataEntryValue> | null,
+): string[] {
+  const rawValues = Array.isArray(value) ? value : value ? [value] : [];
+  return Array.from(
+    new Set(
+      rawValues
+        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+        .filter((workspaceId) => workspaceId.length > 0),
+    ),
+  );
+}
+
+export async function resolveHostedMcpWorkspaceConsent(params: {
+  audience: HostedMcpAudience;
+  userId: string;
+  workspaces: Array<{ id: string; active: boolean }>;
+  workspaceAccessMode: string | null;
+  selectedWorkspaceIds: string[];
+  workspaceId: string | null;
+}) {
+  if (params.audience !== "bap") {
+    const workspaceId = params.workspaceId?.trim() ?? "";
+    if (!workspaceId) {
+      throw new Error("workspace_id is required.");
+    }
+    await assertHostedMcpWorkspaceMembership(params.userId, workspaceId);
+    return {
+      workspaceId,
+      allowedWorkspaceIds: [workspaceId],
+      allowAllWorkspaces: false,
+      selectedWorkspaceIds: [workspaceId],
+    };
+  }
+
+  if (params.workspaces.length === 0) {
+    throw new Error("At least one workspace membership is required.");
+  }
+
+  if (params.workspaceAccessMode === "all") {
+    const workspaceId = resolveHostedMcpConsentWorkspaceId(params.workspaces);
+    if (!workspaceId) {
+      throw new Error("At least one workspace membership is required.");
+    }
+    return {
+      workspaceId,
+      allowedWorkspaceIds: params.workspaces.map((workspace) => workspace.id),
+      allowAllWorkspaces: true,
+      selectedWorkspaceIds: params.workspaces.map((workspace) => workspace.id),
+    };
+  }
+
+  const selectedWorkspaceIds = params.selectedWorkspaceIds;
+  if (selectedWorkspaceIds.length === 0) {
+    throw new Error("Select at least one workspace or authorize all workspaces.");
+  }
+
+  await Promise.all(
+    selectedWorkspaceIds.map((workspaceId) =>
+      assertHostedMcpWorkspaceMembership(params.userId, workspaceId),
+    ),
+  );
+  const allowedWorkspaceIds = [...selectedWorkspaceIds];
+
+  const currentWorkspaceId = resolveHostedMcpConsentWorkspaceId(params.workspaces);
+  const workspaceId =
+    (currentWorkspaceId && allowedWorkspaceIds.includes(currentWorkspaceId)
+      ? currentWorkspaceId
+      : allowedWorkspaceIds[0]) ?? null;
+
+  if (!workspaceId) {
+    throw new Error("Select at least one workspace or authorize all workspaces.");
+  }
+
+  return {
+    workspaceId,
+    allowedWorkspaceIds,
+    allowAllWorkspaces: false,
+    selectedWorkspaceIds: allowedWorkspaceIds,
+  };
+}
+
 export async function parseHostedMcpAuthorizationRequest(params: URLSearchParams) {
   const clientId = params.get("client_id")?.trim();
   const redirectUri = params.get("redirect_uri")?.trim() ?? null;
@@ -569,12 +666,33 @@ export async function parseHostedMcpAuthorizationRequest(params: URLSearchParams
 }
 
 export function renderHostedMcpConsentHtml(params: HostedMcpConsentParams) {
+  const isBapAudience = params.audience === "bap";
+  const selectedWorkspaceIds = params.selectedWorkspaceIds ?? [];
+  const allowAllWorkspaces = params.allowAllWorkspaces ?? isBapAudience;
   const workspaceOptions = params.workspaces
     .map((workspace) => {
       const selected = workspace.id === params.currentWorkspaceId ? " selected" : "";
       return `<option value="${encodeHtml(workspace.id)}"${selected}>${encodeHtml(
         workspace.name,
       )}</option>`;
+    })
+    .join("");
+  const workspaceList = params.workspaces
+    .map((workspace) => {
+      const activeSuffix = workspace.id === params.currentWorkspaceId ? " (current active)" : "";
+      return `<li>${encodeHtml(workspace.name)}${activeSuffix}</li>`;
+    })
+    .join("");
+  const workspaceCheckboxes = params.workspaces
+    .map((workspace) => {
+      const checked = !allowAllWorkspaces && selectedWorkspaceIds.includes(workspace.id) ? " checked" : "";
+      const activeSuffix =
+        workspace.id === params.currentWorkspaceId
+          ? " <span class=\"muted\">(current active)</span>"
+          : "";
+      return `<label class="workspace-option"><input type="checkbox" name="workspace_ids" value="${encodeHtml(
+        workspace.id,
+      )}"${checked} /> <span>${encodeHtml(workspace.name)}${activeSuffix}</span></label>`;
     })
     .join("");
 
@@ -612,6 +730,11 @@ export function renderHostedMcpConsentHtml(params: HostedMcpConsentParams) {
       .label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
       select { width: 100%; border: 1px solid #d1d5db; border-radius: 12px; padding: 12px 14px; font-size: 14px; }
       ul { margin: 8px 0 0; padding-left: 20px; }
+      .workspace-access { display: grid; gap: 12px; }
+      .workspace-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 12px; }
+      .workspace-option input { margin: 0; }
+      .workspace-selection-panel { margin-top: 12px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 14px; background: #f9fafb; }
+      .workspace-selection-panel[hidden] { display: none; }
       .actions { display: flex; gap: 12px; margin-top: 24px; }
       button { border-radius: 12px; border: 1px solid #111827; padding: 12px 16px; font-size: 14px; cursor: pointer; }
       button[value="deny"] { background: white; color: #111827; }
@@ -634,10 +757,36 @@ export function renderHostedMcpConsentHtml(params: HostedMcpConsentParams) {
 
       <form method="post" action="${encodeHtml(AUTHORIZATION_ENDPOINT_PATH)}">
         ${hiddenFields}
-        <div class="section">
+        ${
+          isBapAudience
+            ? `<div class="section">
+          <span class="label">Workspace access</span>
+          <p class="muted">Choose whether this Bap MCP authorization covers all your current and future member workspaces, or only a selected subset.</p>
+          <div class="workspace-access">
+            <label class="workspace-option"><input type="radio" name="workspace_access_mode" value="all"${
+              allowAllWorkspaces ? " checked" : ""
+            } /> <span>All current and future member workspaces</span></label>
+            <label class="workspace-option"><input type="radio" name="workspace_access_mode" value="selected"${
+              allowAllWorkspaces ? "" : " checked"
+            } /> <span>Only these selected workspaces</span></label>
+          </div>
+          <div id="workspace-selection-panel" class="workspace-selection-panel"${
+            allowAllWorkspaces ? " hidden" : ""
+          }>
+            <span class="label">Select workspaces</span>
+            <p class="muted">Choose the current member workspaces this MCP client can access.</p>
+            ${workspaceCheckboxes}
+          </div>
+          <div class="section">
+            <span class="label">Current member workspaces</span>
+            <ul>${workspaceList}</ul>
+          </div>
+        </div>`
+            : `<div class="section">
           <label class="label" for="workspace_id">Workspace</label>
           <select id="workspace_id" name="workspace_id" required>${workspaceOptions}</select>
-        </div>
+        </div>`
+        }
         <div class="section">
           <span class="label">Requested scopes</span>
           <ul>${scopeList}</ul>
@@ -648,6 +797,31 @@ export function renderHostedMcpConsentHtml(params: HostedMcpConsentParams) {
         </div>
       </form>
     </div>
+    ${
+      isBapAudience
+        ? `<script>
+      const allRadio = document.querySelector('input[name="workspace_access_mode"][value="all"]');
+      const selectedRadio = document.querySelector('input[name="workspace_access_mode"][value="selected"]');
+      const selectionPanel = document.getElementById("workspace-selection-panel");
+      const workspaceCheckboxInputs = Array.from(document.querySelectorAll('input[name="workspace_ids"]'));
+
+      function syncWorkspaceSelectionMode() {
+        const selectedMode = selectedRadio instanceof HTMLInputElement && selectedRadio.checked;
+        if (selectionPanel) {
+          selectionPanel.hidden = !selectedMode;
+        }
+        for (const input of workspaceCheckboxInputs) {
+          if (!(input instanceof HTMLInputElement)) continue;
+          input.disabled = !selectedMode;
+        }
+      }
+
+      allRadio?.addEventListener("change", syncWorkspaceSelectionMode);
+      selectedRadio?.addEventListener("change", syncWorkspaceSelectionMode);
+      syncWorkspaceSelectionMode();
+    </script>`
+        : ""
+    }
   </body>
 </html>`;
 }

@@ -11,11 +11,14 @@ import { db } from "@bap/db/client";
 import { user as userTable } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
 import { getRequestSession } from "@/server/session-auth";
+import { resolveSessionPrincipalWorkspaceId } from "@/server/session-principal-workspace";
 
 export type HostedMcpContext = {
   token: string;
   userId: string;
   workspaceId: string;
+  allowedWorkspaceIds: string[];
+  allowAllWorkspaces: boolean;
   audience: HostedMcpAudience;
   scopes: string[];
   clientId: string;
@@ -93,6 +96,8 @@ export async function resolveHostedMcpClaims(
     token,
     userId: claims.userId,
     workspaceId: claims.workspaceId,
+    allowedWorkspaceIds: claims.allowedWorkspaceIds,
+    allowAllWorkspaces: claims.allowAllWorkspaces,
     audience: claims.audience,
     scopes: claims.scope,
     clientId: claims.clientId,
@@ -144,6 +149,22 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
       return null;
     }
 
+    const workspaceId =
+      hostedMcp.audience !== "bap"
+        ? hostedMcp.workspaceId
+        : hostedMcp.allowAllWorkspaces
+          ? await resolveSessionPrincipalWorkspaceId(hostedMcp.userId)
+          : ((dbUser as { activeWorkspaceId?: string | null }).activeWorkspaceId &&
+                hostedMcp.allowedWorkspaceIds.includes(
+                  (dbUser as { activeWorkspaceId?: string | null }).activeWorkspaceId ?? "",
+                )
+              ? ((dbUser as { activeWorkspaceId?: string | null }).activeWorkspaceId ?? "")
+              : (hostedMcp.allowedWorkspaceIds[0] ?? ""));
+
+    if (!workspaceId) {
+      return null;
+    }
+
     return {
       user: dbUser as unknown as User,
       session: {
@@ -156,7 +177,10 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
         ipAddress: null,
         userAgent: headers.get("user-agent"),
       } as Session,
-      hostedMcp,
+      hostedMcp: {
+        ...hostedMcp,
+        workspaceId,
+      },
     };
   } catch {
     return null;

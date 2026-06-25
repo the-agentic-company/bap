@@ -28,6 +28,10 @@ import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../middleware";
+import {
+  assertHostedMcpAllWorkspaceAccess,
+  assertHostedMcpWorkspaceAccess,
+} from "../hosted-mcp-workspace-access";
 
 function assertBillingEnabled() {
   if (isSelfHostedEdition()) {
@@ -99,7 +103,32 @@ async function resolveRequestedOwner(params: {
 }
 
 const overview = protectedProcedure.handler(async ({ context }) => {
-  return getBillingOverviewForUser(context.user.id);
+  const overview = await getBillingOverviewForUser(context.user.id);
+  if (context.hostedMcp?.audience !== "bap" || context.hostedMcp.allowAllWorkspaces) {
+    return overview;
+  }
+
+  const workspaces = overview.workspaces.filter((workspace) =>
+    context.hostedMcp?.allowedWorkspaceIds.includes(workspace.id),
+  );
+  const activeWorkspaceId =
+    workspaces.find((workspace) => workspace.id === context.workspaceId)?.id ??
+    workspaces.find((workspace) => workspace.active)?.id ??
+    workspaces[0]?.id ??
+    overview.owner.ownerId;
+
+  return {
+    ...overview,
+    owner: {
+      ...overview.owner,
+      ownerId: activeWorkspaceId,
+    },
+    workspaces: workspaces.map((workspace) =>
+      Object.assign({}, workspace, {
+        active: workspace.id === activeWorkspaceId,
+      }),
+    ),
+  };
 });
 
 const adminUserOverview = protectedProcedure
@@ -133,6 +162,7 @@ const createWorkspace = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertCloudWorkspaceManagementEnabled();
+    assertHostedMcpAllWorkspaceAccess(context);
     const created = await createWorkspaceForUser(context.user.id, input.name);
     return {
       id: created.id,
@@ -149,6 +179,7 @@ const switchWorkspace = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertCloudWorkspaceManagementEnabled();
+    assertHostedMcpWorkspaceAccess(context, input.workspaceId);
     await setActiveWorkspace(context.user.id, input.workspaceId);
     return { success: true };
   });
@@ -321,12 +352,12 @@ const inviteMembers = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertCloudWorkspaceManagementEnabled();
+    assertHostedMcpWorkspaceAccess(context, input.workspaceId);
     const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
     if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
       throw new ORPCError("FORBIDDEN", { message: "Workspace admin required" });
     }
-    const added = await addWorkspaceMembers(input.workspaceId, input.emails, input.role);
-    return { added };
+    return await addWorkspaceMembers(input.workspaceId, input.emails, input.role);
   });
 
 const members = protectedProcedure
@@ -336,6 +367,7 @@ const members = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
+    assertHostedMcpWorkspaceAccess(context, input.workspaceId);
     const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
     if (!membership) {
       throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
@@ -355,6 +387,7 @@ const rename = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
+    assertHostedMcpWorkspaceAccess(context, input.workspaceId);
     const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
     if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
       throw new ORPCError("FORBIDDEN", { message: "Workspace admin required" });
@@ -372,6 +405,7 @@ const updateImage = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
+    assertHostedMcpWorkspaceAccess(context, input.workspaceId);
     const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
     if (!membership) {
       throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
@@ -387,6 +421,7 @@ const removeImage = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
+    assertHostedMcpWorkspaceAccess(context, input.workspaceId);
     const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
     if (!membership) {
       throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
@@ -432,8 +467,7 @@ const adminAddWorkspaceMembers = protectedProcedure
     if (role !== "admin") {
       throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
     }
-    const added = await addWorkspaceMembers(input.workspaceId, input.emails, "member");
-    return { added };
+    return await addWorkspaceMembers(input.workspaceId, input.emails, "member");
   });
 
 const adminCreateWorkspace = protectedProcedure

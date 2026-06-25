@@ -270,6 +270,8 @@ describe("MCP handlers", () => {
       billing: {
         inviteMembers: vi.fn().mockResolvedValue({
           added: ["alice@example.com", "bob@example.com"],
+          alreadyMembers: ["carol@example.com"],
+          notFound: ["nobody@example.com"],
         }),
       },
     };
@@ -291,6 +293,8 @@ describe("MCP handlers", () => {
       workspaceId: "ws-2",
       role: "admin",
       added: ["alice@example.com", "bob@example.com"],
+      alreadyMembers: ["carol@example.com"],
+      notFound: ["nobody@example.com"],
     });
   });
 

@@ -18,6 +18,7 @@ function createProcedureStub() {
 
 var attachPlanToOwnerMock: ReturnType<typeof vi.fn>;
 var createManualTopUpMock: ReturnType<typeof vi.fn>;
+var createWorkspaceForUserMock: ReturnType<typeof vi.fn>;
 var ensureWorkspaceForUserMock: ReturnType<typeof vi.fn>;
 var getAdminBillingOverviewForUserMock: ReturnType<typeof vi.fn>;
 var getBillingOverviewForUserMock: ReturnType<typeof vi.fn>;
@@ -26,6 +27,7 @@ var getWorkspaceMembershipForUserMock: ReturnType<typeof vi.fn>;
 var openBillingPortalForOwnerMock: ReturnType<typeof vi.fn>;
 var cancelPlanForOwnerMock: ReturnType<typeof vi.fn>;
 var removeWorkspaceImageMock: ReturnType<typeof vi.fn>;
+var setActiveWorkspaceMock: ReturnType<typeof vi.fn>;
 var updateWorkspaceImageMock: ReturnType<typeof vi.fn>;
 
 vi.mock("../middleware", () => ({
@@ -46,7 +48,10 @@ vi.mock("@bap/core/server/billing/service", () => ({
     createManualTopUpMock = vi.fn<VitestProcedure>();
     return createManualTopUpMock;
   })(),
-  createWorkspaceForUser: vi.fn<VitestProcedure>(),
+  createWorkspaceForUser: (() => {
+    createWorkspaceForUserMock = vi.fn<VitestProcedure>();
+    return createWorkspaceForUserMock;
+  })(),
   getAdminBillingOverviewForUser: (() => {
     getAdminBillingOverviewForUserMock = vi.fn<VitestProcedure>();
     return getAdminBillingOverviewForUserMock;
@@ -71,7 +76,10 @@ vi.mock("@bap/core/server/billing/service", () => ({
     openBillingPortalForOwnerMock = vi.fn<VitestProcedure>();
     return openBillingPortalForOwnerMock;
   })(),
-  setActiveWorkspace: vi.fn<VitestProcedure>(),
+  setActiveWorkspace: (() => {
+    setActiveWorkspaceMock = vi.fn<VitestProcedure>();
+    return setActiveWorkspaceMock;
+  })(),
 }));
 
 vi.mock("@bap/core/server/billing/workspace-image", () => ({
@@ -192,6 +200,108 @@ describe("billingRouter", () => {
         planId: "pro",
       },
     });
+    createWorkspaceForUserMock.mockResolvedValue({
+      id: "ws-created",
+      name: "Created Workspace",
+      billingPlanId: "free",
+    });
+    setActiveWorkspaceMock.mockResolvedValue(undefined);
+  });
+
+  it("filters billing overview to the selected hosted MCP workspaces", async () => {
+    getBillingOverviewForUserMock.mockResolvedValueOnce({
+      owner: { ownerType: "workspace", ownerId: "ws-2", planId: "free" },
+      plan: { id: "free" },
+      workspaces: [
+        { id: "ws-1", name: "One", active: false },
+        { id: "ws-2", name: "Two", active: true },
+        { id: "ws-3", name: "Three", active: false },
+      ],
+    });
+
+    const result = (await billingRouterAny.overview({
+      context: {
+        ...createContext(),
+        workspaceId: "ws-3",
+        hostedMcp: {
+          audience: "bap",
+          resource: "http://127.0.0.1:3010/bap",
+          allowedWorkspaceIds: ["ws-1", "ws-3"],
+          allowAllWorkspaces: false,
+        },
+      },
+    })) as {
+      owner: { ownerId: string };
+      workspaces: Array<{ id: string; active: boolean }>;
+    };
+
+    expect(result.owner.ownerId).toBe("ws-3");
+    expect(result.workspaces).toEqual([
+      { id: "ws-1", name: "One", active: false },
+      { id: "ws-3", name: "Three", active: true },
+    ]);
+  });
+
+  it("blocks workspace creation when hosted MCP is limited to selected workspaces", async () => {
+    await expect(
+      billingRouterAny.createWorkspace({
+        input: { name: "Created Workspace" },
+        context: {
+          ...createContext(),
+          hostedMcp: {
+            audience: "bap",
+            resource: "http://127.0.0.1:3010/bap",
+            allowedWorkspaceIds: ["ws-1"],
+            allowAllWorkspaces: false,
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "This action requires MCP authorization for all workspaces.",
+    });
+
+    expect(createWorkspaceForUserMock).not.toHaveBeenCalled();
+  });
+
+  it("switches workspace when the hosted MCP authorization covers it", async () => {
+    const result = (await billingRouterAny.switchWorkspace({
+      input: { workspaceId: "ws-2" },
+      context: {
+        ...createContext(),
+        hostedMcp: {
+          audience: "bap",
+          resource: "http://127.0.0.1:3010/bap",
+          allowedWorkspaceIds: ["ws-1", "ws-2"],
+          allowAllWorkspaces: false,
+        },
+      },
+    })) as { success: boolean };
+
+    expect(setActiveWorkspaceMock).toHaveBeenCalledWith("user-1", "ws-2");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("blocks workspace switching outside the selected hosted MCP scope", async () => {
+    await expect(
+      billingRouterAny.switchWorkspace({
+        input: { workspaceId: "ws-3" },
+        context: {
+          ...createContext(),
+          hostedMcp: {
+            audience: "bap",
+            resource: "http://127.0.0.1:3010/bap",
+            allowedWorkspaceIds: ["ws-1", "ws-2"],
+            allowAllWorkspaces: false,
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "This MCP authorization does not cover the requested workspace.",
+    });
+
+    expect(setActiveWorkspaceMock).not.toHaveBeenCalled();
   });
 
   it("normalizes personal ownerType input to workspace billing", async () => {
