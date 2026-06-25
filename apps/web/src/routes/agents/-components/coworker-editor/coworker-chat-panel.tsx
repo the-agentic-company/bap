@@ -1,9 +1,27 @@
-import { T } from "gt-react";
-import { Loader2 } from "lucide-react";
+import { T, useGT } from "gt-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { createContext, useContext, type ReactNode } from "react";
 import { ChatArea } from "@/components/chat/chat-area";
 import { ChatCopyButton } from "@/components/chat/chat-copy-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AppLink as Link } from "../../-lib/app-link";
+
+const CoworkerChatPanelBackHrefContext = createContext<string | undefined>(undefined);
+
+export function CoworkerChatPanelBackHrefProvider({
+  backHref,
+  children,
+}: {
+  backHref?: string;
+  children: ReactNode;
+}) {
+  return (
+    <CoworkerChatPanelBackHrefContext.Provider value={backHref}>
+      {children}
+    </CoworkerChatPanelBackHrefContext.Provider>
+  );
+}
 
 type CoworkerChatPanelProps = {
   conversationId: string | null;
@@ -50,7 +68,8 @@ export function CoworkerChatPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex items-center justify-end px-4 py-2">
+      <div className="flex items-center justify-between px-4 py-2">
+        <BackToRunLink />
         <ChatCopyButton conversationId={conversationId} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -63,5 +82,26 @@ export function CoworkerChatPanel({
         />
       </div>
     </div>
+  );
+}
+
+function BackToRunLink() {
+  const t = useGT();
+  const backHref = useContext(CoworkerChatPanelBackHrefContext);
+
+  if (!backHref) {
+    return <div className="h-8 w-8" aria-hidden="true" />;
+  }
+
+  return (
+    <Link
+      href={backHref}
+      className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors"
+      title={t("Back to run")}
+      aria-label={t("Back to run")}
+    >
+      <ArrowLeft className="h-4 w-4" />
+      <T>Back to run</T>
+    </Link>
   );
 }
