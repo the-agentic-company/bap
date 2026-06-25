@@ -498,7 +498,11 @@ export function AdminWorkspacesPage() {
     async (workspaceId: string, emails: string[]) => {
       try {
         const result = await addMembers.mutateAsync({ workspaceId, emails });
-        const count = Array.isArray(result) ? result.length : result.added.length;
+        const count = Array.isArray(result)
+          ? result.length
+          : Array.isArray((result as { added?: unknown }).added)
+            ? (result as { added: string[] }).added.length
+            : 0;
         toast.success(
           count > 0
             ? `Added ${count} member${count === 1 ? "" : "s"}.`
