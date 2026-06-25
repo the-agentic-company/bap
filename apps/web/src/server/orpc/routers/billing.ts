@@ -326,7 +326,7 @@ const inviteMembers = protectedProcedure
       throw new ORPCError("FORBIDDEN", { message: "Workspace admin required" });
     }
     const added = await addWorkspaceMembers(input.workspaceId, input.emails, input.role);
-    return { added };
+    return added;
   });
 
 const members = protectedProcedure
@@ -433,7 +433,7 @@ const adminAddWorkspaceMembers = protectedProcedure
       throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
     }
     const added = await addWorkspaceMembers(input.workspaceId, input.emails, "member");
-    return { added };
+    return added;
   });
 
 const adminCreateWorkspace = protectedProcedure
