@@ -313,7 +313,9 @@ export function useChatAreaControls({
   );
 
   const autoApprovalNode = useMemo(() => {
-    if (isCoworkerConversation) return null;
+    if (isCoworkerConversation) {
+      return null;
+    }
 
     return (
       <div className="flex items-center gap-1.5">
