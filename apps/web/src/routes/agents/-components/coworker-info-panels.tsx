@@ -248,19 +248,48 @@ function collectSandboxFiles(messages: Message[]) {
 
 export function LoadingState() {
   return (
-    <div className="flex min-h-[24rem] items-center justify-center">
+    <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3">
       <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+      <p className="text-muted-foreground text-sm">
+        <T>Generating output ...</T>
+      </p>
     </div>
   );
+}
+
+function formatErrorMessage(message?: string | null, fallback = "Run failed.") {
+  const trimmed = message?.trim();
+  if (!trimmed) {
+    return `Error : ${fallback}`;
+  }
+  return trimmed.startsWith("Error :") ? trimmed : `Error : ${trimmed}`;
 }
 
 function EmptyPreview({
   latestMessage,
   runStatus,
+  errorMessage,
 }: {
   latestMessage?: string;
   runStatus?: string | null;
+  errorMessage?: string | null;
 }) {
+  if ((runStatus === "error" || runStatus === "cancelled") && errorMessage?.trim()) {
+    return (
+      <div className="bg-background h-full overflow-auto p-5">
+        <div className="mx-auto max-w-3xl rounded-xl border border-red-300 bg-red-50/80 p-4">
+          <div className="mb-3 flex items-center gap-2 border-b border-red-200 pb-3">
+            <MessageSquareText className="h-4 w-4 text-red-600" />
+            <p className="text-sm font-medium text-red-700">
+              <T>Error</T>
+            </p>
+          </div>
+          <MessageBubble messageRole="assistant" content={formatErrorMessage(errorMessage)} />
+        </div>
+      </div>
+    );
+  }
+
   if (latestMessage?.trim()) {
     return (
       <div className="bg-background h-full overflow-auto p-5">
@@ -604,12 +633,14 @@ export function OutputPanel({
   conversationId,
   latestCoworkerMessage,
   runStatus,
+  runErrorMessage,
   showOutputToolbar = true,
 }: {
   outputFile?: SandboxFileData | null;
   conversationId?: string;
   latestCoworkerMessage?: string;
   runStatus?: string | null;
+  runErrorMessage?: string | null;
   showOutputToolbar?: boolean;
 }) {
   const sendAgenticAppPrompt = useSendAgenticAppPrompt(conversationId);
@@ -622,7 +653,11 @@ export function OutputPanel({
       showToolbar={showOutputToolbar}
     />
   ) : (
-    <EmptyPreview latestMessage={latestCoworkerMessage} runStatus={runStatus} />
+    <EmptyPreview
+      latestMessage={latestCoworkerMessage}
+      runStatus={runStatus}
+      errorMessage={runErrorMessage}
+    />
   );
 }
 
