@@ -32,6 +32,64 @@ export async function handleChatRun(params: {
   return result;
 }
 
+export async function handleWorkspaceList(client: BapApiClient) {
+  const overview = await client.billing.overview();
+  return {
+    status: "completed" as const,
+    activeWorkspaceId: overview.owner.ownerId,
+    workspaces: overview.workspaces,
+  };
+}
+
+export async function handleWorkspaceSwitch(params: {
+  client: BapApiClient;
+  workspaceId: string;
+}) {
+  await params.client.billing.switchWorkspace({ workspaceId: params.workspaceId });
+  const overview = await params.client.billing.overview();
+
+  return {
+    status: "completed" as const,
+    activeWorkspaceId: overview.owner.ownerId,
+    workspaces: overview.workspaces,
+  };
+}
+
+export async function handleWorkspaceCreate(params: {
+  client: BapApiClient;
+  name: string;
+}) {
+  const workspace = await params.client.billing.createWorkspace({ name: params.name });
+  const overview = await params.client.billing.overview();
+
+  return {
+    status: "completed" as const,
+    workspace,
+    activeWorkspaceId: overview.owner.ownerId,
+    workspaces: overview.workspaces,
+  };
+}
+
+export async function handleWorkspaceAddMembers(params: {
+  client: BapApiClient;
+  workspaceId: string;
+  emails: string[];
+  role?: "admin" | "member";
+}) {
+  const result = await params.client.billing.inviteMembers({
+    workspaceId: params.workspaceId,
+    emails: params.emails,
+    role: params.role,
+  });
+
+  return {
+    status: "completed" as const,
+    workspaceId: params.workspaceId,
+    role: params.role ?? "member",
+    added: result.added,
+  };
+}
+
 export async function handleCoworkerList(client: BapApiClient) {
   const runner = createCoworkerRunner(client);
   return {
@@ -220,6 +278,24 @@ export async function handleCoworkerMove(params: {
   };
 }
 
+export async function handleCoworkerMoveWorkspace(params: {
+  client: BapApiClient;
+  reference: string;
+  targetWorkspaceId: string;
+}) {
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  const result = await params.client.coworker.moveWorkspace({
+    coworkerId,
+    targetWorkspaceId: params.targetWorkspaceId,
+  });
+
+  return {
+    status: "completed" as const,
+    ...result,
+  };
+}
+
 export async function handleCoworkerSetFavorite(params: {
   client: BapApiClient;
   reference: string;
@@ -245,6 +321,23 @@ export async function handleCoworkerSetStatus(params: {
   return {
     status: "completed" as const,
     coworker: await params.client.coworker.get({ id: coworkerId }),
+  };
+}
+
+export async function handleCoworkerDelete(params: {
+  client: BapApiClient;
+  reference: string;
+}) {
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.reference);
+  const coworker = await params.client.coworker.get({ id: coworkerId });
+  const result = await params.client.coworker.delete({ id: coworkerId });
+
+  return {
+    status: "completed" as const,
+    coworkerId,
+    deletedCoworker: coworker,
+    ...result,
   };
 }
 

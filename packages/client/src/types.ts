@@ -510,6 +510,40 @@ export interface BapApiClient {
   user: {
     me(): Promise<BapUser>;
   };
+  billing: {
+    overview(): Promise<{
+      owner: {
+        ownerType: "workspace";
+        ownerId: string;
+        planId: string;
+        autumnCustomerId?: string;
+      };
+      plan?: unknown;
+      feature?: unknown;
+      recentCharges?: unknown[];
+      recentTopUps?: unknown[];
+      workspaces: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        imageUrl: string | null;
+        role: string;
+        billingPlanId: string;
+        active: boolean;
+      }>;
+    }>;
+    createWorkspace(input: { name: string }): Promise<{
+      id: string;
+      name: string;
+      billingPlanId: string;
+    }>;
+    switchWorkspace(input: { workspaceId: string | null }): Promise<{ success: boolean }>;
+    inviteMembers(input: {
+      workspaceId: string;
+      emails: string[];
+      role?: "admin" | "member";
+    }): Promise<{ added: string[] }>;
+  };
   providerAuth: {
     status(): Promise<ProviderAuthStatus>;
     freeModels(): Promise<FreeModelsResponse>;
@@ -574,6 +608,17 @@ export interface BapApiClient {
     get(input: { id: string }): Promise<CoworkerDetails>;
     create(input: CoworkerCreateInput): Promise<CoworkerCreateResult>;
     update(input: CoworkerUpdateInput): Promise<{ success: true }>;
+    delete(input: { id: string }): Promise<{ success: boolean }>;
+    moveWorkspace(input: {
+      coworkerId: string;
+      targetWorkspaceId: string;
+    }): Promise<{
+      id: string;
+      workspaceId: string;
+      sourceWorkspaceId: string;
+      targetWorkspaceId: string;
+      triggerType: string;
+    }>;
     uploadDocument(input: CoworkerDocumentUploadInput): Promise<CoworkerDocumentUploadResult>;
     updateDocument(input: CoworkerDocumentUpdateInput): Promise<CoworkerDocumentUpdateResult>;
     deleteDocument(input: { id: string }): Promise<{ success: true; filename: string }>;
