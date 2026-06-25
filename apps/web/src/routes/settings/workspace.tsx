@@ -260,7 +260,7 @@ function WorkspaceSettingsPage() {
           workspaceId: activeWorkspaceId,
           emails: parsedInviteEmails,
         });
-        const addedCount = result.added.length;
+        const addedCount = Array.isArray(result) ? result.length : result.added.length;
         toast.success(
           addedCount > 0
             ? `Added ${addedCount} member${addedCount === 1 ? "" : "s"}.`
