@@ -24,7 +24,6 @@ import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { triggerBrowserDownload } from "@/lib/download-file";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
-import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
 import { useConversation, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import {
@@ -260,8 +259,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       });
       toast.success(result.generationId ? "Run started." : "Needs your input.");
       void navigate({ to: "/agents/info/$slug", params: { slug: resolvedCoworkerSlug } });
-    } catch (error) {
-      toast.error(normalizeGenerationError(error, "start_rpc").message);
+    } catch {
     }
   }, [navigate, resolvedCoworkerId, resolvedCoworkerSlug, triggerCoworker]);
 

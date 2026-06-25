@@ -190,7 +190,6 @@ describe("OutputPanel empty states", () => {
     expect(screen.getByTitle("output.html Agentic-App")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Download output" })).toBeNull();
   });
-
   it("shows a loading message while the run is generating output", () => {
     render(<OutputPanel conversationId="conv-run-3" runStatus="running" />);
 
