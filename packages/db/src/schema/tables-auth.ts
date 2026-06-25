@@ -12,6 +12,17 @@ import {
 } from "drizzle-orm/pg-core";
 import { magicLinkRequestStatusEnum, workspaceMembershipRoleEnum } from "./enums";
 
+function revocableTimestampColumns() {
+  return {
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  };
+}
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -144,12 +155,7 @@ export const hostedMcpOauthGrant = pgTable(
     scopes: text("scopes").array().notNull(),
     allowedWorkspaceIds: text("allowed_workspace_ids").array().notNull().default([]),
     allowAllWorkspaces: boolean("allow_all_workspaces").default(false).notNull(),
-    revokedAt: timestamp("revoked_at"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    ...revocableTimestampColumns(),
   },
   (table) => [
     index("hosted_mcp_oauth_grant_client_idx").on(table.clientId),
@@ -194,12 +200,7 @@ export const hostedMcpOauthRefreshToken = pgTable(
       .notNull()
       .references(() => hostedMcpOauthClient.clientId, { onDelete: "cascade" }),
     expiresAt: timestamp("expires_at").notNull(),
-    revokedAt: timestamp("revoked_at"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    ...revocableTimestampColumns(),
   },
   (table) => [
     index("hosted_mcp_oauth_refresh_token_grant_idx").on(table.grantId),

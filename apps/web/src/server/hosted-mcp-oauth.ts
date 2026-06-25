@@ -538,57 +538,52 @@ export function normalizeHostedMcpSelectedWorkspaceIds(
   );
 }
 
-export async function resolveHostedMcpWorkspaceConsent(params: {
-  audience: HostedMcpAudience;
+function resolveSingleWorkspaceConsent(params: {
   userId: string;
-  workspaces: Array<{ id: string; active: boolean }>;
-  workspaceAccessMode: string | null;
-  selectedWorkspaceIds: string[];
   workspaceId: string | null;
 }) {
-  if (params.audience !== "bap") {
-    const workspaceId = params.workspaceId?.trim() ?? "";
-    if (!workspaceId) {
-      throw new Error("workspace_id is required.");
-    }
-    await assertHostedMcpWorkspaceMembership(params.userId, workspaceId);
-    return {
-      workspaceId,
-      allowedWorkspaceIds: [workspaceId],
-      allowAllWorkspaces: false,
-      selectedWorkspaceIds: [workspaceId],
-    };
+  const workspaceId = params.workspaceId?.trim() ?? "";
+  if (!workspaceId) {
+    throw new Error("workspace_id is required.");
   }
 
-  if (params.workspaces.length === 0) {
+  return {
+    workspaceId,
+    verify: assertHostedMcpWorkspaceMembership(params.userId, workspaceId),
+  };
+}
+
+function resolveAllWorkspaceConsent(workspaces: Array<{ id: string; active: boolean }>) {
+  const workspaceId = resolveHostedMcpConsentWorkspaceId(workspaces);
+  if (!workspaceId) {
     throw new Error("At least one workspace membership is required.");
   }
 
-  if (params.workspaceAccessMode === "all") {
-    const workspaceId = resolveHostedMcpConsentWorkspaceId(params.workspaces);
-    if (!workspaceId) {
-      throw new Error("At least one workspace membership is required.");
-    }
-    return {
-      workspaceId,
-      allowedWorkspaceIds: params.workspaces.map((workspace) => workspace.id),
-      allowAllWorkspaces: true,
-      selectedWorkspaceIds: params.workspaces.map((workspace) => workspace.id),
-    };
-  }
+  const allowedWorkspaceIds = workspaces.map((workspace) => workspace.id);
+  return {
+    workspaceId,
+    allowedWorkspaceIds,
+    allowAllWorkspaces: true,
+    selectedWorkspaceIds: allowedWorkspaceIds,
+  };
+}
 
-  const selectedWorkspaceIds = params.selectedWorkspaceIds;
-  if (selectedWorkspaceIds.length === 0) {
+async function resolveSelectedWorkspaceConsent(params: {
+  userId: string;
+  workspaces: Array<{ id: string; active: boolean }>;
+  selectedWorkspaceIds: string[];
+}) {
+  if (params.selectedWorkspaceIds.length === 0) {
     throw new Error("Select at least one workspace or authorize all workspaces.");
   }
 
   await Promise.all(
-    selectedWorkspaceIds.map((workspaceId) =>
+    params.selectedWorkspaceIds.map((workspaceId) =>
       assertHostedMcpWorkspaceMembership(params.userId, workspaceId),
     ),
   );
-  const allowedWorkspaceIds = [...selectedWorkspaceIds];
 
+  const allowedWorkspaceIds = [...params.selectedWorkspaceIds];
   const currentWorkspaceId = resolveHostedMcpConsentWorkspaceId(params.workspaces);
   const workspaceId =
     (currentWorkspaceId && allowedWorkspaceIds.includes(currentWorkspaceId)
@@ -605,6 +600,43 @@ export async function resolveHostedMcpWorkspaceConsent(params: {
     allowAllWorkspaces: false,
     selectedWorkspaceIds: allowedWorkspaceIds,
   };
+}
+
+export async function resolveHostedMcpWorkspaceConsent(params: {
+  audience: HostedMcpAudience;
+  userId: string;
+  workspaces: Array<{ id: string; active: boolean }>;
+  workspaceAccessMode: string | null;
+  selectedWorkspaceIds: string[];
+  workspaceId: string | null;
+}) {
+  if (params.audience !== "bap") {
+    const singleWorkspaceConsent = resolveSingleWorkspaceConsent({
+      userId: params.userId,
+      workspaceId: params.workspaceId,
+    });
+    await singleWorkspaceConsent.verify;
+    return {
+      workspaceId: singleWorkspaceConsent.workspaceId,
+      allowedWorkspaceIds: [singleWorkspaceConsent.workspaceId],
+      allowAllWorkspaces: false,
+      selectedWorkspaceIds: [singleWorkspaceConsent.workspaceId],
+    };
+  }
+
+  if (params.workspaces.length === 0) {
+    throw new Error("At least one workspace membership is required.");
+  }
+
+  if (params.workspaceAccessMode === "all") {
+    return resolveAllWorkspaceConsent(params.workspaces);
+  }
+
+  return resolveSelectedWorkspaceConsent({
+    userId: params.userId,
+    workspaces: params.workspaces,
+    selectedWorkspaceIds: params.selectedWorkspaceIds,
+  });
 }
 
 export async function parseHostedMcpAuthorizationRequest(params: URLSearchParams) {

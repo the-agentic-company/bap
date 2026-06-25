@@ -50,6 +50,8 @@ export type ORPCContext = {
 
 const BAP_MANAGED_INTERNAL_KEY = "bap";
 
+type DbUserWithActiveWorkspaceId = User & { activeWorkspaceId?: string | null };
+
 function resolvePublicMcpOrigin(headers: Headers): string | undefined {
   const explicit = headers.get("x-bap-public-origin")?.trim();
   if (explicit && URL.canParse(explicit)) {
@@ -149,17 +151,10 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
       return null;
     }
 
-    const workspaceId =
-      hostedMcp.audience !== "bap"
-        ? hostedMcp.workspaceId
-        : hostedMcp.allowAllWorkspaces
-          ? await resolveSessionPrincipalWorkspaceId(hostedMcp.userId)
-          : ((dbUser as { activeWorkspaceId?: string | null }).activeWorkspaceId &&
-                hostedMcp.allowedWorkspaceIds.includes(
-                  (dbUser as { activeWorkspaceId?: string | null }).activeWorkspaceId ?? "",
-                )
-              ? ((dbUser as { activeWorkspaceId?: string | null }).activeWorkspaceId ?? "")
-              : (hostedMcp.allowedWorkspaceIds[0] ?? ""));
+    const workspaceId = await resolveHostedMcpWorkspaceId({
+      hostedMcp,
+      user: dbUser as DbUserWithActiveWorkspaceId,
+    });
 
     if (!workspaceId) {
       return null;
@@ -185,6 +180,35 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
   } catch {
     return null;
   }
+}
+
+async function resolveHostedMcpWorkspaceId(params: {
+  hostedMcp: HostedMcpContext;
+  user: DbUserWithActiveWorkspaceId;
+}): Promise<string> {
+  if (params.hostedMcp.audience !== "bap") {
+    return params.hostedMcp.workspaceId;
+  }
+
+  if (params.hostedMcp.allowAllWorkspaces) {
+    return (await resolveSessionPrincipalWorkspaceId(params.hostedMcp.userId)) ?? "";
+  }
+
+  return resolveAllowedActiveWorkspaceId(
+    params.user.activeWorkspaceId,
+    params.hostedMcp.allowedWorkspaceIds,
+  );
+}
+
+function resolveAllowedActiveWorkspaceId(
+  activeWorkspaceId: string | null | undefined,
+  allowedWorkspaceIds: string[],
+): string {
+  if (activeWorkspaceId && allowedWorkspaceIds.includes(activeWorkspaceId)) {
+    return activeWorkspaceId;
+  }
+
+  return allowedWorkspaceIds[0] ?? "";
 }
 
 async function resolveRuntimeMcpContext(headers: Headers): Promise<{

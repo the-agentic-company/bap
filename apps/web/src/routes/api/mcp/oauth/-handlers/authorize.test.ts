@@ -10,16 +10,16 @@ const { getSessionMock } = vi.hoisted(() => ({
 }));
 
 const {
-  assertHostedMcpWorkspaceMembershipMock,
   createHostedMcpAuthorizationCodeMock,
   listHostedMcpConsentWorkspacesMock,
   parseHostedMcpAuthorizationRequestMock,
+  resolveHostedMcpWorkspaceConsentMock,
   renderHostedMcpConsentHtmlMock,
 } = vi.hoisted(() => ({
-  assertHostedMcpWorkspaceMembershipMock: vi.fn<VitestProcedure>(),
   createHostedMcpAuthorizationCodeMock: vi.fn<VitestProcedure>(),
   listHostedMcpConsentWorkspacesMock: vi.fn<VitestProcedure>(),
   parseHostedMcpAuthorizationRequestMock: vi.fn<VitestProcedure>(),
+  resolveHostedMcpWorkspaceConsentMock: vi.fn<VitestProcedure>(),
   renderHostedMcpConsentHtmlMock: vi.fn<VitestProcedure>(),
 }));
 
@@ -31,97 +31,77 @@ vi.mock("@/lib/auth", () => ({
   },
 }));
 
-vi.mock("@/server/hosted-mcp-oauth", () => ({
-  assertHostedMcpWorkspaceMembership: assertHostedMcpWorkspaceMembershipMock,
-  createHostedMcpAuthorizationCode: createHostedMcpAuthorizationCodeMock,
-  listHostedMcpConsentWorkspaces: listHostedMcpConsentWorkspacesMock,
-  normalizeHostedMcpSelectedWorkspaceIds: (
-    value: FormDataEntryValue | Array<FormDataEntryValue> | null,
-  ) => {
-    const rawValues = Array.isArray(value) ? value : value ? [value] : [];
-    return Array.from(
-      new Set(
-        rawValues
-          .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-          .filter((workspaceId) => workspaceId.length > 0),
-      ),
-    );
-  },
-  parseHostedMcpAuthorizationRequest: parseHostedMcpAuthorizationRequestMock,
-  renderHostedMcpConsentHtml: renderHostedMcpConsentHtmlMock,
-  resolveHostedMcpConsentWorkspaceId: (workspaces: Array<{ id: string; active: boolean }>) =>
-    workspaces.find((workspace) => workspace.active)?.id ?? workspaces[0]?.id ?? null,
-  resolveHostedMcpWorkspaceConsent: async (params: {
-    audience: string;
-    userId: string;
-    workspaces: Array<{ id: string; active: boolean }>;
-    workspaceAccessMode: string | null;
-    selectedWorkspaceIds: string[];
-    workspaceId: string | null;
-  }) => {
-    if (params.audience !== "bap") {
-      const workspaceId = params.workspaceId?.trim() ?? "";
-      if (!workspaceId) {
-        throw new Error("workspace_id is required.");
-      }
-      await assertHostedMcpWorkspaceMembershipMock(params.userId, workspaceId);
-      return {
-        workspaceId,
-        allowedWorkspaceIds: [workspaceId],
-        allowAllWorkspaces: false,
-        selectedWorkspaceIds: [workspaceId],
-      };
-    }
+vi.mock("@/server/hosted-mcp-oauth", async () => {
+  const actual = await vi.importActual<typeof import("@/server/hosted-mcp-oauth")>(
+    "@/server/hosted-mcp-oauth",
+  );
 
-    if (params.workspaceAccessMode === "all") {
-      const workspaceId =
-        params.workspaces.find((workspace) => workspace.active)?.id ?? params.workspaces[0]?.id;
-      if (!workspaceId) {
-        throw new Error("At least one workspace membership is required.");
-      }
-      return {
-        workspaceId,
-        allowedWorkspaceIds: params.workspaces.map((workspace) => workspace.id),
-        allowAllWorkspaces: true,
-        selectedWorkspaceIds: params.workspaces.map((workspace) => workspace.id),
-      };
-    }
+  return {
+    ...actual,
+    createHostedMcpAuthorizationCode: createHostedMcpAuthorizationCodeMock,
+    listHostedMcpConsentWorkspaces: listHostedMcpConsentWorkspacesMock,
+    parseHostedMcpAuthorizationRequest: parseHostedMcpAuthorizationRequestMock,
+    resolveHostedMcpWorkspaceConsent: resolveHostedMcpWorkspaceConsentMock,
+    renderHostedMcpConsentHtml: renderHostedMcpConsentHtmlMock,
+  };
+});
 
-    if (params.selectedWorkspaceIds.length === 0) {
-      throw new Error("Select at least one workspace or authorize all workspaces.");
-    }
+function mockBapAuthorizationRequest() {
+  parseHostedMcpAuthorizationRequestMock.mockResolvedValueOnce({
+    audience: "bap",
+    clientId: "client-1",
+    redirectUri: "http://localhost:34567/callback",
+    resource: "http://127.0.0.1:3010/bap",
+    scopes: ["bap"],
+    state: "state-1",
+    codeChallenge: "challenge-1",
+  });
+}
 
-    await Promise.all(
-      params.selectedWorkspaceIds.map((workspaceId) =>
-        assertHostedMcpWorkspaceMembershipMock(params.userId, workspaceId),
-      ),
-    );
+function mockBapAuthorizationConsentRequest() {
+  parseHostedMcpAuthorizationRequestMock.mockResolvedValueOnce({
+    audience: "bap",
+    clientId: "client-1",
+    clientName: "Codex",
+    redirectUri: "http://localhost:34567/callback",
+    resource: "http://127.0.0.1:3010/bap",
+    resourceName: "Bap MCP",
+    scopes: ["bap"],
+    state: "state-1",
+    codeChallenge: "challenge-1",
+  });
+}
 
-    return {
-      workspaceId: params.selectedWorkspaceIds[0] ?? null,
-      allowedWorkspaceIds: params.selectedWorkspaceIds,
-      allowAllWorkspaces: false,
-      selectedWorkspaceIds: params.selectedWorkspaceIds,
-    };
-  },
-}));
+function createBapAuthorizationFormData(params?: {
+  decision?: "approve" | "deny";
+  workspaceAccessMode?: "all" | "selected";
+  workspaceIds?: string[];
+}) {
+  const formData = new FormData();
+  formData.set("decision", params?.decision ?? "approve");
+  if (params?.workspaceAccessMode) {
+    formData.set("workspace_access_mode", params.workspaceAccessMode);
+  }
+  for (const workspaceId of params?.workspaceIds ?? []) {
+    formData.append("workspace_ids", workspaceId);
+  }
+  formData.set("response_type", "code");
+  formData.set("client_id", "client-1");
+  formData.set("redirect_uri", "http://localhost:34567/callback");
+  formData.set("resource", "http://127.0.0.1:3010/bap");
+  formData.set("code_challenge", "challenge-1");
+  formData.set("code_challenge_method", "S256");
+  formData.set("scope", "bap");
+  formData.set("state", "state-1");
+  return formData;
+}
 
 import { handleHostedMcpAuthorizeGet, handleHostedMcpAuthorizePost } from "./authorize";
 
 describe("handleHostedMcpAuthorizeGet", () => {
   it("renders Bap consent without forcing a single selected workspace", async () => {
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-1" } });
-    parseHostedMcpAuthorizationRequestMock.mockResolvedValueOnce({
-      audience: "bap",
-      clientId: "client-1",
-      clientName: "Codex",
-      redirectUri: "http://localhost:34567/callback",
-      resource: "http://127.0.0.1:3010/bap",
-      resourceName: "Bap MCP",
-      scopes: ["bap"],
-      state: "state-1",
-      codeChallenge: "challenge-1",
-    });
+    mockBapAuthorizationConsentRequest();
     listHostedMcpConsentWorkspacesMock.mockResolvedValueOnce([
       { id: "ws-1", name: "Workspace One", active: false },
       { id: "ws-2", name: "Workspace Two", active: true },
@@ -211,32 +191,22 @@ describe("handleHostedMcpAuthorizeGet", () => {
 describe("handleHostedMcpAuthorizePost", () => {
   it("approves Bap OAuth without requiring workspace_id in the form", async () => {
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-1" } });
-    parseHostedMcpAuthorizationRequestMock.mockResolvedValueOnce({
-      audience: "bap",
-      clientId: "client-1",
-      redirectUri: "http://localhost:34567/callback",
-      resource: "http://127.0.0.1:3010/bap",
-      scopes: ["bap"],
-      state: "state-1",
-      codeChallenge: "challenge-1",
-    });
+    mockBapAuthorizationRequest();
     listHostedMcpConsentWorkspacesMock.mockResolvedValueOnce([
       { id: "ws-1", name: "Workspace One", active: false },
       { id: "ws-2", name: "Workspace Two", active: true },
     ]);
+    resolveHostedMcpWorkspaceConsentMock.mockResolvedValueOnce({
+      workspaceId: "ws-2",
+      allowedWorkspaceIds: ["ws-1", "ws-2"],
+      allowAllWorkspaces: true,
+      selectedWorkspaceIds: ["ws-1", "ws-2"],
+    });
     createHostedMcpAuthorizationCodeMock.mockResolvedValueOnce("code-1");
 
-    const formData = new FormData();
-    formData.set("decision", "approve");
-    formData.set("workspace_access_mode", "all");
-    formData.set("response_type", "code");
-    formData.set("client_id", "client-1");
-    formData.set("redirect_uri", "http://localhost:34567/callback");
-    formData.set("resource", "http://127.0.0.1:3010/bap");
-    formData.set("code_challenge", "challenge-1");
-    formData.set("code_challenge_method", "S256");
-    formData.set("scope", "bap");
-    formData.set("state", "state-1");
+    const formData = createBapAuthorizationFormData({
+      workspaceAccessMode: "all",
+    });
 
     const response = await handleHostedMcpAuthorizePost(
       new Request("http://localhost:3000/api/mcp/oauth/authorize", {
@@ -245,7 +215,17 @@ describe("handleHostedMcpAuthorizePost", () => {
       }),
     );
 
-    expect(assertHostedMcpWorkspaceMembershipMock).not.toHaveBeenCalled();
+    expect(resolveHostedMcpWorkspaceConsentMock).toHaveBeenCalledWith({
+      audience: "bap",
+      userId: "user-1",
+      workspaces: [
+        { id: "ws-1", name: "Workspace One", active: false },
+        { id: "ws-2", name: "Workspace Two", active: true },
+      ],
+      workspaceAccessMode: "all",
+      selectedWorkspaceIds: [],
+      workspaceId: null,
+    });
     expect(createHostedMcpAuthorizationCodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId: "ws-2",
@@ -261,38 +241,24 @@ describe("handleHostedMcpAuthorizePost", () => {
 
   it("approves Bap OAuth with only selected workspaces", async () => {
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-1" } });
-    parseHostedMcpAuthorizationRequestMock.mockResolvedValueOnce({
-      audience: "bap",
-      clientId: "client-1",
-      redirectUri: "http://localhost:34567/callback",
-      resource: "http://127.0.0.1:3010/bap",
-      scopes: ["bap"],
-      state: "state-1",
-      codeChallenge: "challenge-1",
-    });
+    mockBapAuthorizationRequest();
     listHostedMcpConsentWorkspacesMock.mockResolvedValueOnce([
       { id: "ws-1", name: "Workspace One", active: false },
       { id: "ws-2", name: "Workspace Two", active: true },
       { id: "ws-3", name: "Workspace Three", active: false },
     ]);
-    assertHostedMcpWorkspaceMembershipMock
-      .mockResolvedValueOnce({ workspace: { id: "ws-1" } })
-      .mockResolvedValueOnce({ workspace: { id: "ws-3" } });
+    resolveHostedMcpWorkspaceConsentMock.mockResolvedValueOnce({
+      workspaceId: "ws-1",
+      allowedWorkspaceIds: ["ws-1", "ws-3"],
+      allowAllWorkspaces: false,
+      selectedWorkspaceIds: ["ws-1", "ws-3"],
+    });
     createHostedMcpAuthorizationCodeMock.mockResolvedValueOnce("code-2");
 
-    const formData = new FormData();
-    formData.set("decision", "approve");
-    formData.set("workspace_access_mode", "selected");
-    formData.append("workspace_ids", "ws-1");
-    formData.append("workspace_ids", "ws-3");
-    formData.set("response_type", "code");
-    formData.set("client_id", "client-1");
-    formData.set("redirect_uri", "http://localhost:34567/callback");
-    formData.set("resource", "http://127.0.0.1:3010/bap");
-    formData.set("code_challenge", "challenge-1");
-    formData.set("code_challenge_method", "S256");
-    formData.set("scope", "bap");
-    formData.set("state", "state-1");
+    const formData = createBapAuthorizationFormData({
+      workspaceAccessMode: "selected",
+      workspaceIds: ["ws-1", "ws-3"],
+    });
 
     const response = await handleHostedMcpAuthorizePost(
       new Request("http://localhost:3000/api/mcp/oauth/authorize", {
@@ -301,6 +267,18 @@ describe("handleHostedMcpAuthorizePost", () => {
       }),
     );
 
+    expect(resolveHostedMcpWorkspaceConsentMock).toHaveBeenCalledWith({
+      audience: "bap",
+      userId: "user-1",
+      workspaces: [
+        { id: "ws-1", name: "Workspace One", active: false },
+        { id: "ws-2", name: "Workspace Two", active: true },
+        { id: "ws-3", name: "Workspace Three", active: false },
+      ],
+      workspaceAccessMode: "selected",
+      selectedWorkspaceIds: ["ws-1", "ws-3"],
+      workspaceId: null,
+    });
     expect(createHostedMcpAuthorizationCodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId: "ws-1",

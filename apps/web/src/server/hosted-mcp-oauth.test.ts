@@ -7,9 +7,11 @@ type VitestProcedure = Extract<
 
 const {
   clientFindFirstMock,
+  getWorkspaceMembershipForUserMock,
   refreshTokenFindFirstMock,
   grantFindFirstMock,
   insertMock,
+  listWorkspacesForUserMock,
   updateMock,
   updateSetMock,
   updateWhereMock,
@@ -17,9 +19,11 @@ const {
   signHostedMcpAccessTokenMock,
 } = vi.hoisted(() => {
   const clientFindFirstMock = vi.fn<VitestProcedure>();
+  const getWorkspaceMembershipForUserMock = vi.fn<VitestProcedure>();
   const refreshTokenFindFirstMock = vi.fn<VitestProcedure>();
   const grantFindFirstMock = vi.fn<VitestProcedure>();
   const insertMock = vi.fn<VitestProcedure>();
+  const listWorkspacesForUserMock = vi.fn<VitestProcedure>();
   const updateWhereMock = vi.fn<VitestProcedure>();
   const updatePayloads: Array<Record<string, unknown>> = [];
   const updateSetMock = vi.fn<VitestProcedure>((payload: Record<string, unknown>) => {
@@ -31,9 +35,11 @@ const {
 
   return {
     clientFindFirstMock,
+    getWorkspaceMembershipForUserMock,
     refreshTokenFindFirstMock,
     grantFindFirstMock,
     insertMock,
+    listWorkspacesForUserMock,
     updateMock,
     updateSetMock,
     updateWhereMock,
@@ -67,8 +73,8 @@ vi.mock("@bap/db/client", () => ({
 }));
 
 vi.mock("@bap/core/server/billing/service", () => ({
-  getWorkspaceMembershipForUser: vi.fn<VitestProcedure>(),
-  listWorkspacesForUser: vi.fn<VitestProcedure>(),
+  getWorkspaceMembershipForUser: getWorkspaceMembershipForUserMock,
+  listWorkspacesForUser: listWorkspacesForUserMock,
 }));
 
 vi.mock("@bap/core/server/galien/service", () => ({
@@ -91,7 +97,32 @@ import {
   exchangeHostedMcpRefreshToken,
   parseHostedMcpAuthorizationRequest,
   renderHostedMcpConsentHtml,
+  resolveHostedMcpWorkspaceConsent,
 } from "./hosted-mcp-oauth";
+
+function createConsentHtmlParams(params?: {
+  selectedWorkspaceIds?: string[];
+  allowAllWorkspaces?: boolean;
+}) {
+  return {
+    clientId: "client-1",
+    clientName: "Codex",
+    redirectUri: "http://localhost:34567/callback",
+    audience: "bap" as const,
+    resource: "http://127.0.0.1:3010/bap",
+    resourceName: "Bap MCP",
+    scopes: ["bap"],
+    state: "state-1",
+    codeChallenge: "challenge-1",
+    currentWorkspaceId: "ws-2",
+    workspaces: [
+      { id: "ws-1", name: "Workspace One", active: false },
+      { id: "ws-2", name: "Workspace Two", active: true },
+    ],
+    selectedWorkspaceIds: params?.selectedWorkspaceIds ?? ["ws-1", "ws-2"],
+    allowAllWorkspaces: params?.allowAllWorkspaces ?? true,
+  };
+}
 
 describe("hosted MCP OAuth refresh tokens", () => {
   beforeEach(() => {
@@ -233,24 +264,7 @@ describe("hosted MCP OAuth authorization requests", () => {
   });
 
   it("hides selected workspace checkboxes when all workspaces are authorized", () => {
-    const html = renderHostedMcpConsentHtml({
-      clientId: "client-1",
-      clientName: "Codex",
-      redirectUri: "http://localhost:34567/callback",
-      audience: "bap",
-      resource: "http://127.0.0.1:3010/bap",
-      resourceName: "Bap MCP",
-      scopes: ["bap"],
-      state: "state-1",
-      codeChallenge: "challenge-1",
-      currentWorkspaceId: "ws-2",
-      workspaces: [
-        { id: "ws-1", name: "Workspace One", active: false },
-        { id: "ws-2", name: "Workspace Two", active: true },
-      ],
-      selectedWorkspaceIds: ["ws-1", "ws-2"],
-      allowAllWorkspaces: true,
-    });
+    const html = renderHostedMcpConsentHtml(createConsentHtmlParams());
 
     expect(html).toContain('id="workspace-selection-panel" class="workspace-selection-panel" hidden');
     expect(html).not.toContain('name="workspace_ids" value="ws-1" checked');
@@ -258,27 +272,62 @@ describe("hosted MCP OAuth authorization requests", () => {
   });
 
   it("shows and prechecks the selected workspace panel in selected mode", () => {
-    const html = renderHostedMcpConsentHtml({
-      clientId: "client-1",
-      clientName: "Codex",
-      redirectUri: "http://localhost:34567/callback",
-      audience: "bap",
-      resource: "http://127.0.0.1:3010/bap",
-      resourceName: "Bap MCP",
-      scopes: ["bap"],
-      state: "state-1",
-      codeChallenge: "challenge-1",
-      currentWorkspaceId: "ws-2",
-      workspaces: [
-        { id: "ws-1", name: "Workspace One", active: false },
-        { id: "ws-2", name: "Workspace Two", active: true },
-      ],
-      selectedWorkspaceIds: ["ws-2"],
-      allowAllWorkspaces: false,
-    });
+    const html = renderHostedMcpConsentHtml(
+      createConsentHtmlParams({
+        selectedWorkspaceIds: ["ws-2"],
+        allowAllWorkspaces: false,
+      }),
+    );
 
     expect(html).not.toContain('id="workspace-selection-panel" class="workspace-selection-panel" hidden');
     expect(html).toContain('name="workspace_ids" value="ws-2" checked');
     expect(html).not.toContain('name="workspace_ids" value="ws-1" checked');
+  });
+
+  it("resolves Bap selected-workspace consent to the chosen subset", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValue({ workspace: { id: "ws-1" } });
+
+    await expect(
+      resolveHostedMcpWorkspaceConsent({
+        audience: "bap",
+        userId: "user-1",
+        workspaces: [
+          { id: "ws-1", active: false },
+          { id: "ws-2", active: true },
+          { id: "ws-3", active: false },
+        ],
+        workspaceAccessMode: "selected",
+        selectedWorkspaceIds: ["ws-1", "ws-3"],
+        workspaceId: null,
+      }),
+    ).resolves.toEqual({
+      workspaceId: "ws-1",
+      allowedWorkspaceIds: ["ws-1", "ws-3"],
+      allowAllWorkspaces: false,
+      selectedWorkspaceIds: ["ws-1", "ws-3"],
+    });
+
+    expect(getWorkspaceMembershipForUserMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("resolves Bap all-workspace consent to every current membership", async () => {
+    await expect(
+      resolveHostedMcpWorkspaceConsent({
+        audience: "bap",
+        userId: "user-1",
+        workspaces: [
+          { id: "ws-1", active: false },
+          { id: "ws-2", active: true },
+        ],
+        workspaceAccessMode: "all",
+        selectedWorkspaceIds: [],
+        workspaceId: null,
+      }),
+    ).resolves.toEqual({
+      workspaceId: "ws-2",
+      allowedWorkspaceIds: ["ws-1", "ws-2"],
+      allowAllWorkspaces: true,
+      selectedWorkspaceIds: ["ws-1", "ws-2"],
+    });
   });
 });

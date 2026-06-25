@@ -396,7 +396,7 @@ describe("billingRouter", () => {
       }),
     ).rejects.toMatchObject({
       code: "FORBIDDEN",
-      message: "Admin role required for manual top-ups",
+      message: "Admin role required",
     });
   });
 
