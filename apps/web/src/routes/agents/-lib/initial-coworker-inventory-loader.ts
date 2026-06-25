@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { CoworkerSchedule } from "@/orpc/hooks/coworkers";
 import type { CoworkerFolderItem, CoworkerItem } from "../-components/coworkers-page";
 
 export type InitialCoworkerInventoryLoaderData = {
@@ -57,7 +58,7 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
     allowedWorkspaceMcpServerIds:
       allowedWorkspaceMcpServerIds as CoworkerItem["allowedWorkspaceMcpServerIds"],
     allowedSkillSlugs: allowedSkillSlugs.filter((slug): slug is string => typeof slug === "string"),
-    schedule: null,
+    schedule: (row.schedule as CoworkerSchedule | null | undefined) ?? null,
     requiresUserInput: row.requiresUserInput === true,
     userInputPrompt: typeof row.userInputPrompt === "string" ? row.userInputPrompt : null,
     recentRuns: recentRuns.flatMap((run) => {
