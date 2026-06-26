@@ -13,16 +13,16 @@ import {
   Wrench,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import type { Message, MessagePart, SandboxFileData } from "@/components/chat/message-list";
 import { ChatArea } from "@/components/chat/chat-area";
 import { MessageBubble } from "@/components/chat/message-bubble";
+import type { Message, MessagePart, SandboxFileData } from "@/components/chat/message-list";
+import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
-import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
+import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
 
 export type InfoTab = "summary" | "chat";
 export type MobilePanel = "app" | InfoTab;
@@ -274,7 +274,9 @@ function EmptyPreview({
   runStatus?: string | null;
   errorMessage?: string | null;
 }) {
-  if ((runStatus === "error" || runStatus === "cancelled") && errorMessage?.trim()) {
+  if (runStatus === "error" || runStatus === "cancelled") {
+    const fallback = runStatus === "cancelled" ? "Run cancelled." : "Run failed.";
+
     return (
       <div className="bg-background h-full overflow-auto p-5">
         <div className="mx-auto max-w-3xl rounded-xl border border-red-300 bg-red-50/80 p-4">
@@ -284,7 +286,10 @@ function EmptyPreview({
               <T>Error</T>
             </p>
           </div>
-          <MessageBubble messageRole="assistant" content={formatErrorMessage(errorMessage)} />
+          <MessageBubble
+            messageRole="assistant"
+            content={formatErrorMessage(errorMessage, fallback)}
+          />
         </div>
       </div>
     );

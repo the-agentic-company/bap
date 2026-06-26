@@ -183,9 +183,14 @@ describe("OutputPanel empty states", () => {
 
     expect(screen.getByText("Error")).toBeTruthy();
     expect(
-      screen.getByText(
-        "Error : This ChatGPT model requires the shared workspace connection.",
-      ),
+      screen.getByText("Error : This ChatGPT model requires the shared workspace connection."),
     ).toBeTruthy();
+  });
+
+  it("falls back to status-based error copy when the run has no error message", () => {
+    render(<OutputPanel conversationId="conv-run-5" runStatus="cancelled" />);
+
+    expect(screen.getByText("Error")).toBeTruthy();
+    expect(screen.getByText("Error : Run cancelled.")).toBeTruthy();
   });
 });
