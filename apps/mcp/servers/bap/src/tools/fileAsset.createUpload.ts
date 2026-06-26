@@ -12,7 +12,8 @@ export const schema = {
 
 export const metadata: ToolMetadata = {
   name: "fileAsset.createUpload",
-  description: "Create a Bap Upload Session for a File Asset attachment",
+  description:
+    "Create a Bap Upload Session for a File Asset attachment. After calling this tool, upload the file bytes with an HTTP PUT to the returned uploadUrl, then call fileAsset.completeUpload with the uploadSessionId to finalise the asset.",
   annotations: {
     title: "Create file upload",
     readOnlyHint: false,

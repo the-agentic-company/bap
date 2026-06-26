@@ -3,6 +3,7 @@ import type {
   CoworkerCreateInput,
   CoworkerCreateResult,
   CoworkerDetails,
+  FileAttachmentInput,
   CoworkerRun,
   CoworkerRunSummary,
   CoworkerSummary,
@@ -61,12 +62,7 @@ export function createCoworkerRunner(client: BapApiClient) {
       options?: {
         trustedUserInput?: string;
         debugRunDeadlineMs?: number;
-        fileAttachments?: Array<{
-          fileAssetId: string;
-          name?: string;
-          mimeType?: string;
-          sizeBytes?: number;
-        }>;
+        fileAttachments?: FileAttachmentInput[];
       },
     ): Promise<CoworkerTriggerResult> {
       const id = await resolveCoworkerReference(client, reference);

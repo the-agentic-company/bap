@@ -2,6 +2,7 @@ import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
 import { toMcpToolResult } from "../../../../shared/tool-result";
 import { createMcpClient } from "../lib/client";
+import { fileAttachmentInputSchema } from "../lib/file-attachment-schema";
 import { handleCoworkerRun } from "../lib/handlers";
 
 export const schema = {
@@ -9,14 +10,7 @@ export const schema = {
   payload: z.record(z.string(), z.unknown()).optional().describe("Optional run payload"),
   userInput: z.string().optional().describe("Trusted first user input for coworkers that need it"),
   fileAttachments: z
-    .array(
-      z.object({
-        fileAssetId: z.string().min(1).describe("Ready File Asset ID to attach to the run"),
-        name: z.string().optional().describe("Optional display name for the attachment"),
-        mimeType: z.string().optional().describe("Optional MIME type override"),
-        sizeBytes: z.number().int().nonnegative().optional().describe("Optional file size hint"),
-      }),
-    )
+    .array(fileAttachmentInputSchema)
     .optional()
     .describe("Optional ready File Assets to attach to the run"),
 };

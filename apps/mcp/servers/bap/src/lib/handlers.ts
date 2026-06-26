@@ -6,6 +6,7 @@ import {
   type CoworkerSchedule,
   type CoworkerRunStatus,
   type CoworkerUpdateInput,
+  type FileAttachmentInput,
 } from "@bap/client";
 
 export async function handleChatRun(params: {
@@ -16,12 +17,7 @@ export async function handleChatRun(params: {
   authSource?: "user" | "shared";
   sandbox?: "e2b" | "daytona" | "docker";
   autoApprove?: boolean;
-  fileAttachments?: Array<{
-    fileAssetId: string;
-    name?: string;
-    mimeType?: string;
-    sizeBytes?: number;
-  }>;
+  fileAttachments?: FileAttachmentInput[];
 }) {
   const result = await runChatSession({
     client: params.client,
@@ -260,12 +256,7 @@ export async function handleCoworkerRun(params: {
   reference: string;
   payload?: unknown;
   userInput?: string;
-  fileAttachments?: Array<{
-    fileAssetId: string;
-    name?: string;
-    mimeType?: string;
-    sizeBytes?: number;
-  }>;
+  fileAttachments?: FileAttachmentInput[];
 }) {
   const runner = createCoworkerRunner(params.client);
   const trustedUserInput = params.userInput?.trim();
