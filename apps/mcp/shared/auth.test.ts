@@ -11,6 +11,7 @@ describe("MCP auth", () => {
     const token = await signHostedMcpAccessToken({
       userId: "user-1",
       workspaceId: "workspace-1",
+      allowedWorkspaceIds: ["workspace-1", "workspace-2"],
       audience: "bap",
       scope: ["bap"],
       clientId: "bap-mcp-client",
@@ -34,5 +35,7 @@ describe("MCP auth", () => {
     expect(auth.clientId).toBe("bap-mcp-client");
     expect(auth.extra.authType).toBe("hosted_oauth");
     expect(auth.extra.workspaceId).toBe("workspace-1");
+    expect(auth.extra.allowedWorkspaceIds).toEqual(["workspace-1", "workspace-2"]);
+    expect(auth.extra.allowAllWorkspaces).toBe(false);
   });
 });

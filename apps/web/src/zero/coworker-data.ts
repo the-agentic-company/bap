@@ -1,4 +1,5 @@
 import type { IntegrationType } from "@/lib/integration-icons";
+import type { CoworkerSchedule } from "@/orpc/hooks/coworkers";
 
 type ZeroRunLike = {
   readonly id: string;
@@ -29,7 +30,7 @@ type ZeroCoworkerLike = {
   readonly allowedCustomIntegrations?: readonly string[] | null;
   readonly allowedWorkspaceMcpServerIds?: readonly string[] | null;
   readonly allowedSkillSlugs?: readonly string[] | null;
-  readonly schedule?: unknown;
+  readonly schedule?: CoworkerSchedule | null;
   readonly toolAccessMode?: "all" | "selected" | null;
   readonly isPinned: boolean;
   readonly sharedAt?: number | string | Date | null;

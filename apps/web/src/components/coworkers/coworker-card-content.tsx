@@ -1,8 +1,10 @@
 import { T } from "gt-react";
 import { Star } from "lucide-react";
+import type { CoworkerSchedule } from "@/orpc/hooks/coworkers";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import { cn } from "@/lib/utils";
+import { getCoworkerTriggerLabel } from "./coworker-trigger-label";
 
 export type CoworkerCardData = {
   name?: string | null;
@@ -10,6 +12,7 @@ export type CoworkerCardData = {
   description?: string | null;
   status: "on" | "off";
   triggerType: string;
+  schedule?: CoworkerSchedule | null;
   isPinned?: boolean;
   sharedAt?: Date | string | null;
   recentRuns?: {
@@ -41,16 +44,6 @@ function formatDate(value?: Date | string | null) {
     return `${diffD}d ago`;
   }
   return date.toLocaleDateString();
-}
-
-function getTriggerLabel(triggerType: string) {
-  const map: Record<string, string> = {
-    manual: "Manual",
-    schedule: "Scheduled",
-    email: "Email",
-    webhook: "Webhook",
-  };
-  return map[triggerType] ?? triggerType;
 }
 
 export function getCoworkerDisplayName(name?: string | null) {
@@ -143,7 +136,7 @@ export function CoworkerCardContent({
       {/* Badges: trigger + shared + extras */}
       <div className="flex items-center gap-2">
         <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium">
-          {getTriggerLabel(coworker.triggerType)}
+          {getCoworkerTriggerLabel(coworker.triggerType, coworker.schedule)}
         </span>
         {coworker.sharedAt ? (
           <span className="text-foreground/70 bg-foreground/[0.06] inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium">

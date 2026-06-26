@@ -1,6 +1,5 @@
 // oxlint-disable jsx-a11y/control-has-associated-label
 
-import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Building2,
@@ -14,6 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";

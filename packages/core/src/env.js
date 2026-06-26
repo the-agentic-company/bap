@@ -65,6 +65,9 @@ export const env = createEnv({
     // Unipile (LinkedIn integration)
     UNIPILE_API_KEY: z.string().optional(),
     UNIPILE_DSN: z.string().optional(),
+    // Agentic Audit scrapers (optional; mock fallback when unset)
+    FIRECRAWL_API_KEY: z.string().optional(),
+    APIFY_API_TOKEN: z.string().optional(),
     // Apple Sign In
     APPLE_CLIENT_ID: z.string().optional(),
     APPLE_CLIENT_SECRET: z.string().optional(),
@@ -187,6 +190,8 @@ export const env = createEnv({
     DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN,
     UNIPILE_API_KEY: process.env.UNIPILE_API_KEY,
     UNIPILE_DSN: process.env.UNIPILE_DSN,
+    FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY,
+    APIFY_API_TOKEN: process.env.APIFY_API_TOKEN,
     APPLE_CLIENT_ID: process.env.APPLE_CLIENT_ID,
     APPLE_CLIENT_SECRET: process.env.APPLE_CLIENT_SECRET,
     APPLE_APP_BUNDLE_IDENTIFIER: process.env.APPLE_APP_BUNDLE_IDENTIFIER,
@@ -224,8 +229,7 @@ export const env = createEnv({
     WEB_PUSH_VAPID_PUBLIC_KEY: process.env.WEB_PUSH_VAPID_PUBLIC_KEY,
     WEB_PUSH_VAPID_PRIVATE_KEY: process.env.WEB_PUSH_VAPID_PRIVATE_KEY,
     VITE_APP_URL: process.env.VITE_APP_URL,
-    VITE_APP_EDITION:
-      process.env.VITE_APP_EDITION ?? process.env.APP_EDITION,
+    VITE_APP_EDITION: process.env.VITE_APP_EDITION ?? process.env.APP_EDITION,
     VITE_POSTHOG_KEY: process.env.VITE_POSTHOG_KEY,
     VITE_POSTHOG_HOST: process.env.VITE_POSTHOG_HOST,
     VITE_ZERO_CACHE_URL: process.env.VITE_ZERO_CACHE_URL,

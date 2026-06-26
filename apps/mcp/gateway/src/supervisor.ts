@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:net";
 import path from "node:path";
 import { logger as telemetryLogger } from "@bap/core/server/utils/observability";
 import { MCP_SERVER_REGISTRY, type McpServerSlug } from "../../shared/registry";
+import { refreshXmcpImportMap } from "./xmcp-import-map";
 
 const DEFAULT_CHILD_HOST = "127.0.0.1";
 const DEFAULT_CHILD_BASE_PORT = 4101;
@@ -116,18 +117,21 @@ function pipeChildLogs(
   });
 }
 
-function spawnChildProcess(params: {
+async function spawnChildProcess(params: {
   slug: McpServerSlug;
   childRoot: string;
   mode: "dev" | "start";
   port: number;
   env: NodeJS.ProcessEnv;
   rootDir: string;
-}): {
+}): Promise<{
   process: ChildProcess;
   readyPort: Promise<number>;
-} {
+}> {
   const cwd = path.resolve(params.rootDir, params.childRoot);
+  if (params.mode === "dev") {
+    await refreshXmcpImportMap(cwd);
+  }
   const childEnv = {
     ...params.env,
     PORT: String(params.port),
@@ -243,7 +247,7 @@ export async function startManagedGatewayChildren(params: {
       HOST: DEFAULT_CHILD_HOST,
     };
 
-    const processHandle = spawnChildProcess({
+    const processHandle = await spawnChildProcess({
       slug: server.slug,
       childRoot: server.childRoot,
       mode,
