@@ -274,7 +274,6 @@ describe("hosted MCP OAuth authorization requests", () => {
     expect(html).not.toContain('name="workspace_ids"');
   });
 
-  it("resolves Bap all-workspace consent to every current membership", async () => {
   it("rejects new Bap selected-workspace consent requests", async () => {
     await expect(
       resolveHostedMcpWorkspaceConsent({
