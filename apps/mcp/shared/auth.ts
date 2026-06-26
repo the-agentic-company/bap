@@ -8,6 +8,8 @@ import { buildProtectedResourceMetadataPath } from "./registry";
 type AuthenticatedMcpClaims = {
   userId: string;
   workspaceId: string;
+  allowedWorkspaceIds?: string[];
+  allowAllWorkspaces?: boolean;
   audience: HostedMcpAudience;
   issuer?: string;
   grantId?: string;
@@ -114,6 +116,8 @@ export async function authenticateHostedMcpRequest(params: {
       extra: {
         userId: claims.userId,
         workspaceId: claims.workspaceId,
+        allowedWorkspaceIds: claims.allowedWorkspaceIds,
+        allowAllWorkspaces: claims.allowAllWorkspaces,
         audience: claims.audience,
         issuer: claims.iss,
         grantId: claims.grantId,

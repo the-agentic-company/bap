@@ -328,25 +328,55 @@ export async function addWorkspaceMembers(
   emails: string[],
   role: "admin" | "member" = "member",
 ) {
+  const normalizedEmails = Array.from(
+    new Set(emails.map((email) => email.trim().toLowerCase()).filter((email) => email.length > 0)),
+  );
+
   const users = await db.query.user.findMany({
-    where: inArray(user.email, emails),
+    where: inArray(user.email, normalizedEmails),
     columns: { id: true, email: true },
   });
 
-  await Promise.all(
-    users.map((dbUser) =>
-      db
-        .insert(workspaceMember)
-        .values({
-          workspaceId,
-          userId: dbUser.id,
-          role,
+  const requestedUserIds = users.map((dbUser) => dbUser.id);
+  const existingMemberships =
+    requestedUserIds.length > 0
+      ? await db.query.workspaceMember.findMany({
+          where: and(
+            eq(workspaceMember.workspaceId, workspaceId),
+            inArray(workspaceMember.userId, requestedUserIds),
+          ),
+          columns: { userId: true },
         })
-        .onConflictDoNothing(),
-    ),
-  );
+      : [];
 
-  return users.map((item) => item.email);
+  const existingUserIds = new Set(existingMemberships.map((membership) => membership.userId));
+  const addedUsers = users.filter((dbUser) => !existingUserIds.has(dbUser.id));
+  const alreadyMembers = users
+    .filter((dbUser) => existingUserIds.has(dbUser.id))
+    .map((dbUser) => dbUser.email);
+  const foundEmails = new Set(users.map((dbUser) => dbUser.email));
+  const notFound = normalizedEmails.filter((email) => !foundEmails.has(email));
+
+  if (addedUsers.length > 0) {
+    await Promise.all(
+      addedUsers.map((dbUser) =>
+        db
+          .insert(workspaceMember)
+          .values({
+            workspaceId,
+            userId: dbUser.id,
+            role,
+          })
+          .onConflictDoNothing(),
+      ),
+    );
+  }
+
+  return {
+    added: addedUsers.map((item) => item.email),
+    alreadyMembers,
+    notFound,
+  };
 }
 
 export async function adminListAllWorkspaces() {

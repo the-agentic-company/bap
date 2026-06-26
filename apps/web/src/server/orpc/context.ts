@@ -11,11 +11,14 @@ import { db } from "@bap/db/client";
 import { user as userTable } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
 import { getRequestSession } from "@/server/session-auth";
+import { resolveSessionPrincipalWorkspaceId } from "@/server/session-principal-workspace";
 
 export type HostedMcpContext = {
   token: string;
   userId: string;
   workspaceId: string;
+  allowedWorkspaceIds: string[];
+  allowAllWorkspaces: boolean;
   audience: HostedMcpAudience;
   scopes: string[];
   clientId: string;
@@ -46,6 +49,8 @@ export type ORPCContext = {
 };
 
 const BAP_MANAGED_INTERNAL_KEY = "bap";
+
+type DbUserWithActiveWorkspaceId = User & { activeWorkspaceId?: string | null };
 
 function resolvePublicMcpOrigin(headers: Headers): string | undefined {
   const explicit = headers.get("x-bap-public-origin")?.trim();
@@ -93,6 +98,8 @@ export async function resolveHostedMcpClaims(
     token,
     userId: claims.userId,
     workspaceId: claims.workspaceId,
+    allowedWorkspaceIds: claims.allowedWorkspaceIds,
+    allowAllWorkspaces: claims.allowAllWorkspaces,
     audience: claims.audience,
     scopes: claims.scope,
     clientId: claims.clientId,
@@ -144,6 +151,15 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
       return null;
     }
 
+    const workspaceId = await resolveHostedMcpWorkspaceId({
+      hostedMcp,
+      user: dbUser as DbUserWithActiveWorkspaceId,
+    });
+
+    if (!workspaceId) {
+      return null;
+    }
+
     return {
       user: dbUser as unknown as User,
       session: {
@@ -156,11 +172,43 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
         ipAddress: null,
         userAgent: headers.get("user-agent"),
       } as Session,
-      hostedMcp,
+      hostedMcp: {
+        ...hostedMcp,
+        workspaceId,
+      },
     };
   } catch {
     return null;
   }
+}
+
+async function resolveHostedMcpWorkspaceId(params: {
+  hostedMcp: HostedMcpContext;
+  user: DbUserWithActiveWorkspaceId;
+}): Promise<string> {
+  if (params.hostedMcp.audience !== "bap") {
+    return params.hostedMcp.workspaceId;
+  }
+
+  if (params.hostedMcp.allowAllWorkspaces) {
+    return (await resolveSessionPrincipalWorkspaceId(params.hostedMcp.userId)) ?? "";
+  }
+
+  return resolveAllowedActiveWorkspaceId(
+    params.user.activeWorkspaceId,
+    params.hostedMcp.allowedWorkspaceIds,
+  );
+}
+
+function resolveAllowedActiveWorkspaceId(
+  activeWorkspaceId: string | null | undefined,
+  allowedWorkspaceIds: string[],
+): string {
+  if (!activeWorkspaceId) {
+    return "";
+  }
+
+  return allowedWorkspaceIds.includes(activeWorkspaceId) ? activeWorkspaceId : "";
 }
 
 async function resolveRuntimeMcpContext(headers: Headers): Promise<{

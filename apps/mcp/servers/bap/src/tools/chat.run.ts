@@ -2,6 +2,7 @@ import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
 import { toMcpToolResult } from "../../../../shared/tool-result";
 import { createMcpClient } from "../lib/client";
+import { fileAttachmentInputSchema } from "../lib/file-attachment-schema";
 import { handleChatRun } from "../lib/handlers";
 
 export const schema = {
@@ -11,11 +12,16 @@ export const schema = {
   authSource: z.enum(["user", "shared"]).optional().describe("Model auth source"),
   sandbox: z.enum(["e2b", "daytona", "docker"]).optional().describe("Sandbox provider"),
   autoApprove: z.boolean().optional().describe("Auto-approve tool calls"),
+  fileAttachments: z
+    .array(fileAttachmentInputSchema)
+    .optional()
+    .describe("Optional ready File Assets to attach to the chat turn"),
 };
 
 export const metadata: ToolMetadata = {
   name: "chat.run",
-  description: "Run a Bap chat turn and return a structured result",
+  description:
+    "Run a Bap chat turn and return a structured result. The message may be empty when at least one ready File Asset is provided in fileAttachments.",
   annotations: {
     title: "Run chat",
     idempotentHint: false,
@@ -39,6 +45,7 @@ export default async function chatRun(
     authSource: params.authSource,
     sandbox: params.sandbox,
     autoApprove: params.autoApprove,
+    fileAttachments: params.fileAttachments,
   });
 
   return toMcpToolResult(result);
