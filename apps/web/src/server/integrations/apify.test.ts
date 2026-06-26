@@ -4,15 +4,19 @@ const actorCall = vi.fn<() => Promise<{ defaultDatasetId?: string }>>();
 const listItems = vi.fn<() => Promise<{ items: unknown[] }>>();
 
 vi.mock("apify-client", () => ({
-  ApifyClient: vi.fn<(options: unknown) => unknown>().mockImplementation((options) => ({
-    options,
-    actor: vi.fn<() => unknown>(() => ({
+  ApifyClient: class ApifyClient {
+    options: unknown;
+    actor = vi.fn<() => unknown>(() => ({
       call: actorCall,
-    })),
-    dataset: vi.fn<() => unknown>(() => ({
+    }));
+    dataset = vi.fn<() => unknown>(() => ({
       listItems,
-    })),
-  })),
+    }));
+
+    constructor(options: unknown) {
+      this.options = options;
+    }
+  },
 }));
 
 vi.mock("@/env", () => ({
