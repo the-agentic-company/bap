@@ -163,6 +163,13 @@ export type DoneArtifactsData = {
   sandboxFiles: SandboxFileData[];
 };
 
+export type FileAttachmentInput = {
+  fileAssetId: string;
+  name?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+};
+
 export type GenerationStartInput = {
   conversationId?: string;
   content: string;
@@ -176,12 +183,7 @@ export type GenerationStartInput = {
   debugRuntimeNoProgressTimeoutMs?: number;
   debugForceRuntimeNoProgressAfterPrompt?: boolean;
   selectedPlatformSkillSlugs?: string[];
-  fileAttachments?: Array<{
-    fileAssetId: string;
-    name?: string;
-    mimeType?: string;
-    sizeBytes?: number;
-  }>;
+  fileAttachments?: FileAttachmentInput[];
 };
 
 export type GenerationStreamEvent = {
@@ -632,6 +634,7 @@ export interface BapApiClient {
       payload?: unknown;
       debugRunDeadlineMs?: number;
       trustedUserInput?: string;
+      fileAttachments?: FileAttachmentInput[];
     }): Promise<CoworkerTriggerResult>;
     getRun(input: { id: string }): Promise<CoworkerRun>;
     listRuns(input: { coworkerId: string; limit: number }): Promise<CoworkerRunSummary[]>;

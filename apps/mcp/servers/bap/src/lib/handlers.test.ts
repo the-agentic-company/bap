@@ -17,6 +17,8 @@ import {
   handleCoworkerUpdate,
   handleCoworkerUpdateDocument,
   handleCoworkerUploadDocument,
+  handleFileAssetCompleteUpload,
+  handleFileAssetCreateUpload,
   handleSkillAdd,
   handleWorkspaceList,
   handleWorkspaceCreate,
@@ -110,6 +112,113 @@ describe("MCP handlers", () => {
     });
 
     expect(result.status).toBe("needs_auth");
+  });
+
+  it("passes chat file attachments to generation start", async () => {
+    const client = {
+      generation: {
+        startGeneration: vi.fn().mockResolvedValue({
+          generationId: "gen-2",
+          conversationId: "conv-2",
+        }),
+        subscribeGeneration: vi.fn().mockResolvedValue(
+          (async function* () {
+            yield {
+              type: "done" as const,
+              generationId: "gen-2",
+              conversationId: "conv-2",
+              messageId: "msg-2",
+              usage: { inputTokens: 1, outputTokens: 1, totalCostUsd: 0 },
+            };
+          })(),
+        ),
+      },
+    };
+
+    const result = await handleChatRun({
+      client: client as never,
+      message: "please use the attached brief",
+      conversationId: "conv-2",
+      fileAttachments: [
+        {
+          fileAssetId: "asset-brief",
+          name: "brief.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 1024,
+        },
+      ],
+    });
+
+    expect(client.generation.startGeneration).toHaveBeenCalledWith({
+      content: "please use the attached brief",
+      conversationId: "conv-2",
+      model: undefined,
+      authSource: undefined,
+      sandboxProvider: undefined,
+      autoApprove: undefined,
+      fileAttachments: [
+        {
+          fileAssetId: "asset-brief",
+          name: "brief.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 1024,
+        },
+      ],
+    });
+    expect(result.status).toBe("completed");
+  });
+
+  it("starts a chat turn with attachments only", async () => {
+    const client = {
+      generation: {
+        startGeneration: vi.fn().mockResolvedValue({
+          generationId: "gen-attachments-only",
+          conversationId: "conv-attachments-only",
+        }),
+        subscribeGeneration: vi.fn().mockResolvedValue(
+          (async function* () {
+            yield {
+              type: "done" as const,
+              generationId: "gen-attachments-only",
+              conversationId: "conv-attachments-only",
+              messageId: "msg-attachments-only",
+              usage: { inputTokens: 1, outputTokens: 1, totalCostUsd: 0 },
+            };
+          })(),
+        ),
+      },
+    };
+
+    const result = await handleChatRun({
+      client: client as never,
+      message: "",
+      fileAttachments: [
+        {
+          fileAssetId: "asset-audio",
+          name: "visit-audio.m4a",
+          mimeType: "audio/mp4",
+          sizeBytes: 4096,
+        },
+      ],
+    });
+
+    expect(client.generation.startGeneration).toHaveBeenCalledWith({
+      content: "",
+      conversationId: undefined,
+      model: undefined,
+      authSource: undefined,
+      sandboxProvider: undefined,
+      autoApprove: undefined,
+      fileAttachments: [
+        {
+          fileAssetId: "asset-audio",
+          name: "visit-audio.m4a",
+          mimeType: "audio/mp4",
+          sizeBytes: 4096,
+        },
+      ],
+    });
+    expect(result.status).toBe("completed");
   });
 
   it("lists coworkers", async () => {
@@ -528,6 +637,155 @@ describe("MCP handlers", () => {
       debugRunDeadlineMs: undefined,
     });
     expect(result.run).toMatchObject({ runId: "run-1" });
+  });
+
+  it("passes coworker run file attachments through to the trigger", async () => {
+    const client = {
+      coworker: {
+        trigger: vi.fn().mockResolvedValue({
+          runId: "run-3",
+          coworkerId: "cw-1",
+        }),
+      },
+    };
+
+    const result = await handleCoworkerRun({
+      client: client as never,
+      reference: "cw-1",
+      fileAttachments: [
+        {
+          fileAssetId: "asset-1",
+          name: "brief.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 1234,
+        },
+      ],
+    });
+
+    expect(client.coworker.trigger).toHaveBeenCalledWith({
+      id: "cw-1",
+      payload: undefined,
+      trustedUserInput: undefined,
+      debugRunDeadlineMs: undefined,
+      fileAttachments: [
+        {
+          fileAssetId: "asset-1",
+          name: "brief.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 1234,
+        },
+      ],
+    });
+    expect(result.run).toMatchObject({ runId: "run-3" });
+  });
+
+  it("starts a coworker run with attachments only", async () => {
+    const client = {
+      coworker: {
+        trigger: vi.fn().mockResolvedValue({
+          runId: "run-attachments-only",
+          coworkerId: "cw-1",
+        }),
+      },
+    };
+
+    const result = await handleCoworkerRun({
+      client: client as never,
+      reference: "cw-1",
+      userInput: "   ",
+      fileAttachments: [
+        {
+          fileAssetId: "asset-checklist",
+          name: "checklist.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 2048,
+        },
+      ],
+    });
+
+    expect(client.coworker.trigger).toHaveBeenCalledWith({
+      id: "cw-1",
+      payload: undefined,
+      trustedUserInput: undefined,
+      debugRunDeadlineMs: undefined,
+      fileAttachments: [
+        {
+          fileAssetId: "asset-checklist",
+          name: "checklist.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 2048,
+        },
+      ],
+    });
+    expect(result.run).toMatchObject({ runId: "run-attachments-only" });
+  });
+
+  it("creates a file upload session", async () => {
+    const client = {
+      fileAsset: {
+        createUpload: vi.fn().mockResolvedValue({
+          uploadSessionId: "upload-1",
+          uploadUrl: "https://uploads.example.com/upload-1",
+          fileAssetId: "asset-1",
+          expiresAt: new Date("2026-06-26T12:00:00.000Z"),
+        }),
+      },
+    };
+
+    const result = await handleFileAssetCreateUpload({
+      client: client as never,
+      filename: "brief.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 2048,
+    });
+
+    expect(client.fileAsset.createUpload).toHaveBeenCalledWith({
+      filename: "brief.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 2048,
+    });
+    expect(result).toEqual({
+      status: "completed",
+      upload: {
+        uploadSessionId: "upload-1",
+        uploadUrl: "https://uploads.example.com/upload-1",
+        fileAssetId: "asset-1",
+        expiresAt: new Date("2026-06-26T12:00:00.000Z"),
+      },
+    });
+  });
+
+  it("completes a file upload session", async () => {
+    const client = {
+      fileAsset: {
+        completeUpload: vi.fn().mockResolvedValue({
+          id: "asset-1",
+          filename: "brief.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 2048,
+          status: "ready",
+        }),
+      },
+    };
+
+    const result = await handleFileAssetCompleteUpload({
+      client: client as never,
+      uploadSessionId: "upload-1",
+    });
+
+    expect(client.fileAsset.completeUpload).toHaveBeenCalledWith({
+      uploadSessionId: "upload-1",
+    });
+    expect(result).toEqual({
+      status: "completed",
+      file: {
+        id: "asset-1",
+        filename: "brief.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 2048,
+        status: "ready",
+      },
+    });
   });
 
   it("uploads documents to an existing coworker by username reference", async () => {

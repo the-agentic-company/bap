@@ -6,6 +6,7 @@ import {
   type CoworkerSchedule,
   type CoworkerRunStatus,
   type CoworkerUpdateInput,
+  type FileAttachmentInput,
 } from "@bap/client";
 
 export async function handleChatRun(params: {
@@ -16,6 +17,7 @@ export async function handleChatRun(params: {
   authSource?: "user" | "shared";
   sandbox?: "e2b" | "daytona" | "docker";
   autoApprove?: boolean;
+  fileAttachments?: FileAttachmentInput[];
 }) {
   const result = await runChatSession({
     client: params.client,
@@ -26,6 +28,7 @@ export async function handleChatRun(params: {
       authSource: params.authSource,
       sandboxProvider: params.sandbox,
       autoApprove: params.autoApprove,
+      fileAttachments: params.fileAttachments,
     },
   });
 
@@ -364,6 +367,7 @@ export async function handleCoworkerRun(params: {
   reference: string;
   payload?: unknown;
   userInput?: string;
+  fileAttachments?: FileAttachmentInput[];
 }) {
   const runner = createCoworkerRunner(params.client);
   const trustedUserInput = params.userInput?.trim();
@@ -372,6 +376,35 @@ export async function handleCoworkerRun(params: {
     run: await runner.run(params.reference, params.payload, {
       trustedUserInput:
         trustedUserInput && trustedUserInput.length > 0 ? trustedUserInput : undefined,
+      fileAttachments: params.fileAttachments,
+    }),
+  };
+}
+
+export async function handleFileAssetCreateUpload(params: {
+  client: BapApiClient;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+}) {
+  return {
+    status: "completed" as const,
+    upload: await params.client.fileAsset.createUpload({
+      filename: params.filename,
+      mimeType: params.mimeType,
+      sizeBytes: params.sizeBytes,
+    }),
+  };
+}
+
+export async function handleFileAssetCompleteUpload(params: {
+  client: BapApiClient;
+  uploadSessionId: string;
+}) {
+  return {
+    status: "completed" as const,
+    file: await params.client.fileAsset.completeUpload({
+      uploadSessionId: params.uploadSessionId,
     }),
   };
 }
