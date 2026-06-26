@@ -51,10 +51,12 @@ import {
   ensureDatabaseRole,
   ensureMinioTenant,
   ensureRedisAclUser,
+  ensureZeroDatabaseMetadataAccess,
   withClient,
 } from "./cli-resources";
 import {
   buildJsonStorageState,
+  ensureZeroCacheConfigured,
   resolveSourceDatabaseUrl,
   selectRows,
   upsertRows,
@@ -875,7 +877,9 @@ export async function createInstance(): Promise<InstanceMetadata> {
   await ensureDatabaseRole(metadata);
   await ensureRedisAclUser(metadata);
   await ensureMinioTenant(metadata);
+  await ensureZeroDatabaseMetadataAccess(metadata);
   await runDbPush(metadata);
+  ensureZeroCacheConfigured(metadata);
   await bootstrapDeveloperUser(metadata);
   if (!(await syncCliProfileFromLocalSession(metadata))) {
     console.warn("[worktree] no local session available to seed CLI auth");

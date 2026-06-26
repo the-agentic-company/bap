@@ -37,7 +37,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { normalizeGenerationError } from "@/lib/generation-errors";
-import { getCoworkerEditHrefById } from "@/lib/coworker-routes";
+import { getCoworkerEditHrefById, getCoworkerPublicShareHref } from "@/lib/coworker-routes";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import {
   COWORKER_AVAILABLE_INTEGRATION_TYPES,
@@ -94,6 +94,15 @@ function formatDate(value?: Date | string | null) {
     return `${diffD}d ago`;
   }
   return date.toLocaleDateString();
+}
+
+async function copyPublicShareLink(coworker: { id: string; username?: string | null }) {
+  const sharePath = getCoworkerPublicShareHref(coworker);
+  const shareUrl =
+    typeof window === "undefined"
+      ? sharePath
+      : new URL(sharePath, window.location.origin).toString();
+  await navigator.clipboard.writeText(shareUrl);
 }
 
 function getRunStatusColor(status: string) {
@@ -320,17 +329,31 @@ export function InteractiveCoworkerCard({
     try {
       if (coworker.sharedAt) {
         await unshareCoworker.mutateAsync(coworker.id);
-        toast.success(`${nounLabel} unshared.`);
+        toast.success(`${nounLabel} public link disabled.`);
       } else {
         await shareCoworker.mutateAsync(coworker.id);
-        toast.success(`${nounLabel} shared with workspace.`);
+        try {
+          await copyPublicShareLink(coworker);
+          toast.success(`${nounLabel} public link copied.`);
+        } catch {
+          toast.success(`${nounLabel} public link enabled.`);
+        }
       }
     } catch {
       toast.error(t("Failed to update sharing."));
     } finally {
       setIsUpdatingShare(false);
     }
-  }, [shareCoworker, unshareCoworker, coworker.id, coworker.sharedAt, nounLabel, t]);
+  }, [shareCoworker, unshareCoworker, coworker, nounLabel, t]);
+
+  const handleCopyPublicShareLink = useCallback(async () => {
+    try {
+      await copyPublicShareLink(coworker);
+      toast.success(`${nounLabel} public link copied.`);
+    } catch {
+      toast.error(t("Failed to copy public link."));
+    }
+  }, [coworker, nounLabel, t]);
 
   const handleDelete = useCallback(async () => {
     try {
@@ -501,13 +524,30 @@ export function InteractiveCoworkerCard({
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />
-        {sharingLocked ? null : (
+        {sharingLocked ? null : coworker.sharedAt ? (
+          <>
+            <DropdownMenuItem
+              onSelect={handleCopyPublicShareLink}
+              disabled={isUpdatingShare || isDeleting || isUpdatingStatus}
+            >
+              <Share2 className="size-4" />
+              <T>Copy public link</T>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={handleToggleShare}
+              disabled={isUpdatingShare || isDeleting || isUpdatingStatus}
+            >
+              <Share2 className="size-4" />
+              <T>Disable public link</T>
+            </DropdownMenuItem>
+          </>
+        ) : (
           <DropdownMenuItem
             onSelect={handleToggleShare}
             disabled={isUpdatingShare || isDeleting || isUpdatingStatus}
           >
             <Share2 className="size-4" />
-            {coworker.sharedAt ? "Unshare from workspace" : "Share with workspace"}
+            <T>Copy public link</T>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

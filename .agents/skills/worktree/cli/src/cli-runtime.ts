@@ -335,6 +335,46 @@ export function resolveDockerComposeServiceContainerId(projectName: string, serv
   );
 }
 
+export function resolveDockerComposeServiceEnv(projectName: string, service: string): Record<string, string> {
+  const containerId = resolveDockerComposeServiceContainerId(projectName, service);
+  if (!containerId) {
+    return {};
+  }
+
+  const result = spawnSync(
+    "docker",
+    ["inspect", containerId, "--format", "{{json .Config.Env}}"],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  if (result.status !== 0 || !result.stdout.trim()) {
+    return {};
+  }
+
+  try {
+    const entries = JSON.parse(result.stdout.trim()) as unknown;
+    if (!Array.isArray(entries)) {
+      return {};
+    }
+
+    return Object.fromEntries(
+      entries
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => {
+          const separatorIndex = entry.indexOf("=");
+          if (separatorIndex === -1) {
+            return [entry, ""];
+          }
+          return [entry.slice(0, separatorIndex), entry.slice(separatorIndex + 1)];
+        }),
+    );
+  } catch {
+    return {};
+  }
+}
+
 export function resolveDockerPublishedPort(projectName: string, service: string, containerPort: number): number | null {
   const containerId = resolveDockerComposeServiceContainerId(projectName, service);
   if (!containerId) {
@@ -526,6 +566,15 @@ export function buildPostgresBaseUrl(port: number, databaseName = "postgres"): s
 }
 
 export function resolvePostgresPassword(): string {
+  const shared = buildSharedStackConfig();
+  const containerPassword = resolveDockerComposeServiceEnv(
+    shared.composeProjectName,
+    "database",
+  ).POSTGRES_PASSWORD?.trim();
+  if (containerPassword) {
+    return containerPassword;
+  }
+
   return process.env.DATABASE_PASSWORD?.trim() || process.env.DB_PASSWORD?.trim() || "postgres";
 }
 

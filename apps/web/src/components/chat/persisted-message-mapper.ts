@@ -57,6 +57,7 @@ export type PersistedConversationMessage = {
     id?: string;
     filename: string;
     mimeType: string;
+    previewUrl?: string;
   }>;
   sandboxFiles?: Array<{
     fileId: string;
@@ -145,6 +146,7 @@ export function mapPersistedMessagesToChatMessages(
         id: attachment.id,
         name: attachment.filename,
         mimeType: attachment.mimeType,
+        previewUrl: attachment.previewUrl,
       })),
       sandboxFiles: message.sandboxFiles?.map(
         (file) =>
