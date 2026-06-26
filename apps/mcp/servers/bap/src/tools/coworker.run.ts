@@ -17,7 +17,8 @@ export const schema = {
 
 export const metadata: ToolMetadata = {
   name: "coworker.run",
-  description: "Trigger a coworker run",
+  description:
+    "Trigger a coworker run. The userInput may be empty when at least one ready File Asset is provided in fileAttachments.",
   annotations: {
     title: "Run coworker",
     readOnlyHint: false,

@@ -10,7 +10,8 @@ export const schema = {
 
 export const metadata: ToolMetadata = {
   name: "fileAsset.completeUpload",
-  description: "Complete a Bap Upload Session after the file bytes were uploaded",
+  description:
+    "Complete a Bap Upload Session after the file bytes were uploaded and return a ready File Asset that can be passed to chat.run or coworker.run in fileAttachments.",
   annotations: {
     title: "Complete file upload",
     readOnlyHint: false,

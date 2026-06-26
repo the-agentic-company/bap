@@ -110,6 +110,59 @@ describe("MCP handlers", () => {
     expect(result.status).toBe("completed");
   });
 
+  it("starts a chat turn with attachments only", async () => {
+    const client = {
+      generation: {
+        startGeneration: vi.fn().mockResolvedValue({
+          generationId: "gen-attachments-only",
+          conversationId: "conv-attachments-only",
+        }),
+        subscribeGeneration: vi.fn().mockResolvedValue(
+          (async function* () {
+            yield {
+              type: "done" as const,
+              generationId: "gen-attachments-only",
+              conversationId: "conv-attachments-only",
+              messageId: "msg-attachments-only",
+              usage: { inputTokens: 1, outputTokens: 1, totalCostUsd: 0 },
+            };
+          })(),
+        ),
+      },
+    };
+
+    const result = await handleChatRun({
+      client: client as never,
+      message: "",
+      fileAttachments: [
+        {
+          fileAssetId: "asset-audio",
+          name: "visit-audio.m4a",
+          mimeType: "audio/mp4",
+          sizeBytes: 4096,
+        },
+      ],
+    });
+
+    expect(client.generation.startGeneration).toHaveBeenCalledWith({
+      content: "",
+      conversationId: undefined,
+      model: undefined,
+      authSource: undefined,
+      sandboxProvider: undefined,
+      autoApprove: undefined,
+      fileAttachments: [
+        {
+          fileAssetId: "asset-audio",
+          name: "visit-audio.m4a",
+          mimeType: "audio/mp4",
+          sizeBytes: 4096,
+        },
+      ],
+    });
+    expect(result.status).toBe("completed");
+  });
+
   it("lists coworkers", async () => {
     const client = {
       coworker: {
@@ -399,6 +452,47 @@ describe("MCP handlers", () => {
       ],
     });
     expect(result.run).toMatchObject({ runId: "run-3" });
+  });
+
+  it("starts a coworker run with attachments only", async () => {
+    const client = {
+      coworker: {
+        trigger: vi.fn().mockResolvedValue({
+          runId: "run-attachments-only",
+          coworkerId: "cw-1",
+        }),
+      },
+    };
+
+    const result = await handleCoworkerRun({
+      client: client as never,
+      reference: "cw-1",
+      userInput: "   ",
+      fileAttachments: [
+        {
+          fileAssetId: "asset-checklist",
+          name: "checklist.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 2048,
+        },
+      ],
+    });
+
+    expect(client.coworker.trigger).toHaveBeenCalledWith({
+      id: "cw-1",
+      payload: undefined,
+      trustedUserInput: undefined,
+      debugRunDeadlineMs: undefined,
+      fileAttachments: [
+        {
+          fileAssetId: "asset-checklist",
+          name: "checklist.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 2048,
+        },
+      ],
+    });
+    expect(result.run).toMatchObject({ runId: "run-attachments-only" });
   });
 
   it("creates a file upload session", async () => {

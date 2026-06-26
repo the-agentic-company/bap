@@ -20,7 +20,8 @@ export const schema = {
 
 export const metadata: ToolMetadata = {
   name: "chat.run",
-  description: "Run a Bap chat turn and return a structured result",
+  description:
+    "Run a Bap chat turn and return a structured result. The message may be empty when at least one ready File Asset is provided in fileAttachments.",
   annotations: {
     title: "Run chat",
     idempotentHint: false,
