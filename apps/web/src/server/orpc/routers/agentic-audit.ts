@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import OpenAI from "openai";
 import { z } from "zod";
 import { env } from "@/env";
+import type { AuditIntegrationRecommendation } from "@/lib/agentic-audit-types";
 import { type LinkedInProfileResult, scrapeLinkedInProfile } from "@/server/integrations/apify";
 import { scrapeWebsite } from "@/server/integrations/firecrawl";
 import { protectedProcedure } from "../middleware";
@@ -28,25 +29,6 @@ const FREE_EMAIL_DOMAINS = new Set([
   "aol.com",
 ]);
 const AUDIT_STRUCTURED_OUTPUT_MODEL = "gpt-5.5";
-
-type AuditIntegrationRecommendation = {
-  id: string;
-  name: string;
-  url: string;
-  icon?: string;
-  reason: string;
-  importanceScore: number;
-  toolType: string;
-  toolUse: string;
-  whyLikely: string;
-  commonTools: Array<{
-    name: string;
-    url: string;
-  }>;
-  customTools?: string[];
-  connected: boolean;
-  selected: boolean;
-};
 
 type AuditIntegrationRecommendationOutput = {
   importanceScore: number;
@@ -77,6 +59,36 @@ type AuditCompanyProfile = {
   description: string | null;
   brand_voice: string[];
   color_palette: string[];
+};
+
+type ConnectedIntegrationRow = {
+  type: string;
+  enabled: boolean;
+  authStatus: string | null;
+};
+
+type IntegrationQueryReader = {
+  findMany(args: {
+    where: ReturnType<typeof eq>;
+    columns: {
+      type: true;
+      enabled: true;
+      authStatus: true;
+    };
+  }): Promise<ConnectedIntegrationRow[]>;
+};
+
+type AuditContextInput = z.infer<typeof auditContextInputSchema>;
+
+type AuditHandlerContext = {
+  db: {
+    query: {
+      integration: IntegrationQueryReader;
+    };
+  };
+  user: {
+    id: string;
+  };
 };
 
 type AuditPersonProfile = {
@@ -168,6 +180,14 @@ const auditIntegrationRecommendationSchema = z.object({
   customTools: z.array(z.string()).optional(),
   connected: z.boolean(),
   selected: z.boolean(),
+});
+
+const auditContextInputSchema = z.object({
+  email: z.string().email(),
+  linkedinUrl: z.string().url(),
+  companyUrl: z.string().url(),
+  linkedin: linkedInProfileSchema,
+  website: websiteScrapeResultSchema,
 });
 
 type AuditIntegrationCandidate = {
@@ -489,22 +509,51 @@ function buildLinkedInContext(linkedin: LinkedInProfileResult): string {
 
 function fallbackPersonProfile(linkedin: LinkedInProfileResult): AuditPersonProfile {
   const talkingPoints = [
-    linkedin.jobTitle ? `Current role: ${linkedin.jobTitle}` : null,
-    linkedin.currentCompany?.name
-      ? `Current company: ${linkedin.currentCompany.name}`
-      : linkedin.company
-        ? `Company: ${linkedin.company}`
-        : null,
-    linkedin.location ? `Location: ${linkedin.location}` : null,
-    linkedin.currentCompany?.industry ? `Industry: ${linkedin.currentCompany.industry}` : null,
+    roleTalkingPoint(linkedin),
+    companyTalkingPoint(linkedin),
+    locationTalkingPoint(linkedin),
+    industryTalkingPoint(linkedin),
   ].filter((item): item is string => Boolean(item));
 
   return {
-    full_name: linkedin.fullName?.trim() || null,
-    job_title: linkedin.jobTitle?.trim() || linkedin.headline?.trim() || null,
-    description: linkedin.summary?.trim() || linkedin.headline?.trim() || null,
+    full_name: trimOrNull(linkedin.fullName),
+    job_title: firstTrimmed(linkedin.jobTitle, linkedin.headline),
+    description: firstTrimmed(linkedin.summary, linkedin.headline),
     talking_points: talkingPoints.slice(0, 4),
   };
+}
+
+function roleTalkingPoint(linkedin: LinkedInProfileResult): string | null {
+  return linkedin.jobTitle ? `Current role: ${linkedin.jobTitle}` : null;
+}
+
+function companyTalkingPoint(linkedin: LinkedInProfileResult): string | null {
+  if (linkedin.currentCompany?.name) {
+    return `Current company: ${linkedin.currentCompany.name}`;
+  }
+  return linkedin.company ? `Company: ${linkedin.company}` : null;
+}
+
+function locationTalkingPoint(linkedin: LinkedInProfileResult): string | null {
+  return linkedin.location ? `Location: ${linkedin.location}` : null;
+}
+
+function industryTalkingPoint(linkedin: LinkedInProfileResult): string | null {
+  return linkedin.currentCompany?.industry ? `Industry: ${linkedin.currentCompany.industry}` : null;
+}
+
+function trimOrNull(value: string | null | undefined): string | null {
+  return value?.trim() || null;
+}
+
+function firstTrimmed(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  return null;
 }
 
 function normalizePersonProfile(
@@ -532,34 +581,12 @@ function normalizePersonProfile(
 async function describePersonWithOpenAI(
   linkedin: LinkedInProfileResult,
 ): Promise<AuditPersonProfile> {
-  const apiKey = env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
-  }
-
   const prompt = buildAuditPersonProfilePrompt({
     linkedinContext: buildLinkedInContext(linkedin),
   });
-  const client = new OpenAI({ apiKey });
-  const response = await client.chat.completions.create({
-    model: AUDIT_STRUCTURED_OUTPUT_MODEL,
-    messages: [
-      {
-        role: "system",
-        content: "Return only data matching the supplied JSON schema.",
-      },
-      { role: "user", content: prompt },
-    ],
-    response_format: PERSON_PROFILE_RESPONSE_FORMAT,
-  });
-  const content = response.choices[0]?.message.content;
-  if (!content) {
-    throw new Error("Person profile service returned an empty response");
-  }
-
-  const parsed = JSON.parse(content) as {
+  const parsed = await createStructuredAuditCompletion<{
     person_profile?: AuditPersonProfile;
-  };
+  }>(prompt, PERSON_PROFILE_RESPONSE_FORMAT, "Person profile service");
   return normalizePersonProfile(parsed.person_profile, linkedin);
 }
 
@@ -632,34 +659,12 @@ async function describeCompanyWithOpenAI(input: {
   companyUrl: string;
   website: Awaited<ReturnType<typeof scrapeWebsite>>;
 }): Promise<AuditCompanyProfile | null> {
-  const apiKey = env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
-  }
-
   const prompt = buildAuditCompanyProfilePrompt({
     websiteContext: buildWebsiteContext(input),
   });
-  const client = new OpenAI({ apiKey });
-  const response = await client.chat.completions.create({
-    model: AUDIT_STRUCTURED_OUTPUT_MODEL,
-    messages: [
-      {
-        role: "system",
-        content: "Return only data matching the supplied JSON schema.",
-      },
-      { role: "user", content: prompt },
-    ],
-    response_format: COMPANY_PROFILE_RESPONSE_FORMAT,
-  });
-  const content = response.choices[0]?.message.content;
-  if (!content) {
-    throw new Error("Company profile service returned an empty response");
-  }
-
-  const parsed = JSON.parse(content) as {
+  const parsed = await createStructuredAuditCompletion<{
     company_profile?: AuditCompanyProfile;
-  };
+  }>(prompt, COMPANY_PROFILE_RESPONSE_FORMAT, "Company profile service");
   return normalizeCompanyProfile(parsed.company_profile, input.website);
 }
 
@@ -709,6 +714,64 @@ function buildProfileContext(input: {
   );
 }
 
+function auditWebsiteFromInput(website: z.infer<typeof websiteScrapeResultSchema>): AuditWebsiteResult {
+  return {
+    ...website,
+    companyProfile: website.companyProfile ?? null,
+  };
+}
+
+function auditLinkedInFromInput(
+  linkedin: z.infer<typeof linkedInProfileSchema>,
+): EnrichedLinkedInProfileResult {
+  return {
+    ...linkedin,
+    personProfile: linkedin.personProfile ?? null,
+  };
+}
+
+async function getConnectedIntegrationTypes(
+  integrationQuery: IntegrationQueryReader,
+  userId: string,
+): Promise<string[]> {
+  const connectedIntegrations = await integrationQuery.findMany({
+    where: eq(integration.userId, userId),
+    columns: {
+      type: true,
+      enabled: true,
+      authStatus: true,
+    },
+  });
+  return connectedIntegrations.filter(isConnectedIntegration).map((item) => item.type);
+}
+
+async function prepareAuditRecommendationContext(
+  input: AuditContextInput,
+  integrationQuery: IntegrationQueryReader,
+  userId: string,
+): Promise<{
+  website: AuditWebsiteResult;
+  linkedin: EnrichedLinkedInProfileResult;
+  connectedIntegrationTypes: string[];
+}> {
+  return {
+    website: auditWebsiteFromInput(input.website),
+    linkedin: auditLinkedInFromInput(input.linkedin),
+    connectedIntegrationTypes: await getConnectedIntegrationTypes(integrationQuery, userId),
+  };
+}
+
+function prepareAuditRecommendationContextForHandler(
+  input: AuditContextInput,
+  context: AuditHandlerContext,
+) {
+  return prepareAuditRecommendationContext(input, context.db.query.integration, context.user.id);
+}
+
+function isConnectedIntegration(item: ConnectedIntegrationRow): boolean {
+  return item.enabled && item.authStatus === "connected";
+}
+
 function normalizeOpenAIRecommendations(input: {
   rawRecommendations: AuditIntegrationRecommendationOutput[];
   connectedIntegrationTypes: string[];
@@ -722,44 +785,17 @@ function normalizeOpenAIRecommendations(input: {
   const normalized: AuditIntegrationRecommendation[] = [];
 
   for (const raw of input.rawRecommendations) {
-    const toolType = raw.toolType?.trim();
-    const toolUse = raw.toolUse?.trim();
-    const commonTools = normalizeCommonTools(raw.commonTools);
-    if (!toolType || !toolUse || commonTools.length === 0) {
-      continue;
-    }
-
-    const id = slugifyIntegrationId(toolType);
-    if (!id || seen.has(id)) {
-      continue;
-    }
-
-    const primaryTool = commonTools[0];
-    const importanceScore = clampImportanceScore(raw.importanceScore);
-    const knownCandidate =
-      knownCandidatesById.get(slugifyIntegrationId(primaryTool.name)) ??
-      knownCandidatesById.get(slugifyIntegrationId(toolType));
-    const isConnected = commonTools.some(
-      (tool) =>
-        connected.has(slugifyIntegrationId(tool.name)) ||
-        connectedNames.has(normalizeIntegrationName(tool.name)),
-    );
-    seen.add(id);
-    normalized.push({
-      id,
-      name: toolType,
-      url: primaryTool.url,
-      icon: knownCandidate?.icon,
-      reason: raw.whyLikely?.trim() || "Likely from profile and website signals.",
-      importanceScore,
-      toolType,
-      toolUse,
-      whyLikely: raw.whyLikely?.trim() || "Likely from profile and website signals.",
-      commonTools,
-      customTools: [],
-      connected: isConnected,
-      selected: false,
+    const recommendation = normalizeOpenAIRecommendation({
+      raw,
+      knownCandidatesById,
+      connected,
+      connectedNames,
     });
+    if (!recommendation || seen.has(recommendation.id)) {
+      continue;
+    }
+    seen.add(recommendation.id);
+    normalized.push(recommendation);
   }
 
   if (normalized.length === 0) {
@@ -767,6 +803,81 @@ function normalizeOpenAIRecommendations(input: {
   }
 
   return normalized.toSorted((a, b) => b.importanceScore - a.importanceScore).slice(0, 8);
+}
+
+function normalizeOpenAIRecommendation({
+  raw,
+  knownCandidatesById,
+  connected,
+  connectedNames,
+}: {
+  raw: AuditIntegrationRecommendationOutput;
+  knownCandidatesById: Map<string, (typeof AUDIT_INTEGRATION_CANDIDATES)[number]>;
+  connected: Set<string>;
+  connectedNames: Set<string>;
+}): AuditIntegrationRecommendation | null {
+  const base = getRecommendationBase(raw);
+  if (!base) {
+    return null;
+  }
+
+  const primaryTool = base.commonTools[0];
+  const knownCandidate = findKnownCandidate(knownCandidatesById, primaryTool.name, base.toolType);
+  const whyLikely = raw.whyLikely?.trim() || "Likely from profile and website signals.";
+
+  return {
+    id: base.id,
+    name: base.toolType,
+    url: primaryTool.url,
+    icon: knownCandidate?.icon,
+    reason: whyLikely,
+    importanceScore: clampImportanceScore(raw.importanceScore),
+    toolType: base.toolType,
+    toolUse: base.toolUse,
+    whyLikely,
+    commonTools: base.commonTools,
+    customTools: [],
+    connected: hasConnectedTool(base.commonTools, connected, connectedNames),
+    selected: false,
+  };
+}
+
+function getRecommendationBase(raw: AuditIntegrationRecommendationOutput): {
+  id: string;
+  toolType: string;
+  toolUse: string;
+  commonTools: AuditIntegrationRecommendation["commonTools"];
+} | null {
+  const toolType = raw.toolType?.trim();
+  const toolUse = raw.toolUse?.trim();
+  const commonTools = normalizeCommonTools(raw.commonTools);
+  const id = toolType ? slugifyIntegrationId(toolType) : "";
+  return toolType && toolUse && commonTools.length > 0 && id
+    ? { id, toolType, toolUse, commonTools }
+    : null;
+}
+
+function findKnownCandidate(
+  knownCandidatesById: Map<string, (typeof AUDIT_INTEGRATION_CANDIDATES)[number]>,
+  primaryToolName: string,
+  toolType: string,
+) {
+  return (
+    knownCandidatesById.get(slugifyIntegrationId(primaryToolName)) ??
+    knownCandidatesById.get(slugifyIntegrationId(toolType))
+  );
+}
+
+function hasConnectedTool(
+  commonTools: AuditIntegrationRecommendation["commonTools"],
+  connected: Set<string>,
+  connectedNames: Set<string>,
+): boolean {
+  return commonTools.some(
+    (tool) =>
+      connected.has(slugifyIntegrationId(tool.name)) ||
+      connectedNames.has(normalizeIntegrationName(tool.name)),
+  );
 }
 
 function clampImportanceScore(value: number): number {
@@ -846,35 +957,13 @@ async function recommendAuditIntegrationsWithOpenAI(input: {
   website: AuditWebsiteResult;
   connectedIntegrationTypes: string[];
 }): Promise<AuditIntegrationRecommendation[]> {
-  const apiKey = env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
-  }
-
   const prompt = buildAuditIntegrationRecommenderPrompt({
     profileContext: buildProfileContext(input),
     connectedIntegrations: JSON.stringify(input.connectedIntegrationTypes, null, 2),
   });
-  const client = new OpenAI({ apiKey });
-  const response = await client.chat.completions.create({
-    model: AUDIT_STRUCTURED_OUTPUT_MODEL,
-    messages: [
-      {
-        role: "system",
-        content: "Return only data matching the supplied JSON schema.",
-      },
-      { role: "user", content: prompt },
-    ],
-    response_format: INTEGRATION_RECOMMENDATION_RESPONSE_FORMAT,
-  });
-  const content = response.choices[0]?.message.content;
-  if (!content) {
-    throw new Error("Integration recommendation agent returned an empty response");
-  }
-
-  const parsed = JSON.parse(content) as {
+  const parsed = await createStructuredAuditCompletion<{
     tool_hypotheses?: AuditIntegrationRecommendationOutput[];
-  };
+  }>(prompt, INTEGRATION_RECOMMENDATION_RESPONSE_FORMAT, "Integration recommendation agent");
   if (!Array.isArray(parsed.tool_hypotheses)) {
     throw new Error("Integration recommendation agent did not return tool_hypotheses");
   }
@@ -918,15 +1007,32 @@ async function recommendAuditAgentsWithOpenAI(input: {
   website: AuditWebsiteResult;
   integrationRecommendations: AuditIntegrationRecommendation[];
 }): Promise<AuditAgentRecommendation[]> {
+  const prompt = buildAuditAgentRecommenderPrompt({
+    profileContext: buildProfileContext(input),
+    integrationRecommendations: JSON.stringify(input.integrationRecommendations, null, 2),
+  });
+  const parsed = await createStructuredAuditCompletion<{
+    agent_recommendations?: AuditAgentRecommendation[];
+  }>(prompt, AGENT_RECOMMENDATION_RESPONSE_FORMAT, "Agent recommendation service");
+  if (!Array.isArray(parsed.agent_recommendations)) {
+    throw new Error("Agent recommendation service did not return agent_recommendations");
+  }
+
+  return normalizeAgentRecommendations({
+    rawRecommendations: parsed.agent_recommendations,
+  });
+}
+
+async function createStructuredAuditCompletion<T>(
+  prompt: string,
+  responseFormat: AuditStructuredResponseFormat,
+  serviceName: string,
+): Promise<T> {
   const apiKey = env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  const prompt = buildAuditAgentRecommenderPrompt({
-    profileContext: buildProfileContext(input),
-    integrationRecommendations: JSON.stringify(input.integrationRecommendations, null, 2),
-  });
   const client = new OpenAI({ apiKey });
   const response = await client.chat.completions.create({
     model: AUDIT_STRUCTURED_OUTPUT_MODEL,
@@ -937,24 +1043,21 @@ async function recommendAuditAgentsWithOpenAI(input: {
       },
       { role: "user", content: prompt },
     ],
-    response_format: AGENT_RECOMMENDATION_RESPONSE_FORMAT,
+    response_format: responseFormat,
   });
   const content = response.choices[0]?.message.content;
   if (!content) {
-    throw new Error("Agent recommendation service returned an empty response");
+    throw new Error(`${serviceName} returned an empty response`);
   }
 
-  const parsed = JSON.parse(content) as {
-    agent_recommendations?: AuditAgentRecommendation[];
-  };
-  if (!Array.isArray(parsed.agent_recommendations)) {
-    throw new Error("Agent recommendation service did not return agent_recommendations");
-  }
-
-  return normalizeAgentRecommendations({
-    rawRecommendations: parsed.agent_recommendations,
-  });
+  return JSON.parse(content) as T;
 }
+
+type AuditStructuredResponseFormat =
+  | typeof PERSON_PROFILE_RESPONSE_FORMAT
+  | typeof COMPANY_PROFILE_RESPONSE_FORMAT
+  | typeof INTEGRATION_RECOMMENDATION_RESPONSE_FORMAT
+  | typeof AGENT_RECOMMENDATION_RESPONSE_FORMAT;
 
 /** Pick the company website URL from the submitted work email so it can be crawled immediately. */
 function deriveCompanyUrl(email: string): string {
@@ -1010,47 +1113,20 @@ const scrapeCompanyWebsite = protectedProcedure
   });
 
 const toolSurvey = protectedProcedure
-  .input(
-    z.object({
-      email: z.string().email(),
-      linkedinUrl: z.string().url(),
-      companyUrl: z.string().url(),
-      linkedin: linkedInProfileSchema,
-      website: websiteScrapeResultSchema,
-    }),
-  )
+  .input(auditContextInputSchema)
   .handler(async ({ input, context }) => {
     await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
-    const website: AuditWebsiteResult = {
-      ...input.website,
-      companyProfile: input.website.companyProfile ?? null,
-    };
-    const linkedin: EnrichedLinkedInProfileResult = {
-      ...input.linkedin,
-      personProfile: input.linkedin.personProfile ?? null,
-    };
-
-    const connectedIntegrations = await context.db.query.integration.findMany({
-      where: eq(integration.userId, context.user.id),
-      columns: {
-        type: true,
-        enabled: true,
-        authStatus: true,
-      },
-    });
-    const connectedIntegrationTypes = connectedIntegrations
-      .filter((item) => item.enabled && item.authStatus === "connected")
-      .map((item) => item.type);
+    const recommendationContext = await prepareAuditRecommendationContextForHandler(input, context);
 
     try {
       return {
         integrationRecommendations: await recommendAuditIntegrationsWithOpenAI({
           email: input.email,
           linkedinUrl: input.linkedinUrl,
-          linkedin,
+          linkedin: recommendationContext.linkedin,
           companyUrl: input.companyUrl,
-          website,
-          connectedIntegrationTypes,
+          website: recommendationContext.website,
+          connectedIntegrationTypes: recommendationContext.connectedIntegrationTypes,
         }),
         toolSurveyError: null,
       };
@@ -1065,38 +1141,14 @@ const toolSurvey = protectedProcedure
 
 const recommend = protectedProcedure
   .input(
-    z.object({
-      email: z.string().email(),
-      linkedinUrl: z.string().url(),
-      companyUrl: z.string().url(),
-      linkedin: linkedInProfileSchema,
-      website: websiteScrapeResultSchema,
+    auditContextInputSchema.extend({
       integrationRecommendations: z.array(auditIntegrationRecommendationSchema).optional(),
       toolSurveyError: z.string().nullable().optional(),
     }),
   )
   .handler(async ({ input, context }) => {
     await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
-    const website: AuditWebsiteResult = {
-      ...input.website,
-      companyProfile: input.website.companyProfile ?? null,
-    };
-    const linkedin: EnrichedLinkedInProfileResult = {
-      ...input.linkedin,
-      personProfile: input.linkedin.personProfile ?? null,
-    };
-
-    const connectedIntegrations = await context.db.query.integration.findMany({
-      where: eq(integration.userId, context.user.id),
-      columns: {
-        type: true,
-        enabled: true,
-        authStatus: true,
-      },
-    });
-    const connectedIntegrationTypes = connectedIntegrations
-      .filter((item) => item.enabled && item.authStatus === "connected")
-      .map((item) => item.type);
+    const recommendationContext = await prepareAuditRecommendationContextForHandler(input, context);
     let integrationRecommendations: AuditIntegrationRecommendation[] =
       input.integrationRecommendations ?? [];
     let toolSurveyError: string | null = input.toolSurveyError ?? null;
@@ -1105,10 +1157,10 @@ const recommend = protectedProcedure
         integrationRecommendations = await recommendAuditIntegrationsWithOpenAI({
           email: input.email,
           linkedinUrl: input.linkedinUrl,
-          linkedin,
+          linkedin: recommendationContext.linkedin,
           companyUrl: input.companyUrl,
-          website,
-          connectedIntegrationTypes,
+          website: recommendationContext.website,
+          connectedIntegrationTypes: recommendationContext.connectedIntegrationTypes,
         });
       } catch (error) {
         console.error("Integration recommendation service failed:", error);
@@ -1119,9 +1171,9 @@ const recommend = protectedProcedure
       const agentRecommendations = await recommendAuditAgentsWithOpenAI({
         email: input.email,
         linkedinUrl: input.linkedinUrl,
-        linkedin,
+        linkedin: recommendationContext.linkedin,
         companyUrl: input.companyUrl,
-        website,
+        website: recommendationContext.website,
         integrationRecommendations,
       });
       return {
@@ -1164,17 +1216,10 @@ const start = protectedProcedure
       enrichWebsiteForAudit({ companyUrl, website: scrapedWebsite }),
     ]);
 
-    const connectedIntegrations = await context.db.query.integration.findMany({
-      where: eq(integration.userId, context.user.id),
-      columns: {
-        type: true,
-        enabled: true,
-        authStatus: true,
-      },
-    });
-    const connectedIntegrationTypes = connectedIntegrations
-      .filter((item) => item.enabled && item.authStatus === "connected")
-      .map((item) => item.type);
+    const connectedIntegrationTypes = await getConnectedIntegrationTypes(
+      context.db.query.integration,
+      context.user.id,
+    );
     let integrationRecommendations: AuditIntegrationRecommendation[] = [];
     let toolSurveyError: string | null = null;
     try {

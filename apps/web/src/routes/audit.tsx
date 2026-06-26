@@ -12,6 +12,7 @@ import {
 } from "react";
 import { AuthenticatedAppRootShell } from "@/components/authenticated-app-root-shell";
 import { Button } from "@/components/ui/button";
+import type { AuditIntegrationRecommendation } from "@/lib/agentic-audit-types";
 import { requireSession } from "@/lib/route-guards";
 import {
   useRecommendAgenticAudit,
@@ -94,24 +95,7 @@ type PersonProfile = {
   talking_points: string[];
 };
 
-type IntegrationRecommendation = {
-  id: string;
-  name: string;
-  url: string;
-  icon?: string;
-  reason: string;
-  importanceScore: number;
-  toolType: string;
-  toolUse: string;
-  whyLikely: string;
-  commonTools: Array<{
-    name: string;
-    url: string;
-  }>;
-  customTools?: string[];
-  connected: boolean;
-  selected: boolean;
-};
+type IntegrationRecommendation = AuditIntegrationRecommendation;
 type AgentRecommendation = {
   id: string;
   name: string;
@@ -307,6 +291,12 @@ function AuditExperience() {
   const linkedinMutation = useScrapeAuditLinkedIn();
   const toolSurveyMutation = useRecommendAgenticAuditToolSurvey();
   const recommendMutation = useRecommendAgenticAudit();
+  const formError = getAuditFormError({
+    auditError,
+    websiteError: websiteMutation.error,
+    linkedinError: linkedinMutation.error,
+    recommendError: recommendMutation.error,
+  });
 
   const handleSubmit = useCallback(() => {
     const trimmedEmail = email.trim();
@@ -426,16 +416,7 @@ function AuditExperience() {
             onEmailChange={setEmail}
             onLinkedinChange={setLinkedinUrl}
             onSubmit={handleSubmit}
-            error={
-              auditError ??
-              (websiteMutation.error instanceof Error
-                ? websiteMutation.error.message
-                : linkedinMutation.error instanceof Error
-                  ? linkedinMutation.error.message
-                  : recommendMutation.error instanceof Error
-                    ? recommendMutation.error.message
-                    : null)
-            }
+            error={formError}
           />
         ) : null}
         {step === "running" ? (
@@ -449,6 +430,29 @@ function AuditExperience() {
       </div>
     </main>
   );
+}
+
+function getAuditFormError({
+  auditError,
+  websiteError,
+  linkedinError,
+  recommendError,
+}: {
+  auditError: string | null;
+  websiteError: unknown;
+  linkedinError: unknown;
+  recommendError: unknown;
+}): string | null {
+  return (
+    auditError ??
+    errorMessage(websiteError) ??
+    errorMessage(linkedinError) ??
+    errorMessage(recommendError)
+  );
+}
+
+function errorMessage(error: unknown): string | null {
+  return error instanceof Error ? error.message : null;
 }
 
 function getAgentRecommendationInput({
@@ -468,9 +472,27 @@ function getAgentRecommendationInput({
     return null;
   }
 
+  return buildAgentRecommendationInput(
+    trimmedEmail,
+    trimmedLinkedinUrl,
+    result,
+    selectedRecommendations,
+  );
+}
+
+function buildAgentRecommendationInput(
+  email: string,
+  linkedinUrl: string,
+  result: AuditResult & {
+    companyUrl: string;
+    linkedin: NonNullable<AuditResult["linkedin"]>;
+    website: NonNullable<AuditResult["website"]>;
+  },
+  selectedRecommendations: IntegrationRecommendation[],
+): Parameters<ReturnType<typeof useRecommendAgenticAudit>["mutateAsync"]>[0] {
   return {
-    email: trimmedEmail,
-    linkedinUrl: trimmedLinkedinUrl,
+    email,
+    linkedinUrl,
     companyUrl: result.companyUrl,
     linkedin: {
       ...result.linkedin,
@@ -494,7 +516,19 @@ function hasAgentRecommendationInputs(
   linkedin: NonNullable<AuditResult["linkedin"]>;
   website: NonNullable<AuditResult["website"]>;
 } {
-  return Boolean(email && linkedinUrl && result?.companyUrl && result.linkedin && result.website);
+  return hasContactInputs(email, linkedinUrl) && hasAuditContextInputs(result);
+}
+
+function hasContactInputs(email: string, linkedinUrl: string): boolean {
+  return Boolean(email && linkedinUrl);
+}
+
+function hasAuditContextInputs(result: AuditResult | null): result is AuditResult & {
+  companyUrl: string;
+  linkedin: NonNullable<AuditResult["linkedin"]>;
+  website: NonNullable<AuditResult["website"]>;
+} {
+  return Boolean(result?.companyUrl && result.linkedin && result.website);
 }
 
 function AuditForm({
@@ -663,14 +697,25 @@ function PreviewVisual({
   visual: "linkedin" | "company" | "bap";
   companyDomain?: string | null;
 }) {
-  switch (visual) {
-    case "linkedin":
-      return <LinkedInLogoMark />;
-    case "company":
-      return <CompanyLogoMark domain={companyDomain ?? null} />;
-    case "bap":
-      return <BapLogoMark />;
-  }
+  return (
+    <PreviewVisualContent visual={visual} companyDomain={companyDomain ?? null} />
+  );
+}
+
+function PreviewVisualContent({
+  visual,
+  companyDomain,
+}: {
+  visual: "linkedin" | "company" | "bap";
+  companyDomain: string | null;
+}) {
+  const visualByType: Record<typeof visual, ReactNode> = {
+    linkedin: <LinkedInLogoMark />,
+    company: <CompanyLogoMark domain={companyDomain} />,
+    bap: <BapLogoMark />,
+  };
+
+  return visualByType[visual];
 }
 
 function LinkedInLogoMark() {
@@ -723,23 +768,46 @@ function getDomainFromUrl(url: string): string | null {
 }
 
 function getAuditAgents(result: AuditResult): AgentRun[] {
-  if (Array.isArray(result.agents) && result.agents.length > 0) {
-    return result.agents.filter((agent) => agent.generationId);
+  const existingAgents = getExistingAuditAgents(result.agents);
+  if (existingAgents.length > 0) {
+    return existingAgents;
   }
-  if (!result.generationId) {
-    return [];
-  }
+  return result.generationId ? [getFallbackAuditAgent(result)] : [];
+}
 
-  return [
-    {
-      key: "company-brain",
-      name: "company brain",
-      username: "audit-company-brain",
-      runId: result.runId ?? "",
-      generationId: result.generationId,
-      conversationId: result.conversationId ?? "",
-    },
-  ];
+function getExistingAuditAgents(agents: AgentRun[]): AgentRun[] {
+  return agents.filter((agent) => agent.generationId);
+}
+
+function getFallbackAuditAgent(result: AuditResult): AgentRun {
+  return {
+    key: "company-brain",
+    name: "company brain",
+    username: "audit-company-brain",
+    runId: result.runId ?? "",
+    generationId: result.generationId ?? "",
+    conversationId: result.conversationId ?? "",
+  };
+}
+
+function getIntegrationsWaitMessage(
+  result: AuditResult | null,
+  selectedToolCount: number,
+): string | null {
+  if (!result?.integrationRecommendations) {
+    return "Waiting for recommendations";
+  }
+  return getReadyIntegrationsWaitMessage(result.toolSurveyError, selectedToolCount);
+}
+
+function getReadyIntegrationsWaitMessage(
+  toolSurveyError: string | null | undefined,
+  selectedToolCount: number,
+): string | null {
+  if (toolSurveyError) {
+    return "Tool survey failed";
+  }
+  return selectedToolCount > 0 ? null : "Select tools";
 }
 
 function AuditStepperPanel({
@@ -753,20 +821,17 @@ function AuditStepperPanel({
   error: string | null;
   onGenerateAgents: (selectedRecommendations: IntegrationRecommendation[]) => Promise<void>;
 }) {
-  const agents = useMemo(() => (result ? getAuditAgents(result) : []), [result]);
+  const agents = useMemo(() => getResultAuditAgents(result), [result]);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [rawTextByAgent, setRawTextByAgent] = useState<Record<string, string>>({});
   const [selectedTools, setSelectedTools] = useState<Set<string>>(() => new Set());
   const [customToolsByCategory, setCustomToolsByCategory] = useState<Record<string, string>>({});
-  const activeStep = AUDIT_STEPS[activeStepIndex] ?? AUDIT_STEPS[0];
-  const isLastStep = activeStepIndex === AUDIT_STEPS.length - 1;
-  const recommendations = result?.integrationRecommendations ?? EMPTY_INTEGRATION_RECOMMENDATIONS;
+  const activeStep = getActiveAuditStep(activeStepIndex);
+  const recommendations = getResultIntegrationRecommendations(result);
   const recommendationKey = recommendations
     .map((recommendation) => `${recommendation.id}:${recommendation.commonTools.length}`)
     .join(":");
-  const selectedToolCount =
-    selectedTools.size +
-    Object.values(customToolsByCategory).filter((value) => value.trim().length > 0).length;
+  const selectedToolCount = getSelectedToolCount(selectedTools, customToolsByCategory);
   const selectedRecommendations = useMemo(
     () =>
       buildSelectedIntegrationRecommendations({
@@ -777,7 +842,7 @@ function AuditStepperPanel({
     [customToolsByCategory, recommendations, selectedTools],
   );
   const nextWaitMessage = getStepWaitMessage(activeStep.id, result, selectedToolCount);
-  const nextDisabled = isLastStep || Boolean(nextWaitMessage);
+  const nextDisabled = getNextDisabled(activeStepIndex, nextWaitMessage);
 
   useEffect(() => {
     setSelectedTools(new Set());
@@ -814,15 +879,13 @@ function AuditStepperPanel({
     }));
   }, []);
   const handleNext = useCallback(() => {
-    if (nextWaitMessage) {
+    if (!canAdvanceAuditStep(nextWaitMessage)) {
       return;
     }
-    if (activeStep.id === "integrations") {
-      setActiveStepIndex((current) => Math.min(AUDIT_STEPS.length - 1, current + 1));
+    setActiveStepIndex(nextAuditStepIndex);
+    if (shouldGenerateAgents(activeStep.id)) {
       void onGenerateAgents(selectedRecommendations);
-      return;
     }
-    setActiveStepIndex((current) => Math.min(AUDIT_STEPS.length - 1, current + 1));
   }, [activeStep.id, nextWaitMessage, onGenerateAgents, selectedRecommendations]);
 
   return (
@@ -895,6 +958,55 @@ function AuditStepperPanel({
   );
 }
 
+function getResultAuditAgents(result: AuditResult | null): AgentRun[] {
+  return result ? getAuditAgents(result) : [];
+}
+
+function getActiveAuditStep(activeStepIndex: number): (typeof AUDIT_STEPS)[number] {
+  return AUDIT_STEPS[activeStepIndex] ?? AUDIT_STEPS[0];
+}
+
+function getResultIntegrationRecommendations(
+  result: AuditResult | null,
+): IntegrationRecommendation[] {
+  return result?.integrationRecommendations ?? EMPTY_INTEGRATION_RECOMMENDATIONS;
+}
+
+function getSelectedToolCount(
+  selectedTools: Set<string>,
+  customToolsByCategory: Record<string, string>,
+): number {
+  return selectedTools.size + getCustomToolCount(customToolsByCategory);
+}
+
+function getCustomToolCount(customToolsByCategory: Record<string, string>): number {
+  return Object.values(customToolsByCategory).filter(hasTextValue).length;
+}
+
+function hasTextValue(value: string): boolean {
+  return value.trim().length > 0;
+}
+
+function getNextDisabled(activeStepIndex: number, nextWaitMessage: string | null): boolean {
+  return isFinalAuditStep(activeStepIndex) || Boolean(nextWaitMessage);
+}
+
+function isFinalAuditStep(activeStepIndex: number): boolean {
+  return activeStepIndex === AUDIT_STEPS.length - 1;
+}
+
+function canAdvanceAuditStep(nextWaitMessage: string | null): boolean {
+  return !nextWaitMessage;
+}
+
+function nextAuditStepIndex(current: number): number {
+  return Math.min(AUDIT_STEPS.length - 1, current + 1);
+}
+
+function shouldGenerateAgents(activeStep: AuditStepId): boolean {
+  return activeStep === "integrations";
+}
+
 function getStepWaitMessage(
   activeStep: AuditStepId,
   result: AuditResult | null,
@@ -913,19 +1025,6 @@ const STEP_WAIT_MESSAGE_BY_ID: Record<
   integrations: getIntegrationsWaitMessage,
   agents: (result) => (result?.agentRecommendations ? null : "Waiting for recommendations"),
 };
-
-function getIntegrationsWaitMessage(
-  result: AuditResult | null,
-  selectedToolCount: number,
-): string | null {
-  if (!result?.integrationRecommendations) {
-    return "Waiting for recommendations";
-  }
-  if (result.toolSurveyError) {
-    return "Tool survey failed";
-  }
-  return selectedToolCount > 0 ? null : "Select tools";
-}
 
 function WizardTopBar({
   stepNumber,
@@ -1112,7 +1211,6 @@ function WizardActions({
 }
 
 function LinkedInSearchLoader({ linkedinUrl }: { linkedinUrl: string }) {
-  const [visibleCount, setVisibleCount] = useState(1);
   const domain = getDomainFromUrl(linkedinUrl) ?? "linkedin.com";
   const steps = useMemo(
     () => [
@@ -1132,23 +1230,6 @@ function LinkedInSearchLoader({ linkedinUrl }: { linkedinUrl: string }) {
     [domain],
   );
 
-  useEffect(() => {
-    setVisibleCount(1);
-    const timers = steps.slice(1).map((_, index) =>
-      window.setTimeout(
-        () => {
-          setVisibleCount(index + 2);
-        },
-        (index + 1) * 650,
-      ),
-    );
-    return () => {
-      for (const timer of timers) {
-        window.clearTimeout(timer);
-      }
-    };
-  }, [steps]);
-
   return (
     <>
       <StepHeader
@@ -1156,49 +1237,17 @@ function LinkedInSearchLoader({ linkedinUrl }: { linkedinUrl: string }) {
         title="Searching LinkedIn"
         description="Agentic Auditor is finding the person profile and current company details."
       />
-      <div className="border-border/70 bg-background rounded-xl border p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="bg-background flex h-9 w-9 items-center justify-center rounded-full shadow-xs">
-            <LinkedInLogoMark />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium">Researching the person</p>
-            <p className="text-muted-foreground truncate text-xs">{linkedinUrl}</p>
-          </div>
-        </div>
-        <div className="space-y-2 font-mono text-xs">
-          {steps.slice(0, visibleCount).map((step, index) => {
-            const isLatest = index === visibleCount - 1 && visibleCount < steps.length;
-            return (
-              <div
-                key={step.text}
-                className="flex items-start gap-2 transition-opacity duration-200 ease-out"
-              >
-                <span
-                  className={
-                    step.status === "done" && !isLatest
-                      ? "text-brand"
-                      : "text-muted-foreground animate-pulse"
-                  }
-                >
-                  {step.status === "done" && !isLatest ? "✓" : "→"}
-                </span>
-                <span
-                  className={step.status === "done" && !isLatest ? "" : "text-muted-foreground"}
-                >
-                  {step.text}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <SearchProgressLoader
+        visual="linkedin"
+        title="Researching the person"
+        subtitle={linkedinUrl}
+        steps={steps}
+      />
     </>
   );
 }
 
 function WebsiteSearchLoader() {
-  const [visibleCount, setVisibleCount] = useState(1);
   const steps = useMemo(
     () => [
       { status: "active" as const, text: "Opening the company website..." },
@@ -1211,23 +1260,6 @@ function WebsiteSearchLoader() {
     [],
   );
 
-  useEffect(() => {
-    setVisibleCount(1);
-    const timers = steps.slice(1).map((_, index) =>
-      window.setTimeout(
-        () => {
-          setVisibleCount(index + 2);
-        },
-        (index + 1) * 650,
-      ),
-    );
-    return () => {
-      for (const timer of timers) {
-        window.clearTimeout(timer);
-      }
-    };
-  }, [steps]);
-
   return (
     <>
       <StepHeader
@@ -1235,47 +1267,127 @@ function WebsiteSearchLoader() {
         title="Searching the company website"
         description="Agentic Auditor is reading the website to understand the company, brand, and workflow opportunities."
       />
-      <div className="border-border/70 bg-background rounded-xl border p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="bg-background flex h-9 w-9 items-center justify-center rounded-full shadow-xs">
-            <Globe className="text-muted-foreground h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium">Researching the company</p>
-            <p className="text-muted-foreground truncate text-xs">
-              Website crawl and brand context
-            </p>
-          </div>
-        </div>
-        <div className="space-y-2 font-mono text-xs">
-          {steps.slice(0, visibleCount).map((step, index) => {
-            const isLatest = index === visibleCount - 1 && visibleCount < steps.length;
-            return (
-              <div
-                key={step.text}
-                className="flex items-start gap-2 transition-opacity duration-200 ease-out"
-              >
-                <span
-                  className={
-                    step.status === "done" && !isLatest
-                      ? "text-brand"
-                      : "text-muted-foreground animate-pulse"
-                  }
-                >
-                  {step.status === "done" && !isLatest ? "✓" : "→"}
-                </span>
-                <span
-                  className={step.status === "done" && !isLatest ? "" : "text-muted-foreground"}
-                >
-                  {step.text}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <SearchProgressLoader
+        visual="website"
+        title="Researching the company"
+        subtitle="Website crawl and brand context"
+        steps={steps}
+      />
     </>
   );
+}
+
+type SearchProgressStep = {
+  status: "active" | "done";
+  text: string;
+};
+
+function SearchProgressLoader({
+  visual,
+  title,
+  subtitle,
+  steps,
+}: {
+  visual: "linkedin" | "website";
+  title: string;
+  subtitle: string;
+  steps: SearchProgressStep[];
+}) {
+  const visibleCount = useVisibleProgressCount(steps.length);
+
+  return (
+    <div className="border-border/70 bg-background rounded-xl border p-5">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="bg-background flex h-9 w-9 items-center justify-center rounded-full shadow-xs">
+          <SearchProgressVisual visual={visual} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{title}</p>
+          <p className="text-muted-foreground truncate text-xs">{subtitle}</p>
+        </div>
+      </div>
+      <ProgressStepList steps={steps} visibleCount={visibleCount} />
+    </div>
+  );
+}
+
+function SearchProgressVisual({ visual }: { visual: "linkedin" | "website" }) {
+  return visual === "linkedin" ? (
+    <LinkedInLogoMark />
+  ) : (
+    <Globe className="text-muted-foreground h-5 w-5" />
+  );
+}
+
+function useVisibleProgressCount(stepCount: number): number {
+  const [visibleCount, setVisibleCount] = useState(1);
+
+  useEffect(() => {
+    setVisibleCount(1);
+    const timers = Array.from({ length: Math.max(0, stepCount - 1) }, (_, index) =>
+      window.setTimeout(() => setVisibleCount(index + 2), (index + 1) * 650),
+    );
+    return () => {
+      for (const timer of timers) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [stepCount]);
+
+  return visibleCount;
+}
+
+function ProgressStepList({
+  steps,
+  visibleCount,
+}: {
+  steps: SearchProgressStep[];
+  visibleCount: number;
+}) {
+  return (
+    <div className="space-y-2 font-mono text-xs">
+      {steps.slice(0, visibleCount).map((step, index) => (
+        <ProgressStepRow
+          key={step.text}
+          step={step}
+          isLatest={index === visibleCount - 1 && visibleCount < steps.length}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ProgressStepRow({
+  step,
+  isLatest,
+}: {
+  step: SearchProgressStep;
+  isLatest: boolean;
+}) {
+  const done = isCompletedProgressStep(step, isLatest);
+
+  return (
+    <div className="flex items-start gap-2 transition-opacity duration-200 ease-out">
+      <span className={getProgressMarkerClass(done)}>{getProgressMarker(done)}</span>
+      <span className={getProgressTextClass(done)}>{step.text}</span>
+    </div>
+  );
+}
+
+function isCompletedProgressStep(step: SearchProgressStep, isLatest: boolean): boolean {
+  return step.status === "done" && !isLatest;
+}
+
+function getProgressMarkerClass(done: boolean): string {
+  return done ? "text-brand" : "text-muted-foreground animate-pulse";
+}
+
+function getProgressMarker(done: boolean): string {
+  return done ? "✓" : "→";
+}
+
+function getProgressTextClass(done: boolean): string {
+  return done ? "" : "text-muted-foreground";
 }
 
 function LinkedInStep({
@@ -1698,29 +1810,61 @@ function buildSelectedIntegrationRecommendations({
   selectedTools: Set<string>;
   customToolsByCategory: Record<string, string>;
 }): IntegrationRecommendation[] {
-  return recommendations.flatMap((recommendation) => {
-    const commonTools = recommendation.commonTools.filter((tool) =>
-      selectedTools.has(normalizeToolName(tool.name)),
-    );
-    const customTools = (customToolsByCategory[recommendation.id] ?? "")
-      .split(",")
-      .map((tool) => tool.trim())
-      .filter(Boolean);
+  return recommendations.flatMap((recommendation) =>
+    buildSelectedIntegrationRecommendation(recommendation, selectedTools, customToolsByCategory),
+  );
+}
 
-    if (commonTools.length === 0 && customTools.length === 0) {
-      return [];
-    }
+function buildSelectedIntegrationRecommendation(
+  recommendation: IntegrationRecommendation,
+  selectedTools: Set<string>,
+  customToolsByCategory: Record<string, string>,
+): IntegrationRecommendation[] {
+  const commonTools = getSelectedCommonTools(recommendation, selectedTools);
+  const customTools = getCustomTools(customToolsByCategory[recommendation.id]);
 
-    return [
-      {
-        ...recommendation,
-        url: commonTools[0]?.url ?? recommendation.url,
-        commonTools,
-        customTools,
-        selected: true,
-      },
-    ];
-  });
+  return hasSelectedRecommendationTools(commonTools, customTools)
+    ? [
+        {
+          ...recommendation,
+          url: getSelectedRecommendationUrl(recommendation, commonTools),
+          commonTools,
+          customTools,
+          selected: true,
+        },
+      ]
+    : [];
+}
+
+function getSelectedCommonTools(
+  recommendation: IntegrationRecommendation,
+  selectedTools: Set<string>,
+): IntegrationRecommendation["commonTools"] {
+  return recommendation.commonTools.filter((tool) =>
+    selectedTools.has(normalizeToolName(tool.name)),
+  );
+}
+
+function getCustomTools(value: string | undefined): string[] {
+  return (value ?? "").split(",").map(trimToolName).filter(Boolean);
+}
+
+function trimToolName(tool: string): string {
+  return tool.trim();
+}
+
+function hasSelectedRecommendationTools(
+  commonTools: IntegrationRecommendation["commonTools"],
+  customTools: string[],
+): boolean {
+  return commonTools.length > 0 || customTools.length > 0;
+}
+
+function getSelectedRecommendationUrl(
+  recommendation: IntegrationRecommendation,
+  commonTools: IntegrationRecommendation["commonTools"],
+): string {
+  return commonTools[0]?.url ?? recommendation.url;
 }
 
 const TOOL_CATEGORY_ACRONYMS = new Set([
@@ -1756,9 +1900,8 @@ function formatToolCategoryName(value: string): string {
 }
 
 function AgentRecommendationsStep({ result }: { result: AuditResult | null }) {
-  const recommendations = result?.agentRecommendations ?? EMPTY_AGENT_RECOMMENDATIONS;
-  const integrationRecommendations =
-    result?.integrationRecommendations ?? EMPTY_INTEGRATION_RECOMMENDATIONS;
+  const recommendations = getResultAgentRecommendations(result);
+  const integrationRecommendations = getResultIntegrationRecommendations(result);
   const companyName = getAgentRecommendationCompanyName(result);
   const toolCount = getSelectedRecommendationToolCount(integrationRecommendations);
 
@@ -1777,14 +1920,18 @@ function AgentRecommendationsStep({ result }: { result: AuditResult | null }) {
   );
 }
 
+function getResultAgentRecommendations(result: AuditResult | null): AgentRecommendation[] {
+  return result?.agentRecommendations ?? EMPTY_AGENT_RECOMMENDATIONS;
+}
+
 function getAgentRecommendationCompanyName(result: AuditResult | null): string {
-  return (
-    firstPresent([
-      result?.linkedin?.currentCompany?.name,
-      result?.linkedin?.company,
-      result?.website?.title,
-    ]) ?? "your company"
-  );
+  return firstPresent(getAgentRecommendationCompanyNameCandidates(result)) ?? "your company";
+}
+
+function getAgentRecommendationCompanyNameCandidates(
+  result: AuditResult | null,
+): Array<string | null | undefined> {
+  return [result?.linkedin?.currentCompany?.name, result?.linkedin?.company, result?.website?.title];
 }
 
 function getSelectedRecommendationToolCount(
@@ -2065,42 +2212,78 @@ function CompanyCard({
 }) {
   return (
     <section className="border-border/70 bg-background space-y-4 rounded-xl border p-4">
-      <div className="flex items-start gap-3">
-        <div className="bg-muted flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border">
-          <CompanyLogoMark domain={getDomainFromUrl(url)} />
-        </div>
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Company
-            </span>
-          </div>
-          <p className="truncate text-base leading-tight font-semibold">{name}</p>
-        </div>
-      </div>
-      <div className="space-y-2">
-        {tagline ? <p className="text-muted-foreground text-sm">{tagline}</p> : null}
-        {description ? <p className="text-sm leading-relaxed">{description}</p> : null}
-      </div>
-      {brandVoice && brandVoice.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
-          {brandVoice.map((word) => (
-            <span key={word} className="bg-muted rounded-full px-2 py-0.5 text-xs">
-              {word}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      {palette.length > 0 ? <PaletteSummary palette={palette} /> : null}
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        className="text-muted-foreground hover:text-foreground block truncate text-xs underline"
-      >
-        {url}
-      </a>
+      <CompanyCardHeader name={name} url={url} />
+      <CompanyCardDescription tagline={tagline} description={description} />
+      <BrandVoiceList brandVoice={brandVoice} />
+      <CompanyPalette palette={palette} />
+      <CompanyUrlLink url={url} />
     </section>
+  );
+}
+
+function CompanyCardHeader({ name, url }: { name: string; url: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="bg-muted flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border">
+        <CompanyLogoMark domain={getDomainFromUrl(url)} />
+      </div>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            Company
+          </span>
+        </div>
+        <p className="truncate text-base leading-tight font-semibold">{name}</p>
+      </div>
+    </div>
+  );
+}
+
+function CompanyCardDescription({
+  tagline,
+  description,
+}: {
+  tagline?: string;
+  description?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <OptionalMutedText value={tagline} className="text-sm" />
+      {description ? <p className="text-sm leading-relaxed">{description}</p> : null}
+    </div>
+  );
+}
+
+function BrandVoiceList({ brandVoice }: { brandVoice?: string[] }) {
+  if (!brandVoice?.length) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {brandVoice.map((word) => (
+        <span key={word} className="bg-muted rounded-full px-2 py-0.5 text-xs">
+          {word}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function CompanyPalette({ palette }: { palette: string[] }) {
+  return palette.length > 0 ? <PaletteSummary palette={palette} /> : null;
+}
+
+function CompanyUrlLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="text-muted-foreground hover:text-foreground block truncate text-xs underline"
+    >
+      {url}
+    </a>
   );
 }
 
@@ -2282,26 +2465,47 @@ function parseCards(text: string): {
   company: CompanyProfile | null;
   person: PersonProfile | null;
 } {
-  let company: CompanyProfile | null = null;
-  let person: PersonProfile | null = null;
+  return Array.from(text.matchAll(/```json\s*([\s\S]*?)```/g)).reduce(
+    mergeParsedCardBlock,
+    { company: null, person: null } as {
+      company: CompanyProfile | null;
+      person: PersonProfile | null;
+    },
+  );
+}
 
-  const jsonBlocks = text.matchAll(/```json\s*([\s\S]*?)```/g);
-  for (const match of jsonBlocks) {
-    try {
-      const parsed = JSON.parse(match[1].trim()) as {
-        company_profile?: CompanyProfile;
-        person_profile?: PersonProfile;
-      };
-      if (parsed.company_profile) {
-        company = parsed.company_profile;
-      }
-      if (parsed.person_profile) {
-        person = parsed.person_profile;
-      }
-    } catch {
-      // Block may still be streaming; ignore until complete.
-    }
+function mergeParsedCardBlock(
+  current: {
+    company: CompanyProfile | null;
+    person: PersonProfile | null;
+  },
+  match: RegExpMatchArray,
+): {
+  company: CompanyProfile | null;
+  person: PersonProfile | null;
+} {
+  const parsed = parseCardBlock(match[1]);
+  if (!parsed) {
+    return current;
   }
 
-  return { company, person };
+  return {
+    company: parsed.company_profile ?? current.company,
+    person: parsed.person_profile ?? current.person,
+  };
+}
+
+function parseCardBlock(block: string): {
+  company_profile?: CompanyProfile;
+  person_profile?: PersonProfile;
+} | null {
+  try {
+    return JSON.parse(block.trim()) as {
+      company_profile?: CompanyProfile;
+      person_profile?: PersonProfile;
+    };
+  } catch {
+    // Block may still be streaming; ignore until complete.
+    return null;
+  }
 }

@@ -114,16 +114,22 @@ function findProfileImageUrl(value: unknown, path: string[] = []): string | null
     return null;
   }
 
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findProfileImageUrl(item, path);
-      if (found) {
-        return found;
-      }
-    }
-    return null;
-  }
+  return Array.isArray(value)
+    ? findProfileImageInArray(value, path)
+    : findProfileImageInObject(value, path);
+}
 
+function findProfileImageInArray(values: unknown[], path: string[]): string | null {
+  for (const item of values) {
+    const found = findProfileImageUrl(item, path);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+function findProfileImageInObject(value: unknown, path: string[]): string | null {
   const object = asJson(value);
   if (!object) {
     return null;
@@ -131,10 +137,7 @@ function findProfileImageUrl(value: unknown, path: string[] = []): string | null
 
   for (const [key, nestedValue] of Object.entries(object)) {
     const lowerPath = [...path, key].join(".").toLowerCase();
-    const looksLikeProfileImage =
-      /(profile|member|avatar|photo|picture|image|pic)/.test(lowerPath) &&
-      !/(company|logo|background|banner|cover)/.test(lowerPath);
-    if (looksLikeProfileImage) {
+    if (isProfileImagePath(lowerPath)) {
       const url = asHttpUrl(nestedValue);
       if (url) {
         return url;
@@ -148,6 +151,13 @@ function findProfileImageUrl(value: unknown, path: string[] = []): string | null
   }
 
   return null;
+}
+
+function isProfileImagePath(path: string): boolean {
+  return (
+    /(profile|member|avatar|photo|picture|image|pic)/.test(path) &&
+    !/(company|logo|background|banner|cover)/.test(path)
+  );
 }
 
 function nameFromUrl(profileUrl: string): string {
@@ -171,38 +181,90 @@ function nameFromUrl(profileUrl: string): string {
 }
 
 function companyFromRaw(raw: Json): LinkedInCompany | null {
-  const company = asJson(raw.currentCompany) ?? asJson(raw.current_company);
-  const companyName = firstString(
-    company?.name,
-    company?.companyName,
-    raw.companyName,
-    raw.company_name,
-    raw.company,
-  );
+  const company = currentCompanyFromRaw(raw);
+  const companyName = companyNameFromRaw(company, raw);
   if (!companyName) {
     return null;
   }
 
   return {
     name: companyName,
-    website: firstString(company?.website, company?.site, raw.companyWebsite),
-    industry: firstString(company?.industry, company?.industries, raw.companyIndustry),
-    description: firstString(company?.description, company?.about, raw.companyDescription),
-    employeeCount: firstString(
-      company?.employeeCount,
-      company?.employees,
-      company?.companySize,
-      raw.companySize,
-    ),
-    linkedinUrl: firstString(
-      company?.linkedinUrl,
-      company?.linkedInUrl,
-      company?.url,
-      raw.companyLinkedinUrl,
-      raw.companyUrl,
-    ),
-    logoUrl: firstString(company?.logoUrl, company?.logo, raw.companyLogo),
+    website: companyWebsiteFromRaw(company, raw),
+    industry: companyIndustryFromRaw(company, raw),
+    description: companyDescriptionFromRaw(company, raw),
+    employeeCount: companyEmployeeCountFromRaw(company, raw),
+    linkedinUrl: companyLinkedInUrlFromRaw(company, raw),
+    logoUrl: companyLogoFromRaw(company, raw),
   };
+}
+
+function currentCompanyFromRaw(raw: Json): Json | null {
+  return asJson(raw.currentCompany) ?? asJson(raw.current_company);
+}
+
+function companyValue(company: Json | null, key: string): unknown {
+  return company ? company[key] : undefined;
+}
+
+function companyNameFromRaw(company: Json | null, raw: Json): string | null {
+  return firstString(
+    companyValue(company, "name"),
+    companyValue(company, "companyName"),
+    raw.companyName,
+    raw.company_name,
+    raw.company,
+  );
+}
+
+function companyWebsiteFromRaw(company: Json | null, raw: Json): string | null {
+  return firstString(
+    companyValue(company, "website"),
+    companyValue(company, "site"),
+    raw.companyWebsite,
+  );
+}
+
+function companyIndustryFromRaw(company: Json | null, raw: Json): string | null {
+  return firstString(
+    companyValue(company, "industry"),
+    companyValue(company, "industries"),
+    raw.companyIndustry,
+  );
+}
+
+function companyDescriptionFromRaw(company: Json | null, raw: Json): string | null {
+  return firstString(
+    companyValue(company, "description"),
+    companyValue(company, "about"),
+    raw.companyDescription,
+  );
+}
+
+function companyEmployeeCountFromRaw(company: Json | null, raw: Json): string | null {
+  return firstString(
+    companyValue(company, "employeeCount"),
+    companyValue(company, "employees"),
+    companyValue(company, "companySize"),
+    raw.companySize,
+  );
+}
+
+function companyLinkedInUrlFromRaw(company: Json | null, raw: Json): string | null {
+  return firstString(
+    companyValue(company, "linkedinUrl"),
+    companyValue(company, "linkedInUrl"),
+    companyValue(company, "url"),
+    raw.companyLinkedinUrl,
+    raw.companyUrl,
+  );
+}
+
+function companyLogoFromRaw(company: Json | null, raw: Json): string | null {
+  return firstString(
+    companyValue(company, "logoUrl"),
+    companyValue(company, "logo"),
+    raw.companyLogo,
+  );
 }
 
 function profileFromRaw(profileUrl: string, raw: Json): LinkedInProfileResult {
