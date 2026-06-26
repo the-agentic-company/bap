@@ -65,10 +65,7 @@ async function assertPlatformAdmin(userId: string, db: typeof import("@bap/db/cl
   }
 }
 
-async function requireWorkspaceMembership(params: {
-  userId: string;
-  workspaceId: string;
-}) {
+async function requireWorkspaceMembership(params: { userId: string; workspaceId: string }) {
   const membership = await getWorkspaceMembershipForUser(params.userId, params.workspaceId);
   if (!membership) {
     throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
@@ -76,10 +73,7 @@ async function requireWorkspaceMembership(params: {
   return membership;
 }
 
-async function requireWorkspaceAdminMembership(params: {
-  userId: string;
-  workspaceId: string;
-}) {
+async function requireWorkspaceAdminMembership(params: { userId: string; workspaceId: string }) {
   const membership = await requireWorkspaceMembership(params);
   if (membership.role !== "owner" && membership.role !== "admin") {
     throw new ORPCError("FORBIDDEN", { message: "Workspace admin required" });
@@ -406,7 +400,8 @@ const inviteMembers = protectedProcedure
       context,
       workspaceId: input.workspaceId,
     });
-    return await addWorkspaceMembers(input.workspaceId, input.emails, input.role);
+    const added = await addWorkspaceMembers(input.workspaceId, input.emails, input.role);
+    return added;
   });
 
 const members = protectedProcedure
@@ -503,7 +498,8 @@ const adminAddWorkspaceMembers = protectedProcedure
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
     await assertPlatformAdmin(context.user.id, context.db);
-    return await addWorkspaceMembers(input.workspaceId, input.emails, "member");
+    const added = await addWorkspaceMembers(input.workspaceId, input.emails, "member");
+    return added;
   });
 
 const adminCreateWorkspace = protectedProcedure
