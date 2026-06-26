@@ -33,6 +33,14 @@ describe("getCoworkerTriggerLabel", () => {
     ).toBe("Monday, Wednesday at 09:30");
     expect(
       getCoworkerTriggerLabel("schedule", {
+        type: "weekly",
+        daysOfWeek: [5, 1, 3],
+        time: "10:00",
+        timezone: "UTC",
+      }),
+    ).toBe("Mon/Wed/Fri at 10:00");
+    expect(
+      getCoworkerTriggerLabel("schedule", {
         type: "monthly",
         dayOfMonth: 15,
         time: "08:00",

@@ -10,6 +10,8 @@ const WEEKDAY_LABELS = [
   "Saturday",
 ] as const;
 
+const WEEKDAY_SHORT_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
 function formatIntervalLabel(intervalMinutes: number) {
   if (intervalMinutes % (24 * 60) === 0) {
     const days = intervalMinutes / (24 * 60);
@@ -27,14 +29,17 @@ function formatIntervalLabel(intervalMinutes: number) {
 function formatWeeklyCadence(daysOfWeek: number[]) {
   const validDays = [...new Set(daysOfWeek)]
     .filter((day) => day >= 0 && day <= 6)
-    .toSorted((left, right) => left - right)
-    .map((day) => WEEKDAY_LABELS[day]);
+    .toSorted((left, right) => left - right);
 
   if (validDays.length === 0) {
     return "Weekly";
   }
 
-  return validDays.length <= 2 ? validDays.join(", ") : "Weekly";
+  if (validDays.length <= 2) {
+    return validDays.map((day) => WEEKDAY_LABELS[day]).join(", ");
+  }
+
+  return validDays.map((day) => WEEKDAY_SHORT_LABELS[day]).join("/");
 }
 
 function formatMonthlyCadence(dayOfMonth: number) {
