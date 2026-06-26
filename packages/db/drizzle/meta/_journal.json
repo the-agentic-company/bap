@@ -8,6 +8,13 @@
       "when": 1780316400000,
       "tag": "0000_workspace_mcp_big_bang",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782478200000,
+      "tag": "0001_hosted_mcp_grant_workspace_scope",
+      "breakpoints": true
     }
   ]
 }

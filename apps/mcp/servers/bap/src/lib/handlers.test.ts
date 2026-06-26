@@ -3,11 +3,13 @@ import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@bap/core/lib/chat-model-defaul
 import {
   handleChatRun,
   handleCoworkerCreate,
+  handleCoworkerDelete,
   handleCoworkerDeleteDocument,
   handleCoworkerGet,
   handleCoworkerList,
   handleCoworkerLogs,
   handleCoworkerMove,
+  handleCoworkerMoveWorkspace,
   handleCoworkerRun,
   handleCoworkerRuns,
   handleCoworkerSetFavorite,
@@ -16,7 +18,63 @@ import {
   handleCoworkerUpdateDocument,
   handleCoworkerUploadDocument,
   handleSkillAdd,
+  handleWorkspaceList,
+  handleWorkspaceCreate,
+  handleWorkspaceAddMembers,
+  handleWorkspaceSwitch,
 } from "./handlers";
+
+function createWorkspaceOverview(params?: {
+  ownerId?: string;
+  workspaces?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    imageUrl: string | null;
+    role: "owner" | "admin" | "member";
+    billingPlanId: string;
+    active: boolean;
+  }>;
+}) {
+  return {
+    owner: {
+      ownerType: "workspace" as const,
+      ownerId: params?.ownerId ?? "ws-2",
+      planId: "free" as const,
+    },
+    workspaces: params?.workspaces ?? [
+      {
+        id: "ws-1",
+        name: "Alpha",
+        slug: "alpha",
+        imageUrl: null,
+        role: "member" as const,
+        billingPlanId: "free",
+        active: false,
+      },
+      {
+        id: "ws-2",
+        name: "Beta",
+        slug: "beta",
+        imageUrl: null,
+        role: "admin" as const,
+        billingPlanId: "free",
+        active: true,
+      },
+    ],
+  };
+}
+
+function expectWorkspaceListResult(
+  result: Awaited<ReturnType<typeof handleWorkspaceList | typeof handleWorkspaceSwitch>>,
+  activeWorkspaceId = "ws-2",
+) {
+  expect(result).toEqual({
+    status: "completed",
+    activeWorkspaceId,
+    workspaces: createWorkspaceOverview().workspaces,
+  });
+}
 
 describe("MCP handlers", () => {
   it("surfaces needs_auth from chat runs", async () => {
@@ -64,6 +122,142 @@ describe("MCP handlers", () => {
     const result = await handleCoworkerList(client as never);
     expect(result.status).toBe("completed");
     expect(result.coworkers).toHaveLength(1);
+  });
+
+  it("lists workspaces from billing overview", async () => {
+    const client = {
+      billing: {
+        overview: vi.fn().mockResolvedValue(createWorkspaceOverview()),
+      },
+    };
+
+    const result = await handleWorkspaceList(client as never);
+
+    expect(client.billing.overview).toHaveBeenCalledWith();
+    expectWorkspaceListResult(result);
+  });
+
+  it("switches the active workspace and returns the refreshed workspace list", async () => {
+    const client = {
+      billing: {
+        switchWorkspace: vi.fn().mockResolvedValue({ success: true }),
+        overview: vi.fn().mockResolvedValue(createWorkspaceOverview()),
+      },
+    };
+
+    const result = await handleWorkspaceSwitch({
+      client: client as never,
+      workspaceId: "ws-2",
+    });
+
+    expect(client.billing.switchWorkspace).toHaveBeenCalledWith({ workspaceId: "ws-2" });
+    expect(client.billing.overview).toHaveBeenCalledWith();
+    expectWorkspaceListResult(result);
+  });
+
+  it("creates a workspace and returns the refreshed workspace list", async () => {
+    const client = {
+      billing: {
+        createWorkspace: vi.fn().mockResolvedValue({
+          id: "ws-3",
+          name: "Gamma",
+          billingPlanId: "free",
+        }),
+        overview: vi.fn().mockResolvedValue({
+          owner: { ownerType: "workspace", ownerId: "ws-3", planId: "free" },
+          workspaces: [
+            {
+              id: "ws-1",
+              name: "Alpha",
+              slug: "alpha",
+              imageUrl: null,
+              role: "owner",
+              billingPlanId: "free",
+              active: false,
+            },
+            {
+              id: "ws-3",
+              name: "Gamma",
+              slug: "gamma",
+              imageUrl: null,
+              role: "owner",
+              billingPlanId: "free",
+              active: true,
+            },
+          ],
+        }),
+      },
+    };
+
+    const result = await handleWorkspaceCreate({
+      client: client as never,
+      name: "Gamma",
+    });
+
+    expect(client.billing.createWorkspace).toHaveBeenCalledWith({ name: "Gamma" });
+    expect(client.billing.overview).toHaveBeenCalledWith();
+    expect(result).toEqual({
+      status: "completed",
+      workspace: {
+        id: "ws-3",
+        name: "Gamma",
+        billingPlanId: "free",
+      },
+      activeWorkspaceId: "ws-3",
+      workspaces: [
+        {
+          id: "ws-1",
+          name: "Alpha",
+          slug: "alpha",
+          imageUrl: null,
+          role: "owner",
+          billingPlanId: "free",
+          active: false,
+        },
+        {
+          id: "ws-3",
+          name: "Gamma",
+          slug: "gamma",
+          imageUrl: null,
+          role: "owner",
+          billingPlanId: "free",
+          active: true,
+        },
+      ],
+    });
+  });
+
+  it("adds members to a workspace with the requested role", async () => {
+    const client = {
+      billing: {
+        inviteMembers: vi.fn().mockResolvedValue({
+          added: ["alice@example.com", "bob@example.com"],
+          alreadyMembers: ["carol@example.com"],
+          notFound: ["nobody@example.com"],
+        }),
+      },
+    };
+
+    const result = await handleWorkspaceAddMembers({
+      client: client as never,
+      workspaceId: "ws-2",
+      emails: ["alice@example.com", "bob@example.com"],
+      role: "admin",
+    });
+
+    expect(client.billing.inviteMembers).toHaveBeenCalledWith({
+      workspaceId: "ws-2",
+      emails: ["alice@example.com", "bob@example.com"],
+      role: "admin",
+    });
+    expect(result).toEqual({
+      status: "completed",
+      workspaceId: "ws-2",
+      role: "admin",
+      added: ["alice@example.com", "bob@example.com"],
+      alreadyMembers: ["carol@example.com"],
+      notFound: ["nobody@example.com"],
+    });
   });
 
   it("gets a coworker by username reference", async () => {
@@ -276,6 +470,37 @@ describe("MCP handlers", () => {
     });
 
     expect(result.run).toMatchObject({ runId: "run-1" });
+  });
+
+  it("deletes a coworker by username reference and returns the deleted details", async () => {
+    const deletedCoworker = {
+      id: "cw-1",
+      name: "Daily",
+      username: "daily",
+      documents: [],
+      runs: [],
+    };
+    const client = {
+      coworker: {
+        list: vi.fn().mockResolvedValue([{ id: "cw-1", name: "Daily", username: "daily" }]),
+        get: vi.fn().mockResolvedValue(deletedCoworker),
+        delete: vi.fn().mockResolvedValue({ success: true }),
+      },
+    };
+
+    const result = await handleCoworkerDelete({
+      client: client as never,
+      reference: "@daily",
+    });
+
+    expect(client.coworker.get).toHaveBeenCalledWith({ id: "cw-1" });
+    expect(client.coworker.delete).toHaveBeenCalledWith({ id: "cw-1" });
+    expect(result).toEqual({
+      status: "completed",
+      coworkerId: "cw-1",
+      deletedCoworker,
+      success: true,
+    });
   });
 
   it("passes coworker run user input as trusted user input", async () => {
@@ -514,6 +739,40 @@ describe("MCP handlers", () => {
     ).rejects.toThrow("Coworker move must include exactly one destination.");
 
     expect(client.coworkerFolder.moveCoworker).not.toHaveBeenCalled();
+  });
+
+  it("moves a coworker to another workspace by username reference", async () => {
+    const client = {
+      coworker: {
+        list: vi.fn().mockResolvedValue([{ id: "cw-1", name: "Daily", username: "daily" }]),
+        moveWorkspace: vi.fn().mockResolvedValue({
+          id: "cw-1",
+          workspaceId: "ws-2",
+          sourceWorkspaceId: "ws-1",
+          targetWorkspaceId: "ws-2",
+          triggerType: "manual",
+        }),
+      },
+    };
+
+    const result = await handleCoworkerMoveWorkspace({
+      client: client as never,
+      reference: "@daily",
+      targetWorkspaceId: "ws-2",
+    });
+
+    expect(client.coworker.moveWorkspace).toHaveBeenCalledWith({
+      coworkerId: "cw-1",
+      targetWorkspaceId: "ws-2",
+    });
+    expect(result).toEqual({
+      status: "completed",
+      id: "cw-1",
+      workspaceId: "ws-2",
+      sourceWorkspaceId: "ws-1",
+      targetWorkspaceId: "ws-2",
+      triggerType: "manual",
+    });
   });
 
   it("sets coworker favorite state by username reference", async () => {

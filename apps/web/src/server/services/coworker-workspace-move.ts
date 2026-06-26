@@ -3,10 +3,13 @@ import { syncCoworkerScheduleJob } from "@bap/core/server/services/coworker-sche
 import { coworker, workspace } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
+import { assertHostedMcpWorkspaceAccess } from "@/server/orpc/hosted-mcp-workspace-access";
+import type { ORPCContext } from "@/server/orpc/context";
 
 type MoveContext = {
   user: { id: string };
   db: typeof import("@bap/db/client").db;
+  hostedMcp: ORPCContext["hostedMcp"];
 };
 
 export async function moveCoworkerToWorkspace(input: {
@@ -23,6 +26,16 @@ export async function moveCoworkerToWorkspace(input: {
   }
 
   const sourceWorkspaceId = existing.workspaceId;
+  assertHostedMcpWorkspaceAccess(
+    input.context,
+    sourceWorkspaceId,
+    "This MCP authorization does not cover the coworker's current workspace.",
+  );
+  assertHostedMcpWorkspaceAccess(
+    input.context,
+    input.targetWorkspaceId,
+    "This MCP authorization does not cover the target workspace.",
+  );
 
   if (sourceWorkspaceId === input.targetWorkspaceId) {
     throw new ORPCError("BAD_REQUEST", {
