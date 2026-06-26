@@ -43,7 +43,6 @@ import { Route as SettingsUsageRouteImport } from './routes/settings/usage'
 import { Route as SettingsSubscriptionsRouteImport } from './routes/settings/subscriptions'
 import { Route as SettingsBillingRouteImport } from './routes/settings/billing'
 import { Route as SettingsAdvancedRouteImport } from './routes/settings/advanced'
-import { Route as PrototypeOnboardingRouteImport } from './routes/prototype/onboarding'
 import { Route as OnboardingSubscriptionsRouteImport } from './routes/onboarding/subscriptions'
 import { Route as OnboardingIntegrationsRouteImport } from './routes/onboarding/integrations'
 import { Route as LegalTermsRouteImport } from './routes/legal/terms'
@@ -341,11 +340,6 @@ const SettingsAdvancedRoute = SettingsAdvancedRouteImport.update({
   id: '/advanced',
   path: '/advanced',
   getParentRoute: () => SettingsRouteRoute,
-} as any)
-const PrototypeOnboardingRoute = PrototypeOnboardingRouteImport.update({
-  id: '/prototype/onboarding',
-  path: '/prototype/onboarding',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingSubscriptionsRoute = OnboardingSubscriptionsRouteImport.update({
   id: '/subscriptions',
@@ -1101,7 +1095,6 @@ export interface FileRoutesByFullPath {
   '/legal/terms': typeof LegalTermsRoute
   '/onboarding/integrations': typeof OnboardingIntegrationsRoute
   '/onboarding/subscriptions': typeof OnboardingSubscriptionsRoute
-  '/prototype/onboarding': typeof PrototypeOnboardingRoute
   '/settings/advanced': typeof SettingsAdvancedRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/subscriptions': typeof SettingsSubscriptionsRoute
@@ -1256,7 +1249,6 @@ export interface FileRoutesByTo {
   '/legal/terms': typeof LegalTermsRoute
   '/onboarding/integrations': typeof OnboardingIntegrationsRoute
   '/onboarding/subscriptions': typeof OnboardingSubscriptionsRoute
-  '/prototype/onboarding': typeof PrototypeOnboardingRoute
   '/settings/advanced': typeof SettingsAdvancedRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/subscriptions': typeof SettingsSubscriptionsRoute
@@ -1421,7 +1413,6 @@ export interface FileRoutesById {
   '/legal/terms': typeof LegalTermsRoute
   '/onboarding/integrations': typeof OnboardingIntegrationsRoute
   '/onboarding/subscriptions': typeof OnboardingSubscriptionsRoute
-  '/prototype/onboarding': typeof PrototypeOnboardingRoute
   '/settings/advanced': typeof SettingsAdvancedRoute
   '/settings/billing': typeof SettingsBillingRoute
   '/settings/subscriptions': typeof SettingsSubscriptionsRoute
@@ -1588,7 +1579,6 @@ export interface FileRouteTypes {
     | '/legal/terms'
     | '/onboarding/integrations'
     | '/onboarding/subscriptions'
-    | '/prototype/onboarding'
     | '/settings/advanced'
     | '/settings/billing'
     | '/settings/subscriptions'
@@ -1743,7 +1733,6 @@ export interface FileRouteTypes {
     | '/legal/terms'
     | '/onboarding/integrations'
     | '/onboarding/subscriptions'
-    | '/prototype/onboarding'
     | '/settings/advanced'
     | '/settings/billing'
     | '/settings/subscriptions'
@@ -1907,7 +1896,6 @@ export interface FileRouteTypes {
     | '/legal/terms'
     | '/onboarding/integrations'
     | '/onboarding/subscriptions'
-    | '/prototype/onboarding'
     | '/settings/advanced'
     | '/settings/billing'
     | '/settings/subscriptions'
@@ -2035,7 +2023,6 @@ export interface RootRouteChildren {
   ApiLiveRoute: typeof ApiLiveRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   ApiReportRoute: typeof ApiReportRoute
-  PrototypeOnboardingRoute: typeof PrototypeOnboardingRoute
   SharedShareTokenRoute: typeof SharedShareTokenRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAuthCheckEmailRoute: typeof ApiAuthCheckEmailRoute
@@ -2345,13 +2332,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/advanced'
       preLoaderRoute: typeof SettingsAdvancedRouteImport
       parentRoute: typeof SettingsRouteRoute
-    }
-    '/prototype/onboarding': {
-      id: '/prototype/onboarding'
-      path: '/prototype/onboarding'
-      fullPath: '/prototype/onboarding'
-      preLoaderRoute: typeof PrototypeOnboardingRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/onboarding/subscriptions': {
       id: '/onboarding/subscriptions'
@@ -3627,7 +3607,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLiveRoute: ApiLiveRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   ApiReportRoute: ApiReportRoute,
-  PrototypeOnboardingRoute: PrototypeOnboardingRoute,
   SharedShareTokenRoute: SharedShareTokenRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAuthCheckEmailRoute: ApiAuthCheckEmailRoute,
