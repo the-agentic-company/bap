@@ -486,6 +486,22 @@ function getPublicOutputFile(
   return outputFile ?? fallbackOutputFile;
 }
 
+function getPublicRunSummary(run: PublicCoworkerPageData["selectedRun"]) {
+  if (!run) {
+    return {
+      finishedAt: undefined,
+      startedAt: undefined,
+      status: undefined,
+    };
+  }
+
+  return {
+    finishedAt: run.finishedAt,
+    startedAt: run.startedAt,
+    status: run.status,
+  };
+}
+
 function usePublicCoworkerPanels({
   activeTab,
   latestCoworkerMessage,
@@ -505,27 +521,28 @@ function usePublicCoworkerPanels({
   onChatTabClick: () => void;
   onSummaryTabClick: () => void;
 }) {
+  const runSummary = getPublicRunSummary(run);
   const outputPanel = useMemo(
     () => (
       <PublicOutputPanel
         outputHtml={outputHtml}
         outputFile={outputFile}
         latestCoworkerMessage={latestCoworkerMessage}
-        runStatus={run?.status}
+        runStatus={runSummary.status}
       />
     ),
-    [latestCoworkerMessage, outputFile, outputHtml, run?.status],
+    [latestCoworkerMessage, outputFile, outputHtml, runSummary.status],
   );
   const summaryPanel = useMemo(
     () => (
       <RunSummaryPanel
-        status={run?.status}
-        startedAt={run?.startedAt}
-        finishedAt={run?.finishedAt}
+        status={runSummary.status}
+        startedAt={runSummary.startedAt}
+        finishedAt={runSummary.finishedAt}
         messages={messages}
       />
     ),
-    [messages, run?.finishedAt, run?.startedAt, run?.status],
+    [messages, runSummary.finishedAt, runSummary.startedAt, runSummary.status],
   );
   const chatPanel = useMemo(() => <PublicChatPanel messages={messages} />, [messages]);
   const detailsPanel = useMemo(
