@@ -10,6 +10,8 @@ import { schema as coworkerRunsSchema } from "../tools/coworker.runs";
 import { schema as coworkerUpdateSchema } from "../tools/coworker.update";
 import { schema as coworkerUpdateDocumentSchema } from "../tools/coworker.updateDocument";
 import { schema as coworkerUploadDocumentSchema } from "../tools/coworker.uploadDocument";
+import { schema as fileAssetCompleteUploadSchema } from "../tools/fileAsset.completeUpload";
+import { schema as fileAssetCreateUploadSchema } from "../tools/fileAsset.createUpload";
 import { schema as skillAddSchema } from "../tools/skill.add";
 
 const bapToolSchemas = {
@@ -24,6 +26,8 @@ const bapToolSchemas = {
   "coworker.update": coworkerUpdateSchema,
   "coworker.updateDocument": coworkerUpdateDocumentSchema,
   "coworker.uploadDocument": coworkerUploadDocumentSchema,
+  "fileAsset.completeUpload": fileAssetCompleteUploadSchema,
+  "fileAsset.createUpload": fileAssetCreateUploadSchema,
   "skill.add": skillAddSchema,
 } as const;
 

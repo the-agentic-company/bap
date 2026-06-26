@@ -11,6 +11,17 @@ export const schema = {
   authSource: z.enum(["user", "shared"]).optional().describe("Model auth source"),
   sandbox: z.enum(["e2b", "daytona", "docker"]).optional().describe("Sandbox provider"),
   autoApprove: z.boolean().optional().describe("Auto-approve tool calls"),
+  fileAttachments: z
+    .array(
+      z.object({
+        fileAssetId: z.string().min(1).describe("Ready File Asset ID to attach to the chat turn"),
+        name: z.string().optional().describe("Optional display name for the attachment"),
+        mimeType: z.string().optional().describe("Optional MIME type override"),
+        sizeBytes: z.number().int().nonnegative().optional().describe("Optional file size hint"),
+      }),
+    )
+    .optional()
+    .describe("Optional ready File Assets to attach to the chat turn"),
 };
 
 export const metadata: ToolMetadata = {
@@ -39,6 +50,7 @@ export default async function chatRun(
     authSource: params.authSource,
     sandbox: params.sandbox,
     autoApprove: params.autoApprove,
+    fileAttachments: params.fileAttachments,
   });
 
   return toMcpToolResult(result);

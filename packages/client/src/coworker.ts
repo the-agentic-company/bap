@@ -58,7 +58,16 @@ export function createCoworkerRunner(client: BapApiClient) {
     async run(
       reference: string,
       payload?: unknown,
-      options?: { trustedUserInput?: string; debugRunDeadlineMs?: number },
+      options?: {
+        trustedUserInput?: string;
+        debugRunDeadlineMs?: number;
+        fileAttachments?: Array<{
+          fileAssetId: string;
+          name?: string;
+          mimeType?: string;
+          sizeBytes?: number;
+        }>;
+      },
     ): Promise<CoworkerTriggerResult> {
       const id = await resolveCoworkerReference(client, reference);
       return client.coworker.trigger({
@@ -66,6 +75,7 @@ export function createCoworkerRunner(client: BapApiClient) {
         payload,
         trustedUserInput: options?.trustedUserInput,
         debugRunDeadlineMs: options?.debugRunDeadlineMs,
+        fileAttachments: options?.fileAttachments,
       });
     },
     async logs(runId: string): Promise<CoworkerRun> {

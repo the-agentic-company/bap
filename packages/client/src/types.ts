@@ -583,6 +583,12 @@ export interface BapApiClient {
       payload?: unknown;
       debugRunDeadlineMs?: number;
       trustedUserInput?: string;
+      fileAttachments?: Array<{
+        fileAssetId: string;
+        name?: string;
+        mimeType?: string;
+        sizeBytes?: number;
+      }>;
     }): Promise<CoworkerTriggerResult>;
     getRun(input: { id: string }): Promise<CoworkerRun>;
     listRuns(input: { coworkerId: string; limit: number }): Promise<CoworkerRunSummary[]>;
