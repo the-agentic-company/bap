@@ -41,7 +41,25 @@ function formatMonthlyCadence(dayOfMonth: number) {
   if (dayOfMonth === 1) {
     return "Monthly";
   }
-  return `${dayOfMonth} monthly`;
+  return `Monthly on the ${dayOfMonth}${getOrdinalSuffix(dayOfMonth)}`;
+}
+
+function getOrdinalSuffix(dayOfMonth: number) {
+  const remainder = dayOfMonth % 100;
+  if (remainder >= 11 && remainder <= 13) {
+    return "th";
+  }
+
+  switch (dayOfMonth % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
 }
 
 export function getCoworkerTriggerLabel(triggerType: string, schedule?: CoworkerSchedule | null) {
