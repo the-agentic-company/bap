@@ -67,53 +67,71 @@ function PublicOutputPanel({
   latestCoworkerMessage?: string;
   runStatus?: string | null;
 }) {
-  const t = useGT();
-
   if (outputHtml && outputFile) {
-    return (
-      <div className="bg-background flex h-full min-h-0 flex-col">
-        <div className="border-border/70 flex h-11 shrink-0 items-center gap-2 border-b px-3">
-          <FileCode2 className="text-muted-foreground h-4 w-4" />
-          <p className="min-w-0 flex-1 truncate text-sm font-medium">
-            <T>output.html</T>
-          </p>
-          {outputFile.downloadUrl ? (
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" asChild>
-              <a href={outputFile.downloadUrl} download={outputFile.filename} target="_blank">
-                <Download className="h-4 w-4" />
-                <span className="sr-only">{t("Download output.html")}</span>
-              </a>
-            </Button>
-          ) : null}
-        </div>
-        <div className="bg-muted/30 min-h-0 flex-1">
-          <iframe
-            title={t("output.html Agentic-App")}
-            className="bg-background h-full w-full border-0"
-            sandbox="allow-scripts allow-forms"
-            srcDoc={outputHtml}
-          />
-        </div>
-      </div>
-    );
+    return <PublicHtmlOutputPanel outputHtml={outputHtml} outputFile={outputFile} />;
   }
 
   if (latestCoworkerMessage?.trim()) {
-    return (
-      <div className="bg-background h-full overflow-auto p-5">
-        <div className="mx-auto max-w-3xl">
-          <div className="border-border/70 mb-4 flex h-11 items-center gap-2 border-b">
-            <MessageSquareText className="text-muted-foreground h-4 w-4" />
-            <p className="text-sm font-medium">
-              <T>Latest coworker message</T>
-            </p>
-          </div>
-          <MessageBubble messageRole="assistant" content={latestCoworkerMessage} />
-        </div>
-      </div>
-    );
+    return <PublicLatestMessagePanel latestCoworkerMessage={latestCoworkerMessage} />;
   }
 
+  return <PublicEmptyOutputPanel runStatus={runStatus} />;
+}
+
+function PublicHtmlOutputPanel({
+  outputHtml,
+  outputFile,
+}: {
+  outputHtml: string;
+  outputFile: NonNullable<PublicCoworkerPageData["outputFile"]> | SandboxFileData;
+}) {
+  const t = useGT();
+
+  return (
+    <div className="bg-background flex h-full min-h-0 flex-col">
+      <div className="border-border/70 flex h-11 shrink-0 items-center gap-2 border-b px-3">
+        <FileCode2 className="text-muted-foreground h-4 w-4" />
+        <p className="min-w-0 flex-1 truncate text-sm font-medium">
+          <T>output.html</T>
+        </p>
+        {outputFile.downloadUrl ? (
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <a href={outputFile.downloadUrl} download={outputFile.filename} target="_blank">
+              <Download className="h-4 w-4" />
+              <span className="sr-only">{t("Download output.html")}</span>
+            </a>
+          </Button>
+        ) : null}
+      </div>
+      <div className="bg-muted/30 min-h-0 flex-1">
+        <iframe
+          title={t("output.html Agentic-App")}
+          className="bg-background h-full w-full border-0"
+          sandbox="allow-scripts allow-forms"
+          srcDoc={outputHtml}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PublicLatestMessagePanel({ latestCoworkerMessage }: { latestCoworkerMessage: string }) {
+  return (
+    <div className="bg-background h-full overflow-auto p-5">
+      <div className="mx-auto max-w-3xl">
+        <div className="border-border/70 mb-4 flex h-11 items-center gap-2 border-b">
+          <MessageSquareText className="text-muted-foreground h-4 w-4" />
+          <p className="text-sm font-medium">
+            <T>Latest coworker message</T>
+          </p>
+        </div>
+        <MessageBubble messageRole="assistant" content={latestCoworkerMessage} />
+      </div>
+    </div>
+  );
+}
+
+function PublicEmptyOutputPanel({ runStatus }: { runStatus?: string | null }) {
   return (
     <div className="bg-muted/25 flex h-full min-h-[22rem] items-center justify-center p-6">
       <div className="max-w-sm text-center">
@@ -216,13 +234,9 @@ function getPublicCoworkerSlug(coworker: PublicCoworkerPageData["coworker"]): st
 }
 
 function findLatestCoworkerMessage(messages: PublicChatMessages): string | undefined {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message?.role === "assistant" && message.content.trim()) {
-      return message.content;
-    }
-  }
-  return undefined;
+  return messages
+    .toReversed()
+    .find((message) => message.role === "assistant" && message.content.trim())?.content;
 }
 
 function PublicCoworkerHeader({
@@ -375,26 +389,19 @@ function PublicMobilePanels({
   );
 }
 
-function PublicCoworkerRoute() {
-  const page = Route.useLoaderData() as unknown as PublicCoworkerPageData;
+function usePublicCoworkerSearchParams(): URLSearchParams {
   const searchStr = useRouterState({ select: (state) => state.location.searchStr });
-  const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
+  return useMemo(() => new URLSearchParams(searchStr), [searchStr]);
+}
+
+function usePublicMobilePanel(searchParams: URLSearchParams) {
+  return useState<MobilePanel>(() => getMobilePanel(searchParams.get("tab") ?? "app"));
+}
+
+function usePublicHistorySelect(coworkerSlug: string, searchParams: URLSearchParams) {
   const navigate = useNavigate();
-  const [mobilePanel, setMobilePanel] = useState<MobilePanel>(() =>
-    getMobilePanel(searchParams.get("tab") ?? "app"),
-  );
 
-  const activeTab = searchParams.get("tab") === "chat" ? "chat" : "summary";
-  const messages = useMemo(
-    () => mapPersistedMessagesToChatMessages(page.messages),
-    [page.messages],
-  );
-  const fallbackOutputFile = useMemo(() => findLatestAgenticAppFile(messages), [messages]);
-  const outputFile = page.outputFile ?? fallbackOutputFile;
-  const latestCoworkerMessage = useMemo(() => findLatestCoworkerMessage(messages), [messages]);
-  const coworkerSlug = getPublicCoworkerSlug(page.coworker);
-
-  const handleHistorySelect = useCallback(
+  return useCallback(
     (runId: string) => {
       void navigate({
         to: "/share/agents/$slug",
@@ -407,8 +414,12 @@ function PublicCoworkerRoute() {
     },
     [coworkerSlug, navigate, searchParams],
   );
+}
 
-  const handleTabChange = useCallback(
+function usePublicTabChange(coworkerSlug: string, searchParams: URLSearchParams) {
+  const navigate = useNavigate();
+
+  return useCallback(
     (nextTab: string) => {
       const next = nextTab === "chat" ? "chat" : "summary";
       void navigate({
@@ -422,8 +433,20 @@ function PublicCoworkerRoute() {
     },
     [coworkerSlug, navigate, searchParams],
   );
+}
 
-  const handleMobilePanelChange = useCallback(
+function usePublicMobilePanelChange({
+  coworkerSlug,
+  searchParams,
+  setMobilePanel,
+}: {
+  coworkerSlug: string;
+  searchParams: URLSearchParams;
+  setMobilePanel: (mobilePanel: MobilePanel) => void;
+}) {
+  const navigate = useNavigate();
+
+  return useCallback(
     (nextPanelValue: string) => {
       const next = getMobilePanel(nextPanelValue);
       setMobilePanel(next);
@@ -436,10 +459,12 @@ function PublicCoworkerRoute() {
         },
       });
     },
-    [coworkerSlug, navigate, searchParams],
+    [coworkerSlug, navigate, searchParams, setMobilePanel],
   );
+}
 
-  const handleMobilePanelClick = useCallback(
+function usePublicMobilePanelClick(handleMobilePanelChange: (nextPanelValue: string) => void) {
+  return useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const panel = event.currentTarget.dataset.panel;
       if (panel) {
@@ -448,6 +473,36 @@ function PublicCoworkerRoute() {
     },
     [handleMobilePanelChange],
   );
+}
+
+function PublicCoworkerRoute() {
+  const page = Route.useLoaderData() as unknown as PublicCoworkerPageData;
+  return <PublicCoworkerPage page={page} />;
+}
+
+function PublicCoworkerPage({ page }: { page: PublicCoworkerPageData }) {
+  const searchParams = usePublicCoworkerSearchParams();
+  const [mobilePanel, setMobilePanel] = usePublicMobilePanel(searchParams);
+
+  const activeTab = searchParams.get("tab") === "chat" ? "chat" : "summary";
+  const messages = useMemo(
+    () => mapPersistedMessagesToChatMessages(page.messages),
+    [page.messages],
+  );
+  const fallbackOutputFile = useMemo(() => findLatestAgenticAppFile(messages), [messages]);
+  const outputFile = page.outputFile ?? fallbackOutputFile;
+  const latestCoworkerMessage = useMemo(() => findLatestCoworkerMessage(messages), [messages]);
+  const coworkerSlug = getPublicCoworkerSlug(page.coworker);
+  const selectedRun = page.selectedRun;
+
+  const handleHistorySelect = usePublicHistorySelect(coworkerSlug, searchParams);
+  const handleTabChange = usePublicTabChange(coworkerSlug, searchParams);
+  const handleMobilePanelChange = usePublicMobilePanelChange({
+    coworkerSlug,
+    searchParams,
+    setMobilePanel,
+  });
+  const handleMobilePanelClick = usePublicMobilePanelClick(handleMobilePanelChange);
 
   const handleSummaryTabClick = useCallback(() => {
     handleTabChange("summary");
@@ -463,21 +518,21 @@ function PublicCoworkerRoute() {
         outputHtml={page.outputHtml}
         outputFile={outputFile}
         latestCoworkerMessage={latestCoworkerMessage}
-        runStatus={page.selectedRun?.status}
+        runStatus={selectedRun?.status}
       />
     ),
-    [latestCoworkerMessage, outputFile, page.outputHtml, page.selectedRun?.status],
+    [latestCoworkerMessage, outputFile, page.outputHtml, selectedRun?.status],
   );
   const summaryPanel = useMemo(
     () => (
       <RunSummaryPanel
-        status={page.selectedRun?.status}
-        startedAt={page.selectedRun?.startedAt}
-        finishedAt={page.selectedRun?.finishedAt}
+        status={selectedRun?.status}
+        startedAt={selectedRun?.startedAt}
+        finishedAt={selectedRun?.finishedAt}
         messages={messages}
       />
     ),
-    [messages, page.selectedRun?.finishedAt, page.selectedRun?.startedAt, page.selectedRun?.status],
+    [messages, selectedRun?.finishedAt, selectedRun?.startedAt, selectedRun?.status],
   );
   const chatPanel = useMemo(() => <PublicChatPanel messages={messages} />, [messages]);
   const detailsPanel = useMemo(
@@ -498,7 +553,7 @@ function PublicCoworkerRoute() {
       <PublicCoworkerHeader
         coworker={page.coworker}
         runs={page.runs}
-        selectedRunId={page.selectedRun?.id}
+        selectedRunId={selectedRun?.id}
         onHistorySelect={handleHistorySelect}
       />
       <PublicMobilePanels
