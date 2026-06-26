@@ -38,7 +38,7 @@ describe("getCoworkerTriggerLabel", () => {
         time: "08:00",
         timezone: "UTC",
       }),
-    ).toBe("15 monthly at 08:00");
+    ).toBe("Monthly on the 15th at 08:00");
   });
 
   it("falls back to Scheduled when schedule details are missing", () => {
