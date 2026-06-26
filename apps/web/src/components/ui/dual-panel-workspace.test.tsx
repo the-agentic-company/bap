@@ -3,8 +3,9 @@
 // @vitest-environment jsdom
 
 import * as jestDomVitest from "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { DualPanelWorkspace } from "./dual-panel-workspace";
 
@@ -12,6 +13,7 @@ void jestDomVitest;
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
 });
 
 const LONG_LEFT_PANEL = (
@@ -153,6 +155,51 @@ describe("DualPanelWorkspace", () => {
 
     expect(leftSection).not.toHaveClass("pointer-events-none");
     expect(rightSection).not.toHaveClass("pointer-events-none");
+  });
+
+  it("renders the default width on the server when a stored width exists", () => {
+    window.localStorage.setItem("workspace-width", "35");
+
+    const html = renderToString(
+      <DualPanelWorkspace
+        left="Left panel"
+        right="Right panel"
+        defaultRightWidth={72}
+        minLeftWidth={25}
+        minRightWidth={30}
+        storageKey="workspace-width"
+        showTitles={false}
+        hideMobileToggle
+      />,
+    );
+
+    expect(html).toContain('style="width:28%"');
+    expect(html).toContain('style="width:72%"');
+    expect(html).not.toContain('style="width:65%"');
+    expect(html).not.toContain('style="width:35%"');
+  });
+
+  it("restores stored width after mount", async () => {
+    window.localStorage.setItem("workspace-width", "35");
+
+    const { container } = render(
+      <DualPanelWorkspace
+        left="Left panel"
+        right="Right panel"
+        defaultRightWidth={72}
+        minLeftWidth={25}
+        minRightWidth={30}
+        storageKey="workspace-width"
+        showTitles={false}
+        hideMobileToggle
+      />,
+    );
+    const [leftSection, rightSection] = Array.from(container.querySelectorAll("section"));
+
+    await waitFor(() => {
+      expect(leftSection).toHaveStyle({ width: "65%" });
+      expect(rightSection).toHaveStyle({ width: "35%" });
+    });
   });
 
   it("can mask and restore the left panel by dragging past the minimum", () => {

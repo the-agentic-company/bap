@@ -18,3 +18,7 @@ export function getCoworkerEditHrefById(coworker: Pick<CoworkerRouteTarget, "id"
 export function getCoworkerInfoHref(coworker: CoworkerRouteTarget) {
   return `/agents/info/${getCoworkerRouteSlug(coworker)}`;
 }
+
+export function getCoworkerPublicShareHref(coworker: CoworkerRouteTarget) {
+  return `/share/agents/${getCoworkerRouteSlug(coworker)}`;
+}

@@ -82,19 +82,7 @@ export function DualPanelWorkspace({
   const [isLeftPanelCollapsedByDrag, setIsLeftPanelCollapsedByDrag] = useState(false);
   const [uncontrolledIsCollapsed, setUncontrolledIsCollapsed] = useState(defaultRightCollapsed);
   const savedWidthRef = useRef<number | null>(null);
-  const [rightWidth, setRightWidth] = useState(() => {
-    if (!storageKey || typeof window === "undefined") {
-      return defaultRightWidth;
-    }
-    const saved = window.localStorage.getItem(storageKey);
-    const parsed = Number(saved);
-    if (!Number.isFinite(parsed)) {
-      return defaultRightWidth;
-    }
-    const maxRight = 100 - minLeftWidth;
-    const minRight = minRightWidth;
-    return Math.min(Math.max(minRight, maxRight), Math.max(minRight, parsed));
-  });
+  const [rightWidth, setRightWidth] = useState(defaultRightWidth);
   const isCollapsed = rightCollapsed ?? uncontrolledIsCollapsed;
 
   const setCollapsed = useCallback(
@@ -126,6 +114,21 @@ export function DualPanelWorkspace({
     },
     [bounds.maxRight, bounds.minRight, storageKey],
   );
+
+  useEffect(() => {
+    if (!storageKey) {
+      return;
+    }
+
+    const saved = window.localStorage.getItem(storageKey);
+    const parsed = Number(saved);
+    if (!Number.isFinite(parsed)) {
+      return;
+    }
+
+    const next = Math.min(bounds.maxRight, Math.max(bounds.minRight, parsed));
+    setRightWidth(next);
+  }, [bounds.maxRight, bounds.minRight, storageKey]);
 
   const onPointerMove = useCallback(
     (event: globalThis.PointerEvent) => {
