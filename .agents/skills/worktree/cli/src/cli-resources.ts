@@ -17,6 +17,8 @@ import {
   fail,
   isDatabaseConnectionError,
   quoteIdentifier,
+  resolveDockerComposeServiceEnv,
+  resolvePostgresPassword,
   readSharedEnvValues,
   redactConnectionString,
   resolveRuntimeSharedStackConfig,
@@ -37,14 +39,35 @@ export function resolveSharedRedisAdminPassword(): string {
   return process.env.BAP_SHARED_REDIS_ADMIN_PASSWORD?.trim() || "bap-redis-admin";
 }
 
-export function resolveSharedMinioRootCredentials(): { accessKeyId: string; secretAccessKey: string } {
+export function resolveSharedMinioRootCredentialsFromEnv(
+  containerEnv: Record<string, string | undefined>,
+  env: NodeJS.ProcessEnv,
+): { accessKeyId: string; secretAccessKey: string } {
+  const containerAccessKeyId = containerEnv.MINIO_ROOT_USER?.trim();
+  const containerSecretAccessKey = containerEnv.MINIO_ROOT_PASSWORD?.trim();
+  if (containerAccessKeyId && containerSecretAccessKey) {
+    return {
+      accessKeyId: containerAccessKeyId,
+      secretAccessKey: containerSecretAccessKey,
+    };
+  }
+
   return {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID?.trim() || process.env.S3_ACCESS_KEY_ID?.trim() || "minioadmin",
+    accessKeyId:
+      env.MINIO_ROOT_USER?.trim() ||
+      env.BAP_MINIO_ROOT_USER?.trim() ||
+      "minioadmin",
     secretAccessKey:
-      process.env.AWS_SECRET_ACCESS_KEY?.trim() ||
-      process.env.S3_SECRET_ACCESS_KEY?.trim() ||
+      env.MINIO_ROOT_PASSWORD?.trim() ||
+      env.BAP_MINIO_ROOT_PASSWORD?.trim() ||
       "minioadmin",
   };
+}
+
+export function resolveSharedMinioRootCredentials(): { accessKeyId: string; secretAccessKey: string } {
+  const sharedStack = buildSharedStackConfig();
+  const containerEnv = resolveDockerComposeServiceEnv(sharedStack.composeProjectName, "minio");
+  return resolveSharedMinioRootCredentialsFromEnv(containerEnv, process.env);
 }
 
 export function buildPostgresAdminUrl(metadata: InstanceMetadata): string {
@@ -143,6 +166,40 @@ export async function ensureDatabaseExtensions(metadata: InstanceMetadata): Prom
     buildPostgresBaseUrl(resolveRuntimeSharedStackConfig().postgresPort, metadata.databaseName),
     async (client) => {
       await client.query("create extension if not exists vector");
+    },
+  );
+}
+
+export async function ensureZeroDatabaseMetadataAccess(metadata: InstanceMetadata): Promise<void> {
+  await withAdminClient(
+    buildPostgresBaseUrl(resolveRuntimeSharedStackConfig().postgresPort, metadata.databaseName),
+    async (client) => {
+      const existing = await client.query<{ schema_name: string }>(
+        `
+          select schema_name
+          from information_schema.schemata
+          where schema_name in ('zero', 'zero_0', 'zero_0/cvr', 'zero_0/cdc')
+        `,
+      );
+      if (existing.rowCount === 0) {
+        return;
+      }
+
+      for (const row of existing.rows) {
+        const schemaName = quoteIdentifier(row.schema_name);
+        const databaseUser = quoteIdentifier(metadata.databaseUser);
+        await client.query(`grant usage on schema ${schemaName} to ${databaseUser}`);
+        await client.query(
+          `grant all privileges on all tables in schema ${schemaName} to ${databaseUser}`,
+        );
+        await client.query(
+          `grant all privileges on all sequences in schema ${schemaName} to ${databaseUser}`,
+        );
+        await client.query(
+          `grant execute on all functions in schema ${schemaName} to ${databaseUser}`,
+        );
+      }
+      console.log(`[worktree] ensured zero metadata access for ${metadata.databaseName}`);
     },
   );
 }
@@ -365,9 +422,22 @@ export function buildWorktreeRuntimeEnv(metadata: InstanceMetadata): DerivedEnv 
 
 export function buildSharedComposeEnv(repoRoot: string): NodeJS.ProcessEnv {
   const shared = buildSharedStackConfig();
-  return {
+  const postgresPassword = resolvePostgresPassword();
+  const minioRoot = resolveSharedMinioRootCredentials();
+  const env = {
     ...process.env,
     ...readSharedEnvValues(repoRoot),
+  };
+  delete env.AWS_ACCESS_KEY_ID;
+  delete env.AWS_SECRET_ACCESS_KEY;
+  delete env.S3_ACCESS_KEY_ID;
+  delete env.S3_SECRET_ACCESS_KEY;
+  return {
+    ...env,
+    DATABASE_PASSWORD: postgresPassword,
+    DB_PASSWORD: postgresPassword,
+    MINIO_ROOT_USER: minioRoot.accessKeyId,
+    MINIO_ROOT_PASSWORD: minioRoot.secretAccessKey,
     BAP_COMPOSE_PROJECT: shared.composeProjectName,
     COMPOSE_PROJECT_NAME: shared.composeProjectName,
     BAP_POSTGRES_PORT: String(shared.postgresPort),

@@ -20,6 +20,7 @@
     "lint:size": "bun scripts/lint-size-baseline.ts",
     "lint:mocks": "bun scripts/lint-size-baseline.ts -A max-lines",
     "test": "bun run test:ci",
+    "ci:test": "bun run test:ci",
     "test:ui": "vitest --config vitest.ui.config.ts --ui --open",
     "dev:web": "bun --env-file=.env turbo dev --filter=@bap/web",
     "dev:docs": "turbo dev --filter=@bap/docs",

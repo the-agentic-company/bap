@@ -30,6 +30,8 @@ import {
   isGeneratedWorktreeEnvFile,
   normalizePath,
   quoteIdentifier,
+  resolveDockerComposeServiceEnv,
+  resolvePostgresPassword,
   resolveRuntimeSharedStackConfig,
   resolveSharedWorktreeInstancesPath,
   resolveSharedEnvFile,
@@ -257,6 +259,70 @@ export function ensureSharedInfraRunning(repoRoot: string): void {
     env,
   );
   clearSharedStackRuntimeCache();
+}
+
+export function buildZeroCacheVolumeName(metadata: InstanceMetadata): string {
+  return `${metadata.instanceId}_zero_cache_data`;
+}
+
+export function buildZeroQueryUrl(metadata: InstanceMetadata): string {
+  return `http://host.docker.internal:${metadata.appPort}/api/zero/query`;
+}
+
+export function buildZeroCacheComposeEnv(metadata: InstanceMetadata): NodeJS.ProcessEnv {
+  const postgresPassword = resolvePostgresPassword();
+  return {
+    ...buildSharedComposeEnv(metadata.repoRoot),
+    DATABASE_PASSWORD: postgresPassword,
+    DB_PASSWORD: postgresPassword,
+    BAP_POSTGRES_DB: metadata.databaseName,
+    BAP_ZERO_CACHE_VOLUME: buildZeroCacheVolumeName(metadata),
+    VITE_ZERO_QUERY_URL: buildZeroQueryUrl(metadata),
+  };
+}
+
+export function isZeroCacheConfiguredForMetadata(metadata: InstanceMetadata): boolean {
+  const sharedStack = buildSharedStackConfig();
+  const containerEnv = resolveDockerComposeServiceEnv(sharedStack.composeProjectName, "zero-cache");
+  if (Object.keys(containerEnv).length === 0) {
+    return false;
+  }
+
+  const expectedDatabaseUrl = `postgresql://postgres:${resolvePostgresPassword()}@database:5432/${metadata.databaseName}`;
+  return (
+    containerEnv.ZERO_QUERY_URL === buildZeroQueryUrl(metadata) &&
+    containerEnv.ZERO_UPSTREAM_DB === expectedDatabaseUrl &&
+    containerEnv.ZERO_CVR_DB === expectedDatabaseUrl &&
+    containerEnv.ZERO_CHANGE_DB === expectedDatabaseUrl
+  );
+}
+
+export function ensureZeroCacheConfigured(metadata: InstanceMetadata): void {
+  const env = buildZeroCacheComposeEnv(metadata);
+  const projectName = env.BAP_COMPOSE_PROJECT ?? buildSharedStackConfig().composeProjectName;
+  const args = [
+    "compose",
+    "--env-file",
+    resolveSharedEnvFile(metadata.repoRoot),
+    "-p",
+    projectName,
+    "-f",
+    "docker/compose/dev.yml",
+    "up",
+    "-d",
+    "--no-deps",
+  ];
+
+  if (!isZeroCacheConfiguredForMetadata(metadata)) {
+    args.push("--force-recreate");
+  }
+
+  args.push("zero-cache");
+  runInheritedCommand("docker", args, metadata.repoRoot, env);
+  clearSharedStackRuntimeCache();
+  console.log(
+    `[worktree] ensured zero-cache ${metadata.databaseName} -> ${buildZeroQueryUrl(metadata)}`,
+  );
 }
 
 export function listDockerProjectContainerIds(metadata: InstanceMetadata): string[] {
