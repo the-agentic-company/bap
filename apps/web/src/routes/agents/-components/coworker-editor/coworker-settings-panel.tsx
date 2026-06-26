@@ -320,47 +320,47 @@ export function CoworkerSettingsPanel({
                   disabled={isResettingRuns}
                 />
               </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1.5 px-3 text-xs font-medium"
-              onClick={onRun}
-              disabled={isRunDisabled}
-            >
-              {isRunning ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Play className="h-3 w-3" />
-              )}
-              <T>Run now</T>
-            </Button>
-            <button
-              type="button"
-              onClick={handleOpenDeleteDialog}
-              className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
-              aria-label={t("Delete coworker")}
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-            {showCloseButton ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 px-3 text-xs font-medium"
+                onClick={onRun}
+                disabled={isRunDisabled}
+              >
+                {isRunning ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Play className="h-3 w-3" />
+                )}
+                <T>Run now</T>
+              </Button>
               <button
                 type="button"
-                onClick={onClose}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
-                aria-label={t("Close panel")}
+                onClick={handleOpenDeleteDialog}
+                className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                aria-label={t("Delete coworker")}
               >
-                <X className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </button>
-            ) : null}
-            <DeleteCoworkerDialog
-              open={showDeleteDialog}
-              isDeleting={isDeleting}
-              onOpenChange={onShowDeleteDialogChange}
-              onDelete={onDelete}
-            />
+              {showCloseButton ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                  aria-label={t("Close panel")}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+              <DeleteCoworkerDialog
+                open={showDeleteDialog}
+                isDeleting={isDeleting}
+                onOpenChange={onShowDeleteDialogChange}
+                onDelete={onDelete}
+              />
+            </div>
           </div>
         </div>
-      </div>
       )}
       {shouldShowRunBacklogNotice ? (
         <div className="border-border bg-muted/40 border-y px-3 py-2">
