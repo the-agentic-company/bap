@@ -92,11 +92,35 @@ async function loadPublicOutputHtml(file: {
   return body.toString("utf8");
 }
 
+function decodePublicSlug(slug: string): string | null {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return null;
+  }
+}
+
+function findPublicOutputFile(
+  messages: Array<{ sandboxFiles?: PublicSandboxFile[] }>,
+  fileId: string,
+): PublicSandboxFile | null {
+  return (
+    messages
+      .toReversed()
+      .flatMap((msg) => (msg.sandboxFiles ?? []).toReversed())
+      .find((file) => file.fileId === fileId) ?? null
+  );
+}
+
 export async function getPublicCoworkerPage(params: {
   slug: string;
   runId?: string;
 }): Promise<PublicCoworkerPageData | null> {
-  const decodedSlug = decodeURIComponent(params.slug);
+  const decodedSlug = decodePublicSlug(params.slug);
+  if (!decodedSlug) {
+    return null;
+  }
+
   const coworkerRow = await db.query.coworker.findFirst({
     where: and(
       isNotNull(coworker.sharedAt),
@@ -178,7 +202,7 @@ export async function getPublicCoworkerPage(params: {
     .toReversed()
     .flatMap((msg) => (msg.sandboxFiles ?? []).toReversed())
     .find((file) => file.filename === AGENTIC_APP_FILENAME);
-  const outputFile = outputFileRow ? await toPublicSandboxFile(outputFileRow) : null;
+  const outputFile = outputFileRow ? findPublicOutputFile(messages, outputFileRow.id) : null;
   const outputHtml = outputFileRow ? await loadPublicOutputHtml(outputFileRow) : null;
 
   const runs = runRows.map((run) => ({

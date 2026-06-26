@@ -119,4 +119,70 @@ describe("getPublicCoworkerPage", () => {
     await expect(getPublicCoworkerPage({ slug: "private-coworker" })).resolves.toBeNull();
     expect(dbMock.query.coworkerRun.findMany).not.toHaveBeenCalled();
   });
+
+  it("returns null for malformed percent-encoded slugs", async () => {
+    await expect(getPublicCoworkerPage({ slug: "%" })).resolves.toBeNull();
+    await expect(getPublicCoworkerPage({ slug: "%gg" })).resolves.toBeNull();
+
+    expect(dbMock.query.coworker.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("reuses the mapped public sandbox file for output.html", async () => {
+    dbMock.query.coworker.findFirst.mockResolvedValue({
+      id: "coworker-1",
+      name: "Shared Coworker",
+      description: "Shared description",
+      username: "shared-coworker",
+      sharedAt: SHARED_AT,
+    });
+    dbMock.query.coworkerRun.findMany.mockResolvedValue([
+      {
+        id: "run-1",
+        status: "completed",
+        startedAt: STARTED_AT,
+        finishedAt: FINISHED_AT,
+        conversationId: "conversation-1",
+        generationId: null,
+      },
+    ]);
+    dbMock.query.conversation.findFirst.mockResolvedValue({
+      id: "conversation-1",
+      messages: [
+        {
+          id: "message-1",
+          role: "assistant",
+          content: "Shared answer",
+          contentParts: null,
+          timing: null,
+          createdAt: FINISHED_AT,
+          attachments: [],
+          sandboxFiles: [
+            {
+              id: "file-1",
+              path: "/app/output.html",
+              filename: "output.html",
+              mimeType: "text/html",
+              sizeBytes: 17,
+              storageKey: "sandbox/output.html",
+            },
+          ],
+        },
+      ],
+    });
+    downloadFromS3Mock.mockResolvedValue(Buffer.from("<h1>Shared</h1>"));
+
+    const page = await getPublicCoworkerPage({ slug: "shared-coworker" });
+
+    expect(page?.outputFile).toEqual({
+      fileId: "file-1",
+      path: "/app/output.html",
+      filename: "output.html",
+      mimeType: "text/html",
+      sizeBytes: 17,
+      downloadUrl: "https://files.example/sandbox/output.html",
+    });
+    expect(page?.outputHtml).toBe("<h1>Shared</h1>");
+    expect(getPresignedDownloadUrlMock).toHaveBeenCalledTimes(1);
+    expect(getPresignedDownloadUrlMock).toHaveBeenCalledWith("sandbox/output.html");
+  });
 });
