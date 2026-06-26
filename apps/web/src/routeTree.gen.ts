@@ -92,6 +92,7 @@ import { Route as AppChatIndexRouteImport } from './routes/_app/chat/index'
 import { Route as ToolboxSourcesNewRouteImport } from './routes/toolbox/sources/new'
 import { Route as ToolboxSourcesIdRouteImport } from './routes/toolbox/sources/$id'
 import { Route as SkillsCommunitySkillIdRouteImport } from './routes/skills/community/$skillId'
+import { Route as ShareAgentsSlugRouteImport } from './routes/share/agents/$slug'
 import { Route as ApiZeroQueryRouteImport } from './routes/api/zero/query'
 import { Route as ApiSlackLinkRouteImport } from './routes/api/slack/link'
 import { Route as ApiSlackEventsRouteImport } from './routes/api/slack/events'
@@ -585,6 +586,11 @@ const SkillsCommunitySkillIdRoute = SkillsCommunitySkillIdRouteImport.update({
   id: '/community/$skillId',
   path: '/community/$skillId',
   getParentRoute: () => SkillsRouteRoute,
+} as any)
+const ShareAgentsSlugRoute = ShareAgentsSlugRouteImport.update({
+  id: '/share/agents/$slug',
+  path: '/share/agents/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiZeroQueryRoute = ApiZeroQueryRouteImport.update({
   id: '/api/zero/query',
@@ -1130,6 +1136,7 @@ export interface FileRoutesByFullPath {
   '/api/slack/events': typeof ApiSlackEventsRoute
   '/api/slack/link': typeof ApiSlackLinkRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
+  '/share/agents/$slug': typeof ShareAgentsSlugRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
@@ -1281,6 +1288,7 @@ export interface FileRoutesByTo {
   '/api/slack/events': typeof ApiSlackEventsRoute
   '/api/slack/link': typeof ApiSlackLinkRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
+  '/share/agents/$slug': typeof ShareAgentsSlugRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
@@ -1447,6 +1455,7 @@ export interface FileRoutesById {
   '/api/slack/events': typeof ApiSlackEventsRoute
   '/api/slack/link': typeof ApiSlackLinkRoute
   '/api/zero/query': typeof ApiZeroQueryRoute
+  '/share/agents/$slug': typeof ShareAgentsSlugRoute
   '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
@@ -1611,6 +1620,7 @@ export interface FileRouteTypes {
     | '/api/slack/events'
     | '/api/slack/link'
     | '/api/zero/query'
+    | '/share/agents/$slug'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
@@ -1762,6 +1772,7 @@ export interface FileRouteTypes {
     | '/api/slack/events'
     | '/api/slack/link'
     | '/api/zero/query'
+    | '/share/agents/$slug'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
@@ -1927,6 +1938,7 @@ export interface FileRouteTypes {
     | '/api/slack/events'
     | '/api/slack/link'
     | '/api/zero/query'
+    | '/share/agents/$slug'
     | '/skills/community/$skillId'
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
@@ -2031,6 +2043,7 @@ export interface RootRouteChildren {
   ApiSlackEventsRoute: typeof ApiSlackEventsRoute
   ApiSlackLinkRoute: typeof ApiSlackLinkRoute
   ApiZeroQueryRoute: typeof ApiZeroQueryRoute
+  ShareAgentsSlugRoute: typeof ShareAgentsSlugRoute
   ApiRpcIndexRoute: typeof ApiRpcIndexRoute
   ApiAuthPasswordStartRoute: typeof ApiAuthPasswordStartRoute
   ApiControlPlaneAuthAuthorizeRoute: typeof ApiControlPlaneAuthAuthorizeRoute
@@ -2662,6 +2675,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/skills/community/$skillId'
       preLoaderRoute: typeof SkillsCommunitySkillIdRouteImport
       parentRoute: typeof SkillsRouteRoute
+    }
+    '/share/agents/$slug': {
+      id: '/share/agents/$slug'
+      path: '/share/agents/$slug'
+      fullPath: '/share/agents/$slug'
+      preLoaderRoute: typeof ShareAgentsSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/zero/query': {
       id: '/api/zero/query'
@@ -3609,6 +3629,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSlackEventsRoute: ApiSlackEventsRoute,
   ApiSlackLinkRoute: ApiSlackLinkRoute,
   ApiZeroQueryRoute: ApiZeroQueryRoute,
+  ShareAgentsSlugRoute: ShareAgentsSlugRoute,
   ApiRpcIndexRoute: ApiRpcIndexRoute,
   ApiAuthPasswordStartRoute: ApiAuthPasswordStartRoute,
   ApiControlPlaneAuthAuthorizeRoute: ApiControlPlaneAuthAuthorizeRoute,
