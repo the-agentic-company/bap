@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TemplateRouteImport } from './routes/template'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as InstanceRouteImport } from './routes/instance'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthRouteImport } from './routes/_auth'
@@ -186,6 +187,11 @@ const SearchRoute = SearchRouteImport.update({
 const InstanceRoute = InstanceRouteImport.update({
   id: '/instance',
   path: '/instance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountsRoute = AccountsRouteImport.update({
@@ -1041,6 +1047,7 @@ export interface FileRoutesByFullPath {
   '/toolbox': typeof ToolboxRouteRouteWithChildren
   '/': typeof PublicIndexRoute
   '/accounts': typeof AccountsRoute
+  '/audit': typeof AuditRoute
   '/instance': typeof InstanceRoute
   '/search': typeof SearchRoute
   '/template': typeof TemplateRouteWithChildren
@@ -1197,6 +1204,7 @@ export interface FileRoutesByTo {
   '/skills': typeof SkillsRouteRouteWithChildren
   '/': typeof PublicIndexRoute
   '/accounts': typeof AccountsRoute
+  '/audit': typeof AuditRoute
   '/instance': typeof InstanceRoute
   '/search': typeof SearchRoute
   '/inbox': typeof AppInboxRoute
@@ -1357,6 +1365,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
   '/accounts': typeof AccountsRoute
+  '/audit': typeof AuditRoute
   '/instance': typeof InstanceRoute
   '/search': typeof SearchRoute
   '/template': typeof TemplateRouteWithChildren
@@ -1522,6 +1531,7 @@ export interface FileRouteTypes {
     | '/toolbox'
     | '/'
     | '/accounts'
+    | '/audit'
     | '/instance'
     | '/search'
     | '/template'
@@ -1678,6 +1688,7 @@ export interface FileRouteTypes {
     | '/skills'
     | '/'
     | '/accounts'
+    | '/audit'
     | '/instance'
     | '/search'
     | '/inbox'
@@ -1837,6 +1848,7 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/_public'
     | '/accounts'
+    | '/audit'
     | '/instance'
     | '/search'
     | '/template'
@@ -2003,6 +2015,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   PublicRoute: typeof PublicRouteWithChildren
   AccountsRoute: typeof AccountsRoute
+  AuditRoute: typeof AuditRoute
   InstanceRoute: typeof InstanceRoute
   SearchRoute: typeof SearchRoute
   TemplateRoute: typeof TemplateRouteWithChildren
@@ -2101,6 +2114,13 @@ declare module '@tanstack/react-router' {
       path: '/instance'
       fullPath: '/instance'
       preLoaderRoute: typeof InstanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accounts': {
@@ -3579,6 +3599,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
   AccountsRoute: AccountsRoute,
+  AuditRoute: AuditRoute,
   InstanceRoute: InstanceRoute,
   SearchRoute: SearchRoute,
   TemplateRoute: TemplateRouteWithChildren,

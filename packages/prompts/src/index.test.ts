@@ -11,6 +11,9 @@ import {
   buildCoworkerExecutionSection,
   buildCoworkerDocumentAttachmentPrompt,
   buildCoworkerMetadataPrompt,
+  buildAuditCompanyProfilePrompt,
+  getAgenticAuditCoworkerDefinitions,
+  buildAuditPersonProfilePrompt,
   buildCoworkerModelInput,
   buildCustomSkillsAgentsFile,
   buildDetectMessageLanguagePrompt,
@@ -96,6 +99,16 @@ describe("@bap/prompts", () => {
   });
 
   it("renders model helper and task-frame prompts", () => {
+    expect(buildAuditCompanyProfilePrompt({ websiteContext: '{"title":"Acme"}' })).toContain(
+      "You are Agentic Auditor's company profiler.",
+    );
+    expect(buildAuditPersonProfilePrompt({ linkedinContext: '{"fullName":"Ada"}' })).toContain(
+      "You are Agentic Auditor's LinkedIn person profiler.",
+    );
+    const auditCoworkers = getAgenticAuditCoworkerDefinitions();
+    expect(auditCoworkers).toHaveLength(5);
+    expect(auditCoworkers[0]?.prompt).toContain("You are Company Brain for Agentic Auditor.");
+    expect(auditCoworkers[2]?.prompt).toContain("### Page 1: Personalized Outreach Agent");
     expect(buildConversationTitlePrompt({ userMessage: "hello", assistantMessage: "hi" }))
       .toContain("Return ONLY the title");
     expect(buildDetectMessageLanguagePrompt("bonjour")).toContain(
