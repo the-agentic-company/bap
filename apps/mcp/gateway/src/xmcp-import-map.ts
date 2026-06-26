@@ -45,7 +45,7 @@ export async function refreshXmcpImportMap(childRoot: string) {
   const importMapPath = path.join(xmcpDir, "import-map.js");
 
   const [toolFiles, promptFiles, resourceFiles] = await Promise.all([
-    collectTypeScriptFiles(toolsDir),
+    collectTypeScriptFiles(toolsDir).catch(() => []),
     collectTypeScriptFiles(promptsDir).catch(() => []),
     collectTypeScriptFiles(resourcesDir).catch(() => []),
   ]);
