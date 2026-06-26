@@ -39,6 +39,129 @@ export function getTemplateDeployPromptTemplate(): string {
   return readAsset("product", "template-deploy.md");
 }
 
+export function buildAuditIntegrationRecommenderPrompt(input: {
+  profileContext: string;
+  connectedIntegrations: string;
+}): string {
+  return renderPromptAsset(["product", "audit-integration-recommender.md"], {
+    profile_context: input.profileContext,
+    connected_integrations: input.connectedIntegrations,
+  });
+}
+
+export function buildAuditCompanyProfilePrompt(input: { websiteContext: string }): string {
+  return renderPromptAsset(["product", "audit-company-profile.md"], {
+    website_context: input.websiteContext,
+  });
+}
+
+export function buildAuditPersonProfilePrompt(input: { linkedinContext: string }): string {
+  return renderPromptAsset(["product", "audit-person-profile.md"], {
+    linkedin_context: input.linkedinContext,
+  });
+}
+
+export function buildAuditAgentRecommenderPrompt(input: {
+  profileContext: string;
+  integrationRecommendations: string;
+}): string {
+  return renderPromptAsset(["product", "audit-agent-recommender.md"], {
+    profile_context: input.profileContext,
+    integration_recommendations: input.integrationRecommendations,
+  });
+}
+
+export type AgenticAuditCoworkerDefinition = {
+  key:
+    | "company-brain"
+    | "agentic-app-ideation"
+    | "agentic-app-idea-1"
+    | "agentic-app-idea-2"
+    | "agentic-app-idea-3";
+  name: string;
+  username: string;
+  description: string;
+  prompt: string;
+};
+
+function getAuditCoworkerSharedContext(): string {
+  return readAsset("product", "audit-coworker-shared-context.md").trim();
+}
+
+function buildAuditCoworkerPrompt(
+  assetName: string,
+  values: Record<string, string> = {},
+): string {
+  return renderPromptAsset(["product", assetName], {
+    shared_audit_context: getAuditCoworkerSharedContext(),
+    ...values,
+  });
+}
+
+function buildAuditCoworkerIdeaPrompt(input: {
+  ideaNumber: 1 | 2 | 3;
+  theme: string;
+  pageTitle: string;
+}): string {
+  return buildAuditCoworkerPrompt("audit-coworker-idea.md", {
+    idea_number: String(input.ideaNumber),
+    theme: input.theme,
+    page_title: input.pageTitle,
+  });
+}
+
+export function getAgenticAuditCoworkerDefinitions(): AgenticAuditCoworkerDefinition[] {
+  return [
+    {
+      key: "company-brain",
+      name: "company brain",
+      username: "audit-company-brain",
+      description: "Researches the person and company, then creates structured profiles.",
+      prompt: buildAuditCoworkerPrompt("audit-coworker-company-brain.md"),
+    },
+    {
+      key: "agentic-app-ideation",
+      name: "agentic-app ideation",
+      username: "audit-agentic-app-ideation",
+      description: "Turns the research context into agentic workflow ideas.",
+      prompt: buildAuditCoworkerPrompt("audit-coworker-ideation.md"),
+    },
+    {
+      key: "agentic-app-idea-1",
+      name: "agentic-app-idea-1",
+      username: "audit-agentic-app-idea-1",
+      description: "Builds the first agentic workflow concept page.",
+      prompt: buildAuditCoworkerIdeaPrompt({
+        ideaNumber: 1,
+        theme: "lead research and outreach personalization",
+        pageTitle: "Personalized Outreach Agent",
+      }),
+    },
+    {
+      key: "agentic-app-idea-2",
+      name: "agentic-app-idea-2",
+      username: "audit-agentic-app-idea-2",
+      description: "Builds the second agentic workflow concept page.",
+      prompt: buildAuditCoworkerIdeaPrompt({
+        ideaNumber: 2,
+        theme: "company operations and recurring work automation",
+        pageTitle: "Operations Workflow Agent",
+      }),
+    },
+    {
+      key: "agentic-app-idea-3",
+      name: "agentic-app-idea-3",
+      username: "audit-agentic-app-idea-3",
+      description: "Builds the third agentic workflow concept page.",
+      prompt: buildAuditCoworkerIdeaPrompt({
+        ideaNumber: 3,
+        theme: "customer-facing intelligence and follow-up",
+        pageTitle: "Customer Signal Agent",
+      }),
+    },
+  ];
+}
+
 function renderPromptAsset(segments: string[], values: Record<string, string>): string {
   return replacePlaceholders(readAsset(...segments).trim(), values);
 }

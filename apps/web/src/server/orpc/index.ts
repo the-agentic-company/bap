@@ -1,6 +1,7 @@
 import { baseProcedure } from "./middleware";
 import { adminRouter } from "./routers/admin";
 import { adminSharedProviderAuthRouter } from "./routers/admin-shared-provider-auth";
+import { agenticAuditRouter } from "./routers/agentic-audit";
 import { billingRouter } from "./routers/billing";
 import { conversationRouter } from "./routers/conversation";
 import { coworkerFolderRouter } from "./routers/coworker-folder";
@@ -27,6 +28,7 @@ const ping = baseProcedure.handler(async () => ({
 export const appRouter = {
   admin: adminRouter,
   adminSharedProviderAuth: adminSharedProviderAuthRouter,
+  agenticAudit: agenticAuditRouter,
   billing: billingRouter,
   conversation: conversationRouter,
   fileAsset: fileAssetRouter,
