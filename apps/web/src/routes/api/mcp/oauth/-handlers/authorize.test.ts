@@ -239,7 +239,7 @@ describe("handleHostedMcpAuthorizePost", () => {
     );
   });
 
-  it("approves Bap OAuth with only selected workspaces", async () => {
+  it("approves Bap OAuth with all current and future workspaces even if selected inputs are posted", async () => {
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-1" } });
     mockBapAuthorizationRequest();
     listHostedMcpConsentWorkspacesMock.mockResolvedValueOnce([
@@ -248,10 +248,10 @@ describe("handleHostedMcpAuthorizePost", () => {
       { id: "ws-3", name: "Workspace Three", active: false },
     ]);
     resolveHostedMcpWorkspaceConsentMock.mockResolvedValueOnce({
-      workspaceId: "ws-1",
-      allowedWorkspaceIds: ["ws-1", "ws-3"],
-      allowAllWorkspaces: false,
-      selectedWorkspaceIds: ["ws-1", "ws-3"],
+      workspaceId: "ws-2",
+      allowedWorkspaceIds: ["ws-1", "ws-2", "ws-3"],
+      allowAllWorkspaces: true,
+      selectedWorkspaceIds: ["ws-1", "ws-2", "ws-3"],
     });
     createHostedMcpAuthorizationCodeMock.mockResolvedValueOnce("code-2");
 
@@ -281,9 +281,9 @@ describe("handleHostedMcpAuthorizePost", () => {
     });
     expect(createHostedMcpAuthorizationCodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        workspaceId: "ws-1",
-        allowAllWorkspaces: false,
-        allowedWorkspaceIds: ["ws-1", "ws-3"],
+        workspaceId: "ws-2",
+        allowAllWorkspaces: true,
+        allowedWorkspaceIds: ["ws-1", "ws-2", "ws-3"],
       }),
     );
     expect(response.status).toBe(303);

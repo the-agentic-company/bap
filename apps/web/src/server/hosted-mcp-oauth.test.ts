@@ -263,51 +263,15 @@ describe("hosted MCP OAuth authorization requests", () => {
     });
   });
 
-  it("hides selected workspace checkboxes when all workspaces are authorized", () => {
+  it("renders only all current and future workspace access for Bap", () => {
     const html = renderHostedMcpConsentHtml(createConsentHtmlParams());
 
-    expect(html).toContain('id="workspace-selection-panel" class="workspace-selection-panel" hidden');
-    expect(html).not.toContain('name="workspace_ids" value="ws-1" checked');
-    expect(html).not.toContain('name="workspace_ids" value="ws-2" checked');
-  });
-
-  it("shows and prechecks the selected workspace panel in selected mode", () => {
-    const html = renderHostedMcpConsentHtml(
-      createConsentHtmlParams({
-        selectedWorkspaceIds: ["ws-2"],
-        allowAllWorkspaces: false,
-      }),
+    expect(html).toContain(
+      "This Bap MCP authorization will cover all your current and future member workspaces.",
     );
-
-    expect(html).not.toContain('id="workspace-selection-panel" class="workspace-selection-panel" hidden');
-    expect(html).toContain('name="workspace_ids" value="ws-2" checked');
-    expect(html).not.toContain('name="workspace_ids" value="ws-1" checked');
-  });
-
-  it("resolves Bap selected-workspace consent to the chosen subset", async () => {
-    getWorkspaceMembershipForUserMock.mockResolvedValue({ workspace: { id: "ws-1" } });
-
-    await expect(
-      resolveHostedMcpWorkspaceConsent({
-        audience: "bap",
-        userId: "user-1",
-        workspaces: [
-          { id: "ws-1", active: false },
-          { id: "ws-2", active: true },
-          { id: "ws-3", active: false },
-        ],
-        workspaceAccessMode: "selected",
-        selectedWorkspaceIds: ["ws-1", "ws-3"],
-        workspaceId: null,
-      }),
-    ).resolves.toEqual({
-      workspaceId: "ws-1",
-      allowedWorkspaceIds: ["ws-1", "ws-3"],
-      allowAllWorkspaces: false,
-      selectedWorkspaceIds: ["ws-1", "ws-3"],
-    });
-
-    expect(getWorkspaceMembershipForUserMock).toHaveBeenCalledTimes(2);
+    expect(html).toContain('name="workspace_access_mode" value="all"');
+    expect(html).not.toContain('value="selected"');
+    expect(html).not.toContain('name="workspace_ids"');
   });
 
   it("resolves Bap all-workspace consent to every current membership", async () => {
