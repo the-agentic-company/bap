@@ -1,6 +1,5 @@
 // oxlint-disable jsx-a11y/control-has-associated-label
 
-import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Building2,
@@ -14,6 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -498,11 +498,7 @@ export function AdminWorkspacesPage() {
     async (workspaceId: string, emails: string[]) => {
       try {
         const result = await addMembers.mutateAsync({ workspaceId, emails });
-        const count = Array.isArray(result)
-          ? result.length
-          : Array.isArray((result as { added?: unknown }).added)
-            ? (result as { added: string[] }).added.length
-            : 0;
+        const count = result.length;
         toast.success(
           count > 0
             ? `Added ${count} member${count === 1 ? "" : "s"}.`
