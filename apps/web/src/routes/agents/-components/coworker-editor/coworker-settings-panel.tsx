@@ -1,16 +1,19 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { T, useGT } from "gt-react";
-import { AlertTriangle, ArrowLeft, Loader2, Play, RotateCcw, Trash2, X } from "lucide-react";
+import { AlertTriangle, Loader2, Play, RotateCcw, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
-import type { IntegrationType } from "@/lib/integration-icons";
-import type { ProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
-import { getCoworkerInfoHref } from "@/lib/coworker-routes";
+import type { IntegrationType } from "@/lib/integration-icons";
+import type { ProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
 import { cn } from "@/lib/utils";
-import { AppLink as Link } from "../../-lib/app-link";
+import { CoworkerDocumentsPanel } from "./coworker-documents-panel";
+import { DeleteCoworkerDialog } from "./coworker-editor-layout";
+import { CoworkerInstructionsPanel } from "./coworker-instructions-panel";
+import { CoworkerRunsPanel } from "./coworker-runs-panel";
+import { CoworkerToolboxPanel } from "./coworker-toolbox-panel";
 import type {
   AvailableSkillEntry,
   CoworkerDocumentRecord,
@@ -21,11 +24,6 @@ import type {
   IntegrationEntry,
   WorkspaceMcpServerEntry,
 } from "./types";
-import { CoworkerDocumentsPanel } from "./coworker-documents-panel";
-import { DeleteCoworkerDialog } from "./coworker-editor-layout";
-import { CoworkerInstructionsPanel } from "./coworker-instructions-panel";
-import { CoworkerRunsPanel } from "./coworker-runs-panel";
-import { CoworkerToolboxPanel } from "./coworker-toolbox-panel";
 
 const statusTextMotionInitial = { opacity: 0, y: -4 } as const;
 const statusTextMotionAnimate = { opacity: 1, y: 0 } as const;
@@ -269,70 +267,59 @@ export function CoworkerSettingsPanel({
   return (
     <div className="flex h-full flex-col">
       {!hideHeader && (
-        <div className="flex items-center justify-between gap-3 px-3 py-1.5">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
-            {coworkerId ? (
-              <Link
-                href={getCoworkerInfoHref({ id: coworkerId, username })}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors"
-                aria-label={t("Back to run view")}
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden md:inline">
-                  <T>Back to run</T>
-                </span>
-              </Link>
-            ) : null}
-            <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
-              <AnimatedTab value="instruction">
-                <T>Instruction</T>
-              </AnimatedTab>
-              <AnimatedTab value="runs">
-                <T>Runs</T>
-              </AnimatedTab>
-              <AnimatedTab value="docs">
-                <T>Docs</T>
-              </AnimatedTab>
-              <AnimatedTab value="toolbox">
-                <T>Toolbox</T>
-              </AnimatedTab>
-              {showAdminTab ? (
-                <AnimatedTab value="admin">
-                  <T>Admin</T>
+        <div className="flex flex-col gap-1.5 px-3 py-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1 overflow-x-auto">
+              <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
+                <AnimatedTab value="instruction">
+                  <T>Instruction</T>
                 </AnimatedTab>
-              ) : null}
-            </AnimatedTabs>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {isSaving ? (
-              <span className="text-muted-foreground shrink-0 text-xs">
-                <T>Saving...</T>
-              </span>
-            ) : null}
-            <div className="flex items-center gap-1.5">
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={status}
-                  initial={statusTextMotionInitial}
-                  animate={statusTextMotionAnimate}
-                  exit={statusTextMotionExit}
-                  transition={statusTextMotionTransition}
-                  className={cn(
-                    "text-xs font-medium",
-                    status === "on"
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {status === "on" ? "On" : "Off"}
-                </motion.span>
-              </AnimatePresence>
-              <Switch
-                checked={status === "on"}
-                onCheckedChange={handleStatusSwitchChange}
-                disabled={isResettingRuns}
-              />
+                <AnimatedTab value="runs">
+                  <T>Runs</T>
+                </AnimatedTab>
+                <AnimatedTab value="docs">
+                  <T>Docs</T>
+                </AnimatedTab>
+                <AnimatedTab value="toolbox">
+                  <T>Toolbox</T>
+                </AnimatedTab>
+                {showAdminTab ? (
+                  <AnimatedTab value="admin">
+                    <T>Admin</T>
+                  </AnimatedTab>
+                ) : null}
+              </AnimatedTabs>
             </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {isSaving ? (
+                <span className="text-muted-foreground shrink-0 text-xs">
+                  <T>Saving...</T>
+                </span>
+              ) : null}
+              <div className="flex items-center gap-1.5">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={status}
+                    initial={statusTextMotionInitial}
+                    animate={statusTextMotionAnimate}
+                    exit={statusTextMotionExit}
+                    transition={statusTextMotionTransition}
+                    className={cn(
+                      "text-xs font-medium",
+                      status === "on"
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {status === "on" ? "On" : "Off"}
+                  </motion.span>
+                </AnimatePresence>
+                <Switch
+                  checked={status === "on"}
+                  onCheckedChange={handleStatusSwitchChange}
+                  disabled={isResettingRuns}
+                />
+              </div>
             <Button
               variant="outline"
               size="sm"
@@ -373,6 +360,7 @@ export function CoworkerSettingsPanel({
             />
           </div>
         </div>
+      </div>
       )}
       {shouldShowRunBacklogNotice ? (
         <div className="border-border bg-muted/40 border-y px-3 py-2">

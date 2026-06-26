@@ -9,6 +9,7 @@ import {
   CoworkerEditorDesktopLayout,
   CoworkerEditorMobileLayout,
 } from "./coworker-editor/coworker-editor-layout";
+import { CoworkerChatPanelBackHrefProvider } from "./coworker-editor/coworker-chat-panel";
 import { useCoworkerEditorPage } from "./coworker-editor/use-coworker-editor-page";
 
 type CoworkerEditorPageProps = {
@@ -102,13 +103,15 @@ export default function CoworkerEditorPage({
   }
 
   return (
-    <CoworkerEditorDesktopLayout
-      rightTitle={coworkerDisplayName}
-      rightCollapsed={isInstructionPanelCollapsed}
-      chatPanel={chatPanel}
-      renderSettingsPanel={renderSettingsPanel}
-      autoApproveDialog={autoApproveDialog}
-      onRightCollapsedChange={setIsInstructionPanelCollapsed}
-    />
+    <CoworkerChatPanelBackHrefProvider backHref={backHref}>
+      <CoworkerEditorDesktopLayout
+        rightTitle={coworkerDisplayName}
+        rightCollapsed={isInstructionPanelCollapsed}
+        chatPanel={chatPanel}
+        renderSettingsPanel={renderSettingsPanel}
+        autoApproveDialog={autoApproveDialog}
+        onRightCollapsedChange={setIsInstructionPanelCollapsed}
+      />
+    </CoworkerChatPanelBackHrefProvider>
   );
 }
