@@ -1,3 +1,4 @@
+import { GenerationStartError } from "@bap/core/server/services/generation-start-error";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   applyCoworkerEditMock,
@@ -132,6 +133,36 @@ describe("coworkerRouter", () => {
         userRole: "member",
       }),
     );
+  });
+
+  it("surfaces structured generation start errors for coworker trigger", async () => {
+    const context = createContext();
+    context.db.query.user.findFirst.mockResolvedValue({ role: "member" });
+    triggerCoworkerRunMock.mockRejectedValueOnce(
+      new GenerationStartError({
+        generationErrorCode: "model_access_denied",
+        rpcCode: "BAD_REQUEST",
+        message:
+          "This ChatGPT model requires the shared workspace connection. Ask an admin to reconnect it, then retry.",
+      }),
+    );
+
+    await expect(
+      coworkerRouterAny.trigger({
+        input: { id: "wf-1" },
+        context,
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message:
+        "This ChatGPT model requires the shared workspace connection. Ask an admin to reconnect it, then retry.",
+      data: {
+        generationErrorCode: "model_access_denied",
+        phase: "start_rpc",
+      },
+      defined: true,
+      status: 400,
+    });
   });
 
   it("rejects remote integration triggers for non-admin users", async () => {

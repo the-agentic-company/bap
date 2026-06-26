@@ -18,7 +18,6 @@ import {
   extractRemoteRunSourceDetails,
   RemoteRunSourceBanner,
 } from "@/components/coworkers/remote-run-source-banner";
-import { RunDebugDetails } from "@/components/coworkers/run-debug-details";
 import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -143,10 +142,11 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         conversationId={conversationId}
         latestCoworkerMessage={latestCoworkerMessage}
         runStatus={run.data?.status}
+        runErrorMessage={run.data?.errorMessage}
         showOutputToolbar={false}
       />
     ),
-    [conversationId, latestCoworkerMessage, outputFile, run.data?.status],
+    [conversationId, latestCoworkerMessage, outputFile, run.data?.errorMessage, run.data?.status],
   );
 
   const handleHistorySelect = useCallback(
@@ -497,20 +497,6 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
 
       <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
-
-        {(run.data?.status === "error" || run.data?.status === "cancelled") && (
-          <section className="border-border bg-card rounded-xl border p-4">
-            <p className="text-muted-foreground text-sm">
-              {run.data.status === "cancelled"
-                ? (run.data.errorMessage ?? "Run cancelled.")
-                : (run.data.errorMessage ?? "Run failed.")}
-            </p>
-            <RunDebugDetails
-              debugInfo={run.data.debugInfo}
-              fallbackTimestamp={run.data.finishedAt ?? run.data.startedAt}
-            />
-          </section>
-        )}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:hidden">
           <div

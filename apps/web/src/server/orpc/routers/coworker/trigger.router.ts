@@ -1,5 +1,8 @@
+import { GENERATION_ERROR_PHASES } from "@bap/core/lib/generation-errors";
+import { isGenerationStartError } from "@bap/core/server/services/generation-start-error";
 import { remoteIntegrationSourceSchema } from "@bap/core/server/integrations/remote-integrations";
 import { generationLifecyclePolicy } from "@bap/core/server/services/lifecycle-policy";
+import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 import { protectedProcedure } from "../../middleware";
 import { requireOwnedCoworkerInActiveWorkspace } from "./access";
@@ -37,15 +40,29 @@ const trigger = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     await requireOwnedCoworkerInActiveWorkspace(context, input.id);
-    return triggerCoworkerFromWeb({
-      context: context as Parameters<typeof triggerCoworkerFromWeb>[0]["context"],
-      coworkerId: input.id,
-      payload: input.payload,
-      trustedUserInput: input.trustedUserInput,
-      fileAttachments: input.fileAttachments,
-      debugRunDeadlineMs: input.debugRunDeadlineMs,
-      remoteIntegrationSource: input.remoteIntegrationSource,
-    });
+    try {
+      return await triggerCoworkerFromWeb({
+        context: context as Parameters<typeof triggerCoworkerFromWeb>[0]["context"],
+        coworkerId: input.id,
+        payload: input.payload,
+        trustedUserInput: input.trustedUserInput,
+        fileAttachments: input.fileAttachments,
+        debugRunDeadlineMs: input.debugRunDeadlineMs,
+        remoteIntegrationSource: input.remoteIntegrationSource,
+      });
+    } catch (error) {
+      if (isGenerationStartError(error)) {
+        throw new ORPCError(error.rpcCode, {
+          defined: true,
+          message: error.message,
+          data: {
+            generationErrorCode: error.generationErrorCode,
+            phase: GENERATION_ERROR_PHASES.START_RPC,
+          },
+        });
+      }
+      throw error;
+    }
   });
 
 export const coworkerTriggerProcedures = {

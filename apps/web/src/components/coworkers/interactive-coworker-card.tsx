@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { normalizeGenerationError } from "@/lib/generation-errors";
 import { getCoworkerEditHrefById } from "@/lib/coworker-routes";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import {
@@ -287,13 +288,13 @@ export function InteractiveCoworkerCard({
           return;
         }
         void navigate({ to: "/agents/runs" });
-      } catch {
-        toast.error(t("Failed to start run."));
+      } catch (error) {
+        toast.error(normalizeGenerationError(error, "start_rpc").message);
       } finally {
         setIsRunning(false);
       }
     },
-    [triggerCoworker, coworker.id, navigate, t],
+    [triggerCoworker, coworker.id, navigate],
   );
 
   const handleToggleStatus = useCallback(

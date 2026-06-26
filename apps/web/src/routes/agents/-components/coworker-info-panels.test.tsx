@@ -164,3 +164,33 @@ describe("RunDetailsPanel layout", () => {
     expect(screen.getByTestId("chat-area").parentElement?.className).toContain("min-w-0");
   });
 });
+
+describe("OutputPanel empty states", () => {
+  it("shows a loading message while the run is generating output", () => {
+    render(<OutputPanel conversationId="conv-run-3" runStatus="running" />);
+
+    expect(screen.getByText("Generating output ...")).toBeTruthy();
+  });
+
+  it("shows run errors with a red error state message", () => {
+    render(
+      <OutputPanel
+        conversationId="conv-run-4"
+        runStatus="error"
+        runErrorMessage="This ChatGPT model requires the shared workspace connection."
+      />,
+    );
+
+    expect(screen.getByText("Error")).toBeTruthy();
+    expect(
+      screen.getByText("Error : This ChatGPT model requires the shared workspace connection."),
+    ).toBeTruthy();
+  });
+
+  it("falls back to status-based error copy when the run has no error message", () => {
+    render(<OutputPanel conversationId="conv-run-5" runStatus="cancelled" />);
+
+    expect(screen.getByText("Error")).toBeTruthy();
+    expect(screen.getByText("Error : Run cancelled.")).toBeTruthy();
+  });
+});
