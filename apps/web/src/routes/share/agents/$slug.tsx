@@ -25,7 +25,7 @@ import {
   type MobilePanel,
   getMobilePanel,
 } from "@/routes/agents/-components/coworker-info-panels";
-import { loadPublicCoworkerRoute, type PublicCoworkerPageData } from "./-public-coworker-loader";
+import { loadPublicCoworkerRoute, type PublicCoworkerPageData } from "@/lib/public-coworker-loader";
 
 export const Route = createFileRoute("/share/agents/$slug")({
   validateSearch: (search: Record<string, unknown>): { run?: string; tab?: string } => ({
@@ -475,6 +475,75 @@ function usePublicMobilePanelClick(handleMobilePanelChange: (nextPanelValue: str
   );
 }
 
+function getPublicDetailsTab(searchParams: URLSearchParams): "summary" | "chat" {
+  return searchParams.get("tab") === "chat" ? "chat" : "summary";
+}
+
+function getPublicOutputFile(
+  outputFile: PublicCoworkerPageData["outputFile"],
+  fallbackOutputFile: SandboxFileData | null,
+) {
+  return outputFile ?? fallbackOutputFile;
+}
+
+function usePublicCoworkerPanels({
+  activeTab,
+  latestCoworkerMessage,
+  messages,
+  outputFile,
+  outputHtml,
+  run,
+  onChatTabClick,
+  onSummaryTabClick,
+}: {
+  activeTab: "summary" | "chat";
+  latestCoworkerMessage?: string;
+  messages: PublicChatMessages;
+  outputFile: PublicCoworkerPageData["outputFile"] | SandboxFileData;
+  outputHtml: string | null;
+  run: PublicCoworkerPageData["selectedRun"];
+  onChatTabClick: () => void;
+  onSummaryTabClick: () => void;
+}) {
+  const outputPanel = useMemo(
+    () => (
+      <PublicOutputPanel
+        outputHtml={outputHtml}
+        outputFile={outputFile}
+        latestCoworkerMessage={latestCoworkerMessage}
+        runStatus={run?.status}
+      />
+    ),
+    [latestCoworkerMessage, outputFile, outputHtml, run?.status],
+  );
+  const summaryPanel = useMemo(
+    () => (
+      <RunSummaryPanel
+        status={run?.status}
+        startedAt={run?.startedAt}
+        finishedAt={run?.finishedAt}
+        messages={messages}
+      />
+    ),
+    [messages, run?.finishedAt, run?.startedAt, run?.status],
+  );
+  const chatPanel = useMemo(() => <PublicChatPanel messages={messages} />, [messages]);
+  const detailsPanel = useMemo(
+    () => (
+      <PublicDetailsPanel
+        activeTab={activeTab}
+        chatPanel={chatPanel}
+        onChatTabClick={onChatTabClick}
+        onSummaryTabClick={onSummaryTabClick}
+        summaryPanel={summaryPanel}
+      />
+    ),
+    [activeTab, chatPanel, onChatTabClick, onSummaryTabClick, summaryPanel],
+  );
+
+  return { chatPanel, detailsPanel, outputPanel, summaryPanel };
+}
+
 function PublicCoworkerRoute() {
   const page = Route.useLoaderData() as unknown as PublicCoworkerPageData;
   return <PublicCoworkerPage page={page} />;
@@ -484,13 +553,13 @@ function PublicCoworkerPage({ page }: { page: PublicCoworkerPageData }) {
   const searchParams = usePublicCoworkerSearchParams();
   const [mobilePanel, setMobilePanel] = usePublicMobilePanel(searchParams);
 
-  const activeTab = searchParams.get("tab") === "chat" ? "chat" : "summary";
+  const activeTab = getPublicDetailsTab(searchParams);
   const messages = useMemo(
     () => mapPersistedMessagesToChatMessages(page.messages),
     [page.messages],
   );
   const fallbackOutputFile = useMemo(() => findLatestAgenticAppFile(messages), [messages]);
-  const outputFile = page.outputFile ?? fallbackOutputFile;
+  const outputFile = getPublicOutputFile(page.outputFile, fallbackOutputFile);
   const latestCoworkerMessage = useMemo(() => findLatestCoworkerMessage(messages), [messages]);
   const coworkerSlug = getPublicCoworkerSlug(page.coworker);
   const selectedRun = page.selectedRun;
@@ -512,41 +581,16 @@ function PublicCoworkerPage({ page }: { page: PublicCoworkerPageData }) {
     handleTabChange("chat");
   }, [handleTabChange]);
 
-  const outputPanel = useMemo(
-    () => (
-      <PublicOutputPanel
-        outputHtml={page.outputHtml}
-        outputFile={outputFile}
-        latestCoworkerMessage={latestCoworkerMessage}
-        runStatus={selectedRun?.status}
-      />
-    ),
-    [latestCoworkerMessage, outputFile, page.outputHtml, selectedRun?.status],
-  );
-  const summaryPanel = useMemo(
-    () => (
-      <RunSummaryPanel
-        status={selectedRun?.status}
-        startedAt={selectedRun?.startedAt}
-        finishedAt={selectedRun?.finishedAt}
-        messages={messages}
-      />
-    ),
-    [messages, selectedRun?.finishedAt, selectedRun?.startedAt, selectedRun?.status],
-  );
-  const chatPanel = useMemo(() => <PublicChatPanel messages={messages} />, [messages]);
-  const detailsPanel = useMemo(
-    () => (
-      <PublicDetailsPanel
-        activeTab={activeTab}
-        chatPanel={chatPanel}
-        onChatTabClick={handleChatTabClick}
-        onSummaryTabClick={handleSummaryTabClick}
-        summaryPanel={summaryPanel}
-      />
-    ),
-    [activeTab, chatPanel, handleChatTabClick, handleSummaryTabClick, summaryPanel],
-  );
+  const { chatPanel, detailsPanel, outputPanel, summaryPanel } = usePublicCoworkerPanels({
+    activeTab,
+    latestCoworkerMessage,
+    messages,
+    outputFile,
+    outputHtml: page.outputHtml,
+    run: selectedRun,
+    onChatTabClick: handleChatTabClick,
+    onSummaryTabClick: handleSummaryTabClick,
+  });
 
   return (
     <main className="bg-background flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden">

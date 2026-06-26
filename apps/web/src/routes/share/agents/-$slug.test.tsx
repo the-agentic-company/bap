@@ -29,7 +29,7 @@ vi.mock("@/server/services/public-coworker-page", () => ({
   getPublicCoworkerPage: getPublicCoworkerPageMock,
 }));
 
-import { loadPublicCoworkerRoute } from "./-public-coworker-loader";
+import { loadPublicCoworkerRoute } from "@/lib/public-coworker-loader";
 
 describe("/share/agents/$slug route", () => {
   beforeEach(() => {
