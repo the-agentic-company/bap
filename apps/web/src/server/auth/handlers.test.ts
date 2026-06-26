@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type VitestProcedure = Extract<
   NonNullable<Parameters<typeof vi.fn>[0]>,
@@ -127,6 +127,10 @@ beforeEach(() => {
   delete process.env.APP_URL;
   delete process.env.VITE_APP_URL;
   process.env.PORT = "3000";
+});
+
+afterEach(() => {
+  delete process.env.PORT;
 });
 
 describe("handleBetterAuth (/api/auth/**)", () => {

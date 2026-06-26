@@ -420,9 +420,12 @@ export function buildWorktreeRuntimeEnv(metadata: InstanceMetadata): DerivedEnv 
   };
 }
 
-export function buildSharedComposeEnv(repoRoot: string): NodeJS.ProcessEnv {
+export function buildSharedComposeEnv(
+  repoRoot: string,
+  options: { postgresPassword?: string } = {},
+): NodeJS.ProcessEnv {
   const shared = buildSharedStackConfig();
-  const postgresPassword = resolvePostgresPassword();
+  const postgresPassword = options.postgresPassword ?? resolvePostgresPassword();
   const minioRoot = resolveSharedMinioRootCredentials();
   const env = {
     ...process.env,

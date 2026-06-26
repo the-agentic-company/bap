@@ -272,7 +272,7 @@ export function buildZeroQueryUrl(metadata: InstanceMetadata): string {
 export function buildZeroCacheComposeEnv(metadata: InstanceMetadata): NodeJS.ProcessEnv {
   const postgresPassword = resolvePostgresPassword();
   return {
-    ...buildSharedComposeEnv(metadata.repoRoot),
+    ...buildSharedComposeEnv(metadata.repoRoot, { postgresPassword }),
     DATABASE_PASSWORD: postgresPassword,
     DB_PASSWORD: postgresPassword,
     BAP_POSTGRES_DB: metadata.databaseName,
@@ -310,6 +310,9 @@ export function ensureZeroCacheConfigured(metadata: InstanceMetadata): void {
     "docker/compose/dev.yml",
     "up",
     "-d",
+    "--wait",
+    "--wait-timeout",
+    "60",
     "--no-deps",
   ];
 
