@@ -275,6 +275,23 @@ describe("hosted MCP OAuth authorization requests", () => {
   });
 
   it("resolves Bap all-workspace consent to every current membership", async () => {
+  it("rejects new Bap selected-workspace consent requests", async () => {
+    await expect(
+      resolveHostedMcpWorkspaceConsent({
+        audience: "bap",
+        userId: "user-1",
+        workspaces: [
+          { id: "ws-1", active: false },
+          { id: "ws-2", active: true },
+        ],
+        workspaceAccessMode: "selected",
+        selectedWorkspaceIds: ["ws-1"],
+        workspaceId: null,
+      }),
+    ).rejects.toThrow("Bap MCP authorization now requires access to all current and future workspaces.");
+  });
+
+  it("resolves Bap all-workspace consent to every current membership", async () => {
     await expect(
       resolveHostedMcpWorkspaceConsent({
         audience: "bap",

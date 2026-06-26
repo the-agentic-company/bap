@@ -564,6 +564,14 @@ export async function resolveHostedMcpWorkspaceConsent(params: {
     throw new Error("At least one workspace membership is required.");
   }
 
+  if (params.workspaceAccessMode && params.workspaceAccessMode !== "all") {
+    throw new Error("Bap MCP authorization now requires access to all current and future workspaces.");
+  }
+
+  if (params.selectedWorkspaceIds.length > 0) {
+    throw new Error("Bap MCP authorization no longer accepts selected workspace scopes.");
+  }
+
   const workspaceId = resolveHostedMcpConsentWorkspaceId(params.workspaces);
   if (!workspaceId) {
     throw new Error("At least one workspace membership is required.");

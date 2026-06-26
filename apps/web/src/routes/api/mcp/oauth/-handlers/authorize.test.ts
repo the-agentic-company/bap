@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type VitestProcedure = Extract<
   NonNullable<Parameters<typeof vi.fn>[0]>,
@@ -97,6 +97,10 @@ function createBapAuthorizationFormData(params?: {
 }
 
 import { handleHostedMcpAuthorizeGet, handleHostedMcpAuthorizePost } from "./authorize";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("handleHostedMcpAuthorizeGet", () => {
   it("renders Bap consent without forcing a single selected workspace", async () => {
@@ -239,7 +243,7 @@ describe("handleHostedMcpAuthorizePost", () => {
     );
   });
 
-  it("approves Bap OAuth with all current and future workspaces even if selected inputs are posted", async () => {
+  it("rejects Bap OAuth when selected workspaces are posted", async () => {
     getSessionMock.mockResolvedValueOnce({ user: { id: "user-1" } });
     mockBapAuthorizationRequest();
     listHostedMcpConsentWorkspacesMock.mockResolvedValueOnce([
@@ -247,13 +251,9 @@ describe("handleHostedMcpAuthorizePost", () => {
       { id: "ws-2", name: "Workspace Two", active: true },
       { id: "ws-3", name: "Workspace Three", active: false },
     ]);
-    resolveHostedMcpWorkspaceConsentMock.mockResolvedValueOnce({
-      workspaceId: "ws-2",
-      allowedWorkspaceIds: ["ws-1", "ws-2", "ws-3"],
-      allowAllWorkspaces: true,
-      selectedWorkspaceIds: ["ws-1", "ws-2", "ws-3"],
-    });
-    createHostedMcpAuthorizationCodeMock.mockResolvedValueOnce("code-2");
+    resolveHostedMcpWorkspaceConsentMock.mockRejectedValueOnce(
+      new Error("Bap MCP authorization now requires access to all current and future workspaces."),
+    );
 
     const formData = createBapAuthorizationFormData({
       workspaceAccessMode: "selected",
@@ -279,16 +279,10 @@ describe("handleHostedMcpAuthorizePost", () => {
       selectedWorkspaceIds: ["ws-1", "ws-3"],
       workspaceId: null,
     });
-    expect(createHostedMcpAuthorizationCodeMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId: "ws-2",
-        allowAllWorkspaces: true,
-        allowedWorkspaceIds: ["ws-1", "ws-2", "ws-3"],
-      }),
-    );
+    expect(createHostedMcpAuthorizationCodeMock).not.toHaveBeenCalled();
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:34567/callback?code=code-2&state=state-1",
+      "http://localhost:34567/callback?error=invalid_request&error_description=Bap+MCP+authorization+now+requires+access+to+all+current+and+future+workspaces.&state=state-1",
     );
   });
 });
