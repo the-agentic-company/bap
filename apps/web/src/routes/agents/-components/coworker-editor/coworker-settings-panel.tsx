@@ -296,30 +296,30 @@ export function CoworkerSettingsPanel({
                   <T>Saving...</T>
                 </span>
               ) : null}
-            <div className="flex items-center gap-1.5">
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={status}
-                  initial={statusTextMotionInitial}
-                  animate={statusTextMotionAnimate}
-                  exit={statusTextMotionExit}
-                  transition={statusTextMotionTransition}
-                  className={cn(
-                    "text-xs font-medium",
-                    status === "on"
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {status === "on" ? "On" : "Off"}
-                </motion.span>
-              </AnimatePresence>
-              <Switch
-                checked={status === "on"}
-                onCheckedChange={handleStatusSwitchChange}
-                disabled={isResettingRuns}
-              />
-            </div>
+              <div className="flex items-center gap-1.5">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={status}
+                    initial={statusTextMotionInitial}
+                    animate={statusTextMotionAnimate}
+                    exit={statusTextMotionExit}
+                    transition={statusTextMotionTransition}
+                    className={cn(
+                      "text-xs font-medium",
+                      status === "on"
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {status === "on" ? "On" : "Off"}
+                  </motion.span>
+                </AnimatePresence>
+                <Switch
+                  checked={status === "on"}
+                  onCheckedChange={handleStatusSwitchChange}
+                  disabled={isResettingRuns}
+                />
+              </div>
             <Button
               variant="outline"
               size="sm"
