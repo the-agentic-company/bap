@@ -6,6 +6,7 @@ describe("hosted MCP OAuth", () => {
     const token = await signHostedMcpAccessToken({
       userId: "user-1",
       workspaceId: "ws-1",
+      allowedWorkspaceIds: ["ws-1", "ws-2"],
       audience: "gmail",
       scope: ["gmail"],
       clientId: "client-1",
@@ -26,6 +27,8 @@ describe("hosted MCP OAuth", () => {
     ).resolves.toMatchObject({
       userId: "user-1",
       workspaceId: "ws-1",
+      allowedWorkspaceIds: ["ws-1", "ws-2"],
+      allowAllWorkspaces: false,
       audience: "gmail",
       scope: ["gmail"],
       clientId: "client-1",
@@ -37,6 +40,7 @@ describe("hosted MCP OAuth", () => {
     const token = await signHostedMcpAccessToken({
       userId: "user-1",
       workspaceId: "ws-1",
+      allowAllWorkspaces: true,
       audience: "gmail",
       scope: ["gmail"],
       clientId: "client-1",

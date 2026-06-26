@@ -35,6 +35,7 @@ describe("resolveHostedMcpClaims", () => {
     return signHostedMcpAccessToken({
       userId: "user-1",
       workspaceId: "ws-1",
+      allowedWorkspaceIds: ["ws-1", "ws-2"],
       audience: "bap",
       scope: ["bap"],
       clientId: "client-1",
@@ -63,6 +64,8 @@ describe("resolveHostedMcpClaims", () => {
       token,
       userId: "user-1",
       workspaceId: "ws-1",
+      allowedWorkspaceIds: ["ws-1", "ws-2"],
+      allowAllWorkspaces: false,
       audience: "bap",
       scopes: ["bap"],
       clientId: "client-1",
