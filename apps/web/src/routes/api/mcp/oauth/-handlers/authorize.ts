@@ -108,6 +108,7 @@ export async function handleHostedMcpAuthorizeGet(request: Request): Promise<Res
 export async function handleHostedMcpAuthorizePost(request: Request): Promise<Response> {
   const formData = await request.formData();
   const decision = String(formData.get("decision") ?? "").trim();
+  let validatedRedirectUri: string | null = null;
 
   try {
     const sessionData = await auth.api.getSession({ headers: request.headers });
@@ -120,6 +121,7 @@ export async function handleHostedMcpAuthorizePost(request: Request): Promise<Re
         Array.from(formData.entries()).map(([key, value]) => [key, String(value)]),
       ),
     );
+    validatedRedirectUri = parsed.redirectUri;
 
     if (decision !== "approve") {
       return buildErrorRedirect(parsed.redirectUri, {
@@ -166,10 +168,9 @@ export async function handleHostedMcpAuthorizePost(request: Request): Promise<Re
       },
     });
   } catch (error) {
-    const redirectUri = String(formData.get("redirect_uri") ?? "").trim();
     const state = String(formData.get("state") ?? "").trim() || null;
-    if (redirectUri && URL.canParse(redirectUri)) {
-      return buildErrorRedirect(redirectUri, {
+    if (validatedRedirectUri) {
+      return buildErrorRedirect(validatedRedirectUri, {
         error: "invalid_request",
         description: error instanceof Error ? error.message : "Authorization failed",
         state,

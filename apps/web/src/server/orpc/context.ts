@@ -204,11 +204,11 @@ function resolveAllowedActiveWorkspaceId(
   activeWorkspaceId: string | null | undefined,
   allowedWorkspaceIds: string[],
 ): string {
-  if (activeWorkspaceId && allowedWorkspaceIds.includes(activeWorkspaceId)) {
-    return activeWorkspaceId;
+  if (!activeWorkspaceId) {
+    return "";
   }
 
-  return allowedWorkspaceIds[0] ?? "";
+  return allowedWorkspaceIds.includes(activeWorkspaceId) ? activeWorkspaceId : "";
 }
 
 async function resolveRuntimeMcpContext(headers: Headers): Promise<{

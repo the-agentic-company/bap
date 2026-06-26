@@ -285,4 +285,29 @@ describe("handleHostedMcpAuthorizePost", () => {
       "http://localhost:34567/callback?error=invalid_request&error_description=Bap+MCP+authorization+now+requires+access+to+all+current+and+future+workspaces.&state=state-1",
     );
   });
+
+  it("does not redirect to an unvalidated redirect_uri when request parsing fails", async () => {
+    getSessionMock.mockResolvedValueOnce({ user: { id: "user-1" } });
+    parseHostedMcpAuthorizationRequestMock.mockRejectedValueOnce(new Error("Unknown client_id."));
+
+    const formData = new FormData();
+    formData.set("decision", "approve");
+    formData.set("client_id", "invalid-client");
+    formData.set("redirect_uri", "https://evil.example.com/callback");
+    formData.set("state", "state-1");
+
+    const response = await handleHostedMcpAuthorizePost(
+      new Request("http://localhost:3000/api/mcp/oauth/authorize", {
+        method: "POST",
+        body: formData,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get("location")).toBeNull();
+    await expect(response.json()).resolves.toEqual({
+      error: "invalid_request",
+      error_description: "Unknown client_id.",
+    });
+  });
 });
