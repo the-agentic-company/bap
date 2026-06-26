@@ -24,11 +24,6 @@ import type {
   IntegrationEntry,
   WorkspaceMcpServerEntry,
 } from "./types";
-import { CoworkerDocumentsPanel } from "./coworker-documents-panel";
-import { DeleteCoworkerDialog } from "./coworker-editor-layout";
-import { CoworkerInstructionsPanel } from "./coworker-instructions-panel";
-import { CoworkerRunsPanel } from "./coworker-runs-panel";
-import { CoworkerToolboxPanel } from "./coworker-toolbox-panel";
 
 const statusTextMotionInitial = { opacity: 0, y: -4 } as const;
 const statusTextMotionAnimate = { opacity: 1, y: 0 } as const;
@@ -365,6 +360,7 @@ export function CoworkerSettingsPanel({
             />
           </div>
         </div>
+      </div>
       )}
       {shouldShowRunBacklogNotice ? (
         <div className="border-border bg-muted/40 border-y px-3 py-2">
