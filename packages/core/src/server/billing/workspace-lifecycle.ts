@@ -476,6 +476,67 @@ export async function adminRemoveWorkspaceMember(workspaceId: string, targetEmai
   return { email: targetUser.email };
 }
 
+async function getWorkspaceMembershipByEmail(workspaceId: string, targetEmail: string) {
+  const normalizedEmail = targetEmail.trim().toLowerCase();
+  const targetUser = await db.query.user.findFirst({
+    where: eq(user.email, normalizedEmail),
+    columns: { id: true, email: true },
+  });
+  if (!targetUser) {
+    throw new Error("User not found");
+  }
+  const membership = await db.query.workspaceMember.findFirst({
+    where: and(
+      eq(workspaceMember.workspaceId, workspaceId),
+      eq(workspaceMember.userId, targetUser.id),
+    ),
+    columns: { role: true },
+  });
+  if (!membership) {
+    throw new Error("User is not a member of this workspace");
+  }
+  return { targetUser, membership };
+}
+
+// Workspace-admin-scoped role change. Permission (admin of the workspace) is
+// enforced by the caller; this protects the workspace invariants only.
+export async function updateWorkspaceMemberRole(
+  workspaceId: string,
+  targetEmail: string,
+  role: "admin" | "member",
+) {
+  const { targetUser, membership } = await getWorkspaceMembershipByEmail(workspaceId, targetEmail);
+  if (membership.role === "owner") {
+    throw new Error("Cannot change the workspace owner's role");
+  }
+
+  await db
+    .update(workspaceMember)
+    .set({ role })
+    .where(
+      and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, targetUser.id)),
+    );
+
+  return { email: targetUser.email, role };
+}
+
+// Workspace-admin-scoped member removal. Permission is enforced by the caller;
+// this protects the owner from being removed.
+export async function removeWorkspaceMember(workspaceId: string, targetEmail: string) {
+  const { targetUser, membership } = await getWorkspaceMembershipByEmail(workspaceId, targetEmail);
+  if (membership.role === "owner") {
+    throw new Error("Cannot remove the workspace owner");
+  }
+
+  await db
+    .delete(workspaceMember)
+    .where(
+      and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, targetUser.id)),
+    );
+
+  return { email: targetUser.email };
+}
+
 export async function renameWorkspace(workspaceId: string, name: string) {
   const trimmedName = name.trim();
 

@@ -15,8 +15,10 @@ import {
   getWorkspaceMembershipForUser,
   listWorkspaceMembers,
   openBillingPortalForOwner,
+  removeWorkspaceMember,
   renameWorkspace,
   setActiveWorkspace,
+  updateWorkspaceMemberRole,
 } from "@bap/core/server/billing/service";
 import {
   removeWorkspaceImage,
@@ -422,6 +424,39 @@ const members = protectedProcedure
     };
   });
 
+const setMemberRole = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+      email: z.string().email(),
+      role: z.enum(["admin", "member"]),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    assertCloudWorkspaceManagementEnabled();
+    await requireHostedMcpWorkspaceAdmin({
+      context,
+      workspaceId: input.workspaceId,
+    });
+    return updateWorkspaceMemberRole(input.workspaceId, input.email, input.role);
+  });
+
+const removeMember = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+      email: z.string().email(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    assertCloudWorkspaceManagementEnabled();
+    await requireHostedMcpWorkspaceAdmin({
+      context,
+      workspaceId: input.workspaceId,
+    });
+    return removeWorkspaceMember(input.workspaceId, input.email);
+  });
+
 const rename = protectedProcedure
   .input(
     z.object({
@@ -567,6 +602,8 @@ export const billingRouter = {
   adminManualTopUp,
   inviteMembers,
   members,
+  setMemberRole,
+  removeMember,
   rename,
   updateImage,
   removeImage,
