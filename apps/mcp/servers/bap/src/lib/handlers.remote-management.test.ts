@@ -12,6 +12,8 @@ import {
   handleWorkspaceMcpServerUpdate,
   handleWorkspaceMcpServerDelete,
   handleWorkspaceMcpServerSetCredential,
+  handleWorkspaceMcpServerStartOAuth,
+  handleWorkspaceMcpServerDisconnectCredential,
   handleSkillList,
   handleSkillGet,
   handleSkillUpdate,
@@ -207,6 +209,17 @@ describe("MCP handlers (remote management)", () => {
     expect(result).toMatchObject({ status: "completed", success: true });
   });
 
+  it("rejects cancel when the run is already in a terminal state", async () => {
+    const client = {
+      coworker: { getRun: vi.fn().mockResolvedValue({ status: "completed", generationId: "g1" }) },
+      generation: { cancelGeneration: vi.fn() },
+    };
+    await expect(handleRunCancel({ client: client as never, runId: "r1" })).rejects.toThrow(
+      /already "completed"/,
+    );
+    expect(client.generation.cancelGeneration).not.toHaveBeenCalled();
+  });
+
   it("creates a workspace MCP server", async () => {
     const client = { workspaceMcpServer: { create: vi.fn().mockResolvedValue({ id: "s1" }) } };
     const input = {
@@ -270,6 +283,42 @@ describe("MCP handlers (remote management)", () => {
     expect(client.workspaceMcpServer.setCredential).toHaveBeenCalledWith(
       expect.objectContaining({ workspaceMcpServerId: "s1", secret: "sek" }),
     );
+    expect(result).toMatchObject({ status: "completed", workspaceMcpServerId: "s1" });
+  });
+
+  it("starts OAuth for a workspace MCP server", async () => {
+    const client = {
+      workspaceMcpServer: {
+        startOAuth: vi.fn().mockResolvedValue({ authUrl: "https://oauth.example/mcp" }),
+      },
+    };
+    const result = await handleWorkspaceMcpServerStartOAuth({
+      client: client as never,
+      workspaceMcpServerId: "s1",
+      redirectUrl: "https://app.example",
+    });
+    expect(client.workspaceMcpServer.startOAuth).toHaveBeenCalledWith({
+      workspaceMcpServerId: "s1",
+      redirectUrl: "https://app.example",
+    });
+    expect(result).toMatchObject({
+      status: "completed",
+      workspaceMcpServerId: "s1",
+      authUrl: "https://oauth.example/mcp",
+    });
+  });
+
+  it("disconnects a workspace MCP server credential", async () => {
+    const client = {
+      workspaceMcpServer: { disconnectCredential: vi.fn().mockResolvedValue({ success: true }) },
+    };
+    const result = await handleWorkspaceMcpServerDisconnectCredential({
+      client: client as never,
+      workspaceMcpServerId: "s1",
+    });
+    expect(client.workspaceMcpServer.disconnectCredential).toHaveBeenCalledWith({
+      workspaceMcpServerId: "s1",
+    });
     expect(result).toMatchObject({ status: "completed", workspaceMcpServerId: "s1" });
   });
 

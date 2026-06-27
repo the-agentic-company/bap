@@ -680,8 +680,13 @@ export async function handleRunResume(params: { client: BapApiClient; runId: str
   };
 }
 
+const TERMINAL_RUN_STATUSES = ["completed", "error", "cancelled"];
+
 export async function handleRunCancel(params: { client: BapApiClient; runId: string }) {
   const run = await params.client.coworker.getRun({ id: params.runId });
+  if (TERMINAL_RUN_STATUSES.includes(run.status)) {
+    throw new Error(`Run ${params.runId} is already "${run.status}"; nothing to cancel.`);
+  }
   if (!run.generationId) {
     throw new Error(`Run ${params.runId} has no active generation to cancel.`);
   }
