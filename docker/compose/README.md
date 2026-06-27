@@ -30,13 +30,20 @@ Zero local sync runs in this stack as `zero-cache` on
 defaults are:
 
 - `VITE_ZERO_CACHE_URL=http://localhost:4848`
-- `VITE_ZERO_QUERY_URL=http://host.docker.internal:3000/api/zero/query`
+- `VITE_ZERO_QUERY_URL=http://localhost:3000/api/zero/query`
+- `ZERO_QUERY_URL=http://localhost:3000/api/zero/query,http://127.0.0.1:3000/api/zero/query`
 - `BAP_ZERO_CACHE_PORT=4848`
 
 The local vertical slice uses the app's Better Auth session cookie for
 `/api/zero/query`, so Compose enables `ZERO_QUERY_FORWARD_COOKIES=true`.
 Without cookie forwarding, `zero-cache` can start successfully but authenticated
 custom queries stay unresolved.
+
+Because browser clients send `http://localhost:3000/api/zero/query`, the local
+stack also runs a small `zero-query-localhost-proxy` sidecar in the
+`zero-cache` network namespace. It makes `localhost:3000` inside the Zero
+container forward to the host web dev server. The proxy's upstream uses Docker's
+host gateway internally; that upstream is not part of `ZERO_QUERY_URL`.
 
 `zero-cache` stores its SQLite replica in the `bap_zero_cache_data` Docker
 volume and exposes a health check at `http://127.0.0.1:4848/keepalive`.
