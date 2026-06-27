@@ -353,7 +353,12 @@ export function ChatAreaContent({
           compact ? "p-3" : "p-4",
         )}
       >
-        <div className={cn("mx-auto w-full min-w-0", compact ? "max-w-full" : "max-w-3xl")}>
+        <div
+          className={cn(
+            "mx-auto w-full min-w-0",
+            compact ? "max-w-[28rem]" : "max-w-3xl",
+          )}
+        >
           {showModelSwitchWarning && (
             <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
