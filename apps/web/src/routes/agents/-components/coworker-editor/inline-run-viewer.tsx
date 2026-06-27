@@ -1,11 +1,15 @@
 import { T } from "gt-react";
 import { ArrowLeft, Circle, Loader2 } from "lucide-react";
-import { ChatArea } from "@/components/chat/chat-area";
 import {
   extractRemoteRunSourceDetails,
   RemoteRunSourceBanner,
 } from "@/components/coworkers/remote-run-source-banner";
 import { RunDebugDetails } from "@/components/coworkers/run-debug-details";
+import {
+  isRunnerDeclaredFailure,
+  RunnerDeclaredFailureChatArea,
+  RunnerDeclaredFailureNote,
+} from "@/components/coworkers/runner-declared-failure";
 import { ImpersonationRequiredPage } from "@/components/impersonation/impersonation-required-page";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import { cn } from "@/lib/utils";
@@ -68,6 +72,8 @@ export function InlineRunViewer({
   }
 
   const remoteRunSource = extractRemoteRunSourceDetails(run);
+  const runnerDeclaredFailure = isRunnerDeclaredFailure(run.failureKind);
+  const displayStatus = runnerDeclaredFailure ? "error" : run.status;
 
   if (!run.conversationId) {
     return (
@@ -80,7 +86,14 @@ export function InlineRunViewer({
           <p className="text-muted-foreground text-xs">
             <T>This run does not have a linked conversation.</T>
           </p>
-          <RunDebugDetails debugInfo={run.debugInfo} />
+          {runnerDeclaredFailure ? (
+            <RunnerDeclaredFailureNote
+              className="mt-3 rounded-md border"
+              debugInfo={run.debugInfo}
+            />
+          ) : (
+            <RunDebugDetails debugInfo={run.debugInfo} />
+          )}
         </div>
       </div>
     );
@@ -93,33 +106,35 @@ export function InlineRunViewer({
         <Circle
           className={cn(
             "ml-1 h-1.5 w-1.5 shrink-0 fill-current",
-            run.status === "completed"
+            displayStatus === "completed"
               ? "text-emerald-500"
-              : run.status === "running" ||
-                  run.status === "awaiting_approval" ||
-                  run.status === "awaiting_auth"
+              : displayStatus === "running" ||
+                  displayStatus === "awaiting_approval" ||
+                  displayStatus === "awaiting_auth"
                 ? "text-blue-500"
-                : run.status === "paused"
+                : displayStatus === "paused"
                   ? "text-amber-500"
-                  : run.status === "cancelling"
+                  : displayStatus === "cancelling"
                     ? "text-amber-500"
-                    : run.status === "needs_user_input"
+                    : displayStatus === "needs_user_input"
                       ? "text-emerald-500"
-                      : run.status === "error" || run.status === "cancelled"
+                      : displayStatus === "error" || displayStatus === "cancelled"
                         ? "text-red-500"
                         : "text-muted-foreground",
           )}
         />
-        <span className="text-foreground/70 text-xs">{getCoworkerRunStatusLabel(run.status)}</span>
+        <span className="text-foreground/70 text-xs">
+          {getCoworkerRunStatusLabel(displayStatus)}
+        </span>
         <span className="text-muted-foreground ml-auto text-xs">
           {formatRelativeTime(run.startedAt)}
         </span>
       </div>
       <RemoteRunSourceBanner source={remoteRunSource} />
-      {run.status === "error" || run.status === "cancelled" ? (
+      {(displayStatus === "error" || displayStatus === "cancelled") && !runnerDeclaredFailure ? (
         <div className="border-border/20 border-b px-4 py-2">
           <p className="text-muted-foreground text-xs">
-            {run.status === "cancelled"
+            {displayStatus === "cancelled"
               ? (run.errorMessage ?? "Run cancelled.")
               : (run.errorMessage ?? "Run failed.")}
           </p>
@@ -131,7 +146,11 @@ export function InlineRunViewer({
         </div>
       ) : null}
       <div className="bg-background flex min-h-0 flex-1 overflow-hidden">
-        <ChatArea conversationId={run.conversationId} />
+        <RunnerDeclaredFailureChatArea
+          conversationId={run.conversationId}
+          debugInfo={run.debugInfo}
+          runnerDeclaredFailure={runnerDeclaredFailure}
+        />
       </div>
     </div>
   );

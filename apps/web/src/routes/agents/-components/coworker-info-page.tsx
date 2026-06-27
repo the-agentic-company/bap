@@ -10,7 +10,6 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { ChatArea } from "@/components/chat/chat-area";
 import { findLatestAgenticAppFile } from "@/components/chat/agentic-app-selection";
 import { mapPersistedMessagesToChatMessages } from "@/components/chat/persisted-message-mapper";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
@@ -18,6 +17,10 @@ import {
   extractRemoteRunSourceDetails,
   RemoteRunSourceBanner,
 } from "@/components/coworkers/remote-run-source-banner";
+import {
+  isRunnerDeclaredFailure,
+  RunnerDeclaredFailureChatArea,
+} from "@/components/coworkers/runner-declared-failure";
 import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -109,6 +112,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     (shouldWaitForCoworkerRuns && coworkerRuns.isLoading) ||
     Boolean(selectedRunId && run.isLoading);
   const conversationId = run.data?.conversationId ?? undefined;
+  const runnerDeclaredFailure = isRunnerDeclaredFailure(run.data?.failureKind);
   const conversation = useConversation(conversationId);
 
   const messages = useMemo(
@@ -129,11 +133,20 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const detailsRun = useMemo(
     () => ({
       status: run.data?.status,
+      failureKind: run.data?.failureKind,
+      debugInfo: run.data?.debugInfo,
       startedAt: run.data?.startedAt,
       finishedAt: run.data?.finishedAt,
       events: run.data?.events,
     }),
-    [run.data?.events, run.data?.finishedAt, run.data?.startedAt, run.data?.status],
+    [
+      run.data?.events,
+      run.data?.debugInfo,
+      run.data?.failureKind,
+      run.data?.finishedAt,
+      run.data?.startedAt,
+      run.data?.status,
+    ],
   );
   const outputPanel = useMemo(
     () => (
@@ -143,10 +156,18 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         latestCoworkerMessage={latestCoworkerMessage}
         runStatus={run.data?.status}
         runErrorMessage={run.data?.errorMessage}
+        runFailureKind={run.data?.failureKind}
         showOutputToolbar={false}
       />
     ),
-    [conversationId, latestCoworkerMessage, outputFile, run.data?.errorMessage, run.data?.status],
+    [
+      conversationId,
+      latestCoworkerMessage,
+      outputFile,
+      run.data?.errorMessage,
+      run.data?.failureKind,
+      run.data?.status,
+    ],
   );
 
   const handleHistorySelect = useCallback(
@@ -696,6 +717,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                     </div>
                     <RunSummaryPanel
                       status={detailsRun.status}
+                      failureKind={detailsRun.failureKind}
                       startedAt={detailsRun.startedAt}
                       finishedAt={detailsRun.finishedAt}
                       events={detailsRun.events}
@@ -704,7 +726,12 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                   </div>
                 ) : conversationId ? (
                   <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
-                    <ChatArea conversationId={conversationId} compact />
+                    <RunnerDeclaredFailureChatArea
+                      conversationId={conversationId}
+                      compact
+                      debugInfo={run.data?.debugInfo}
+                      runnerDeclaredFailure={runnerDeclaredFailure}
+                    />
                   </div>
                 ) : (
                   <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">

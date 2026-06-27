@@ -139,6 +139,7 @@ export const coworkerRunTable = table("coworkerRun")
     ownerId: string().from("owner_id").optional(),
     workspaceId: string().from("workspace_id").optional(),
     status: string(),
+    failureKind: string().from("failure_kind").optional(),
     generationId: string().from("generation_id").optional(),
     conversationId: string().from("conversation_id").optional(),
     startedAt: number().from("started_at"),

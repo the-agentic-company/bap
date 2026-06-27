@@ -187,6 +187,24 @@ describe("OutputPanel empty states", () => {
     ).toBeTruthy();
   });
 
+  it("shows runner-declared failures without the internal error prefix", () => {
+    render(
+      <OutputPanel
+        conversationId="conv-run-4"
+        runStatus="error"
+        runFailureKind="runner_declared_failure"
+        runErrorMessage="Runner failure MCP self-test intentionally marked this run as failed."
+      />,
+    );
+
+    expect(screen.getByText("Run failed")).toBeTruthy();
+    expect(
+      screen.getByText("Runner failure MCP self-test intentionally marked this run as failed."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Error")).toBeNull();
+    expect(screen.queryByText(/^Error :/)).toBeNull();
+  });
+
   it("falls back to status-based error copy when the run has no error message", () => {
     render(<OutputPanel conversationId="conv-run-5" runStatus="cancelled" />);
 

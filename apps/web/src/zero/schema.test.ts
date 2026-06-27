@@ -48,6 +48,7 @@ describe("Zero schema allowlist", () => {
       "ownerId",
       "workspaceId",
       "status",
+      "failureKind",
       "generationId",
       "conversationId",
       "startedAt",

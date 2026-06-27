@@ -72,6 +72,8 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
           coworkerId:
             typeof runRecord.coworkerId === "string" ? runRecord.coworkerId : String(row.id),
           status: typeof runRecord.status === "string" ? runRecord.status : "unknown",
+          failureKind:
+            typeof runRecord.failureKind === "string" ? runRecord.failureKind : null,
           generationId: typeof runRecord.generationId === "string" ? runRecord.generationId : null,
           conversationId:
             typeof runRecord.conversationId === "string" ? runRecord.conversationId : null,

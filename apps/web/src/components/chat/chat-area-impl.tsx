@@ -34,6 +34,7 @@ export type ChatAreaProps = {
   authCompletion?: { integration: string; interruptId: string } | null;
   enableAgenticApp?: boolean;
   compact?: boolean;
+  transcriptFooter?: React.ReactNode;
 };
 
 export const CHAT_EXTERNAL_SEND_EVENT = "chat:external-send";
@@ -48,6 +49,7 @@ export function ChatAreaImpl({
   authCompletion,
   enableAgenticApp = false,
   compact = false,
+  transcriptFooter,
 }: ChatAreaProps) {
   const { setHeaderActions } = useChatHeaderActions();
   const { data: platformSkills, isLoading: isPlatformSkillsLoading } = usePlatformSkillList();
@@ -362,6 +364,7 @@ export function ChatAreaImpl({
     stopRecordingAndTranscribe,
     streamElapsedMs,
     streamError,
+    transcriptFooter,
     transcriptNodes,
     visibleActivityItemsBySegmentId,
     voiceError,
