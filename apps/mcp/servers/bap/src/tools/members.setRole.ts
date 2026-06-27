@@ -2,25 +2,26 @@ import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
 import { toMcpToolResult } from "../../../../shared/tool-result";
 import { createMcpClient } from "../lib/client";
-import { handleMembersRemove } from "../lib/handlers";
+import { handleMembersSetRole } from "../lib/handlers";
 
 export const schema = {
   workspaceId: z.string().min(1).describe("Workspace id"),
-  email: z.string().email().describe("Email of the member to remove"),
+  email: z.string().email().describe("Email of the member whose role to change"),
+  role: z.enum(["admin", "member"]).describe("New role for the member"),
 };
 
 export const metadata: ToolMetadata = {
-  name: "members.remove",
+  name: "members.setRole",
   description:
-    "Remove a member from a workspace by email. The authenticated user must be an admin of the workspace; the owner cannot be removed.",
+    "Change a workspace member's role (admin/member). The authenticated user must be an admin of the workspace; the owner's role cannot be changed.",
   annotations: {
-    title: "Remove workspace member",
+    title: "Set workspace member role",
     readOnlyHint: false,
-    idempotentHint: false,
+    idempotentHint: true,
   },
 };
 
-export default async function membersRemove(
+export default async function membersSetRole(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
@@ -28,10 +29,11 @@ export default async function membersRemove(
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }
-  const result = await handleMembersRemove({
+  const result = await handleMembersSetRole({
     client: clientState.client,
     workspaceId: params.workspaceId,
     email: params.email,
+    role: params.role,
   });
   return toMcpToolResult(result);
 }

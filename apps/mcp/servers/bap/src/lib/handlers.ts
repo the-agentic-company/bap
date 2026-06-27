@@ -890,20 +890,39 @@ export async function handleMembersList(params: { client: BapApiClient; workspac
   };
 }
 
+export async function handleMembersSetRole(params: {
+  client: BapApiClient;
+  workspaceId: string;
+  email: string;
+  role: "admin" | "member";
+}) {
+  const result = await params.client.billing.setMemberRole({
+    workspaceId: params.workspaceId,
+    email: params.email,
+    role: params.role,
+  });
+  return {
+    status: "completed" as const,
+    workspaceId: params.workspaceId,
+    email: result.email,
+    role: result.role,
+  };
+}
+
 export async function handleMembersRemove(params: {
   client: BapApiClient;
   workspaceId: string;
   email: string;
 }) {
-  const result = await params.client.billing.adminRemoveWorkspaceMember({
+  const result = await params.client.billing.removeMember({
     workspaceId: params.workspaceId,
     email: params.email,
   });
   return {
     status: "completed" as const,
     workspaceId: params.workspaceId,
-    email: params.email,
-    success: result.success,
+    email: result.email,
+    removed: true,
   };
 }
 

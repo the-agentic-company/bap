@@ -21,6 +21,7 @@ import {
   handleSkillSetEnabled,
   handleSkillSetVisibility,
   handleMembersList,
+  handleMembersSetRole,
   handleMembersRemove,
   handleCoworkerExport,
   handleCoworkerClone,
@@ -423,20 +424,43 @@ describe("MCP handlers (remote management)", () => {
     });
   });
 
-  it("removes a workspace member", async () => {
+  it("sets a workspace member role", async () => {
     const client = {
-      billing: { adminRemoveWorkspaceMember: vi.fn().mockResolvedValue({ success: true }) },
+      billing: { setMemberRole: vi.fn().mockResolvedValue({ email: "a@b.c", role: "admin" }) },
+    };
+    const result = await handleMembersSetRole({
+      client: client as never,
+      workspaceId: "w1",
+      email: "a@b.c",
+      role: "admin",
+    });
+    expect(client.billing.setMemberRole).toHaveBeenCalledWith({
+      workspaceId: "w1",
+      email: "a@b.c",
+      role: "admin",
+    });
+    expect(result).toMatchObject({
+      status: "completed",
+      workspaceId: "w1",
+      email: "a@b.c",
+      role: "admin",
+    });
+  });
+
+  it("removes a workspace member via the workspace-admin path", async () => {
+    const client = {
+      billing: { removeMember: vi.fn().mockResolvedValue({ email: "a@b.c" }) },
     };
     const result = await handleMembersRemove({
       client: client as never,
       workspaceId: "w1",
       email: "a@b.c",
     });
-    expect(client.billing.adminRemoveWorkspaceMember).toHaveBeenCalledWith({
+    expect(client.billing.removeMember).toHaveBeenCalledWith({
       workspaceId: "w1",
       email: "a@b.c",
     });
-    expect(result).toMatchObject({ status: "completed", success: true });
+    expect(result).toMatchObject({ status: "completed", email: "a@b.c", removed: true });
   });
 
   it("exports a coworker config", async () => {

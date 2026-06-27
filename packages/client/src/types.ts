@@ -641,10 +641,12 @@ export interface BapApiClient {
       members: WorkspaceMember[];
       membershipRole: string;
     }>;
-    adminRemoveWorkspaceMember(input: {
+    setMemberRole(input: {
       workspaceId: string;
       email: string;
-    }): Promise<{ success: boolean }>;
+      role: "admin" | "member";
+    }): Promise<{ email: string; role: "admin" | "member" }>;
+    removeMember(input: { workspaceId: string; email: string }): Promise<{ email: string }>;
   };
   providerAuth: {
     status(): Promise<ProviderAuthStatus>;
