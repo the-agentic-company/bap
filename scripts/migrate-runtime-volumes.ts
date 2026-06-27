@@ -1,5 +1,5 @@
-import { migrateLegacyRuntimeVolumeDataForWorkspace } from "@bap/core/server/services/runtime-volume-service";
-import { closePool } from "@bap/db/client";
+import { migrateLegacyRuntimeVolumeDataForWorkspace } from "../packages/core/src/server/services/runtime-volume-service";
+import { closePool } from "../packages/db/src/client";
 
 const workspaceId = process.argv[2];
 const dryRun = process.argv.includes("--dry-run");
