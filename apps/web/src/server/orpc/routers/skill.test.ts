@@ -27,6 +27,12 @@ const {
   requireActiveWorkspaceAccessMock,
   resolveUniqueSkillNameInWorkspaceMock,
   copySkillToWorkspaceOwnerMock,
+  writeRuntimeVolumeFileMock,
+  deleteRuntimeVolumeFileMock,
+  deleteRuntimeVolumePrefixMock,
+  copyRuntimeVolumePrefixMock,
+  readRuntimeVolumeFileMock,
+  reconcileRuntimeVolumeProjectionMock,
 } = vi.hoisted(() => ({
   uploadToS3Mock: vi.fn<VitestProcedure>(),
   deleteFromS3Mock: vi.fn<VitestProcedure>(),
@@ -38,6 +44,12 @@ const {
   requireActiveWorkspaceAccessMock: vi.fn<VitestProcedure>(),
   resolveUniqueSkillNameInWorkspaceMock: vi.fn<VitestProcedure>(),
   copySkillToWorkspaceOwnerMock: vi.fn<VitestProcedure>(),
+  writeRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  deleteRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  deleteRuntimeVolumePrefixMock: vi.fn<VitestProcedure>(),
+  copyRuntimeVolumePrefixMock: vi.fn<VitestProcedure>(),
+  readRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  reconcileRuntimeVolumeProjectionMock: vi.fn<VitestProcedure>(),
 }));
 
 vi.mock("../middleware", () => ({
@@ -54,6 +66,27 @@ vi.mock("@bap/core/server/storage/s3-client", () => ({
   getPresignedDownloadUrl: getPresignedDownloadUrlMock,
   generateStorageKey: generateStorageKeyMock,
   ensureBucket: ensureBucketMock,
+}));
+
+vi.mock("@bap/core/server/services/runtime-volume-service", () => ({
+  appendRuntimeVolumeSkillSlug: (prefix: string, skillSlug: string) =>
+    `${prefix.replace(/\/?$/, "/")}${skillSlug}/`,
+  buildOwnedSkillsRuntimeVolumePrefix: ({
+    workspaceId,
+    userId,
+  }: {
+    workspaceId: string;
+    userId: string;
+  }) => `runtime-volumes/${workspaceId}/users/${userId}/skills/`,
+  buildSharedSkillsRuntimeVolumePrefix: ({ workspaceId }: { workspaceId: string }) =>
+    `runtime-volumes/${workspaceId}/shared-skills/`,
+  buildRuntimeVolumeObjectKey: (prefix: string, relativePath: string) => `${prefix}${relativePath}`,
+  copyRuntimeVolumePrefix: copyRuntimeVolumePrefixMock,
+  deleteRuntimeVolumeFile: deleteRuntimeVolumeFileMock,
+  deleteRuntimeVolumePrefix: deleteRuntimeVolumePrefixMock,
+  readRuntimeVolumeFile: readRuntimeVolumeFileMock,
+  reconcileRuntimeVolumeProjection: reconcileRuntimeVolumeProjectionMock,
+  writeRuntimeVolumeFile: writeRuntimeVolumeFileMock,
 }));
 
 vi.mock("@bap/core/server/services/workspace-skill-service", () => ({
@@ -143,6 +176,16 @@ describe("skillRouter", () => {
     );
     generateStorageKeyMock.mockReturnValue("skills/user-1/skill-1/doc.pdf");
     getPresignedDownloadUrlMock.mockResolvedValue("https://example.com/doc.pdf");
+    readRuntimeVolumeFileMock.mockResolvedValue(Buffer.from("content"));
+    writeRuntimeVolumeFileMock.mockResolvedValue(undefined);
+    deleteRuntimeVolumeFileMock.mockResolvedValue(undefined);
+    deleteRuntimeVolumePrefixMock.mockResolvedValue(undefined);
+    copyRuntimeVolumePrefixMock.mockResolvedValue(1);
+    reconcileRuntimeVolumeProjectionMock.mockResolvedValue({
+      changed: true,
+      manifestHash: "hash",
+      entryCount: 1,
+    });
   });
 
   it("lists accessible skills with owner and visibility info", async () => {
@@ -320,6 +363,7 @@ describe("skillRouter", () => {
     const context = createContext();
     context.db.query.skill.findFirst.mockResolvedValue({
       id: "skill-1",
+      name: "my-skill",
       userId: "user-1",
       workspaceId: "ws-1",
     });
@@ -344,6 +388,7 @@ describe("skillRouter", () => {
     const context = createContext();
     context.db.query.skill.findFirst.mockResolvedValue({
       id: "skill-shared",
+      name: "shared-skill",
       userId: "user-2",
       workspaceId: "ws-1",
       visibility: "public",

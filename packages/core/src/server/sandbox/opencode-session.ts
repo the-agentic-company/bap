@@ -282,7 +282,7 @@ export async function writeSkillsToSandbox(
         if (parentDir !== skillDir) {
           await sandbox.commands.run(`mkdir -p "${parentDir}"`);
         }
-        await sandbox.files.write(filePath, file.content);
+        await sandbox.files.write(filePath, file.content ?? "");
       }),
     );
 

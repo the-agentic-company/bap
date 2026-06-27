@@ -1,0 +1,72 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildCoworkerDocumentsRuntimeVolumePrefix,
+  buildOwnedSkillsRuntimeVolumePrefix,
+  buildRuntimeVolumeObjectKey,
+  buildSharedSkillsRuntimeVolumePrefix,
+  computeRuntimeVolumeManifestHash,
+  sanitizeRuntimeVolumeRelativePath,
+} from "./runtime-volume-service";
+
+describe("runtime-volume-service", () => {
+  it("builds canonical Runtime Volume prefixes", () => {
+    expect(
+      buildOwnedSkillsRuntimeVolumePrefix({
+        workspaceId: "workspace-1",
+        userId: "user-1",
+      }),
+    ).toBe("runtime-volumes/workspace-1/users/user-1/skills/");
+    expect(buildSharedSkillsRuntimeVolumePrefix({ workspaceId: "workspace-1" })).toBe(
+      "runtime-volumes/workspace-1/shared-skills/",
+    );
+    expect(
+      buildCoworkerDocumentsRuntimeVolumePrefix({
+        workspaceId: "workspace-1",
+        coworkerId: "coworker-1",
+      }),
+    ).toBe("runtime-volumes/workspace-1/coworkers/coworker-1/documents/");
+  });
+
+  it("rejects absolute, traversal, and empty relative paths", () => {
+    expect(sanitizeRuntimeVolumeRelativePath("skill/SKILL.md")).toBe("skill/SKILL.md");
+    expect(buildRuntimeVolumeObjectKey("runtime-volumes/ws/shared-skills", "alpha/SKILL.md")).toBe(
+      "runtime-volumes/ws/shared-skills/alpha/SKILL.md",
+    );
+    expect(() => sanitizeRuntimeVolumeRelativePath("../secret")).toThrow(
+      "Invalid Runtime Volume path",
+    );
+    expect(() => sanitizeRuntimeVolumeRelativePath("skill/../secret")).toThrow(
+      "Invalid Runtime Volume path",
+    );
+    expect(() => sanitizeRuntimeVolumeRelativePath("")).toThrow(
+      "Runtime Volume path must be a non-empty relative path",
+    );
+  });
+
+  it("computes an order-independent manifest hash", () => {
+    const entries = [
+      {
+        path: "beta/SKILL.md",
+        kind: "file" as const,
+        sizeBytes: 20,
+        etag: "etag-beta",
+      },
+      {
+        path: "alpha/SKILL.md",
+        kind: "file" as const,
+        sizeBytes: 10,
+        etag: "etag-alpha",
+      },
+    ];
+
+    expect(computeRuntimeVolumeManifestHash(entries)).toBe(
+      computeRuntimeVolumeManifestHash(entries.toReversed()),
+    );
+    expect(computeRuntimeVolumeManifestHash(entries)).not.toBe(
+      computeRuntimeVolumeManifestHash([
+        { ...entries[0], etag: "etag-beta-updated" },
+        entries[1],
+      ]),
+    );
+  });
+});

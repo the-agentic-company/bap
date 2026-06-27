@@ -155,3 +155,9 @@ export const integrationSkillSourceEnum = pgEnum("integration_skill_source", [
 ]);
 
 export const integrationSkillVisibilityEnum = pgEnum("integration_skill_visibility", ["public"]);
+
+export const runtimeVolumeKindEnum = pgEnum("runtime_volume_kind", [
+  "owned_skills",
+  "shared_skills",
+  "coworker_documents",
+]);

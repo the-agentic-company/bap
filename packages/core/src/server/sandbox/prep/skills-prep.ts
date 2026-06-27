@@ -118,7 +118,7 @@ export async function writeSkillsToSandbox(
         if (parentDir !== skillDir) {
           await legacySandbox.commands.run(`mkdir -p "${parentDir}"`);
         }
-        await legacySandbox.files.write(filePath, file.content);
+        await legacySandbox.files.write(filePath, file.content ?? "");
       }),
     );
 
@@ -152,6 +152,23 @@ export async function writeSkillsToSandbox(
   );
 
   return writtenSkills;
+}
+
+export async function writeSkillsAgentsIndexToSandbox(
+  sandbox: SandboxHandle,
+  skills: Array<{ name: string; displayName?: string | null; description?: string | null }>,
+): Promise<void> {
+  let agentsContent = "# Custom Skills\n\n";
+
+  for (const skill of skills.toSorted((a, b) => a.name.localeCompare(b.name))) {
+    agentsContent += `## ${skill.displayName ?? skill.name}\n\n`;
+    if (skill.description) {
+      agentsContent += `${skill.description}\n\n`;
+    }
+    agentsContent += `Files available in: /app/.opencode/skills/${skill.name}/\n\n`;
+  }
+
+  await sandbox.writeFile("/app/.opencode/AGENTS.md", agentsContent);
 }
 
 export async function writeResolvedIntegrationSkillsToSandbox(

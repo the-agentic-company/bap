@@ -7,23 +7,40 @@ type VitestProcedure = Extract<
 
 const {
   createFileAssetFromBufferMock,
-  markFileAssetReferenceMock,
-  deleteFromS3Mock,
+  downloadFromS3Mock,
+  readRuntimeVolumeFileMock,
+  writeRuntimeVolumeFileMock,
+  deleteRuntimeVolumeFileMock,
   validateFileUploadMock,
 } = vi.hoisted(() => ({
   createFileAssetFromBufferMock: vi.fn<VitestProcedure>(),
-  markFileAssetReferenceMock: vi.fn<VitestProcedure>(),
-  deleteFromS3Mock: vi.fn<VitestProcedure>(),
+  downloadFromS3Mock: vi.fn<VitestProcedure>(),
+  readRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  writeRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  deleteRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
   validateFileUploadMock: vi.fn<VitestProcedure>(),
 }));
 
 vi.mock("@bap/core/server/services/file-asset-service", () => ({
   createFileAssetFromBuffer: createFileAssetFromBufferMock,
-  markFileAssetReference: markFileAssetReferenceMock,
 }));
 
 vi.mock("@bap/core/server/storage/s3-client", () => ({
-  deleteFromS3: deleteFromS3Mock,
+  downloadFromS3: downloadFromS3Mock,
+}));
+
+vi.mock("@bap/core/server/services/runtime-volume-service", () => ({
+  buildCoworkerDocumentsRuntimeVolumePrefix: ({
+    workspaceId,
+    coworkerId,
+  }: {
+    workspaceId: string;
+    coworkerId: string;
+  }) => `runtime-volumes/${workspaceId}/coworkers/${coworkerId}/documents/`,
+  buildRuntimeVolumeObjectKey: (prefix: string, relativePath: string) => `${prefix}${relativePath}`,
+  deleteRuntimeVolumeFile: deleteRuntimeVolumeFileMock,
+  readRuntimeVolumeFile: readRuntimeVolumeFileMock,
+  writeRuntimeVolumeFile: writeRuntimeVolumeFileMock,
 }));
 
 vi.mock("@/server/storage/validation", () => ({
@@ -64,11 +81,11 @@ function createDatabase() {
   updateReturningMock.mockResolvedValue([
     {
       id: "doc-1",
-      fileAssetId: "asset-new",
+      fileAssetId: null,
       filename: "brief-v2.pdf",
       mimeType: "application/pdf",
       sizeBytes: 7,
-      storageKey: "file-assets/ws-1/server/asset-new",
+      storageKey: "runtime-volumes/ws-1/coworkers/cw-1/documents/brief-v2.pdf",
       description: null,
     },
   ]);
@@ -102,12 +119,14 @@ describe("coworker document service", () => {
         storageKey: "file-assets/ws-1/server/asset-new",
       }),
     );
-    markFileAssetReferenceMock.mockResolvedValue(undefined);
-    deleteFromS3Mock.mockResolvedValue(undefined);
+    downloadFromS3Mock.mockResolvedValue(Buffer.from("updated"));
+    readRuntimeVolumeFileMock.mockResolvedValue(Buffer.from("old"));
+    writeRuntimeVolumeFileMock.mockResolvedValue(undefined);
+    deleteRuntimeVolumeFileMock.mockResolvedValue(undefined);
     validateFileUploadMock.mockReturnValue(undefined);
   });
 
-  it("updates document metadata without touching storage", async () => {
+  it("renames document projection and Runtime Volume file without replacing bytes", async () => {
     const { database, mocks } = createDatabase();
     mocks.updateReturningMock.mockResolvedValue([
       {
@@ -115,7 +134,7 @@ describe("coworker document service", () => {
         filename: "brief-renamed.pdf",
         mimeType: "application/pdf",
         sizeBytes: 4,
-        storageKey: "coworkers/user-1/cw-1/documents/old-brief.pdf",
+        storageKey: "runtime-volumes/ws-1/coworkers/cw-1/documents/brief-renamed.pdf",
         fileAssetId: null,
         description: null,
       },
@@ -131,10 +150,21 @@ describe("coworker document service", () => {
 
     expect(mocks.updateSetMock).toHaveBeenCalledWith({
       filename: "brief-renamed.pdf",
+      fileAssetId: null,
+      storageKey: "runtime-volumes/ws-1/coworkers/cw-1/documents/brief-renamed.pdf",
       description: null,
     });
     expect(createFileAssetFromBufferMock).not.toHaveBeenCalled();
-    expect(deleteFromS3Mock).not.toHaveBeenCalled();
+    expect(readRuntimeVolumeFileMock).toHaveBeenCalledWith({
+      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+      relativePath: "brief.pdf",
+    });
+    expect(writeRuntimeVolumeFileMock).toHaveBeenCalledWith({
+      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+      relativePath: "brief-renamed.pdf",
+      body: Buffer.from("old"),
+      contentType: "application/pdf",
+    });
     expect(result).toEqual({
       id: "doc-1",
       fileAssetId: null,
@@ -170,25 +200,26 @@ describe("coworker document service", () => {
     );
     expect(mocks.updateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileAssetId: "asset-new",
-        filename: "brief-v2.pdf",
+        fileAssetId: null,
         mimeType: "application/pdf",
         sizeBytes: 7,
         description: null,
-        storageKey: "file-assets/ws-1/server/asset-new",
+        storageKey: "runtime-volumes/ws-1/coworkers/cw-1/documents/brief-v2.pdf",
       }),
     );
-    expect(markFileAssetReferenceMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fileAssetId: "asset-new",
-        kind: "coworker_document",
-        referenceId: "doc-1",
-      }),
-    );
-    expect(deleteFromS3Mock).toHaveBeenCalledWith("coworkers/user-1/cw-1/documents/old-brief.pdf");
+    expect(writeRuntimeVolumeFileMock).toHaveBeenCalledWith({
+      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+      relativePath: "brief-v2.pdf",
+      body: Buffer.from("updated"),
+      contentType: "application/pdf",
+    });
+    expect(deleteRuntimeVolumeFileMock).toHaveBeenCalledWith({
+      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+      relativePath: "brief.pdf",
+    });
     expect(result).toEqual({
       id: "doc-1",
-      fileAssetId: "asset-new",
+      fileAssetId: null,
       filename: "brief-v2.pdf",
       mimeType: "application/pdf",
       sizeBytes: 7,
@@ -211,7 +242,7 @@ describe("coworker document service", () => {
       }),
     ).rejects.toThrow("database down");
 
-    expect(deleteFromS3Mock).not.toHaveBeenCalled();
+    expect(deleteRuntimeVolumeFileMock).not.toHaveBeenCalled();
   });
 
   it("rejects an empty document update", async () => {

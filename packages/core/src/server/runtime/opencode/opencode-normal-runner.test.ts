@@ -137,7 +137,7 @@ function createContext(overrides: Partial<GenerationContext> = {}): GenerationCo
 
 function createSandbox(overrides: Partial<SandboxHandle> = {}): SandboxHandle {
   return {
-    provider: "e2b", sandboxId: "sandbox-1",
+    provider: "daytona", sandboxId: "sandbox-1",
     exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
     writeFile: vi.fn().mockResolvedValue(undefined),
     readFile: vi.fn().mockResolvedValue(""),
@@ -370,6 +370,7 @@ describe("OpenCodeNormalRunner", () => {
       writtenIntegrationSkills: ["github"],
       prePromptCacheHit: false,
       startPostPromptCacheWrite: null,
+      runtimeVolumeMountPlan: null,
     });
     stageRuntimePromptAttachmentsMock.mockImplementation(
       async (input: { attachments?: unknown[] | null; userStagedFilePaths?: Set<string> }) => {
@@ -616,6 +617,7 @@ describe("OpenCodeNormalRunner", () => {
         cacheWriteStarted = true;
         await cacheWrite.promise;
       },
+      runtimeVolumeMountPlan: null,
     });
     const promptStarted = createDeferred<void>();
     const prompt = vi.fn().mockImplementation(async () => {
@@ -646,6 +648,7 @@ describe("OpenCodeNormalRunner", () => {
       startPostPromptCacheWrite: async () => {
         throw new Error("cache write failed");
       },
+      runtimeVolumeMountPlan: null,
     });
     const prompt = vi.fn().mockResolvedValue({ data: null, error: null });
     mockSandboxRuntime({ client: createRuntimeClient({ prompt }) });

@@ -1,9 +1,7 @@
 import { db as defaultDb } from "@bap/db/client";
-import { skill, skillDocument, skillFile } from "@bap/db/schema";
+import { skill } from "@bap/db/schema";
 import { and, eq, inArray, ne, or } from "drizzle-orm";
-import { downloadFromS3 } from "../storage/s3-client";
 import { requireActiveWorkspaceForUser } from "../billing/service";
-import { createFileAssetFromBuffer, markFileAssetReference } from "./file-asset-service";
 
 type DatabaseLike = typeof defaultDb;
 
@@ -97,6 +95,8 @@ export async function listAccessibleEnabledSkillMetadataForUser(userId: string) 
     where: and(buildAccessibleSkillWhere(workspace.id, userId), eq(skill.enabled, true)),
     columns: {
       name: true,
+      displayName: true,
+      description: true,
       updatedAt: true,
       visibility: true,
       userId: true,
@@ -115,14 +115,6 @@ export async function copySkillToWorkspaceOwner(params: {
 }) {
   const source = await params.database.query.skill.findFirst({
     where: eq(skill.id, params.sourceSkillId),
-    with: {
-      files: true,
-      documents: {
-        with: {
-          fileAsset: true,
-        },
-      },
-    },
   });
 
   if (!source) {
@@ -149,52 +141,6 @@ export async function copySkillToWorkspaceOwner(params: {
         enabled: params.enabled ?? false,
       })
       .returning();
-
-    if (source.files.length > 0) {
-      await tx.insert(skillFile).values(
-        source.files.map((file) => ({
-          skillId: createdSkill.id,
-          path: file.path,
-          content: file.content,
-        })),
-      );
-    }
-
-    if (source.documents.length > 0) {
-      for (const document of source.documents) {
-        const buffer = await downloadFromS3(document.fileAsset?.storageKey ?? document.storageKey);
-        const asset = await createFileAssetFromBuffer({
-          database: tx as unknown as typeof defaultDb,
-          userId: params.targetUserId,
-          workspaceId: params.targetWorkspaceId,
-          filename: document.filename,
-          mimeType: document.mimeType,
-          content: buffer,
-        });
-        const [createdDocument] = await tx
-          .insert(skillDocument)
-          .values({
-            skillId: createdSkill.id,
-            fileAssetId: asset.id,
-            filename: asset.filename,
-            path: document.path,
-            mimeType: asset.mimeType,
-            sizeBytes: asset.sizeBytes,
-            storageKey: asset.storageKey,
-            description: document.description,
-          })
-          .returning({ id: skillDocument.id });
-
-        if (createdDocument) {
-          await markFileAssetReference({
-            database: tx as unknown as typeof defaultDb,
-            fileAssetId: asset.id,
-            kind: "skill_document",
-            referenceId: createdDocument.id,
-          });
-        }
-      }
-    }
 
     return createdSkill;
   });

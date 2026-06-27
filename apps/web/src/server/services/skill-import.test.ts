@@ -8,16 +8,23 @@ type VitestProcedure = Extract<
   (...args: never[]) => unknown
 >;
 
-const { createFileAssetFromBufferMock, markFileAssetReferenceMock, resolveUniqueSkillNameMock } =
-  vi.hoisted(() => ({
-    createFileAssetFromBufferMock: vi.fn<VitestProcedure>(),
-    markFileAssetReferenceMock: vi.fn<VitestProcedure>(),
-    resolveUniqueSkillNameMock: vi.fn<VitestProcedure>(),
-  }));
+const { writeRuntimeVolumeFileMock, resolveUniqueSkillNameMock } = vi.hoisted(() => ({
+  writeRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  resolveUniqueSkillNameMock: vi.fn<VitestProcedure>(),
+}));
 
-vi.mock("@bap/core/server/services/file-asset-service", () => ({
-  createFileAssetFromBuffer: createFileAssetFromBufferMock,
-  markFileAssetReference: markFileAssetReferenceMock,
+vi.mock("@bap/core/server/services/runtime-volume-service", () => ({
+  appendRuntimeVolumeSkillSlug: (prefix: string, skillSlug: string) =>
+    `${prefix.replace(/\/?$/, "/")}${skillSlug}/`,
+  buildOwnedSkillsRuntimeVolumePrefix: ({
+    workspaceId,
+    userId,
+  }: {
+    workspaceId: string;
+    userId: string;
+  }) => `runtime-volumes/${workspaceId}/users/${userId}/skills/`,
+  buildRuntimeVolumeObjectKey: (prefix: string, relativePath: string) => `${prefix}${relativePath}`,
+  writeRuntimeVolumeFile: writeRuntimeVolumeFileMock,
 }));
 
 vi.mock("@bap/core/server/services/workspace-skill-service", () => ({
@@ -55,12 +62,9 @@ function createDatabase() {
 
       if (table === skillDocument) {
         return {
-          values: (values: Record<string, unknown>) => ({
-            returning: async () => {
-              insertedDocuments.push([values]);
-              return [{ id: "document-1", ...values }];
-            },
-          }),
+          values: async (values: Array<Record<string, unknown>>) => {
+            insertedDocuments.push(values);
+          },
         };
       }
 
@@ -95,24 +99,7 @@ function encodeZip(files: Record<string, Uint8Array | string>) {
 describe("importSkill", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    createFileAssetFromBufferMock.mockImplementation(
-      async ({
-        filename,
-        mimeType,
-        content,
-      }: {
-        filename: string;
-        mimeType: string;
-        content: Buffer;
-      }) => ({
-        id: "asset-logo",
-        filename,
-        mimeType,
-        sizeBytes: content.length,
-        storageKey: `file-assets/ws-1/server/${filename}`,
-      }),
-    );
-    markFileAssetReferenceMock.mockResolvedValue(undefined);
+    writeRuntimeVolumeFileMock.mockResolvedValue(undefined);
     resolveUniqueSkillNameMock.mockImplementation(
       async (_database: unknown, _workspaceId: string, baseName: string) => baseName,
     );
@@ -158,26 +145,18 @@ description: Build a weekly report
     );
     expect(database.insertedDocuments[0]).toEqual([
       expect.objectContaining({
-        fileAssetId: "asset-logo",
+        fileAssetId: null,
         filename: "logo.png",
         path: "assets/logo.png",
         mimeType: "image/png",
-        storageKey: "file-assets/ws-1/server/logo.png",
+        storageKey: "runtime-volumes/ws-1/users/user-1/skills/weekly-report/assets/logo.png",
       }),
     ]);
-    expect(createFileAssetFromBufferMock).toHaveBeenCalledWith(
+    expect(writeRuntimeVolumeFileMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: "user-1",
-        workspaceId: "ws-1",
-        filename: "logo.png",
-        mimeType: "image/png",
-      }),
-    );
-    expect(markFileAssetReferenceMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fileAssetId: "asset-logo",
-        kind: "skill_document",
-        referenceId: "document-1",
+        storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/weekly-report/",
+        relativePath: "assets/logo.png",
+        contentType: "image/png",
       }),
     );
   });

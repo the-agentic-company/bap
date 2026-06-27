@@ -178,7 +178,7 @@ export const skillFile = pgTable(
       .references(() => skill.id, { onDelete: "cascade" }),
     // File path within skill directory (e.g., "SKILL.md", "reference.md", "scripts/helper.py")
     path: text("path").notNull(),
-    content: text("content").notNull(),
+    content: text("content"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

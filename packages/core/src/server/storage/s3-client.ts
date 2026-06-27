@@ -6,6 +6,7 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../../env";
@@ -256,6 +257,46 @@ export async function headS3Object(key: string): Promise<{
     contentType: response.ContentType,
     etag: response.ETag,
   };
+}
+
+export type ListedS3Object = {
+  key: string;
+  sizeBytes: number;
+  etag?: string;
+  lastModified?: Date;
+};
+
+export async function listS3Objects(prefix: string): Promise<ListedS3Object[]> {
+  const client = getS3Client();
+  const objects: ListedS3Object[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const response = await sendS3Operation("ListObjectsV2", prefix, () =>
+      client.send(
+        new ListObjectsV2Command({
+          Bucket: BUCKET_NAME,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }),
+      ),
+    );
+
+    for (const entry of response.Contents ?? []) {
+      if (!entry.Key) {
+        continue;
+      }
+      objects.push({
+        key: entry.Key,
+        sizeBytes: entry.Size ?? 0,
+        etag: entry.ETag,
+        lastModified: entry.LastModified,
+      });
+    }
+    continuationToken = response.NextContinuationToken;
+  } while (continuationToken);
+
+  return objects;
 }
 
 // Delete file from S3

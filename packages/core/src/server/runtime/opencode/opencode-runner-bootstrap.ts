@@ -20,6 +20,7 @@ import type {
   RuntimeSelection,
   SandboxHandle,
 } from "../../sandbox/core/types";
+import type { RuntimeVolumeMountPlan } from "../../sandbox/prep/runtime-volume-prep";
 import { getOrCreateConversationSandbox } from "../../sandbox/core/orchestrator";
 import { buildMemorySystemPrompt, syncMemoryFilesToSandbox } from "../../sandbox/prep/memory-prep";
 import {
@@ -48,6 +49,7 @@ export type RunnerBootstrapResult = {
   verboseOpenCodeEventLogs: boolean;
   stagedUploadCount: number;
   startPostPromptCacheWrite: (() => Promise<void>) | null;
+  runtimeVolumeMountPlan: RuntimeVolumeMountPlan | null;
 };
 
 // The sandbox + agent bootstrap phase of a normal turn: it provisions (or
@@ -252,6 +254,9 @@ export async function runNormalRunnerBootstrap(
     runtimeMetadata,
     executionEnvironment: undefined,
   });
+  if (runtimeSandbox.provider !== "daytona") {
+    throw new Error("runtime_volume_provider_unsupported: only Daytona supports Runtime Volumes");
+  }
   if (ctx.remoteIntegrationSource) {
     callbacks.recordRemoteRunPhase(ctx, "sandbox_created");
   }
@@ -412,6 +417,7 @@ export async function runNormalRunnerBootstrap(
   let writtenIntegrationSkills: string[] = [];
   let prePromptCacheHit = false;
   let startPostPromptCacheWrite: (() => Promise<void>) | null = null;
+  let runtimeVolumeMountPlan: RuntimeVolumeMountPlan | null = null;
 
   const memorySyncPromise = (async () => {
     try {
@@ -499,12 +505,23 @@ export async function runNormalRunnerBootstrap(
     const preparedAssets = await stagePrePromptAssets({
       runtimeSandbox,
       userId: ctx.userId,
+      workspaceId: ctx.workspaceId,
       generationId: ctx.id,
       allowedIntegrations,
       allowedCustomIntegrations: ctx.allowedCustomIntegrations,
       allowedSkillSlugs: ctx.allowedSkillSlugs,
       selectedPlatformSkillSlugs: ctx.selectedPlatformSkillSlugs,
       customSkillNames,
+      runtimeVolumeSkillScope: ctx.coworkerId
+        ? {
+            type: "selected",
+            skillSlugs: customSkillNames,
+            ownedSkillSlugs: [],
+            sharedSkillSlugs: [],
+          }
+        : { type: "authoring" },
+      coworkerDocumentsCoworkerId:
+        ctx.coworkerId ?? ctx.builderCoworkerContext?.coworkerId ?? null,
       agentSandboxMode: ctx.agentSandboxMode,
       runStep: runPrePromptStep,
       markPhase: (phase) => callbacks.markPhase(ctx, phase),
@@ -526,6 +543,7 @@ export async function runNormalRunnerBootstrap(
     writtenIntegrationSkills = preparedAssets.writtenIntegrationSkills;
     prePromptCacheHit = preparedAssets.prePromptCacheHit;
     startPostPromptCacheWrite = preparedAssets.startPostPromptCacheWrite;
+    runtimeVolumeMountPlan = preparedAssets.runtimeVolumeMountPlan;
   })();
 
   await Promise.all([
@@ -647,9 +665,14 @@ export async function runNormalRunnerBootstrap(
   const modelConfig = buildOpenCodeRuntimeModelConfig(ctx.model);
 
   const promptParts: RuntimePromptPart[] = [{ type: "text", text: ctx.userMessageContent }];
+  const coworkerDocumentsCoworkerId =
+    ctx.coworkerId ?? ctx.builderCoworkerContext?.coworkerId ?? null;
+  const mountedCoworkerDocumentsPath = (runtimeVolumeMountPlan as RuntimeVolumeMountPlan | null)
+    ?.coworkerDocumentsPath;
   const stagedPromptAttachments = await stageRuntimePromptAttachments({
     runtimeSandbox,
-    coworkerId: ctx.coworkerId,
+    coworkerId: coworkerDocumentsCoworkerId,
+    coworkerDocumentsMountedPath: mountedCoworkerDocumentsPath,
     workspaceId: ctx.workspaceId,
     attachments: ctx.attachments,
     userStagedFilePaths: ctx.userStagedFilePaths,
@@ -713,5 +736,6 @@ export async function runNormalRunnerBootstrap(
     verboseOpenCodeEventLogs,
     stagedUploadCount,
     startPostPromptCacheWrite,
+    runtimeVolumeMountPlan,
   };
 }
