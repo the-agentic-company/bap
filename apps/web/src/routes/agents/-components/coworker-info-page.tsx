@@ -469,7 +469,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
 
           <div className="hidden min-h-0 min-w-0 flex-1 md:flex">
             <DualPanelWorkspace
-              storageKey="agent-info-details-output-width-v4"
+              storageKey="agent-info-details-output-width-v3"
               defaultRightWidth={75}
               minLeftWidth={25}
               minRightWidth={40}
@@ -596,7 +596,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
 
         <div className="hidden min-h-0 min-w-0 flex-1 md:flex">
           <DualPanelWorkspace
-            storageKey="agent-info-details-output-width-v4"
+            storageKey="agent-info-details-output-width-v3"
             defaultRightWidth={75}
             minLeftWidth={25}
             minRightWidth={40}

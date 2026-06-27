@@ -82,34 +82,20 @@ export function DualPanelWorkspace({
   const [isLeftPanelCollapsedByDrag, setIsLeftPanelCollapsedByDrag] = useState(false);
   const [uncontrolledIsCollapsed, setUncontrolledIsCollapsed] = useState(defaultRightCollapsed);
   const savedWidthRef = useRef<number | null>(null);
-  const getInitialRightWidth = useCallback(() => {
-    const maxRight = Math.max(minRightWidth, 100 - minLeftWidth);
-    const clampRightWidth = (value: number) =>
-      Math.min(maxRight, Math.max(minRightWidth, value));
-
+  const [rightWidth, setRightWidth] = useState(() => {
     if (!storageKey || typeof window === "undefined") {
-      return clampRightWidth(defaultRightWidth);
+      return defaultRightWidth;
     }
-
     const saved = window.localStorage.getItem(storageKey);
-    if (saved === null) {
-      return clampRightWidth(defaultRightWidth);
-    }
-
     const parsed = Number(saved);
     if (!Number.isFinite(parsed)) {
-      return clampRightWidth(defaultRightWidth);
+      return defaultRightWidth;
     }
-
-    return clampRightWidth(parsed);
-  }, [defaultRightWidth, minLeftWidth, minRightWidth, storageKey]);
-  const [rightWidth, setRightWidth] = useState(getInitialRightWidth);
+    const maxRight = 100 - minLeftWidth;
+    const minRight = minRightWidth;
+    return Math.min(Math.max(minRight, maxRight), Math.max(minRight, parsed));
+  });
   const isCollapsed = rightCollapsed ?? uncontrolledIsCollapsed;
-
-  useEffect(() => {
-    setRightWidth(getInitialRightWidth());
-    setIsLeftPanelCollapsedByDrag(false);
-  }, [getInitialRightWidth]);
 
   const setCollapsed = useCallback(
     (nextCollapsed: boolean) => {
