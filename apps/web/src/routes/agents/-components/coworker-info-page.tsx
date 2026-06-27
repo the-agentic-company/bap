@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { triggerBrowserDownload } from "@/lib/download-file";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
@@ -177,13 +178,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     }
 
     const result = await downloadSandboxFile(outputFile.fileId);
-    const link = document.createElement("a");
-    link.href = result.url;
-    link.download = outputFile.filename;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await triggerBrowserDownload(result.url, outputFile.filename);
   }, [downloadSandboxFile, outputFile]);
 
   const handleMobilePanelChange = useCallback(

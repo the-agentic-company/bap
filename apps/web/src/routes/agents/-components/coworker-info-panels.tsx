@@ -11,11 +11,13 @@ import { useCallback, useState } from "react";
 import type { SandboxFileData } from "@/components/chat/message-list";
 import { ChatArea } from "@/components/chat/chat-area";
 import { MessageBubble } from "@/components/chat/message-bubble";
+import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
+import { triggerBrowserDownload } from "@/lib/download-file";
+import { cn } from "@/lib/utils";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
-import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
+import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
 
 export type MobilePanel = "app" | "chat";
 
@@ -226,7 +228,7 @@ function formatErrorMessage(message?: string | null, fallback = "Run failed.") {
   return trimmed.startsWith("Error :") ? trimmed : `Error : ${trimmed}`;
 }
 
-function EmptyNoOutputState({ failed = false }: { failed?: boolean }) {
+function EmptyNoOutputState() {
   return (
     <div className="bg-muted/25 flex h-full min-h-[22rem] items-center justify-center p-6">
       <div className="max-w-sm text-center">
@@ -235,11 +237,7 @@ function EmptyNoOutputState({ failed = false }: { failed?: boolean }) {
           <T>No output.html found</T>
         </p>
         <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-          {failed ? (
-            <T>This run failed before producing an output.html artifact.</T>
-          ) : (
-            <T>The linked conversation has not produced an output.html artifact yet.</T>
-          )}
+          <T>The linked conversation has not produced an output.html artifact yet.</T>
         </p>
       </div>
     </div>
@@ -335,13 +333,7 @@ function AgenticAppFrame({
 
   const handleDownload = useCallback(async () => {
     const result = await downloadSandboxFile(outputFile.fileId);
-    const link = document.createElement("a");
-    link.href = result.url;
-    link.download = outputFile.filename;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await triggerBrowserDownload(result.url, outputFile.filename);
   }, [downloadSandboxFile, outputFile.fileId, outputFile.filename]);
   const handleOpenFullscreen = useCallback(() => {
     setFullscreenOpen(true);
@@ -475,9 +467,10 @@ export function HistoryRunButton({ run, selected, onSelect }: { run: HistoryRunI
   return (
     <button
       type="button"
-      className={`hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition-colors ${
-        selected ? "bg-muted text-foreground" : "text-muted-foreground"
-      }`}
+      className={cn(
+        "hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition-colors",
+        selected ? "bg-muted text-foreground" : "text-muted-foreground",
+      )}
       onClick={handleClick}
     >
       <span className="min-w-0">
