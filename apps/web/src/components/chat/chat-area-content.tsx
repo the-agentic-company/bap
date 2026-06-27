@@ -467,7 +467,10 @@ export function ChatAreaContent({
 
       <div className={cn("bg-background mt-auto min-w-0 shrink-0", compact ? "p-3" : "p-4")}>
         <div
-          className={cn("mx-auto w-full min-w-0 space-y-2", compact ? "max-w-full" : "max-w-4xl")}
+          className={cn(
+            "mx-auto w-full min-w-0 space-y-2",
+            compact ? "max-w-[28rem]" : "max-w-4xl",
+          )}
         >
           {isEmptyChat && (
             <div className="space-y-2">
@@ -633,7 +636,7 @@ export function ChatAreaContent({
             animatedPlaceholders={CHAT_PLACEHOLDER_PROMPTS}
             shouldAnimatePlaceholder={isEmptyChat}
             compactControls={compact}
-            className={compact ? "mx-auto max-w-[28rem]" : undefined}
+            className={compact ? "w-full" : undefined}
             renderCompactSkillsMenuSection={renderCompactSkillsMenuSection}
             renderSkills={skillsMenuNode}
             renderModelSelector={modelSelectorNode}
