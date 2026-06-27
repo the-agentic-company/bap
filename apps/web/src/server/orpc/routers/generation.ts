@@ -2,6 +2,7 @@ import { GENERATION_ERROR_PHASES } from "@bap/core/lib/generation-errors";
 import { parseModelReference } from "@bap/core/lib/model-reference";
 import { PROVIDER_AUTH_SOURCES } from "@bap/core/lib/provider-auth-source";
 import { generationManager } from "@bap/core/server/services/generation-manager";
+import { BAP_MCP_SCOPE } from "@bap/core/server/sandbox/platform-mcp-server";
 import { evaluateSpawnRequest } from "@bap/core/server/services/generation/spawn-depth";
 import { isGenerationStartError } from "@bap/core/server/services/generation-start-error";
 import { startPendingCoworkerRun } from "@bap/core/server/services/coworker-service";
@@ -85,6 +86,12 @@ const modelReferenceSchema = z
     }
   }, "Model must use provider/model format");
 const providerAuthSourceSchema = z.enum(PROVIDER_AUTH_SOURCES);
+const runnerFailureReasonSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[a-z0-9_.:-]+$/i, "Reason must be a compact machine-readable code");
 const fileAttachmentSchema = z.object({
   fileAssetId: z.string().min(1),
   name: z.string().optional(),
@@ -294,6 +301,97 @@ const startGeneration = protectedProcedure
       }
       throw error;
     }
+  });
+
+const markCurrentCoworkerRunFailed = protectedProcedure
+  .input(
+    z.object({
+      reason: runnerFailureReasonSchema,
+      message: z.string().trim().min(1).max(2_000).optional(),
+    }),
+  )
+  .output(
+    z.object({
+      status: z.literal("failed"),
+      generationId: z.string(),
+      conversationId: z.string(),
+      coworkerRunId: z.string(),
+      active: z.boolean(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    const runtimeMcp = context.runtimeMcp;
+    if (
+      context.authSource !== "managed_mcp" ||
+      !runtimeMcp ||
+      runtimeMcp.surface !== "coworker_runner"
+    ) {
+      throw new ORPCError("FORBIDDEN", {
+        message: "Only coworker runner MCP calls can mark a coworker run as failed.",
+      });
+    }
+
+    if (!runtimeMcp.scopes.includes(BAP_MCP_SCOPE.coworkerRunFail)) {
+      throw new ORPCError("FORBIDDEN", {
+        message: "This runner token cannot mark coworker runs as failed.",
+      });
+    }
+
+    const { generationId, conversationId, coworkerRunId } = runtimeMcp;
+    if (!generationId || !conversationId || !coworkerRunId) {
+      throw new ORPCError("FORBIDDEN", {
+        message: "Runner token is missing the bound generation or coworker run.",
+      });
+    }
+
+    const result = await generationManager.failCurrentCoworkerRunFromRuntime({
+      generationId,
+      conversationId,
+      coworkerRunId,
+      userId: context.user.id,
+      workspaceId: runtimeMcp.workspaceId,
+      reason: input.reason,
+      message: input.message,
+    });
+
+    if (!result.failed) {
+      throw new ORPCError("CONFLICT", {
+        message: "The bound coworker run could not be marked as failed.",
+      });
+    }
+
+    emitCanonicalServiceEvent({
+      eventName: "bap.generation.runner_declared_failure",
+      operationName: "generation.runner_declared_failure",
+      eventId: `rpc:generation.runner_declared_failure:${generationId}:${Date.now()}`,
+      outcome: "success",
+      context: {
+        userId: context.user.id,
+        generationId,
+        conversationId,
+      },
+      attributes: {
+        "rpc.system": "orpc",
+        "rpc.method": "generation.markCurrentCoworkerRunFailed",
+        "http.route": "/api/rpc/generation/markCurrentCoworkerRunFailed",
+        "bap.generation.id": generationId,
+        "bap.conversation.id": conversationId,
+        "bap.coworker_run.id": coworkerRunId,
+        "bap.user.id": context.user.id,
+        "bap.workspace.id": runtimeMcp.workspaceId,
+        "bap.failure.kind": "runner_declared_failure",
+        "bap.failure.reason": input.reason,
+        "bap.generation.runner_failure.active": result.active,
+      },
+    });
+
+    return {
+      status: "failed" as const,
+      generationId,
+      conversationId,
+      coworkerRunId,
+      active: result.active,
+    };
   });
 
 const enqueueConversationMessage = protectedProcedure
@@ -810,8 +908,14 @@ const getActiveGeneration = protectedProcedure
       }
     }
 
+    const isRunnerDeclaredFailure =
+      currentGeneration?.completionReason === "runner_declared_failure";
+    if (isRunnerDeclaredFailure && activeStatus === "error") {
+      activeStatus = "complete";
+    }
+
     startedAt = currentGeneration?.startedAt?.toISOString() ?? null;
-    errorMessage = currentGeneration?.errorMessage ?? null;
+    errorMessage = isRunnerDeclaredFailure ? null : (currentGeneration?.errorMessage ?? null);
     pauseReason = activeStatus === "paused" ? (currentGeneration?.completionReason ?? null) : null;
     const executionPolicy = currentGeneration?.executionPolicy as
       | { debugRunDeadlineMs?: unknown }
@@ -849,6 +953,7 @@ const getActiveGeneration = protectedProcedure
 
 export const generationRouter = {
   startGeneration,
+  markCurrentCoworkerRunFailed,
   enqueueConversationMessage,
   listConversationQueuedMessages,
   removeConversationQueuedMessage,

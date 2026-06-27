@@ -514,6 +514,55 @@ class GenerationManager {
     });
   }
 
+  async failCurrentCoworkerRunFromRuntime(input: {
+    generationId: string;
+    conversationId: string;
+    coworkerRunId: string;
+    userId: string;
+    workspaceId: string;
+    reason: string;
+    message?: string;
+  }): Promise<{ failed: boolean; active: boolean }> {
+    const errorMessage = input.message?.trim()
+      ? input.message.trim()
+      : `Coworker runner marked this run as failed: ${input.reason}`;
+    const debugInfo = {
+      markedFailedBy: "runner_mcp_tool",
+      reason: input.reason,
+    };
+
+    const activeCtx = this.activeGenerations.get(input.generationId);
+
+    if (
+      activeCtx &&
+      activeCtx.userId === input.userId &&
+      activeCtx.workspaceId === input.workspaceId &&
+      activeCtx.conversationId === input.conversationId &&
+      activeCtx.coworkerRunId === input.coworkerRunId
+    ) {
+      this.contextState.setCompletionReason(activeCtx, "runner_declared_failure");
+      activeCtx.failureKind = "runner_declared_failure";
+      activeCtx.errorMessage = errorMessage;
+      activeCtx.debugInfo = {
+        ...(activeCtx.debugInfo ?? {}),
+        ...debugInfo,
+      };
+      return { failed: true, active: true };
+    }
+
+    const failed = await this.lifecycleStore.failCoworkerRunFromRuntime({
+      generationId: input.generationId,
+      conversationId: input.conversationId,
+      coworkerRunId: input.coworkerRunId,
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+      errorMessage,
+      failureKind: "runner_declared_failure",
+      debugInfo,
+    });
+    return { failed, active: false };
+  }
+
   /**
    * Cancel a generation
    */

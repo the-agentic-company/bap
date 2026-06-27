@@ -24,7 +24,8 @@ export type GenerationCompletionReason =
   | "infra_disconnect"
   | "sandbox_missing"
   | "broken_runtime_state"
-  | "runtime_error";
+  | "runtime_error"
+  | "runner_declared_failure";
 
 export type RuntimeProgressKind =
   | "text_delta"

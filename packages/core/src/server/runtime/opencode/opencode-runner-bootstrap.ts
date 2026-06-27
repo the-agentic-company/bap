@@ -460,6 +460,15 @@ export async function runNormalRunnerBootstrap(
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
           spawnDepth: ctx.spawnDepth,
+          surface: ctx.coworkerRunId
+            ? "coworker_runner"
+            : ctx.builderCoworkerContext
+              ? "coworker_builder"
+              : "chat",
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          coworkerId: ctx.coworkerId ?? ctx.builderCoworkerContext?.coworkerId,
+          coworkerRunId: ctx.coworkerRunId,
         }),
       ]);
       for (const unavailable of resolved.unavailableServers) {

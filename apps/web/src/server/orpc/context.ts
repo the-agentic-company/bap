@@ -34,6 +34,12 @@ export type RuntimeMcpContext = {
   userId: string;
   workspaceId: string;
   spawnDepth: number;
+  scopes: string[];
+  surface?: ManagedMcpTokenClaims["surface"];
+  generationId?: string;
+  conversationId?: string;
+  coworkerId?: string;
+  coworkerRunId?: string;
   expiresAt: number;
 };
 
@@ -252,6 +258,12 @@ async function resolveRuntimeMcpContext(headers: Headers): Promise<{
         userId: claims.userId,
         workspaceId: claims.workspaceId,
         spawnDepth: claims.spawnDepth ?? 0,
+        scopes: claims.scopes ?? [claims.internalKey],
+        surface: claims.surface,
+        generationId: claims.generationId,
+        conversationId: claims.conversationId,
+        coworkerId: claims.coworkerId,
+        coworkerRunId: claims.coworkerRunId,
         expiresAt: claims.exp,
       },
     };

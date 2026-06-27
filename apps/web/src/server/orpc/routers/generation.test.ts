@@ -67,6 +67,7 @@ const {
     submitApprovalByInterrupt: vi.fn<VitestProcedure>(),
     submitAuthResult: vi.fn<VitestProcedure>(),
     submitAuthResultByInterrupt: vi.fn<VitestProcedure>(),
+    failCurrentCoworkerRunFromRuntime: vi.fn<VitestProcedure>(),
     getGenerationStatus: vi.fn<VitestProcedure>(),
     getGenerationForConversation: vi.fn<VitestProcedure>(),
     getStreamCountersSnapshot: vi.fn<VitestProcedure>(),
@@ -158,6 +159,10 @@ describe("generationRouter", () => {
     generationManagerMock.submitApprovalByInterrupt.mockResolvedValue(true);
     generationManagerMock.submitAuthResult.mockResolvedValue(true);
     generationManagerMock.submitAuthResultByInterrupt.mockResolvedValue(true);
+    generationManagerMock.failCurrentCoworkerRunFromRuntime.mockResolvedValue({
+      failed: true,
+      active: false,
+    });
     generationManagerMock.enqueueConversationMessage.mockResolvedValue({
       queuedMessageId: "queue-1",
     });
@@ -656,6 +661,60 @@ describe("generationRouter", () => {
         eventId: "rpc:generation.subscribe:gen-1:trace-123",
         attributes: expect.objectContaining({
           "bap.generation.subscribe.state": "closed",
+        }),
+      }),
+    );
+  });
+
+  it("emits a canonical event when a runner marks its bound run failed", async () => {
+    const runnerContext = {
+      ...context,
+      authSource: "managed_mcp",
+      runtimeMcp: {
+        surface: "coworker_runner",
+        scopes: ["bap:coworker_run:fail"],
+        generationId: "gen-runner-1",
+        conversationId: "conv-runner-1",
+        coworkerRunId: "run-runner-1",
+        workspaceId: "ws-1",
+      },
+    };
+
+    const result = await generationRouterAny.markCurrentCoworkerRunFailed({
+      input: {
+        reason: "self_test_requested",
+        message: "Runner failure MCP self-test intentionally marked this run as failed.",
+      },
+      context: runnerContext,
+    });
+
+    expect(result).toEqual({
+      status: "failed",
+      generationId: "gen-runner-1",
+      conversationId: "conv-runner-1",
+      coworkerRunId: "run-runner-1",
+      active: false,
+    });
+    expect(generationManagerMock.failCurrentCoworkerRunFromRuntime).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generationId: "gen-runner-1",
+        conversationId: "conv-runner-1",
+        coworkerRunId: "run-runner-1",
+        userId: "user-1",
+        workspaceId: "ws-1",
+        reason: "self_test_requested",
+      }),
+    );
+    expect(emitCanonicalServiceEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: "bap.generation.runner_declared_failure",
+        operationName: "generation.runner_declared_failure",
+        outcome: "success",
+        attributes: expect.objectContaining({
+          "rpc.method": "generation.markCurrentCoworkerRunFailed",
+          "bap.failure.kind": "runner_declared_failure",
+          "bap.failure.reason": "self_test_requested",
+          "bap.coworker_run.id": "run-runner-1",
         }),
       }),
     );

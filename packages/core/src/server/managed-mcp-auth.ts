@@ -2,12 +2,20 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const MANAGED_MCP_TOKEN_TTL_SECONDS = 10 * 60;
 
+export type ManagedMcpSurface = "chat" | "coworker_builder" | "coworker_runner";
+
 export type ManagedMcpTokenClaims = {
   userId: string;
   workspaceId: string;
   internalKey: string;
   exp: number;
   spawnDepth?: number;
+  scopes?: string[];
+  surface?: ManagedMcpSurface;
+  generationId?: string;
+  conversationId?: string;
+  coworkerId?: string;
+  coworkerRunId?: string;
   remoteIntegrationSource?: {
     targetEnv: "staging" | "prod";
     remoteUserId: string;
@@ -70,6 +78,17 @@ export function verifyManagedMcpToken(
     !parsed.workspaceId ||
     !parsed.internalKey ||
     typeof parsed.exp !== "number" ||
+    (parsed.scopes !== undefined &&
+      (!Array.isArray(parsed.scopes) ||
+        parsed.scopes.some((scope) => typeof scope !== "string" || scope.length === 0))) ||
+    (parsed.surface !== undefined &&
+      parsed.surface !== "chat" &&
+      parsed.surface !== "coworker_builder" &&
+      parsed.surface !== "coworker_runner") ||
+    (parsed.generationId !== undefined && typeof parsed.generationId !== "string") ||
+    (parsed.conversationId !== undefined && typeof parsed.conversationId !== "string") ||
+    (parsed.coworkerId !== undefined && typeof parsed.coworkerId !== "string") ||
+    (parsed.coworkerRunId !== undefined && typeof parsed.coworkerRunId !== "string") ||
     (parsed.spawnDepth !== undefined &&
       (typeof parsed.spawnDepth !== "number" ||
         !Number.isInteger(parsed.spawnDepth) ||

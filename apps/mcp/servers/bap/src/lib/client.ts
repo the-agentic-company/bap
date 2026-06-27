@@ -9,7 +9,16 @@ export function createMcpClient(extra?: ToolExtraArguments) {
   const resolvedServerUrl = resolveServerUrl();
   const token = extra?.authInfo?.token;
   const authClaims = extra?.authInfo?.extra as
-    | { audience?: string; authType?: string; issuer?: string }
+    | {
+        audience?: string;
+        authType?: string;
+        issuer?: string;
+        surface?: "chat" | "coworker_builder" | "coworker_runner";
+        generationId?: string;
+        conversationId?: string;
+        coworkerId?: string;
+        coworkerRunId?: string;
+      }
     | undefined;
   const audience = authClaims?.audience;
 
