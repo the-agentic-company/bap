@@ -64,10 +64,14 @@ type BottomActionBarProps = {
   voiceInteractionMode?: "press-to-talk" | "toggle";
   conversationId?: string;
   prefillRequest?: { id: string; text: string; mode?: "replace" | "append" } | null;
+  compactControls?: boolean;
+  renderCompactSkillsMenuSection?: React.ReactNode;
   renderSkills?: React.ReactNode;
   renderModelSelector?: React.ReactNode;
   renderAutoApproval?: React.ReactNode;
   renderDebugControls?: React.ReactNode;
+  selectedSkillCount?: number;
+  className?: string;
 };
 
 export function BottomActionBar({

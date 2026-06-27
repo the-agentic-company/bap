@@ -1,6 +1,6 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { T, useGT } from "gt-react";
-import { AlertCircle, History, Info, Loader2, Pencil, Play } from "lucide-react";
+import { T } from "gt-react";
+import { AlertCircle, Download, History, Loader2, Pencil, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   type PointerEvent as ReactPointerEvent,
@@ -13,19 +13,19 @@ import { toast } from "sonner";
 import { ChatArea } from "@/components/chat/chat-area";
 import { findLatestAgenticAppFile } from "@/components/chat/agentic-app-selection";
 import { mapPersistedMessagesToChatMessages } from "@/components/chat/persisted-message-mapper";
+import { ChatShareControls } from "@/components/chat/chat-share-controls";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import {
   extractRemoteRunSourceDetails,
   RemoteRunSourceBanner,
 } from "@/components/coworkers/remote-run-source-banner";
-import { RunDebugDetails } from "@/components/coworkers/run-debug-details";
 import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
-import { useConversation } from "@/orpc/hooks/conversation";
+import { useConversation, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import {
   useCoworker,
   useCoworkerList,
@@ -34,10 +34,12 @@ import {
   useTriggerCoworker,
 } from "@/orpc/hooks/coworkers";
 import { AppLink as Link } from "../-lib/app-link";
-import { CoworkerInfoEmptyOutput, CoworkerInfoEmptySummary } from "./coworker-info-empty-state";
+import { CoworkerInfoEmptyOutput } from "./coworker-info-empty-state";
 import {
+  formatDuration,
+  formatHeaderTimestamp,
+  getRunStatusPresentation,
   getAdjacentMobilePanel,
-  getInfoTab,
   getMobilePanel,
   HistoryRunButton,
   isUuidRouteSlug,
@@ -48,7 +50,6 @@ import {
   MOBILE_PANEL_VARIANTS,
   OutputPanel,
   RunDetailsPanel,
-  RunSummaryPanel,
   type MobilePanel,
 } from "./coworker-info-panels";
 
@@ -57,8 +58,6 @@ type Props = {
 };
 
 export function CoworkerInfoPage({ coworkerSlug }: Props) {
-  const t = useGT();
-
   const searchStr = useRouterState({ select: (state) => state.location.searchStr });
   const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
   const navigate = useNavigate();
@@ -78,39 +77,31 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     enabled: Boolean(resolvedCoworkerId),
   });
   const requestedRunId = searchParams.get("run");
+  const latestKnownRunId = coworkerListItem?.recentRuns?.[0]?.id;
   const selectedRunId =
     coworkerRuns.data?.some((candidate) => candidate.id === requestedRunId) && requestedRunId
       ? requestedRunId
-      : coworkerRuns.data?.[0]?.id;
+      : coworkerRuns.data?.[0]?.id ?? latestKnownRunId;
   const run = useCoworkerRun(selectedRunId, {
     enabled: Boolean(selectedRunId),
   });
   const coworker = useCoworker(resolvedCoworkerId);
-  const activeTab = getInfoTab(searchParams.get("tab"));
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(() =>
-    getMobilePanel(searchParams.get("tab") ?? "app"),
+    getMobilePanel(searchParams.get("tab") ?? "chat"),
   );
   const [mobilePanelDirection, setMobilePanelDirection] = useState(0);
   const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
-  const [definitionOpen, setDefinitionOpen] = useState(false);
-  const handleDefinitionOpenChange = useCallback((open: boolean) => {
-    setDefinitionOpen(open);
-  }, []);
-  const handleOpenDefinition = useCallback(() => {
-    setDefinitionOpen(true);
-  }, []);
-  const handleToggleDefinition = useCallback(() => {
-    setDefinitionOpen((open) => !open);
-  }, []);
   const shouldWaitForCoworkerList = !routeCoworkerId;
-  const shouldWaitForCoworkerRuns =
-    Boolean(requestedRunId) || (coworkerListItem?.recentRuns?.length ?? 0) > 0;
+  const shouldWaitForCoworkerRuns = Boolean(requestedRunId || latestKnownRunId);
+  const isRunSelectionLoading = shouldWaitForCoworkerRuns && !selectedRunId && coworkerRuns.isLoading;
   const isRunLoading =
     (shouldWaitForCoworkerList && coworkerList.isLoading) ||
-    (shouldWaitForCoworkerRuns && coworkerRuns.isLoading) ||
+    isRunSelectionLoading ||
     Boolean(selectedRunId && run.isLoading);
   const conversationId = run.data?.conversationId ?? undefined;
   const conversation = useConversation(conversationId);
+  const { mutateAsync: downloadSandboxFile, isPending: isDownloadingOutput } =
+    useDownloadSandboxFile();
 
   const messages = useMemo(
     () => mapPersistedMessagesToChatMessages(conversation.data?.messages ?? []),
@@ -127,15 +118,23 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     return undefined;
   }, [messages]);
   const remoteRunSource = run.data ? extractRemoteRunSourceDetails(run.data) : null;
-  const detailsRun = useMemo(
+  const headerRunMeta = useMemo(
     () => ({
-      status: run.data?.status,
-      startedAt: run.data?.startedAt,
-      finishedAt: run.data?.finishedAt,
-      events: run.data?.events,
+      launchedAtLabel: formatHeaderTimestamp(run.data?.startedAt),
+      durationLabel: formatDuration(run.data?.startedAt, run.data?.finishedAt),
+      statusPresentation: getRunStatusPresentation(run.data?.status),
+      runStatus: run.data?.status,
     }),
-    [run.data?.events, run.data?.finishedAt, run.data?.startedAt, run.data?.status],
+    [run.data?.finishedAt, run.data?.startedAt, run.data?.status],
   );
+  const shouldShowHeaderRunMeta = Boolean(run.data?.startedAt || run.data?.status);
+  const hiddenErrorMessageContents = useMemo(() => {
+    if (!run.data?.errorMessage) {
+      return undefined;
+    }
+
+    return [run.data.errorMessage, `Error : ${run.data.errorMessage}`];
+  }, [run.data?.errorMessage]);
   const outputPanel = useMemo(
     () => (
       <OutputPanel
@@ -143,10 +142,17 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         conversationId={conversationId}
         latestCoworkerMessage={latestCoworkerMessage}
         runStatus={run.data?.status}
+        runErrorMessage={run.data?.errorMessage}
         showOutputToolbar={false}
       />
     ),
-    [conversationId, latestCoworkerMessage, outputFile, run.data?.status],
+    [
+      conversationId,
+      latestCoworkerMessage,
+      outputFile,
+      run.data?.errorMessage,
+      run.data?.status,
+    ],
   );
 
   const handleHistorySelect = useCallback(
@@ -165,26 +171,20 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     [navigate, resolvedCoworkerSlug, searchParams],
   );
 
-  const handleTabChange = useCallback(
-    (nextTab: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const infoTab = getInfoTab(nextTab);
-      if (infoTab === "summary") {
-        params.delete("tab");
-      } else {
-        params.set("tab", infoTab);
-      }
-      void navigate({
-        to: "/agents/info/$slug",
-        params: { slug: resolvedCoworkerSlug },
-        search: {
-          run: params.get("run") ?? undefined,
-          tab: params.get("tab") ?? undefined,
-        },
-      });
-    },
-    [navigate, resolvedCoworkerSlug, searchParams],
-  );
+  const handleDownloadOutput = useCallback(async () => {
+    if (!outputFile) {
+      return;
+    }
+
+    const result = await downloadSandboxFile(outputFile.fileId);
+    const link = document.createElement("a");
+    link.href = result.url;
+    link.download = outputFile.filename;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [downloadSandboxFile, outputFile]);
 
   const handleMobilePanelChange = useCallback(
     (nextPanelValue: string) => {
@@ -246,9 +246,6 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const handleMobilePanelPointerCancel = useCallback(() => {
     mobileSwipeStartRef.current = null;
   }, []);
-  const handleSummaryPanelClick = useCallback(() => {
-    handleMobilePanelChange("summary");
-  }, [handleMobilePanelChange]);
   const handleAppPanelClick = useCallback(() => {
     handleMobilePanelChange("app");
   }, [handleMobilePanelChange]);
@@ -283,17 +280,12 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const detailsPanel = useMemo(
     () => (
       <RunDetailsPanel
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        isFetchingConversation={conversation.isFetching}
-        run={detailsRun}
-        messages={messages}
         conversationId={conversationId}
+        hiddenMessageContents={hiddenErrorMessageContents}
       />
     ),
-    [activeTab, conversation.isFetching, conversationId, detailsRun, handleTabChange, messages],
+    [conversationId, hiddenErrorMessageContents],
   );
-  const emptySummaryPanel = useMemo(() => <CoworkerInfoEmptySummary />, []);
   const emptyOutputPanel = useMemo(
     () => (
       <CoworkerInfoEmptyOutput
@@ -328,7 +320,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const headerSection = (
     <section className="bg-background/95 z-10 hidden shrink-0 px-3 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:block md:px-6 md:py-3">
       <div className="flex min-h-10 items-center gap-2 md:gap-4">
-        <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-visible">
             <CoworkerAvatar
               username={coworkerUsername}
@@ -340,32 +332,46 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           <h1 className="truncate text-base leading-tight font-semibold md:text-lg">
             {coworkerName}
           </h1>
-          <Popover open={definitionOpen} onOpenChange={handleDefinitionOpenChange}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground h-7 w-7 shrink-0"
-                onMouseEnter={handleOpenDefinition}
-                onClick={handleToggleDefinition}
-                aria-label={t("Show coworker definition")}
-              >
-                <Info className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 p-3">
-              <p className="text-sm font-medium">
-                <T>Coworker definition</T>
-              </p>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                {coworkerDefinition || "No definition set."}
-              </p>
-            </PopoverContent>
-          </Popover>
+          {shouldShowHeaderRunMeta ? (
+            <p className="text-muted-foreground min-w-0 shrink truncate text-sm">
+              {headerRunMeta.launchedAtLabel} ·{" "}
+              {headerRunMeta.runStatus === "running"
+                ? `running ${headerRunMeta.durationLabel}`
+                : `duration ${headerRunMeta.durationLabel}`}{" "}
+              ·{" "}
+              <span className={cn("font-semibold", headerRunMeta.statusPresentation.className)}>
+                {headerRunMeta.statusPresentation.label}
+              </span>
+            </p>
+          ) : null}
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1 md:gap-2">
+          {outputFile ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-xl"
+                onClick={handleDownloadOutput}
+                disabled={isDownloadingOutput}
+              >
+                {isDownloadingOutput ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                <T>Download output</T>
+              </Button>
+              <ChatShareControls
+                conversationId={conversationId}
+                triggerVariant="button"
+                outputLabel
+                className="h-8 rounded-xl px-3"
+              />
+            </>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
@@ -455,10 +461,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
 
         <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto md:hidden">
-            <div className="space-y-3 px-4 pt-4">
-              <CoworkerInfoEmptySummary />
-            </div>
-            <div className="px-4 pt-3 pb-4">
+            <div className="px-4 pt-4 pb-4">
               <div className="border-border bg-card min-h-[26rem] rounded-xl border">
                 <CoworkerInfoEmptyOutput
                   coworkerDescription={coworkerDefinition}
@@ -482,7 +485,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
               rightPanelClassName="bg-card rounded-xl"
               separatorClassName="bg-muted/40"
               allowLeftPanelDragCollapse
-              left={emptySummaryPanel}
+              left={detailsPanel}
               right={emptyOutputPanel}
             />
           </div>
@@ -498,42 +501,11 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
 
-        {(run.data?.status === "error" || run.data?.status === "cancelled") && (
-          <section className="border-border bg-card rounded-xl border p-4">
-            <p className="text-muted-foreground text-sm">
-              {run.data.status === "cancelled"
-                ? (run.data.errorMessage ?? "Run cancelled.")
-                : (run.data.errorMessage ?? "Run failed.")}
-            </p>
-            <RunDebugDetails
-              debugInfo={run.data.debugInfo}
-              fallbackTimestamp={run.data.finishedAt ?? run.data.startedAt}
-            />
-          </section>
-        )}
-
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:hidden">
           <div
             role="tablist"
-            className="border-border bg-background grid shrink-0 grid-cols-3 border-b"
+            className="border-border bg-background grid shrink-0 grid-cols-2 border-b"
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mobilePanel === "summary"}
-              onClick={handleSummaryPanelClick}
-              className={cn(
-                "relative flex h-12 items-center justify-center text-sm font-medium transition-colors",
-                mobilePanel === "summary"
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <T>Summary</T>
-              {mobilePanel === "summary" ? (
-                <span className="bg-foreground absolute inset-x-6 bottom-0 h-px" />
-              ) : null}
-            </button>
             <button
               type="button"
               role="tab"
@@ -608,117 +580,14 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
               >
                 {mobilePanel === "app" ? (
                   outputPanel
-                ) : mobilePanel === "summary" ? (
-                  <div className="h-full overflow-auto">
-                    <div className="space-y-3 px-4 pt-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-visible">
-                          <CoworkerAvatar
-                            username={coworkerUsername}
-                            size={50}
-                            scale={82}
-                            className="rounded-none"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h1 className="truncate text-lg leading-tight font-semibold">
-                            {coworkerName}
-                          </h1>
-                          {coworkerUsername ? (
-                            <p className="text-muted-foreground mt-0.5 truncate font-mono text-xs">
-                              @{coworkerUsername}
-                            </p>
-                          ) : null}
-                        </div>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground hover:text-foreground h-8 w-8 shrink-0"
-                              aria-label={t("Show full coworker description")}
-                            >
-                              <Info className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-80 p-3">
-                            <p className="text-sm font-medium">
-                              <T>Coworker description</T>
-                            </p>
-                            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                              {coworkerDefinition || "No definition set."}
-                            </p>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Button type="button" variant="outline" size="sm" asChild>
-                          <Link
-                            href={getCoworkerEditHref({
-                              id: resolvedCoworkerId,
-                              username: coworkerUsername,
-                            })}
-                          >
-                            <Pencil className="h-4 w-4" />
-                            <T>Edit</T>
-                          </Link>
-                        </Button>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button type="button" variant="outline" size="sm">
-                              <History className="h-4 w-4" />
-                              <T>History</T>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="center" className="w-72 p-2">
-                            <div className="px-2 py-1.5">
-                              <p className="text-sm font-medium">
-                                <T>Previous Runs</T>
-                              </p>
-                              <p className="text-muted-foreground text-xs">
-                                <T>Switch this page to an older run.</T>
-                              </p>
-                            </div>
-                            <div className="mt-1 max-h-80 space-y-1 overflow-auto">
-                              {(coworkerRuns.data ?? []).map((historyRun) => (
-                                <HistoryRunButton
-                                  key={historyRun.id}
-                                  run={historyRun}
-                                  selected={historyRun.id === selectedRunId}
-                                  onSelect={handleHistorySelect}
-                                />
-                              ))}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                        <Button
-                          type="button"
-                          variant="brand"
-                          size="sm"
-                          onClick={handleRunNow}
-                          disabled={triggerCoworker.isPending}
-                        >
-                          {triggerCoworker.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Play className="h-4 w-4" />
-                          )}
-                          <T>Run</T>
-                        </Button>
-                      </div>
-                    </div>
-                    <RunSummaryPanel
-                      status={detailsRun.status}
-                      startedAt={detailsRun.startedAt}
-                      finishedAt={detailsRun.finishedAt}
-                      events={detailsRun.events}
-                      messages={messages}
-                    />
-                  </div>
                 ) : conversationId ? (
                   <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
-                    <ChatArea conversationId={conversationId} compact />
+                    <ChatArea
+                      conversationId={conversationId}
+                      compact
+                      hideStreamError
+                      hiddenMessageContents={hiddenErrorMessageContents}
+                    />
                   </div>
                 ) : (
                   <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">

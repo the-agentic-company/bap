@@ -3,6 +3,7 @@ import { Check, Globe2, Link2, Lock, Share2, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   useConversation,
   useShareConversation,
@@ -16,6 +17,9 @@ type ConversationShape = {
 
 type Props = {
   conversationId?: string;
+  triggerVariant?: "icon" | "button";
+  outputLabel?: boolean;
+  className?: string;
 };
 
 function getShareUrl(token: string): string {
@@ -25,7 +29,12 @@ function getShareUrl(token: string): string {
   return `${window.location.origin}/shared/${token}`;
 }
 
-export function ChatShareControls({ conversationId }: Props) {
+export function ChatShareControls({
+  conversationId,
+  triggerVariant = "icon",
+  outputLabel = false,
+  className,
+}: Props) {
   const t = useGT();
 
   const { data: conversation } = useConversation(conversationId);
@@ -80,14 +89,45 @@ export function ChatShareControls({ conversationId }: Props) {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors"
-          title={t("Share")}
-          aria-label={t("Share conversation")}
-        >
-          <Share2 className="h-4 w-4" />
-        </button>
+        {triggerVariant === "button" ? (
+          outputLabel ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className={cn("h-11 rounded-2xl px-5 text-sm font-semibold", className)}
+              aria-label={t("Share output")}
+            >
+              <Share2 className="h-4 w-4" />
+              <T>Share output</T>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className={cn("h-11 rounded-2xl px-5 text-sm font-semibold", className)}
+              aria-label={t("Share conversation")}
+            >
+              <Share2 className="h-4 w-4" />
+              <T>Share conversation</T>
+            </Button>
+          )
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className={cn(
+              "text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors",
+              className,
+            )}
+            title={t("Share")}
+            aria-label={t("Share conversation")}
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[360px] rounded-2xl p-0">
         <div className="space-y-4 p-4">

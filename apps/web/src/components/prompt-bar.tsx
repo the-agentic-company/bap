@@ -61,9 +61,12 @@ type PromptBarProps = {
   prefillRequest?: { id: string; text: string; mode?: "replace" | "append" } | null;
 
   renderSkills?: React.ReactNode;
+  renderCompactSkillsMenuSection?: React.ReactNode;
   renderModelSelector?: React.ReactNode;
   renderAutoApproval?: React.ReactNode;
   renderDebugControls?: React.ReactNode;
+  compactControls?: boolean;
+  selectedSkillCount?: number;
 
   className?: string;
 };
@@ -180,9 +183,12 @@ export function PromptBar({
   conversationId,
   prefillRequest,
   renderSkills,
+  renderCompactSkillsMenuSection,
   renderModelSelector,
   renderAutoApproval,
   renderDebugControls,
+  compactControls = false,
+  selectedSkillCount = 0,
   className,
 }: PromptBarProps) {
   const t = useGT();
@@ -657,10 +663,10 @@ export function PromptBar({
                 ) : (
                   <Paperclip className="text-muted-foreground h-3.5 w-3.5" />
                 )}
-                <span className="text-foreground/80 max-w-[100px] truncate">
-                  {a.name}
-                  {a.status === "uploading" ? ` ${a.progress}%` : ""}
-                </span>
+                <span className="text-foreground/80 max-w-[100px] truncate">{a.name}</span>
+                {a.status === "uploading" ? (
+                  <span className="text-muted-foreground shrink-0 tabular-nums">{a.progress}%</span>
+                ) : null}
                 {a.status === "failed" ? (
                   <span className="max-w-[120px] truncate text-destructive">
                     {a.error ?? t("Upload failed")}
@@ -746,7 +752,7 @@ export function PromptBar({
           )}
         >
           {/* Left group: +, skills, model */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex min-w-0 items-center gap-0.5">
             {/* Attach popover */}
             <Popover open={attachPopoverOpen} onOpenChange={setAttachPopoverOpen}>
               <PopoverTrigger asChild>
@@ -756,7 +762,7 @@ export function PromptBar({
                   title={t("Add attachment")}
                   data-testid="prompt-attach"
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                    "relative flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
                     isHero
                       ? "hover:bg-slate-200/60 text-slate-500"
                       : "hover:bg-muted text-muted-foreground hover:text-foreground",
@@ -764,24 +770,42 @@ export function PromptBar({
                   disabled={disabled || attachments.length >= MAX_FILES}
                 >
                   <Plus className="h-4 w-4" />
+                  {compactControls && selectedSkillCount > 0 ? (
+                    <span className="bg-foreground text-background absolute -top-1 -right-1 inline-flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-4 font-medium">
+                      {selectedSkillCount}
+                    </span>
+                  ) : null}
                 </button>
               </PopoverTrigger>
               <PopoverContent
                 side="top"
                 align="start"
                 sideOffset={8}
-                className="w-auto min-w-[200px] p-1.5"
+                className="w-auto min-w-[240px] p-1.5"
               >
-                <button
-                  type="button"
-                  onClick={handleOpenFilePicker}
-                  className="hover:bg-muted flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors"
-                >
-                  <Paperclip className="text-muted-foreground h-4 w-4" />
-                  <span>
-                    <T>Add files &amp; photos</T>
-                  </span>
-                </button>
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <div className="text-muted-foreground px-1 text-[11px] font-medium tracking-wide uppercase">
+                      <T>Files</T>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleOpenFilePicker}
+                      className="hover:bg-muted flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors"
+                    >
+                      <Paperclip className="text-muted-foreground h-4 w-4" />
+                      <span>
+                        <T>Add files &amp; photos</T>
+                      </span>
+                    </button>
+                  </div>
+                  {compactControls && renderCompactSkillsMenuSection ? (
+                    <>
+                      <div className="bg-border/70 h-px" />
+                      {renderCompactSkillsMenuSection}
+                    </>
+                  ) : null}
+                </div>
               </PopoverContent>
             </Popover>
             <input
@@ -793,17 +817,17 @@ export function PromptBar({
             />
 
             {/* Skills slot */}
-            {renderSkills}
+            {!compactControls ? renderSkills : null}
 
             {/* Model selector slot */}
             {renderModelSelector}
           </div>
 
           {/* Spacer */}
-          <div className="flex-1" />
+          <div className="min-w-0 flex-1" />
 
           {/* Right group: auto-approval, voice, send */}
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {renderAutoApproval}
             {renderDebugControls}
 

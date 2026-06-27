@@ -34,6 +34,8 @@ export type ChatAreaProps = {
   authCompletion?: { integration: string; interruptId: string } | null;
   enableAgenticApp?: boolean;
   compact?: boolean;
+  hideStreamError?: boolean;
+  hiddenMessageContents?: string[];
 };
 
 export const CHAT_EXTERNAL_SEND_EVENT = "chat:external-send";
@@ -48,6 +50,8 @@ export function ChatAreaImpl({
   authCompletion,
   enableAgenticApp = false,
   compact = false,
+  hideStreamError = false,
+  hiddenMessageContents,
 }: ChatAreaProps) {
   const { setHeaderActions } = useChatHeaderActions();
   const { data: platformSkills, isLoading: isPlatformSkillsLoading } = usePlatformSkillList();
@@ -238,7 +242,8 @@ export function ChatAreaImpl({
     }
   }, [messages, streamingParts]);
 
-  const { autoApprovalNode, modelSelectorNode, skillsMenuNode } = useChatAreaControls({
+  const { autoApprovalNode, compactSkillsMenuSectionNode, modelSelectorNode, selectedSkillCount, skillsMenuNode } =
+    useChatAreaControls({
     accessibleSkills,
     armedDebugPreset,
     autoApproveEnabled,
@@ -255,6 +260,7 @@ export function ChatAreaImpl({
     isCoworkerConversation,
     isResumingPausedRunDeadline,
     isStreaming,
+    compactControls: compact,
     normalizedSelectedModel,
     platformSkills,
     providerAvailability,
@@ -264,10 +270,11 @@ export function ChatAreaImpl({
     setSelection,
     skillSelectionScopeKey,
     toggleSelectedSkillSlug,
-  });
+    });
 
   const transcriptNodes = useChatAreaTranscriptNodes({
     historicalActivityBlocks,
+    hiddenMessageContents,
     messages,
   });
   const showLiveActivity = shouldRenderLiveActivity({
@@ -351,7 +358,9 @@ export function ChatAreaImpl({
     modelSelectorNode,
     normalizedQueuedMessages,
     queueingEnabled,
+    renderCompactSkillsMenuSection: compactSkillsMenuSectionNode,
     scrollContainerRef,
+    selectedSkillCount,
     segmentApproveHandlers,
     segmentDenyHandlers,
     segmentToggleHandlers,
@@ -361,7 +370,7 @@ export function ChatAreaImpl({
     skillsMenuNode,
     stopRecordingAndTranscribe,
     streamElapsedMs,
-    streamError,
+    streamError: hideStreamError ? null : streamError,
     transcriptNodes,
     visibleActivityItemsBySegmentId,
     voiceError,

@@ -1,33 +1,25 @@
 import { T, useGT } from "gt-react";
 import {
-  CheckCircle2,
-  Clock,
   Download,
   FileCode2,
-  FileText,
   Loader2,
   Maximize2,
   MessageSquareText,
   RefreshCw,
-  Timer,
-  Wrench,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
-import type { Message, MessagePart, SandboxFileData } from "@/components/chat/message-list";
+import { useCallback, useState } from "react";
+import type { SandboxFileData } from "@/components/chat/message-list";
 import { ChatArea } from "@/components/chat/chat-area";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
 
-export type InfoTab = "summary" | "chat";
-export type MobilePanel = "app" | InfoTab;
+export type MobilePanel = "app" | "chat";
 
-export const MOBILE_PANEL_ORDER: MobilePanel[] = ["summary", "app", "chat"];
+export const MOBILE_PANEL_ORDER: MobilePanel[] = ["app", "chat"];
 export const MOBILE_PANEL_SWIPE_THRESHOLD = 48;
 export const MOBILE_PANEL_TRANSITION = { duration: 0.18, ease: [0.22, 1, 0.36, 1] } as const;
 export const MOBILE_PANEL_VARIANTS = {
@@ -51,22 +43,8 @@ type HistoryRunItem = {
   startedAt?: Date | string | null;
 };
 
-type RunEventSummary = {
-  type: string;
-  payload: unknown;
-};
-
-type ToolSummaryItem = {
-  name: string;
-  count: number;
-};
-
-export function getInfoTab(value: string | null): InfoTab {
-  return value === "chat" ? "chat" : "summary";
-}
-
 export function getMobilePanel(value: string): MobilePanel {
-  return value === "summary" || value === "chat" ? value : "app";
+  return value === "chat" ? "chat" : "app";
 }
 
 export function getAdjacentMobilePanel(current: MobilePanel, direction: "next" | "previous") {
@@ -129,7 +107,7 @@ function toDate(value?: Date | string | null) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function formatDuration(startedAt?: Date | string | null, finishedAt?: Date | string | null) {
+export function formatDuration(startedAt?: Date | string | null, finishedAt?: Date | string | null) {
   const start = toDate(startedAt);
   if (!start) {
     return "Not available";
@@ -151,105 +129,119 @@ function formatDuration(startedAt?: Date | string | null, finishedAt?: Date | st
   return `${seconds}s`;
 }
 
-function formatFileSize(sizeBytes?: number | null) {
-  if (!sizeBytes) {
-    return "size unknown";
+export function formatHeaderTimestamp(value?: Date | string | null) {
+  const date = toDate(value);
+  if (!date) {
+    return "Not started";
   }
-  if (sizeBytes < 1024) {
-    return `${sizeBytes} B`;
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTargetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDiff = Math.round(
+    (startOfToday.getTime() - startOfTargetDay.getTime()) / (24 * 60 * 60 * 1000),
+  );
+
+  const timeLabel = new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+
+  if (dayDiff === 0) {
+    return `Today at ${timeLabel}`;
   }
-  if (sizeBytes < 1024 * 1024) {
-    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  if (dayDiff === 1) {
+    return `Yesterday at ${timeLabel}`;
   }
-  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+
+  const dateLabel = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+
+  return `${dateLabel} at ${timeLabel}`;
 }
 
-function isCompletedStatus(status?: string | null) {
-  return status === "completed" || status === "success";
+export function getRunStatusPresentation(status?: string | null) {
+  switch (status) {
+    case "completed":
+    case "success":
+      return {
+        label: "completed successfully",
+        className: "text-emerald-600",
+      };
+    case "running":
+      return {
+        label: "running",
+        className: "text-sky-600",
+      };
+    case "error":
+      return {
+        label: "failed",
+        className: "text-red-600",
+      };
+    case "cancelled":
+      return {
+        label: "cancelled",
+        className: "text-muted-foreground",
+      };
+    case "awaiting_approval":
+      return {
+        label: "awaiting approval",
+        className: "text-amber-600",
+      };
+    case "awaiting_auth":
+      return {
+        label: "awaiting auth",
+        className: "text-amber-600",
+      };
+    default:
+      return {
+        label: status?.replaceAll("_", " ") ?? "unknown",
+        className: "text-muted-foreground",
+      };
+  }
 }
 
 function isInProgressStatus(status?: string | null) {
   return status === "running";
 }
 
-function readableToolName(part: MessagePart) {
-  if (part.type === "tool_call") {
-    if (part.integration && part.operation) {
-      return `${part.integration}.${part.operation}`;
-    }
-    return part.name;
-  }
-  if (part.type === "approval") {
-    if (part.integration && part.operation) {
-      return `${part.integration}.${part.operation}`;
-    }
-    return part.toolName;
-  }
-  return null;
-}
-
-function getPayloadRecord(payload: unknown) {
-  return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
-}
-
-function getEventToolName(event: RunEventSummary) {
-  if (event.type !== "tool_use" && event.type !== "tool_result") {
-    return null;
-  }
-
-  const payload = getPayloadRecord(event.payload);
-  if (!payload) {
-    return null;
-  }
-
-  const toolName = payload.toolName ?? payload.tool_name ?? payload.name;
-  return typeof toolName === "string" && toolName.trim() ? toolName.trim() : null;
-}
-
-function collectToolSummary(messages: Message[], events?: RunEventSummary[]): ToolSummaryItem[] {
-  const counts = new Map<string, number>();
-
-  for (const message of messages) {
-    for (const part of message.parts ?? []) {
-      const name = readableToolName(part);
-      if (name) {
-        counts.set(name, (counts.get(name) ?? 0) + 1);
-      }
-    }
-  }
-
-  if (counts.size === 0) {
-    for (const event of events ?? []) {
-      const name = getEventToolName(event);
-      if (name) {
-        counts.set(name, (counts.get(name) ?? 0) + 1);
-      }
-    }
-  }
-
-  return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .toSorted((left, right) => right.count - left.count || left.name.localeCompare(right.name));
-}
-
-function collectSandboxFiles(messages: Message[]) {
-  const files = new Map<string, SandboxFileData>();
-
-  for (const message of messages) {
-    for (const file of message.sandboxFiles ?? []) {
-      files.set(file.fileId, file);
-    }
-  }
-
-  return Array.from(files.values()).toSorted((left, right) =>
-    left.filename.localeCompare(right.filename),
+export function LoadingState() {
+  return (
+    <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3">
+      <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+      <p className="text-muted-foreground text-sm">
+        <T>Generating output ...</T>
+      </p>
+    </div>
   );
 }
 
-export function LoadingState() {
+function formatErrorMessage(message?: string | null, fallback = "Run failed.") {
+  const trimmed = message?.trim();
+  if (!trimmed) {
+    return `Error : ${fallback}`;
+  }
+  return trimmed.startsWith("Error :") ? trimmed : `Error : ${trimmed}`;
+}
+
+function EmptyNoOutputState({ failed = false }: { failed?: boolean }) {
   return (
-    <div className="flex min-h-[24rem] items-center justify-center">
-      <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+    <div className="bg-muted/25 flex h-full min-h-[22rem] items-center justify-center p-6">
+      <div className="max-w-sm text-center">
+        <FileCode2 className="text-muted-foreground mx-auto mb-3 h-6 w-6" />
+        <p className="text-sm font-medium">
+          <T>No output.html found</T>
+        </p>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+          {failed ? (
+            <T>This run failed before producing an output.html artifact.</T>
+          ) : (
+            <T>The linked conversation has not produced an output.html artifact yet.</T>
+          )}
+        </p>
+      </div>
     </div>
   );
 }
@@ -257,10 +249,32 @@ export function LoadingState() {
 function EmptyPreview({
   latestMessage,
   runStatus,
+  errorMessage,
 }: {
   latestMessage?: string;
   runStatus?: string | null;
+  errorMessage?: string | null;
 }) {
+  if (runStatus === "error" || runStatus === "cancelled") {
+    const fallbackMessage = runStatus === "cancelled" ? "Run cancelled." : "Run failed.";
+    return (
+      <div className="bg-background h-full overflow-auto p-5">
+        <div className="mx-auto max-w-3xl rounded-xl border border-red-300 bg-red-50/80 p-4">
+          <div className="mb-3 flex items-center gap-2 border-b border-red-200 pb-3">
+            <MessageSquareText className="h-4 w-4 text-red-600" />
+            <p className="text-sm font-medium text-red-700">
+              <T>Error</T>
+            </p>
+          </div>
+          <MessageBubble
+            messageRole="assistant"
+            content={formatErrorMessage(errorMessage, fallbackMessage)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (latestMessage?.trim()) {
     return (
       <div className="bg-background h-full overflow-auto p-5">
@@ -281,19 +295,7 @@ function EmptyPreview({
     return <LoadingState />;
   }
 
-  return (
-    <div className="bg-muted/25 flex h-full min-h-[22rem] items-center justify-center p-6">
-      <div className="max-w-sm text-center">
-        <FileCode2 className="text-muted-foreground mx-auto mb-3 h-6 w-6" />
-        <p className="text-sm font-medium">
-          <T>No output.html found</T>
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-          <T>The linked conversation has not produced an output.html artifact yet.</T>
-        </p>
-      </div>
-    </div>
-  );
+  return <EmptyNoOutputState />;
 }
 
 function AgenticAppFrame({
@@ -465,15 +467,7 @@ function AgenticAppFrame({
   );
 }
 
-export function HistoryRunButton({
-  run,
-  selected,
-  onSelect,
-}: {
-  run: HistoryRunItem;
-  selected: boolean;
-  onSelect: (runId: string) => void;
-}) {
+export function HistoryRunButton({ run, selected, onSelect }: { run: HistoryRunItem; selected: boolean; onSelect: (runId: string) => void; }) {
   const handleClick = useCallback(() => {
     onSelect(run.id);
   }, [onSelect, run.id]);
@@ -481,10 +475,9 @@ export function HistoryRunButton({
   return (
     <button
       type="button"
-      className={cn(
-        "hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition-colors",
-        selected ? "bg-muted text-foreground" : "text-muted-foreground",
-      )}
+      className={`hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition-colors ${
+        selected ? "bg-muted text-foreground" : "text-muted-foreground"
+      }`}
       onClick={handleClick}
     >
       <span className="min-w-0">
@@ -496,189 +489,63 @@ export function HistoryRunButton({
   );
 }
 
-export function RunSummaryPanel({
-  status,
-  startedAt,
-  finishedAt,
-  events,
-  messages,
-}: {
-  status?: string | null;
-  startedAt?: Date | string | null;
-  finishedAt?: Date | string | null;
-  events?: RunEventSummary[];
-  messages: Message[];
-}) {
-  const completed = isCompletedStatus(status);
-  const tools = useMemo(() => collectToolSummary(messages, events), [events, messages]);
-  const files = useMemo(() => collectSandboxFiles(messages), [messages]);
-  const duration = useMemo(() => formatDuration(startedAt, finishedAt), [finishedAt, startedAt]);
-  const launched = useMemo(() => formatRunDate(startedAt), [startedAt]);
-
-  return (
-    <div className="space-y-5 p-4">
-      <div className="grid grid-cols-3 gap-2">
-        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-            <CheckCircle2 className={cn("h-3 w-3", completed && "text-emerald-600")} />
-            <T>Status</T>
-          </div>
-          <p className={cn("mt-0.5 truncate text-sm font-medium", completed && "text-emerald-700")}>
-            {completed ? "Completed" : (status ?? "Unknown")}
-          </p>
-        </div>
-        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-            <Clock className="h-3 w-3" />
-            <T>Launched</T>
-          </div>
-          <p className="mt-0.5 truncate text-sm font-medium">{launched}</p>
-        </div>
-        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-            <Timer className="h-3 w-3" />
-            <T>Time taken</T>
-          </div>
-          <p className="mt-0.5 truncate text-sm font-medium">{duration}</p>
-        </div>
-      </div>
-
-      <section className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Wrench className="text-muted-foreground h-4 w-4" />
-          <h2 className="text-sm font-medium">
-            <T>Tools used</T>
-          </h2>
-        </div>
-        {tools.length > 0 ? (
-          <div className="space-y-1.5">
-            {tools.map((tool) => (
-              <div
-                key={tool.name}
-                className="border-border/70 flex items-center justify-between gap-3 rounded-md border px-2.5 py-2"
-              >
-                <span className="min-w-0 truncate font-mono text-xs">{tool.name}</span>
-                <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[11px]">
-                  {tool.count}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
-            <T>No tool usage recorded for this run.</T>
-          </p>
-        )}
-      </section>
-
-      <section className="space-y-2">
-        <div className="flex items-center gap-2">
-          <FileText className="text-muted-foreground h-4 w-4" />
-          <h2 className="text-sm font-medium">
-            <T>Output files</T>
-          </h2>
-        </div>
-        {files.length > 0 ? (
-          <div className="space-y-1.5">
-            {files.map((file) => (
-              <div key={file.fileId} className="border-border/70 rounded-md border px-2.5 py-2">
-                <p className="truncate text-xs font-medium">{file.filename}</p>
-                <p className="text-muted-foreground mt-1 truncate text-[11px]">
-                  {formatFileSize(file.sizeBytes)} · {file.path}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
-            <T>No output files were created by this run.</T>
-          </p>
-        )}
-      </section>
-    </div>
-  );
-}
-
 export function OutputPanel({
   outputFile,
   conversationId,
   latestCoworkerMessage,
   runStatus,
+  runErrorMessage,
   showOutputToolbar = true,
 }: {
   outputFile?: SandboxFileData | null;
   conversationId?: string;
   latestCoworkerMessage?: string;
   runStatus?: string | null;
+  runErrorMessage?: string | null;
   showOutputToolbar?: boolean;
 }) {
   const sendAgenticAppPrompt = useSendAgenticAppPrompt(conversationId);
 
-  return outputFile ? (
-    <AgenticAppFrame
-      key={outputFile.fileId}
-      outputFile={outputFile}
-      onSendPrompt={sendAgenticAppPrompt}
-      showToolbar={showOutputToolbar}
-    />
-  ) : (
-    <EmptyPreview latestMessage={latestCoworkerMessage} runStatus={runStatus} />
+  return (
+    <div className="bg-background flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1">
+        {outputFile ? (
+          <AgenticAppFrame
+            key={outputFile.fileId}
+            outputFile={outputFile}
+            onSendPrompt={sendAgenticAppPrompt}
+            showToolbar={showOutputToolbar}
+          />
+        ) : (
+          <EmptyPreview
+            latestMessage={latestCoworkerMessage}
+            runStatus={runStatus}
+            errorMessage={runErrorMessage}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
 export function RunDetailsPanel({
-  activeTab,
-  onTabChange,
-  isFetchingConversation,
-  run,
-  messages,
   conversationId,
+  hiddenMessageContents,
 }: {
-  activeTab: InfoTab;
-  onTabChange: (nextTab: string) => void;
-  isFetchingConversation: boolean;
-  run: {
-    status?: string | null;
-    startedAt?: Date | string | null;
-    finishedAt?: Date | string | null;
-    events?: RunEventSummary[];
-  };
-  messages: Message[];
   conversationId?: string;
+  hiddenMessageContents?: string[];
 }) {
   return (
     <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-      <div className="flex min-h-12 min-w-0 shrink-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-        <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange}>
-          <AnimatedTab value="summary">
-            <T>Summary</T>
-          </AnimatedTab>
-          <AnimatedTab value="chat">
-            <T>Chat</T>
-          </AnimatedTab>
-        </AnimatedTabs>
-        {activeTab === "chat" && isFetchingConversation ? (
-          <div className="text-muted-foreground flex items-center gap-1.5 px-1 text-xs">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <T>Updating</T>
-          </div>
-        ) : null}
-      </div>
-
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-        {activeTab === "summary" ? (
-          <div className="h-full min-w-0 overflow-auto">
-            <RunSummaryPanel
-              status={run.status}
-              startedAt={run.startedAt}
-              finishedAt={run.finishedAt}
-              events={run.events}
-              messages={messages}
-            />
-          </div>
-        ) : conversationId ? (
+        {conversationId ? (
           <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
-            <ChatArea conversationId={conversationId} compact />
+            <ChatArea
+              conversationId={conversationId}
+              compact
+              hideStreamError
+              hiddenMessageContents={hiddenMessageContents}
+            />
           </div>
         ) : (
           <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">
