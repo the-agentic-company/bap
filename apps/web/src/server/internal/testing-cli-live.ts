@@ -196,9 +196,9 @@ async function applyLinearMcpApiKeyForLiveTest(email: string): Promise<unknown> 
   }
   const memberships = await db.query.workspaceMember.findMany({
     where: eq(workspaceMember.userId, dbUser.id),
-    columns: { workspaceId: true },
+    columns: { organizationId: true },
   });
-  const workspaceIds = memberships.map((membership) => membership.workspaceId);
+  const workspaceIds = memberships.map((membership) => membership.organizationId);
   if (workspaceIds.length === 0) {
     throw new Error(`Live e2e user has no workspace: ${email}`);
   }

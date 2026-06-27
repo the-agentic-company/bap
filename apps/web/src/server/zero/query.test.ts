@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getSessionMock = vi.fn<() => Promise<unknown>>();
 const handleQueryRequestMock = vi.fn<() => Promise<unknown>>();
 const mustGetQueryMock = vi.fn<() => { fn: (input: unknown) => unknown }>();
-const resolveSessionPrincipalWorkspaceIdMock = vi.fn<() => Promise<string>>();
+const resolveSessionPrincipalWorkspaceIdMock =
+  vi.fn<(userId: string, activeOrganizationId?: string | null) => Promise<string>>();
 
 vi.mock("@/lib/auth", () => ({
   auth: {
@@ -69,7 +70,7 @@ describe("handleZeroQueryRequest", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
-    expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1");
+    expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1", null);
     expect(handleQueryRequestMock).toHaveBeenCalledWith(
       expect.objectContaining({
         handler: expect.any(Function),
@@ -88,5 +89,21 @@ describe("handleZeroQueryRequest", () => {
       args: { limit: 50 },
       ctx: { userId: "user-1", workspaceId: "workspace-1" },
     });
+  });
+
+  it("passes Better Auth active organization into Zero workspace context", async () => {
+    const { handleZeroQueryRequest } = await import("./query");
+    getSessionMock.mockResolvedValue({
+      user: { id: "user-1" },
+      session: { activeOrganizationId: "workspace-2" },
+    });
+    resolveSessionPrincipalWorkspaceIdMock.mockResolvedValue("workspace-2");
+    handleQueryRequestMock.mockResolvedValue({ ok: true });
+
+    await handleZeroQueryRequest(
+      new Request("http://localhost/api/zero/query", { method: "POST" }),
+    );
+
+    expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1", "workspace-2");
   });
 });

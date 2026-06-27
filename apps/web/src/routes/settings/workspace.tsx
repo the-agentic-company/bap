@@ -10,6 +10,7 @@ import { WorkspaceAvatar } from "@/components/workspace-avatar";
 import { clientEditionCapabilities } from "@/lib/edition";
 import { useBillingOverview, useSwitchWorkspace } from "@/orpc/hooks/billing";
 import {
+  useCancelWorkspaceInvitation,
   useInviteWorkspaceMembers,
   useRemoveWorkspaceImage,
   useRenameWorkspace,
@@ -104,12 +105,64 @@ function WorkspaceRow({
   );
 }
 
+function PendingInvitationRow({
+  email,
+  invitationId,
+  role,
+  canCancel,
+  isCanceling,
+  onCancel,
+}: {
+  email: string;
+  invitationId: string;
+  role: string;
+  canCancel: boolean;
+  isCanceling: boolean;
+  onCancel: (id: string) => Promise<void> | void;
+}) {
+  const t = useGT();
+  const handleCancel = useCallback(() => {
+    void onCancel(invitationId);
+  }, [invitationId, onCancel]);
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border px-3 py-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium">{email}</p>
+        <p className="text-muted-foreground truncate text-sm">
+          <T>Invitation pending</T>
+        </p>
+      </div>
+      <div className="ml-3 flex shrink-0 items-center gap-2">
+        <span className="text-muted-foreground text-xs capitalize">{role}</span>
+        {canCancel ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            title={t("Cancel invitation")}
+            disabled={isCanceling}
+            onClick={handleCancel}
+          >
+            {isCanceling ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function WorkspaceSettingsPage() {
   const t = useGT();
 
   const navigate = useNavigate();
   const { data, isLoading } = useBillingOverview();
   const inviteMembers = useInviteWorkspaceMembers();
+  const cancelInvitation = useCancelWorkspaceInvitation();
   const renameWorkspace = useRenameWorkspace();
   const updateWorkspaceImage = useUpdateWorkspaceImage();
   const removeWorkspaceImage = useRemoveWorkspaceImage();
@@ -129,6 +182,7 @@ function WorkspaceSettingsPage() {
     membersData?.membershipRole === "owner" || membersData?.membershipRole === "admin";
   const canUpdateWorkspaceImage = Boolean(membersData?.membershipRole);
   const members = membersData?.members ?? [];
+  const invitations = membersData?.invitations ?? [];
   const parsedInviteEmails = useMemo(
     () =>
       inviteEmailsInput
@@ -260,22 +314,41 @@ function WorkspaceSettingsPage() {
           workspaceId: activeWorkspaceId,
           emails: parsedInviteEmails,
         });
-        const addedCount = Array.isArray(result)
+        const invitedCount = Array.isArray(result)
           ? result.length
-          : Array.isArray((result as { added?: unknown }).added)
-            ? (result as { added: string[] }).added.length
+          : Array.isArray((result as { invited?: unknown }).invited)
+            ? (result as { invited: string[] }).invited.length
             : 0;
         toast.success(
-          addedCount > 0
-            ? `Added ${addedCount} member${addedCount === 1 ? "" : "s"}.`
-            : "No matching users were added.",
+          invitedCount > 0
+            ? `Invited ${invitedCount} member${invitedCount === 1 ? "" : "s"}.`
+            : "No invitations were created.",
         );
         setInviteEmailsInput("");
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to add members.");
+        toast.error(error instanceof Error ? error.message : "Failed to invite members.");
       }
     },
     [activeWorkspaceId, inviteMembers, parsedInviteEmails, t],
+  );
+
+  const handleCancelInvitation = useCallback(
+    async (invitationId: string) => {
+      if (!activeWorkspaceId) {
+        return;
+      }
+
+      try {
+        await cancelInvitation.mutateAsync({
+          workspaceId: activeWorkspaceId,
+          invitationId,
+        });
+        toast.success(t("Invitation canceled."));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to cancel invitation.");
+      }
+    },
+    [activeWorkspaceId, cancelInvitation, t],
   );
 
   if (isLoading) {
@@ -459,7 +532,7 @@ function WorkspaceSettingsPage() {
                 {inviteMembers.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  "Add members"
+                  "Invite members"
                 )}
               </Button>
             </form>
@@ -470,7 +543,7 @@ function WorkspaceSettingsPage() {
               </p>
             ) : (
               <p className="text-muted-foreground mt-3 text-sm">
-                <T>Only users with existing accounts can be added right now.</T>
+                <T>Invited people get access after accepting their workspace invitation.</T>
               </p>
             )}
           </>
@@ -504,6 +577,25 @@ function WorkspaceSettingsPage() {
             </p>
           )}
         </div>
+
+        {invitations.length > 0 ? (
+          <div className="mt-5 space-y-3">
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+              <T>Pending invitations</T>
+            </p>
+            {invitations.map((invitation) => (
+              <PendingInvitationRow
+                key={invitation.id}
+                email={invitation.email}
+                invitationId={invitation.id}
+                role={invitation.role}
+                canCancel={canInviteMembers}
+                isCanceling={cancelInvitation.isPending}
+                onCancel={handleCancelInvitation}
+              />
+            ))}
+          </div>
+        ) : null}
       </section>
     </div>
   );

@@ -209,13 +209,12 @@ describe("billing service", () => {
 
     expect(workspaceInsertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        createdByUserId: "user-1",
         billingPlanId: "free",
       }),
     );
     expect(workspaceMemberInsertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        workspaceId: "ws-created",
+        organizationId: "ws-created",
         userId: "user-1",
         role: "owner",
       }),
@@ -247,7 +246,7 @@ describe("billing service", () => {
       activeWorkspace: null,
       owner: null,
     });
-    expect(workspaceMemberFindFirstMock).not.toHaveBeenCalled();
+    expect(workspaceMemberFindFirstMock).toHaveBeenCalledOnce();
   });
 
   it("loads an admin billing overview without creating a workspace", async () => {

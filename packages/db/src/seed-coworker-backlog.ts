@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { closePool, db } from "./client";
 import { coworker, coworkerRun, coworkerRunEvent, user, workspace, workspaceMember } from "./schema";
 
@@ -67,20 +67,6 @@ async function ensureFixtureUser(email: string) {
 }
 
 async function ensureFixtureWorkspace(targetUser: typeof user.$inferSelect) {
-  if (targetUser.activeWorkspaceId) {
-    const activeMembership = await db.query.workspaceMember.findFirst({
-      where: and(
-        eq(workspaceMember.userId, targetUser.id),
-        eq(workspaceMember.workspaceId, targetUser.activeWorkspaceId),
-      ),
-      with: { workspace: true },
-    });
-
-    if (activeMembership?.workspace) {
-      return activeMembership.workspace;
-    }
-  }
-
   const latestMembership = await db.query.workspaceMember.findFirst({
     where: eq(workspaceMember.userId, targetUser.id),
     with: { workspace: true },
@@ -88,10 +74,6 @@ async function ensureFixtureWorkspace(targetUser: typeof user.$inferSelect) {
   });
 
   if (latestMembership?.workspace) {
-    await db
-      .update(user)
-      .set({ activeWorkspaceId: latestMembership.workspace.id, updatedAt: new Date() })
-      .where(eq(user.id, targetUser.id));
     return latestMembership.workspace;
   }
 
@@ -101,7 +83,6 @@ async function ensureFixtureWorkspace(targetUser: typeof user.$inferSelect) {
     .values({
       name: workspaceName,
       slug: `${slugifyWorkspaceName(workspaceName)}-${randomUUID().slice(0, 8)}`,
-      createdByUserId: targetUser.id,
       billingPlanId: "free",
       autumnCustomerId: null,
       createdAt: new Date(),
@@ -110,15 +91,10 @@ async function ensureFixtureWorkspace(targetUser: typeof user.$inferSelect) {
     .returning();
 
   await db.insert(workspaceMember).values({
-    workspaceId: createdWorkspace.id,
+    organizationId: createdWorkspace.id,
     userId: targetUser.id,
     role: "owner",
   });
-
-  await db
-    .update(user)
-    .set({ activeWorkspaceId: createdWorkspace.id, updatedAt: new Date() })
-    .where(eq(user.id, targetUser.id));
 
   return createdWorkspace;
 }

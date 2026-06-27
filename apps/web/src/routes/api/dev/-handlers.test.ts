@@ -145,7 +145,7 @@ describe("handleDevAutoLogin (GET /api/dev/auto-login)", () => {
 
     expect(response.status).toBe(307);
     expect(locationFor(response)).toBe("http://127.0.0.1:3000/agents");
-    expect(ensureWorkspaceForUserMock).toHaveBeenCalledWith("user-1", "ws-1");
+    expect(ensureWorkspaceForUserMock).toHaveBeenCalledWith("user-1");
     expect(insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",

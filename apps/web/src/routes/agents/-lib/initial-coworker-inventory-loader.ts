@@ -126,7 +126,11 @@ export const loadInitialCoworkerInventory = createServerFn({ method: "GET" }).ha
     return EMPTY_INITIAL_COWORKER_INVENTORY_DATA;
   }
 
-  const workspaceId = await resolveSessionPrincipalWorkspaceId(userId);
+  const workspaceId = await resolveSessionPrincipalWorkspaceId(
+    userId,
+    (sessionData?.session as { activeOrganizationId?: string | null } | undefined)
+      ?.activeOrganizationId ?? null,
+  );
   const result = await queryInitialCoworkerInventory({
     userId,
     workspaceId,

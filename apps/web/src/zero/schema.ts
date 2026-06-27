@@ -79,14 +79,13 @@ export const sandboxFileTable = table("sandboxFile")
   .primaryKey("id");
 
 export const workspaceMemberTable = table("workspaceMember")
-  .from("workspace_member")
+  .from("member")
   .columns({
     id: string(),
-    workspaceId: string().from("workspace_id"),
+    workspaceId: string().from("organization_id"),
     userId: string().from("user_id"),
     role: string<"owner" | "admin" | "member">(),
     createdAt: number().from("created_at"),
-    updatedAt: number().from("updated_at"),
   })
   .primaryKey("id");
 

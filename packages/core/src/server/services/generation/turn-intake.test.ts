@@ -22,7 +22,6 @@ const {
   resolveSelectedPlatformSkillSlugsMock,
   updateSetMock,
   updateWhereMock,
-  userFindFirstMock,
   coworkerFindFirstMock,
 } = vi.hoisted(() => {
   const insertReturningMock = vi.fn();
@@ -35,14 +34,12 @@ const {
 
   const generationFindFirstMock = vi.fn();
   const conversationFindFirstMock = vi.fn();
-  const userFindFirstMock = vi.fn();
   const coworkerFindFirstMock = vi.fn();
 
   const dbMock = {
     query: {
       generation: { findFirst: generationFindFirstMock },
       conversation: { findFirst: conversationFindFirstMock },
-      user: { findFirst: userFindFirstMock },
       coworker: { findFirst: coworkerFindFirstMock },
     },
     insert: insertMock,
@@ -77,7 +74,6 @@ const {
     resolveSelectedPlatformSkillSlugsMock: vi.fn(),
     updateSetMock,
     updateWhereMock,
-    userFindFirstMock,
     coworkerFindFirstMock,
   };
 });
@@ -161,7 +157,6 @@ describe("TurnIntake.startGeneration", () => {
     createTraceIdMock.mockReturnValue("trace-1");
     generationFindFirstMock.mockResolvedValue(null);
     conversationFindFirstMock.mockResolvedValue(null);
-    userFindFirstMock.mockResolvedValue({ activeWorkspaceId: "workspace-1" });
     coworkerFindFirstMock.mockResolvedValue(null);
     checkModelAccessForUserMock.mockResolvedValue({ allowed: true });
     resolveSelectedPlatformSkillSlugsMock.mockResolvedValue([]);
@@ -199,6 +194,25 @@ describe("TurnIntake.startGeneration", () => {
     expect(markConversationGenerationStartedMock).toHaveBeenCalledWith({
       conversationId: "conv-new",
       generationId: "gen-new",
+    });
+  });
+
+  it("uses the explicit active Workspace for new chat conversations", async () => {
+    insertReturningMock
+      .mockResolvedValueOnce([chatConversation({ id: "conv-new" })])
+      .mockResolvedValueOnce([{ id: "msg-user" }])
+      .mockResolvedValueOnce([{ id: "gen-new" }]);
+
+    await createTurnIntake().startGeneration({
+      content: "Write a status update",
+      userId: "user-1",
+      workspaceId: "workspace-active",
+    });
+
+    expect(insertedValues()[0]).toMatchObject({
+      userId: "user-1",
+      workspaceId: "workspace-active",
+      type: "chat",
     });
   });
 

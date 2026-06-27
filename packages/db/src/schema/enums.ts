@@ -5,12 +5,6 @@ export const magicLinkRequestStatusEnum = pgEnum("magic_link_request_status", [
   "consumed",
 ]);
 
-export const workspaceMembershipRoleEnum = pgEnum("workspace_membership_role", [
-  "owner",
-  "admin",
-  "member",
-]);
-
 export const billingOwnerTypeEnum = pgEnum("billing_owner_type", ["user", "workspace"]);
 export const providerAuthSourceEnum = pgEnum("provider_auth_source", ["user", "shared"]);
 export const workspaceMcpServerKindEnum = pgEnum("workspace_mcp_server_kind", ["mcp"]);

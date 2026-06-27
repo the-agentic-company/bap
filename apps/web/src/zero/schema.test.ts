@@ -67,7 +67,6 @@ describe("Zero schema allowlist", () => {
       "userId",
       "role",
       "createdAt",
-      "updatedAt",
     ]);
   });
 

@@ -4,6 +4,26 @@ Bap is a platform for building and running agents across connected company tools
 
 ## Language
 
+**Workspace**:
+The shared Bap boundary for members, billing, conversations, **Coworkers**, **File Assets**, skills, and **Workspace MCP Servers**. Bap uses **Workspace** as the canonical product term even when lower-level auth or billing systems use organization-like language.
+_Avoid_: organization, team, company, tenant
+
+**Active Workspace**:
+The **Workspace** a **User** is currently operating in when a Bap surface or runtime needs a default **Workspace**. A **User** can belong to many **Workspaces**, but only one is active for default-scoped actions at a time.
+_Avoid_: current organization, selected tenant, default team
+
+**Workspace Invitation**:
+A request for an email recipient to join a **Workspace** with a specific role. A **Workspace Invitation** is distinct from **Workspace Membership** because access is not granted until the invitation is accepted.
+_Avoid_: member add, invite email, access grant
+
+**Workspace Membership**:
+The relationship that gives a **User** access to one **Workspace** with a workspace role. **Workspace Membership** answers whether a **User** can access **Workspace** resources; resource-specific authorizations such as **Workspace MCP Authorization** remain separate.
+_Avoid_: organization member, team member, account access
+
+**Platform Admin**:
+A **User** with global Bap administrative authority for platform, support, or internal operations. A **Platform Admin** role is separate from **Workspace Membership** roles; being a **Platform Admin** does not itself describe ordinary membership in a specific **Workspace**.
+_Avoid_: internal admin, super user, workspace admin
+
 **Connected Account**:
 One credential-bearing connection for one **Integration Type** under a **Connected Identity**. A **User** can have many **Connected Accounts** for the same **Integration Type**, and one conversation can use more than one of them.
 _Avoid_: account, provider account, integration account

@@ -216,6 +216,7 @@ const startGeneration = protectedProcedure
         debugForceRuntimeNoProgressAfterPrompt: input.debugForceRuntimeNoProgressAfterPrompt,
         selectedPlatformSkillSlugs: input.selectedPlatformSkillSlugs,
         fileAttachments: input.fileAttachments,
+        workspaceId: context.workspaceId,
         spawnDepth,
       });
 

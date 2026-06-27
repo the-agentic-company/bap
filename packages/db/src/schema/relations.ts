@@ -52,6 +52,7 @@ import {
   workspaceMcpAuthorization,
   workspaceMcpServer,
   workspaceMember,
+  invitation,
 } from "./tables";
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -59,8 +60,8 @@ export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
   dailyActivities: many(userDailyActivity),
   webPushSubscriptions: many(webPushSubscription),
-  workspacesCreated: many(workspace),
   workspaceMemberships: many(workspaceMember),
+  workspaceInvitations: many(invitation),
   conversations: many(conversation),
   fileAssetsCreated: many(fileAsset),
   uploadSessions: many(uploadSession),
@@ -103,12 +104,9 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
-export const workspaceRelations = relations(workspace, ({ one, many }) => ({
-  createdByUser: one(user, {
-    fields: [workspace.createdByUserId],
-    references: [user.id],
-  }),
+export const workspaceRelations = relations(workspace, ({ many }) => ({
   members: many(workspaceMember),
+  invitations: many(invitation),
   conversations: many(conversation),
   fileAssets: many(fileAsset),
   uploadSessions: many(uploadSession),
@@ -120,11 +118,22 @@ export const workspaceRelations = relations(workspace, ({ one, many }) => ({
 
 export const workspaceMemberRelations = relations(workspaceMember, ({ one }) => ({
   workspace: one(workspace, {
-    fields: [workspaceMember.workspaceId],
+    fields: [workspaceMember.organizationId],
     references: [workspace.id],
   }),
   user: one(user, {
     fields: [workspaceMember.userId],
+    references: [user.id],
+  }),
+}));
+
+export const invitationRelations = relations(invitation, ({ one }) => ({
+  workspace: one(workspace, {
+    fields: [invitation.organizationId],
+    references: [workspace.id],
+  }),
+  user: one(user, {
+    fields: [invitation.inviterId],
     references: [user.id],
   }),
 }));

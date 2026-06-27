@@ -163,6 +163,32 @@ export async function resolveBootstrapSourceUser(
   return null;
 }
 
+async function tableExists(client: PgClient, tableName: string): Promise<boolean> {
+  const result = await client.query<{ exists: boolean }>(
+    `
+      select exists (
+        select 1
+        from information_schema.tables
+        where table_schema = current_schema()
+          and table_name = $1
+      )
+    `,
+    [tableName],
+  );
+  return result.rows[0]?.exists ?? false;
+}
+
+async function resolveSourceWorkspaceTables(client: PgClient): Promise<{
+  workspaceTable: "organization" | "workspace";
+  memberTable: "member" | "workspace_member";
+}> {
+  if ((await tableExists(client, "organization")) && (await tableExists(client, "member"))) {
+    return { workspaceTable: "organization", memberTable: "member" };
+  }
+
+  return { workspaceTable: "workspace", memberTable: "workspace_member" };
+}
+
 async function writeWorktreeSessionArtifacts(params: {
   metadata: InstanceMetadata;
   email: string;
@@ -234,22 +260,22 @@ export async function ensureStandaloneDeveloperSession(metadata: InstanceMetadat
         await client.query(
           `
             insert into "user" (
-              id, name, email, email_verified, active_workspace_id, role,
+              id, name, email, email_verified, role,
               created_at, updated_at, onboarded_at
             )
-            values ($1, $2, $3, true, $4, 'admin', $5, $5, $5)
+            values ($1, $2, $3, true, 'admin', $4, $4, $4)
           `,
-          [effectiveUserId, DEFAULT_WORKTREE_DEV_USER_NAME, email, workspaceId, now],
+          [effectiveUserId, DEFAULT_WORKTREE_DEV_USER_NAME, email, now],
         );
       }
 
       const existingWorkspace = await client.query<{ id: string }>(
         `
           select w.id
-          from workspace_member wm
-          join workspace w on w.id = wm.workspace_id
+          from member wm
+          join organization w on w.id = wm.organization_id
           where wm.user_id = $1
-          order by w.updated_at desc, w.created_at desc
+          order by w.updated_at desc nulls last, w.created_at desc
           limit 1
         `,
         [effectiveUserId],
@@ -259,22 +285,21 @@ export async function ensureStandaloneDeveloperSession(metadata: InstanceMetadat
       if (!existingWorkspace.rows[0]) {
         await client.query(
           `
-            insert into workspace (id, name, slug, created_by_user_id, created_at, updated_at)
-            values ($1, $2, $3, $4, $5, $5)
+            insert into organization (id, name, slug, billing_plan_id, autumn_customer_id, created_at, updated_at)
+            values ($1, $2, $3, 'free', null, $4, $4)
           `,
           [
             effectiveWorkspaceId,
             `${DEFAULT_WORKTREE_DEV_USER_NAME}'s workspace`,
             `worktree-${metadata.instanceId}`.slice(0, 63),
-            effectiveUserId,
             now,
           ],
         );
         await client.query(
           `
-            insert into workspace_member (id, workspace_id, user_id, role, created_at, updated_at)
-            values ($1, $2, $3, 'owner', $4, $4)
-            on conflict (workspace_id, user_id) do nothing
+            insert into member (id, organization_id, user_id, role, created_at)
+            values ($1, $2, $3, 'owner', $4)
+            on conflict (organization_id, user_id) do nothing
           `,
           [randomUUID(), effectiveWorkspaceId, effectiveUserId, now],
         );
@@ -283,24 +308,23 @@ export async function ensureStandaloneDeveloperSession(metadata: InstanceMetadat
       await client.query(
         `
           update "user"
-          set active_workspace_id = $2,
-              email_verified = true,
-              onboarded_at = coalesce(onboarded_at, $3),
+          set email_verified = true,
+              onboarded_at = coalesce(onboarded_at, $2),
               role = 'admin',
-              updated_at = $3
+              updated_at = $2
           where id = $1
         `,
-        [effectiveUserId, effectiveWorkspaceId, now],
+        [effectiveUserId, now],
       );
       await client.query(
         `
           insert into "session" (
             id, expires_at, token, created_at, updated_at,
-            ip_address, user_agent, user_id, impersonated_by
+            ip_address, user_agent, user_id, impersonated_by, active_organization_id
           )
-          values ($1, $2, $3, $4, $4, '127.0.0.1', 'bap-worktree-bootstrap', $5, null)
+          values ($1, $2, $3, $4, $4, '127.0.0.1', 'bap-worktree-bootstrap', $5, null, $6)
         `,
-        [randomUUID(), expiresAt, sessionToken, now, effectiveUserId],
+        [randomUUID(), expiresAt, sessionToken, now, effectiveUserId, effectiveWorkspaceId],
       );
       await client.query("commit");
 
@@ -327,6 +351,20 @@ export function remapWorkspaceRows(
     ...row,
     created_by_user_id: targetUserId,
   }));
+}
+
+export function remapWorkspaceMemberRows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return rows.map((row) => {
+    if (!("workspace_id" in row)) {
+      return row;
+    }
+
+    const { workspace_id, ...rest } = row;
+    return {
+      ...rest,
+      organization_id: workspace_id,
+    };
+  });
 }
 
 export function remapCustomIntegrationRows(
@@ -752,13 +790,27 @@ export async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promis
           fail(`Source user ${sourceUser.email} was not found in the source database.`);
         }
 
+        const sourceWorkspaceTables = await resolveSourceWorkspaceTables(sourceClient);
+        const sourceWorkspaceIdColumn =
+          sourceWorkspaceTables.memberTable === "member" ? "organization_id" : "workspace_id";
+        const activeWorkspaceSubquery =
+          sourceWorkspaceTables.workspaceTable === "organization"
+            ? `
+                select active_organization_id
+                from "session"
+                where user_id = $1
+                  and active_organization_id is not null
+                order by updated_at desc nulls last, created_at desc
+                limit 1
+              `
+            : `select active_workspace_id from "user" where id = $1`;
         const workspaceRows = await sourceClient.query<Record<string, unknown>>(
           `
           select distinct w.*
-          from workspace_member wm
-          join workspace w on w.id = wm.workspace_id
+          from ${sourceWorkspaceTables.memberTable} wm
+          join ${sourceWorkspaceTables.workspaceTable} w on w.id = wm.${sourceWorkspaceIdColumn}
           where wm.user_id = $1
-             or w.id = (select active_workspace_id from "user" where id = $1)
+             or w.id = (${activeWorkspaceSubquery})
         `,
           [sourceUser.id],
         );
@@ -769,7 +821,7 @@ export async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promis
         const workspaceMemberRows =
           workspaceIds.length > 0
             ? await sourceClient.query<Record<string, unknown>>(
-                `select * from workspace_member where user_id = $1 and workspace_id = any($2::text[])`,
+                `select * from ${sourceWorkspaceTables.memberTable} where user_id = $1 and ${sourceWorkspaceIdColumn} = any($2::text[])`,
                 [sourceUser.id, workspaceIds],
               )
             : { rows: [] };
@@ -919,11 +971,16 @@ export async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promis
           await upsertRows(targetClient, "user", userRows, ["id"]);
           await upsertRows(
             targetClient,
-            "workspace",
+            "organization",
             remapWorkspaceRows(workspaceRows.rows, sourceUser.id),
             ["id"],
           );
-          await upsertRows(targetClient, "workspace_member", workspaceMemberRows.rows, ["id"]);
+          await upsertRows(
+            targetClient,
+            "member",
+            remapWorkspaceMemberRows(workspaceMemberRows.rows),
+            ["id"],
+          );
           await upsertRows(targetClient, "account", accountRows, ["id"]);
           await upsertRows(targetClient, "connected_identity", connectedIdentityRows, ["id"]);
           await upsertRows(targetClient, "integration", integrationRows, ["id"]);
@@ -996,6 +1053,7 @@ export async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promis
                 user_agent: "bap-worktree-bootstrap",
                 user_id: sourceUser.id,
                 impersonated_by: null,
+                active_organization_id: workspaceIds[0] ?? null,
               },
             ],
             ["id"],

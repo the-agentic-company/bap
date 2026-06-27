@@ -13,7 +13,11 @@ export async function handleZeroQueryRequest(request: Request): Promise<Response
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const workspaceId = await resolveSessionPrincipalWorkspaceId(userId);
+  const workspaceId = await resolveSessionPrincipalWorkspaceId(
+    userId,
+    (sessionData?.session as { activeOrganizationId?: string | null } | undefined)
+      ?.activeOrganizationId ?? null,
+  );
   const ctx: ZeroQueryContext = { userId, workspaceId };
 
   const result = await handleQueryRequest({
