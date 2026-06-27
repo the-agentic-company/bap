@@ -1,6 +1,7 @@
 export type WorktreeStackConfig = {
   slot: number;
   slotLabel: string;
+  zeroCachePort: number;
   daytonaApiPort: number;
   daytonaProxyPort: number;
   daytonaSshGatewayPort: number;
@@ -62,6 +63,7 @@ export function buildWorktreeHostPorts(slot: number): WorktreeHostPort[] {
   return [
     { name: "app", port: port(37, slot) },
     { name: "ws", port: port(47, slot) },
+    { name: "zero-cache", port: stack.zeroCachePort },
     { name: "daytona-api", port: stack.daytonaApiPort },
     { name: "daytona-proxy", port: stack.daytonaProxyPort },
     { name: "daytona-ssh", port: stack.daytonaSshGatewayPort },
@@ -93,26 +95,18 @@ export function buildSharedStackConfig(): SharedStackConfig {
     victoriaLogsPort: parsePort(process.env.BAP_VICTORIA_LOGS_PORT, 9428),
     victoriaTracesPort: parsePort(process.env.BAP_VICTORIA_TRACES_PORT, 10428),
     vmalertPort: parsePort(process.env.BAP_VMALERT_PORT, 8880),
-    postgresVolume:
-      process.env.BAP_POSTGRES_VOLUME || `${composeProjectName}_bap_postgres_data`,
-    redisVolume:
-      process.env.BAP_REDIS_VOLUME || `${composeProjectName}_bap_redis_data`,
-    minioVolume:
-      process.env.BAP_MINIO_VOLUME || `${composeProjectName}_bap_minio_data`,
+    postgresVolume: process.env.BAP_POSTGRES_VOLUME || `${composeProjectName}_bap_postgres_data`,
+    redisVolume: process.env.BAP_REDIS_VOLUME || `${composeProjectName}_bap_redis_data`,
+    minioVolume: process.env.BAP_MINIO_VOLUME || `${composeProjectName}_bap_minio_data`,
     alertmanagerVolume:
-      process.env.BAP_ALERTMANAGER_VOLUME ||
-      `${composeProjectName}_bap_alertmanager_data`,
-    grafanaVolume:
-      process.env.BAP_GRAFANA_VOLUME || `${composeProjectName}_bap_grafana_data`,
+      process.env.BAP_ALERTMANAGER_VOLUME || `${composeProjectName}_bap_alertmanager_data`,
+    grafanaVolume: process.env.BAP_GRAFANA_VOLUME || `${composeProjectName}_bap_grafana_data`,
     victoriaMetricsVolume:
-      process.env.BAP_VICTORIA_METRICS_VOLUME ||
-      `${composeProjectName}_bap_victoria_metrics_data`,
+      process.env.BAP_VICTORIA_METRICS_VOLUME || `${composeProjectName}_bap_victoria_metrics_data`,
     victoriaLogsVolume:
-      process.env.BAP_VICTORIA_LOGS_VOLUME ||
-      `${composeProjectName}_bap_victoria_logs_data`,
+      process.env.BAP_VICTORIA_LOGS_VOLUME || `${composeProjectName}_bap_victoria_logs_data`,
     victoriaTracesVolume:
-      process.env.BAP_VICTORIA_TRACES_VOLUME ||
-      `${composeProjectName}_bap_victoria_traces_data`,
+      process.env.BAP_VICTORIA_TRACES_VOLUME || `${composeProjectName}_bap_victoria_traces_data`,
   };
 }
 
@@ -123,6 +117,7 @@ export function buildWorktreeStackConfig(instanceId: string, slot: number): Work
   return {
     slot,
     slotLabel,
+    zeroCachePort: port(58, slot),
     daytonaApiPort: port(33, slot),
     daytonaProxyPort: port(40, slot),
     daytonaSshGatewayPort: port(22, slot),
