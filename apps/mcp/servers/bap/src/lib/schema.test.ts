@@ -14,7 +14,10 @@ import { schema as coworkerUpdateDocumentSchema } from "../tools/coworker.update
 import { schema as coworkerUploadDocumentSchema } from "../tools/coworker.uploadDocument";
 import { schema as fileAssetCompleteUploadSchema } from "../tools/fileAsset.completeUpload";
 import { schema as fileAssetCreateUploadSchema } from "../tools/fileAsset.createUpload";
-import { schema as skillAddSchema } from "../tools/skill.add";
+import { schema as integrationSchema } from "../tools/integration";
+import { schema as membersSchema } from "../tools/members";
+import { schema as skillSchema } from "../tools/skill";
+import { schema as workspaceMcpServerSchema } from "../tools/workspaceMcpServer";
 import { schema as workspaceListSchema } from "../tools/workspace.list";
 import { schema as workspaceCreateSchema } from "../tools/workspace.create";
 import { schema as workspaceAddMembersSchema } from "../tools/workspace.addMembers";
@@ -36,7 +39,10 @@ const bapToolSchemas = {
   "coworker.uploadDocument": coworkerUploadDocumentSchema,
   "fileAsset.completeUpload": fileAssetCompleteUploadSchema,
   "fileAsset.createUpload": fileAssetCreateUploadSchema,
-  "skill.add": skillAddSchema,
+  integration: integrationSchema,
+  members: membersSchema,
+  skill: skillSchema,
+  workspaceMcpServer: workspaceMcpServerSchema,
   "workspace.addMembers": workspaceAddMembersSchema,
   "workspace.create": workspaceCreateSchema,
   "workspace.list": workspaceListSchema,

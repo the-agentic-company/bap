@@ -29,6 +29,12 @@ import {
   handleCoworkerRun,
   handleCoworkerSetStatus,
 } from "./handlers";
+import {
+  handleIntegration,
+  handleMembers,
+  handleSkill,
+  handleWorkspaceMcpServerAction,
+} from "./handlers.remote-management";
 
 function sampleCoworkerDetails() {
   return {
@@ -574,5 +580,144 @@ describe("MCP handlers (remote management)", () => {
       status: "completed",
       file: { url: "https://files.example/signed", filename: "out.pdf" },
     });
+  });
+});
+
+describe("MCP remote-management dispatchers", () => {
+  it("integration routes every action", async () => {
+    const list = { integration: { list: vi.fn().mockResolvedValue([{ id: "i1", type: "gmail" }]) } };
+    await handleIntegration({ client: list as never, action: "list" });
+    expect(list.integration.list).toHaveBeenCalled();
+
+    const status = { integration: { list: vi.fn().mockResolvedValue([{ id: "i1", type: "gmail" }]) } };
+    await handleIntegration({ client: status as never, action: "status", type: "gmail" });
+    expect(status.integration.list).toHaveBeenCalled();
+
+    const connect = {
+      integration: { getAuthUrl: vi.fn().mockResolvedValue({ authUrl: "https://oauth/gmail" }) },
+    };
+    const connectResult = await handleIntegration({
+      client: connect as never,
+      action: "connect",
+      type: "gmail",
+      redirectUrl: "https://app",
+    });
+    expect(connectResult).toMatchObject({ type: "gmail", authUrl: "https://oauth/gmail" });
+
+    const disc = { integration: { disconnect: vi.fn().mockResolvedValue({ success: true }) } };
+    await handleIntegration({ client: disc as never, action: "disconnect", id: "i1" });
+    expect(disc.integration.disconnect).toHaveBeenCalledWith({ id: "i1" });
+  });
+
+  it("integration validates connect/disconnect inputs", async () => {
+    await expect(handleIntegration({ client: {} as never, action: "connect" })).rejects.toThrow(
+      /type/,
+    );
+    await expect(handleIntegration({ client: {} as never, action: "disconnect" })).rejects.toThrow(
+      /id/,
+    );
+  });
+
+  it("workspaceMcpServer routes every action", async () => {
+    const c = {
+      workspaceMcpServer: {
+        list: vi.fn().mockResolvedValue({ workspaceId: "w", membershipRole: "admin", sources: [] }),
+        create: vi.fn().mockResolvedValue({ id: "s1" }),
+        update: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+        setCredential: vi.fn().mockResolvedValue(undefined),
+        startOAuth: vi.fn().mockResolvedValue({ authUrl: "https://oauth/mcp" }),
+        disconnectCredential: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+    const base = { name: "X", namespace: "x", endpoint: "https://x.example/mcp" };
+    await handleWorkspaceMcpServerAction({ client: c as never, action: "list" });
+    await handleWorkspaceMcpServerAction({ client: c as never, action: "create", ...base });
+    await handleWorkspaceMcpServerAction({ client: c as never, action: "update", id: "s1", ...base });
+    await handleWorkspaceMcpServerAction({ client: c as never, action: "delete", id: "s1" });
+    await handleWorkspaceMcpServerAction({
+      client: c as never,
+      action: "setCredential",
+      id: "s1",
+      secret: "sek",
+    });
+    const oauth = await handleWorkspaceMcpServerAction({
+      client: c as never,
+      action: "connect",
+      id: "s1",
+      redirectUrl: "https://app",
+    });
+    await handleWorkspaceMcpServerAction({ client: c as never, action: "disconnect", id: "s1" });
+    expect(c.workspaceMcpServer.create).toHaveBeenCalled();
+    expect(c.workspaceMcpServer.startOAuth).toHaveBeenCalledWith({
+      workspaceMcpServerId: "s1",
+      redirectUrl: "https://app",
+    });
+    expect(oauth).toMatchObject({ authUrl: "https://oauth/mcp" });
+  });
+
+  it("workspaceMcpServer validates required fields", async () => {
+    await expect(
+      handleWorkspaceMcpServerAction({ client: {} as never, action: "create" }),
+    ).rejects.toThrow(/requires a name/);
+    await expect(
+      handleWorkspaceMcpServerAction({ client: {} as never, action: "setCredential", id: "s1" }),
+    ).rejects.toThrow(/secret/);
+  });
+
+  it("skill routes every action", async () => {
+    const c = {
+      skill: {
+        list: vi.fn().mockResolvedValue([]),
+        get: vi.fn().mockResolvedValue({ id: "k1" }),
+        import: vi.fn().mockResolvedValue({ id: "k1" }),
+        update: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+        share: vi.fn().mockResolvedValue({ visibility: "public" }),
+        unshare: vi.fn().mockResolvedValue({ visibility: "private" }),
+      },
+    };
+    await handleSkill({ client: c as never, action: "list" });
+    await handleSkill({ client: c as never, action: "get", id: "k1" });
+    await handleSkill({ client: c as never, action: "add", files: [{ path: "SKILL.md", contentBase64: "eA==" }] });
+    await handleSkill({ client: c as never, action: "update", id: "k1", description: "d" });
+    await handleSkill({ client: c as never, action: "delete", id: "k1" });
+    await handleSkill({ client: c as never, action: "setEnabled", id: "k1", enabled: false });
+    await handleSkill({ client: c as never, action: "setVisibility", id: "k1", visibility: "public" });
+    expect(c.skill.import).toHaveBeenCalled();
+    expect(c.skill.share).toHaveBeenCalledWith({ id: "k1" });
+  });
+
+  it("skill validates required fields", async () => {
+    await expect(handleSkill({ client: {} as never, action: "get" })).rejects.toThrow(/id/);
+    await expect(handleSkill({ client: {} as never, action: "add" })).rejects.toThrow(/files/);
+  });
+
+  it("members routes every action", async () => {
+    const c = {
+      billing: {
+        members: vi.fn().mockResolvedValue({ membershipRole: "owner", members: [] }),
+        setMemberRole: vi.fn().mockResolvedValue({ email: "a@b.c", role: "admin" }),
+        removeMember: vi.fn().mockResolvedValue({ email: "a@b.c" }),
+      },
+    };
+    await handleMembers({ client: c as never, action: "list", workspaceId: "w" });
+    await handleMembers({ client: c as never, action: "setRole", workspaceId: "w", email: "a@b.c", role: "admin" });
+    await handleMembers({ client: c as never, action: "remove", workspaceId: "w", email: "a@b.c" });
+    expect(c.billing.setMemberRole).toHaveBeenCalledWith({
+      workspaceId: "w",
+      email: "a@b.c",
+      role: "admin",
+    });
+    expect(c.billing.removeMember).toHaveBeenCalledWith({ workspaceId: "w", email: "a@b.c" });
+  });
+
+  it("members validates required fields", async () => {
+    await expect(
+      handleMembers({ client: {} as never, action: "setRole", workspaceId: "w" }),
+    ).rejects.toThrow(/email/);
+    await expect(
+      handleMembers({ client: {} as never, action: "remove", workspaceId: "w" }),
+    ).rejects.toThrow(/email/);
   });
 });
