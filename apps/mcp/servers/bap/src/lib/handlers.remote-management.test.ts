@@ -26,6 +26,8 @@ import {
   handleCoworkerExport,
   handleCoworkerClone,
   handleCoworkerDownloadFile,
+  handleCoworkerRun,
+  handleCoworkerSetStatus,
 } from "./handlers";
 
 function sampleCoworkerDetails() {
@@ -218,6 +220,59 @@ describe("MCP handlers (remote management)", () => {
     await expect(handleRunCancel({ client: client as never, runId: "r1" })).rejects.toThrow(
       /already "completed"/,
     );
+    expect(client.generation.cancelGeneration).not.toHaveBeenCalled();
+  });
+
+  it("coworker.run with runId + userInput provides input to the run", async () => {
+    const client = {
+      coworker: {
+        getRun: vi.fn().mockResolvedValue({ status: "needs_user_input", conversationId: "c1" }),
+      },
+      generation: {
+        startGeneration: vi.fn().mockResolvedValue({ conversationId: "c1", generationId: "g2" }),
+      },
+    };
+    const result = await handleCoworkerRun({
+      client: client as never,
+      runId: "r1",
+      userInput: "go",
+    });
+    expect(client.generation.startGeneration).toHaveBeenCalledWith({
+      conversationId: "c1",
+      content: "go",
+    });
+    expect(result).toMatchObject({ status: "completed", run: { runId: "r1", generationId: "g2" } });
+  });
+
+  it("coworker.run with runId and no userInput resumes the run", async () => {
+    const client = {
+      coworker: { getRun: vi.fn().mockResolvedValue({ status: "paused", generationId: "g1" }) },
+      generation: { resumeGeneration: vi.fn().mockResolvedValue({ success: true }) },
+    };
+    const result = await handleCoworkerRun({ client: client as never, runId: "r1" });
+    expect(client.generation.resumeGeneration).toHaveBeenCalledWith({ generationId: "g1" });
+    expect(result).toMatchObject({ status: "completed", run: { runId: "r1", success: true } });
+  });
+
+  it("coworker.setStatus with runId and status off cancels the run", async () => {
+    const client = {
+      coworker: { getRun: vi.fn().mockResolvedValue({ status: "running", generationId: "g1" }) },
+      generation: { cancelGeneration: vi.fn().mockResolvedValue({ success: true }) },
+    };
+    const result = await handleCoworkerSetStatus({
+      client: client as never,
+      runId: "r1",
+      status: "off",
+    });
+    expect(client.generation.cancelGeneration).toHaveBeenCalledWith({ generationId: "g1" });
+    expect(result).toMatchObject({ status: "completed", runId: "r1", success: true });
+  });
+
+  it("coworker.setStatus with runId and status on is rejected", async () => {
+    const client = { coworker: { getRun: vi.fn() }, generation: { cancelGeneration: vi.fn() } };
+    await expect(
+      handleCoworkerSetStatus({ client: client as never, runId: "r1", status: "on" }),
+    ).rejects.toThrow(/status "off"/);
     expect(client.generation.cancelGeneration).not.toHaveBeenCalled();
   });
 

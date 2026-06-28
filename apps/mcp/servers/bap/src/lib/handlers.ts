@@ -334,9 +334,26 @@ export async function handleCoworkerSetFavorite(params: {
 
 export async function handleCoworkerSetStatus(params: {
   client: BapApiClient;
-  reference: string;
+  reference?: string;
+  runId?: string;
   status: "on" | "off";
 }) {
+  // Cancel an in-flight run rather than toggling a coworker.
+  if (params.runId) {
+    if (params.status !== "off") {
+      throw new Error(
+        'Use status "off" with runId to cancel a run. To start a run, use coworker.run.',
+      );
+    }
+    return handleRunCancel({ client: params.client, runId: params.runId });
+  }
+
+  if (!params.reference) {
+    throw new Error(
+      "coworker.setStatus requires either reference (a coworker) or runId (a run to cancel).",
+    );
+  }
+
   const runner = createCoworkerRunner(params.client);
   const coworkerId = await runner.resolveReference(params.reference);
   await params.client.coworker.update({ id: coworkerId, status: params.status });
@@ -365,13 +382,34 @@ export async function handleCoworkerDelete(params: {
 
 export async function handleCoworkerRun(params: {
   client: BapApiClient;
-  reference: string;
+  reference?: string;
+  runId?: string;
   payload?: unknown;
   userInput?: string;
   fileAttachments?: FileAttachmentInput[];
 }) {
-  const runner = createCoworkerRunner(params.client);
   const trustedUserInput = params.userInput?.trim();
+
+  // Continue an existing run instead of starting a new one.
+  if (params.runId) {
+    const run =
+      trustedUserInput && trustedUserInput.length > 0
+        ? await handleRunProvideInput({
+            client: params.client,
+            runId: params.runId,
+            userInput: trustedUserInput,
+          })
+        : await handleRunResume({ client: params.client, runId: params.runId });
+    return { status: "completed" as const, run };
+  }
+
+  if (!params.reference) {
+    throw new Error(
+      "coworker.run requires either reference (to start a run) or runId (to continue an existing run).",
+    );
+  }
+
+  const runner = createCoworkerRunner(params.client);
   return {
     status: "completed" as const,
     run: await runner.run(params.reference, params.payload, {
