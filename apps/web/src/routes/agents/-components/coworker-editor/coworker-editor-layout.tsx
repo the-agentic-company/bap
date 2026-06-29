@@ -7,7 +7,6 @@ import {
   Loader2,
   MessageSquare,
   Pencil,
-  Play,
   Shield,
   Trash2,
   Wrench,
@@ -95,9 +94,6 @@ export function CoworkerEditorMobileLayout({
           </AnimatedTab>
           <AnimatedTab value="instruction" className="px-2.5">
             <Pencil className="h-4 w-4" aria-label={t("Instruction")} />
-          </AnimatedTab>
-          <AnimatedTab value="runs" className="px-2.5">
-            <Play className="h-4 w-4" aria-label={t("Runs")} />
           </AnimatedTab>
           <AnimatedTab value="docs" className="px-2.5">
             <FileText className="h-4 w-4" aria-label={t("Docs")} />

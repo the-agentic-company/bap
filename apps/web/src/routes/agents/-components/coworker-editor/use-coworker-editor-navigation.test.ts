@@ -42,8 +42,8 @@ describe("useCoworkerEditorNavigation", () => {
     mocks.navigate.mockReset();
   });
 
-  it("updates the runs tab through relative search navigation", () => {
-    const { hook } = renderNavigationHook();
+  it("normalizes the removed runs tab back to instruction", () => {
+    const { hook } = renderNavigationHook({ isRunsRoute: true, routeBaseTab: "runs" });
 
     act(() => {
       hook.result.current.handleTabChange("runs");
@@ -51,7 +51,7 @@ describe("useCoworkerEditorNavigation", () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: ".",
-      search: { tab: "runs" },
+      search: {},
       replace: true,
     });
   });
@@ -103,7 +103,7 @@ describe("useCoworkerEditorNavigation", () => {
     });
   });
 
-  it("navigates selected runs through editor search params", () => {
+  it("navigates selected runs through the coworker info page", () => {
     const { hook } = renderNavigationHook();
 
     act(() => {
@@ -111,8 +111,9 @@ describe("useCoworkerEditorNavigation", () => {
     });
 
     expect(mocks.navigate).toHaveBeenCalledWith({
-      to: ".",
-      search: { tab: "runs", run: "run-2" },
+      to: "/agents/info/$slug",
+      params: { slug: "slug-1" },
+      search: { run: "run-2" },
     });
   });
 });

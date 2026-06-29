@@ -350,12 +350,12 @@ export function useCoworkerEditorPage({
     if (!isRunsRoute) {
       setSelectedRunId(null);
       if (routeBaseTab) {
-        setActiveTab(routeBaseTab);
+        setActiveTab(routeBaseTab === "runs" ? "instruction" : routeBaseTab);
       }
       return;
     }
 
-    setActiveTab("runs");
+    setActiveTab("instruction");
     setSelectedRunId(routeRunId);
   }, [isRunsRoute, routeBaseTab, routeRunId]);
   const [isInstructionPanelCollapsed, setIsInstructionPanelCollapsed] = useState(true);
@@ -588,8 +588,6 @@ export function useCoworkerEditorPage({
     handleRunClick,
     handleRemoteRunClick,
     handleTabChange,
-    handleSelectRun,
-    handleBackToRuns,
   } = useCoworkerEditorNavigation({
     coworkerId,
     coworkerRouteSlug,
@@ -705,9 +703,7 @@ export function useCoworkerEditorPage({
         isEmailTriggerPersisted,
         copiedForwardingField,
         documents: activeCoworker?.documents ?? EMPTY_COWORKER_DOCUMENTS,
-        runs,
         activeTab,
-        selectedRunId,
         isRunDisabled,
         isRunning,
         isResettingRuns: resetCoworkerRuns.isPending,
@@ -723,8 +719,6 @@ export function useCoworkerEditorPage({
         onTabChange: handleTabChange,
         onRun: handleRunClick,
         onResetRunsAndEnable: handleResetRunsAndEnable,
-        onSelectRun: handleSelectRun,
-        onBackToRuns: handleBackToRuns,
         onNameChange: handleNameChange,
         onDescriptionChange: handleDescriptionChange,
         onUsernameChange: handleUsernameChange,
@@ -784,7 +778,6 @@ export function useCoworkerEditorPage({
       downloadingDocumentIds,
       executorSourceEntries,
       handleAutoApproveChange,
-      handleBackToRuns,
       handleClearIntegrations,
       handleClearSkills,
       handleClearWorkspaceMcpServers,
@@ -809,7 +802,6 @@ export function useCoworkerEditorPage({
       handleScheduleTimeChange,
       handleScheduleTypeChange,
       handleSelectAllIntegrations,
-      handleSelectRun,
       handleStatusChange,
       handleTabChange,
       handleToggleIntegrationChecked,
@@ -845,7 +837,6 @@ export function useCoworkerEditorPage({
       scheduleTime,
       scheduleTimezone,
       scheduleType,
-      selectedRunId,
       selectedSkillKeys,
       setRequiresUserInput,
       setShowDeleteDialog,
