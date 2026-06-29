@@ -276,7 +276,7 @@ export function CoworkerSettingsPanel({
   return (
     <div className="flex h-full flex-col">
       {!hideHeader && (
-        <div className="bg-background/95 border-border/60 flex min-h-12 items-center border-b px-4 py-2 backdrop-blur-sm">
+        <div className="bg-background/95 border-border/60 flex h-12 items-center border-b px-4 py-2 backdrop-blur-sm">
           <div className="flex w-full items-center justify-between gap-3">
             <div className="min-w-0 flex-1 overflow-x-auto">
               <AnimatedTabs
