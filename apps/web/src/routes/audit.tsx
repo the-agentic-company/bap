@@ -26,7 +26,7 @@ export const Route = createFileRoute("/audit")({
   beforeLoad: async ({ location }) => ({
     sessionContext: await requireSession(location.href),
   }),
-  head: () => ({ meta: [{ title: "Agentic Audit - Bap" }] }),
+  head: () => ({ meta: [{ title: "AI Audit - Bap" }] }),
   component: AgenticAuditPage,
 });
 
@@ -393,16 +393,16 @@ function AuditExperience() {
           <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background">
             <img
               src={AUDITOR_AVATAR_SRC}
-              alt="Agentic Auditor avatar"
+              alt="AI Auditor avatar"
               className="h-full w-full object-cover"
             />
           </div>
           <div className="min-w-0">
             <p className="truncate text-base leading-tight font-semibold md:text-lg">
-              Agentic Auditor
+              AI Auditor
             </p>
             <p className="text-muted-foreground max-w-[48rem] truncate text-xs">
-              Researches you and your company to help create tailored agentic workflow.
+              Research that creates AI agents tailored to how you work.
             </p>
           </div>
         </div>
@@ -575,7 +575,7 @@ function AuditForm({
             <StepHeader
               eyebrow="Step 1"
               title="Share your contact details"
-              description="Enter your email and LinkedIn profile. Our Agentic Auditor starts the audit right away and gives you results in minutes."
+              description="Enter your email and LinkedIn profile. Our AI Auditor starts the research right away and gives you results in minutes."
             />
             <div className="grid w-full items-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(19rem,0.85fr)]">
               <div className="border-border/70 bg-card space-y-5 rounded-xl border p-5">
@@ -635,7 +635,7 @@ function AuditOutputPreview({ email }: { email: string }) {
         <div className="min-w-0">
           <p className="text-sm font-semibold">What you&apos;ll get</p>
           <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-            Agentic research that gathers context to create agents that help you work.
+            AI agents built for you — tailored to your role, your company, and your tools.
           </p>
         </div>
       </div>
@@ -1220,12 +1220,12 @@ function LinkedInSearchLoader({ linkedinUrl }: { linkedinUrl: string }) {
         status: "active" as const,
         text: "Finding the current company and public profile summary...",
       },
-      { status: "done" as const, text: "Person context captured for the workflow audit." },
+      { status: "done" as const, text: "Profile captured." },
       {
         status: "active" as const,
         text: "Connecting this role to relevant agent opportunities...",
       },
-      { status: "done" as const, text: "LinkedIn signals are ready for review." },
+      { status: "done" as const, text: "LinkedIn profile — done." },
     ],
     [domain],
   );
@@ -1235,7 +1235,7 @@ function LinkedInSearchLoader({ linkedinUrl }: { linkedinUrl: string }) {
       <StepHeader
         eyebrow="Step 3"
         title="Searching LinkedIn"
-        description="Agentic Auditor is finding the person profile and current company details."
+        description="AI Auditor is finding your profile and current company details."
       />
       <SearchProgressLoader
         visual="linkedin"
@@ -1252,10 +1252,10 @@ function WebsiteSearchLoader() {
     () => [
       { status: "active" as const, text: "Opening the company website..." },
       { status: "done" as const, text: "Page loaded. Reading product and positioning." },
-      { status: "active" as const, text: "Extracting audience, offer, and workflow language..." },
+      { status: "active" as const, text: "Reading what the company offers and how they talk about it..." },
       { status: "done" as const, text: "Company context captured for the audit." },
       { status: "active" as const, text: "Finding brand colors and page patterns..." },
-      { status: "done" as const, text: "Website signals are ready for review." },
+      { status: "done" as const, text: "Website — done." },
     ],
     [],
   );
@@ -1265,7 +1265,7 @@ function WebsiteSearchLoader() {
       <StepHeader
         eyebrow="Step 2"
         title="Searching the company website"
-        description="Agentic Auditor is reading the website to understand the company, brand, and workflow opportunities."
+        description="AI Auditor is reading the website to understand your company and how it works."
       />
       <SearchProgressLoader
         visual="website"
@@ -1406,7 +1406,7 @@ function LinkedInStep({
       <StepHeader
         eyebrow="Step 3"
         title="LinkedIn profile"
-        description="Review the person and current company signals before the agent recommendations use them."
+        description="Here's what we found about you and your company."
       />
       <PersonCard
         name={personDisplay.name}
@@ -1475,7 +1475,7 @@ function WebsiteStep({
       <StepHeader
         eyebrow="Step 2"
         title="Company website"
-        description="The website crawl provides positioning, visual cues, and brand language for the agents."
+        description="We read your company website to understand what you do and how you talk about it."
       />
       <CompanyCard
         name={companyDisplay.name}
@@ -1567,8 +1567,8 @@ function IntegrationsStep({
     <>
       <StepHeader
         eyebrow="Step 4"
-        title="Tool survey"
-        description="Agentic Auditor turns the raw profile and website into hypotheses about the tool categories this person or company likely uses."
+        title="Your tools"
+        description="Based on your role and company, here are the tools you probably use. Confirm the ones that match."
       />
       <div className="border-border/70 border-t pt-4">
         <ToolSurveyHeader result={result} selectedToolCount={selectedToolCount} />
@@ -1597,7 +1597,7 @@ function ToolSurveyHeader({
   return (
     <div className="mb-4 flex items-start justify-between gap-3">
       <div>
-        <p className="text-sm font-semibold">Tool hypotheses</p>
+        <p className="text-sm font-semibold">Your likely tools</p>
         <p className="text-muted-foreground mt-1 text-xs">{getToolSurveySourceLabel(result)}</p>
       </div>
       <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
@@ -1609,7 +1609,7 @@ function ToolSurveyHeader({
 
 function getToolSurveySourceLabel(result: AuditResult | null): string {
   return result
-    ? "Grounded in the raw LinkedIn profile and website JSON."
+    ? "Based on your LinkedIn profile and company website."
     : "Waiting for the profile pass before building the survey.";
 }
 
@@ -1961,10 +1961,10 @@ function AgentRecommendationsHeader({
       <StepHeader
         eyebrow="Step 5"
         title="Agent recommendations"
-        description={`Based on ${companyName}'s profile, website, and tool stack, these are the agents most likely to create value first.`}
+        description={`Based on ${companyName}'s profile, website, and tools, here are the agents that will save you the most time.`}
       />
       <div className="bg-brand-light text-brand-dark w-fit rounded-full px-2.5 py-1 text-xs font-medium">
-        {toolCount} tools analysed · {recommendationCount || 4} agent ideas
+        {toolCount} tools analysed · {recommendationCount || 4} agents ready
       </div>
     </div>
   );
