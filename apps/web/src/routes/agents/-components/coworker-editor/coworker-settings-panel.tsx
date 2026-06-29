@@ -85,7 +85,6 @@ type CoworkerSettingsPanelProps = {
   documents: CoworkerDocumentRecord[];
   runs: CoworkerRunListItem[] | undefined;
   activeTab: CoworkerTab;
-  selectedRunId: string | null;
   isRunDisabled: boolean;
   isRunning: boolean;
   isResettingRuns: boolean;
@@ -103,8 +102,6 @@ type CoworkerSettingsPanelProps = {
   onTabChange: (tab: CoworkerTab) => void;
   onRun: (event: React.MouseEvent) => void;
   onResetRunsAndEnable: () => void | Promise<void>;
-  onSelectRun: (runId: string) => void;
-  onBackToRuns: () => void;
   onNameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onDescriptionChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onUsernameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -189,7 +186,6 @@ export function CoworkerSettingsPanel({
   documents,
   runs,
   activeTab,
-  selectedRunId,
   isRunDisabled,
   isRunning,
   isResettingRuns,
@@ -205,8 +201,6 @@ export function CoworkerSettingsPanel({
   onTabChange,
   onRun,
   onResetRunsAndEnable,
-  onSelectRun,
-  onBackToRuns,
   onNameChange,
   onDescriptionChange,
   onUsernameChange,
@@ -282,10 +276,14 @@ export function CoworkerSettingsPanel({
   return (
     <div className="flex h-full flex-col">
       {!hideHeader && (
-        <div className="flex flex-col gap-1.5 px-3 py-1.5">
+        <div className="bg-background/95 border-border/60 flex flex-col gap-2 border-b px-4 py-3 backdrop-blur-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1 overflow-x-auto">
-              <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
+              <AnimatedTabs
+                activeKey={activeTab}
+                onTabChange={handleTabChange}
+                className="gap-1"
+              >
                 <AnimatedTab value="instruction">
                   <T>Instruction</T>
                 </AnimatedTab>
@@ -308,7 +306,7 @@ export function CoworkerSettingsPanel({
                   <T>Saving...</T>
                 </span>
               ) : null}
-              <div className="flex items-center gap-1.5">
+              <div className="bg-muted/60 flex items-center gap-1.5 rounded-full px-2.5 py-1">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={status}
@@ -335,7 +333,7 @@ export function CoworkerSettingsPanel({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1.5 px-3 text-xs font-medium"
+                className="h-8 gap-1.5 rounded-xl px-3 text-xs font-medium"
                 onClick={onRun}
                 disabled={isRunDisabled}
               >
@@ -349,7 +347,7 @@ export function CoworkerSettingsPanel({
               <button
                 type="button"
                 onClick={handleOpenDeleteDialog}
-                className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-8 w-8 items-center justify-center rounded-xl transition-colors"
                 aria-label={t("Delete coworker")}
               >
                 <Trash2 className="h-4 w-4" />
@@ -358,7 +356,7 @@ export function CoworkerSettingsPanel({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-xl transition-colors"
                   aria-label={t("Close panel")}
                 >
                   <X className="h-4 w-4" />
@@ -415,14 +413,7 @@ export function CoworkerSettingsPanel({
           </div>
         </div>
       ) : null}
-      <div
-        className={cn(
-          "min-h-0 flex-1",
-          activeTab === "runs" && selectedRunId
-            ? "flex flex-col overflow-hidden"
-            : "overflow-y-auto",
-        )}
-      >
+      <div className={cn("min-h-0 flex-1", "overflow-y-auto")}>
         {activeTab === "instruction" ? (
           <CoworkerInstructionsPanel
             coworkerId={coworkerId}
@@ -473,16 +464,6 @@ export function CoworkerSettingsPanel({
             onRotateCoworkerAlias={onRotateCoworkerAlias}
             onDisableCoworkerAlias={onDisableCoworkerAlias}
             onCreateCoworkerAlias={onCreateCoworkerAlias}
-          />
-        ) : null}
-        {activeTab === "runs" ? (
-          <CoworkerRunsPanel
-            runs={runs}
-            selectedRunId={selectedRunId}
-            coworkerId={coworkerId}
-            coworkerRouteSlug={coworkerRouteSlug}
-            onSelectRun={onSelectRun}
-            onBackToRuns={onBackToRuns}
           />
         ) : null}
         {activeTab === "docs" ? (

@@ -58,7 +58,9 @@ const BASE_TRIGGERS = [
   { value: EMAIL_FORWARDED_TRIGGER_TYPE, label: msg("Email forwarded to Bap") },
 ];
 
-const LEGACY_HIDDEN_TRIGGERS = [{ value: "gmail.new_email", label: msg("New Gmail email") }];
+const LEGACY_HIDDEN_TRIGGERS = [
+  { value: "gmail.new_email", label: msg("New Gmail email") },
+];
 const COWORKER_RUN_BACKLOG_LIMIT = 5;
 const COWORKER_RUN_BACKLOG_STATUSES = new Set([
   "needs_user_input",
@@ -113,28 +115,39 @@ export function useCoworkerEditorPage({
   const shouldLoadRunImpersonationTarget = Boolean(
     routeRunId && !activeIsLoading && !activeCoworker,
   );
-  const { data: coworkerImpersonationTarget, isLoading: isCoworkerImpersonationTargetLoading } =
-    useCoworkerImpersonationTarget(coworkerId, {
-      enabled: shouldLoadCoworkerImpersonationTarget,
-    });
-  const { data: runImpersonationTarget, isLoading: isRunImpersonationTargetLoading } =
-    useCoworkerRunImpersonationTarget(routeRunId, coworkerId, {
-      enabled: shouldLoadRunImpersonationTarget,
-    });
-  const impersonationTarget = routeRunId ? runImpersonationTarget : coworkerImpersonationTarget;
+  const {
+    data: coworkerImpersonationTarget,
+    isLoading: isCoworkerImpersonationTargetLoading,
+  } = useCoworkerImpersonationTarget(coworkerId, {
+    enabled: shouldLoadCoworkerImpersonationTarget,
+  });
+  const {
+    data: runImpersonationTarget,
+    isLoading: isRunImpersonationTargetLoading,
+  } = useCoworkerRunImpersonationTarget(routeRunId, coworkerId, {
+    enabled: shouldLoadRunImpersonationTarget,
+  });
+  const impersonationTarget = routeRunId
+    ? runImpersonationTarget
+    : coworkerImpersonationTarget;
   const isImpersonationTargetLoading =
-    (shouldLoadCoworkerImpersonationTarget && isCoworkerImpersonationTargetLoading) ||
+    (shouldLoadCoworkerImpersonationTarget &&
+      isCoworkerImpersonationTargetLoading) ||
     (shouldLoadRunImpersonationTarget && isRunImpersonationTargetLoading);
 
-  const [hasResolvedInitialCoworker, setHasResolvedInitialCoworker] = useState(false);
-  const { data: platformSkills, isLoading: isPlatformSkillsLoading } = usePlatformSkillList();
-  const { data: accessibleSkills, isLoading: isAccessibleSkillsLoading } = useSkillList();
+  const [hasResolvedInitialCoworker, setHasResolvedInitialCoworker] =
+    useState(false);
+  const { data: platformSkills, isLoading: isPlatformSkillsLoading } =
+    usePlatformSkillList();
+  const { data: accessibleSkills, isLoading: isAccessibleSkillsLoading } =
+    useSkillList();
   const { data: executorSourceData } = useWorkspaceMcpServerList();
   const { data: providerAuthStatus } = useProviderAuthStatus();
   const { data: remoteIntegrationTargetsData } = useRemoteIntegrationTargets({
     enabled: isAdmin,
   });
-  const { data: coworkerForwardingAlias } = useCoworkerForwardingAlias(coworkerId);
+  const { data: coworkerForwardingAlias } =
+    useCoworkerForwardingAlias(coworkerId);
   const { data: runs, refetch: refetchRuns } = useCoworkerRuns(coworkerId);
   const updateCoworker = useUpdateCoworker();
 
@@ -211,13 +224,14 @@ export function useCoworkerEditorPage({
     persistCoworker,
     handleCoworkerSyncFromChat,
   } = coworkerDefinitionEditor;
-  const [showDisableAutoApproveDialog, setShowDisableAutoApproveDialog] = useState(false);
+  const [showDisableAutoApproveDialog, setShowDisableAutoApproveDialog] =
+    useState(false);
   const [activeTab, setActiveTab] = useState<CoworkerTab>("instruction");
-  const [remoteTargetEnv, setRemoteTargetEnv] = useState<RemoteIntegrationTargetEnv | null>(null);
+  const [remoteTargetEnv, setRemoteTargetEnv] =
+    useState<RemoteIntegrationTargetEnv | null>(null);
   const [remoteUserQuery, setRemoteUserQuery] = useState("");
-  const [selectedRemoteUser, setSelectedRemoteUser] = useState<RemoteIntegrationUserOption | null>(
-    null,
-  );
+  const [selectedRemoteUser, setSelectedRemoteUser] =
+    useState<RemoteIntegrationUserOption | null>(null);
   const builderChat = useCoworkerBuilderChat({
     coworkerId,
     loadedCoworkerId: activeCoworker?.id,
@@ -245,7 +259,8 @@ export function useCoworkerEditorPage({
     () => remoteIntegrationTargetsData?.targets ?? [],
     [remoteIntegrationTargetsData],
   );
-  const remoteUserSearchEnabled = isAdmin && activeTab === "admin" && Boolean(remoteTargetEnv);
+  const remoteUserSearchEnabled =
+    isAdmin && activeTab === "admin" && Boolean(remoteTargetEnv);
   const { data: remoteUserSearchData, isFetching: isRemoteUserSearchFetching } =
     useSearchRemoteIntegrationUsers(remoteTargetEnv, deferredRemoteUserQuery, {
       enabled: remoteUserSearchEnabled,
@@ -253,7 +268,8 @@ export function useCoworkerEditorPage({
     });
   const requiresResetBeforeEnable = useMemo(() => {
     const backlogRunCount =
-      runs?.filter((run) => COWORKER_RUN_BACKLOG_STATUSES.has(run.status)).length ?? 0;
+      runs?.filter((run) => COWORKER_RUN_BACKLOG_STATUSES.has(run.status))
+        .length ?? 0;
     return (
       activeCoworker?.disabledReason === "run_backlog_limit" ||
       backlogRunCount >= COWORKER_RUN_BACKLOG_LIMIT
@@ -262,11 +278,14 @@ export function useCoworkerEditorPage({
   const [selectedRunId, setSelectedRunId] = useState<string | null>(routeRunId);
   const hasSetMobileDefaultRef = useRef(false);
   const remoteUserOptions = useMemo(
-    () => (remoteUserSearchData?.users as RemoteIntegrationUserOption[] | undefined) ?? [],
+    () =>
+      (remoteUserSearchData?.users as
+        RemoteIntegrationUserOption[] | undefined) ?? [],
     [remoteUserSearchData],
   );
 
-  const coworkerForwardingAddress = coworkerForwardingAlias?.forwardingAddress ?? null;
+  const coworkerForwardingAddress =
+    coworkerForwardingAlias?.forwardingAddress ?? null;
   const actions = useCoworkerEditorActions({
     coworkerId,
     embedded,
@@ -306,7 +325,10 @@ export function useCoworkerEditorPage({
       return;
     }
 
-    const timeout = window.setTimeout(() => setHasResolvedInitialCoworker(true), 120);
+    const timeout = window.setTimeout(
+      () => setHasResolvedInitialCoworker(true),
+      120,
+    );
     return () => window.clearTimeout(timeout);
   }, [activeCoworker]);
 
@@ -324,12 +346,17 @@ export function useCoworkerEditorPage({
       return;
     }
 
-    if (remoteTargetEnv && availableRemoteIntegrationTargets.includes(remoteTargetEnv)) {
+    if (
+      remoteTargetEnv &&
+      availableRemoteIntegrationTargets.includes(remoteTargetEnv)
+    ) {
       return;
     }
 
     setRemoteTargetEnv(
-      availableRemoteIntegrationTargets.length > 0 ? availableRemoteIntegrationTargets[0] : null,
+      availableRemoteIntegrationTargets.length > 0
+        ? availableRemoteIntegrationTargets[0]
+        : null,
     );
   }, [availableRemoteIntegrationTargets, isAdmin, remoteTargetEnv]);
 
@@ -358,7 +385,8 @@ export function useCoworkerEditorPage({
     setActiveTab("instruction");
     setSelectedRunId(routeRunId);
   }, [isRunsRoute, routeBaseTab, routeRunId]);
-  const [isInstructionPanelCollapsed, setIsInstructionPanelCollapsed] = useState(true);
+  const [isInstructionPanelCollapsed, setIsInstructionPanelCollapsed] =
+    useState(true);
   const previousHasAgentInstructionsRef = useRef(false);
   const handleClose = useCallback(() => {
     setIsInstructionPanelCollapsed(true);
@@ -371,10 +399,16 @@ export function useCoworkerEditorPage({
       }),
     [providerAuthStatus],
   );
-  const hasActiveForwardingAlias = Boolean(coworkerForwardingAlias?.activeAlias);
-  const isEmailTriggerPersisted = activeCoworker?.triggerType === EMAIL_FORWARDED_TRIGGER_TYPE;
+  const hasActiveForwardingAlias = Boolean(
+    coworkerForwardingAlias?.activeAlias,
+  );
+  const isEmailTriggerPersisted =
+    activeCoworker?.triggerType === EMAIL_FORWARDED_TRIGGER_TYPE;
   const persistedLegacyTriggers = useMemo(
-    () => LEGACY_HIDDEN_TRIGGERS.filter(({ value }) => value === activeCoworker?.triggerType),
+    () =>
+      LEGACY_HIDDEN_TRIGGERS.filter(
+        ({ value }) => value === activeCoworker?.triggerType,
+      ),
     [activeCoworker?.triggerType],
   );
   const triggers = useMemo(
@@ -385,7 +419,9 @@ export function useCoworkerEditorPage({
     () => (coworkerId ? `coworker-builder:${coworkerId}` : "coworker-builder"),
     [coworkerId],
   );
-  const setSelectedSkillSlugs = useChatSkillStore((state) => state.setSelectedSkillSlugs);
+  const setSelectedSkillSlugs = useChatSkillStore(
+    (state) => state.setSelectedSkillSlugs,
+  );
   const selectedSkillKeys = allowedSkillSlugs;
   const availableSkills = useMemo(
     () => [
@@ -568,7 +604,8 @@ export function useCoworkerEditorPage({
     : "New Coworker";
 
   useEffect(() => {
-    const previousHasAgentInstructions = previousHasAgentInstructionsRef.current;
+    const previousHasAgentInstructions =
+      previousHasAgentInstructionsRef.current;
 
     if (!hasAgentInstructions) {
       setIsInstructionPanelCollapsed(true);
@@ -583,31 +620,32 @@ export function useCoworkerEditorPage({
     previousHasAgentInstructionsRef.current = true;
   }, [hasAgentInstructions]);
 
-  const isRunDisabled = !hasAgentInstructions || triggerCoworker.isPending || actions.isStartingRun;
-  const {
-    handleRunClick,
-    handleRemoteRunClick,
-    handleTabChange,
-  } = useCoworkerEditorNavigation({
-    coworkerId,
-    coworkerRouteSlug,
-    embedded,
-    isMobile,
-    isNestedRunsRoute,
-    isRunsRoute,
-    routeBaseTab,
-    remoteTargetEnv,
-    selectedRemoteUser,
-    setActiveTab,
-    setSelectedRunId,
-    runCoworker: handleRun,
-  });
+  const isRunDisabled =
+    !hasAgentInstructions || triggerCoworker.isPending || actions.isStartingRun;
+  const { handleRunClick, handleRemoteRunClick, handleTabChange } =
+    useCoworkerEditorNavigation({
+      coworkerId,
+      coworkerRouteSlug,
+      embedded,
+      isMobile,
+      isNestedRunsRoute,
+      isRunsRoute,
+      routeBaseTab,
+      remoteTargetEnv,
+      selectedRemoteUser,
+      setActiveTab,
+      setSelectedRunId,
+      runCoworker: handleRun,
+    });
   const handleRemoteTargetEnvChange = useCallback((value: string) => {
     setRemoteTargetEnv(value as RemoteIntegrationTargetEnv);
   }, []);
-  const handleRemoteUserQueryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setRemoteUserQuery(event.target.value);
-  }, []);
+  const handleRemoteUserQueryChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setRemoteUserQuery(event.target.value);
+    },
+    [],
+  );
   const chatPanel = useMemo(
     () =>
       createElement(CoworkerChatPanel, {
@@ -732,7 +770,8 @@ export function useCoworkerEditorPage({
         onClearSkills: handleClearSkills,
         onToggleSkillChecked: handleToggleSkillChecked,
         onClearWorkspaceMcpServers: handleClearWorkspaceMcpServers,
-        onToggleWorkspaceMcpServerChecked: handleToggleWorkspaceMcpServerChecked,
+        onToggleWorkspaceMcpServerChecked:
+          handleToggleWorkspaceMcpServerChecked,
         onRestrictToolsChange: handleRestrictToolsChange,
         onSelectAllIntegrations: handleSelectAllIntegrations,
         onClearIntegrations: handleClearIntegrations,
@@ -852,7 +891,10 @@ export function useCoworkerEditorPage({
   );
   const renderSettingsPanel = useCallback(
     ({ hideHeader = false }: { hideHeader?: boolean } = {}) =>
-      createElement(CoworkerSettingsPanel, { ...settingsPanelProps, hideHeader }),
+      createElement(CoworkerSettingsPanel, {
+        ...settingsPanelProps,
+        hideHeader,
+      }),
     [settingsPanelProps],
   );
   const autoApproveDialog = useMemo(
