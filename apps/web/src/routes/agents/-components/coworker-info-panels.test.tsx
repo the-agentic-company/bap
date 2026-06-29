@@ -57,7 +57,7 @@ vi.mock("posthog-js/react", () => ({
   usePostHog: () => ({ capture: vi.fn<() => void>() }),
 }));
 
-import { OutputPanel, RunDetailsPanel } from "./coworker-info-panels";
+import { formatLiveDuration, OutputPanel, RunDetailsPanel } from "./coworker-info-panels";
 
 const outputFile = {
   fileId: "file-1",
@@ -174,6 +174,14 @@ describe("RunDetailsPanel layout", () => {
 
     expect(container.firstElementChild?.className).toContain("min-w-0");
     expect(screen.getByTestId("chat-area").parentElement?.className).toContain("min-w-0");
+  });
+});
+
+describe("formatLiveDuration", () => {
+  it("keeps seconds visible for running durations", () => {
+    expect(formatLiveDuration(new Date(1_000_000), new Date(1_002_000))).toBe("2s");
+    expect(formatLiveDuration(new Date(1_000_000), new Date(1_065_000))).toBe("1m 5s");
+    expect(formatLiveDuration(new Date(1_000_000), new Date(4_723_000))).toBe("1h 2m 3s");
   });
 });
 

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -39,6 +40,7 @@ import { CoworkerInfoEmptyOutput } from "./coworker-info-empty-state";
 import {
   formatDuration,
   formatHeaderTimestamp,
+  formatLiveDuration,
   getRunStatusPresentation,
   getAdjacentMobilePanel,
   getMobilePanel,
@@ -91,6 +93,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     getMobilePanel(searchParams.get("tab") ?? "chat"),
   );
   const [mobilePanelDirection, setMobilePanelDirection] = useState(0);
+  const [runClockNow, setRunClockNow] = useState(() => Date.now());
   const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const shouldWaitForCoworkerList = !routeCoworkerId;
   const shouldWaitForCoworkerRuns = Boolean(requestedRunId || latestKnownRunId);
@@ -119,14 +122,33 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     return undefined;
   }, [messages]);
   const remoteRunSource = run.data ? extractRemoteRunSourceDetails(run.data) : null;
+
+  useEffect(() => {
+    if (run.data?.status !== "running") {
+      return;
+    }
+
+    setRunClockNow(Date.now());
+    const interval = window.setInterval(() => {
+      setRunClockNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [run.data?.status]);
+
   const headerRunMeta = useMemo(
     () => ({
       launchedAtLabel: formatHeaderTimestamp(run.data?.startedAt),
-      durationLabel: formatDuration(run.data?.startedAt, run.data?.finishedAt),
+      durationLabel:
+        run.data?.status === "running"
+          ? formatLiveDuration(run.data?.startedAt, runClockNow)
+          : formatDuration(run.data?.startedAt, run.data?.finishedAt),
       statusPresentation: getRunStatusPresentation(run.data?.status),
       runStatus: run.data?.status,
     }),
-    [run.data?.finishedAt, run.data?.startedAt, run.data?.status],
+    [run.data?.finishedAt, run.data?.startedAt, run.data?.status, runClockNow],
   );
   const shouldShowHeaderRunMeta = Boolean(run.data?.startedAt || run.data?.status);
   const hiddenErrorMessageContents = useMemo(() => {
@@ -346,7 +368,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
             <p className="text-muted-foreground min-w-0 shrink truncate text-sm">
               {headerRunMeta.launchedAtLabel} ·{" "}
               {headerRunMeta.runStatus === "running"
-                ? `running ${headerRunMeta.durationLabel}`
+                ? headerRunMeta.durationLabel
                 : `duration ${headerRunMeta.durationLabel}`}{" "}
               ·{" "}
               <span className={cn("font-semibold", headerRunMeta.statusPresentation.className)}>

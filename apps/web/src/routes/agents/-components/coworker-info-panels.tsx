@@ -131,6 +131,31 @@ export function formatDuration(startedAt?: Date | string | null, finishedAt?: Da
   return `${seconds}s`;
 }
 
+export function formatLiveDuration(
+  startedAt?: Date | string | null,
+  finishedAt?: Date | string | null,
+) {
+  const start = toDate(startedAt);
+  if (!start) {
+    return "Not available";
+  }
+
+  const finish = toDate(finishedAt) ?? new Date();
+  const durationMs = Math.max(0, finish.getTime() - start.getTime());
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
 export function formatHeaderTimestamp(value?: Date | string | null) {
   const date = toDate(value);
   if (!date) {
