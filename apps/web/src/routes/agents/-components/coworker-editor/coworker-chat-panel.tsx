@@ -76,7 +76,7 @@ export function CoworkerChatPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="bg-background/95 border-border/60 flex items-center justify-between border-b px-4 py-2 backdrop-blur-sm">
+      <div className="bg-background/95 border-border/60 flex items-center gap-2 border-b px-4 py-2 backdrop-blur-sm">
         <BackToRunLink />
         <ChatCopyButton
           conversationId={conversationId}
@@ -86,6 +86,7 @@ export function CoworkerChatPanel({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <ChatArea
           conversationId={conversationId}
+          compact
           forceCoworkerQuerySync
           onCoworkerSync={onCoworkerSync}
           coworkerIdForSync={coworkerId}

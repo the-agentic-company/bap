@@ -178,11 +178,12 @@ export function CoworkerEditorDesktopLayout({
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <DualPanelWorkspace
-        storageKey="coworker-editor-panels-v2"
-        defaultRightWidth={50}
-        minRightWidth={50}
+        storageKey="coworker-editor-panels-v3"
+        defaultRightWidth={75}
+        minLeftWidth={25}
+        minRightWidth={40}
         collapsible
-        collapsedSidebar
+        allowLeftPanelDragCollapse
         showExpandedCollapseButton={false}
         showTitles={false}
         rightCollapsed={rightCollapsed}

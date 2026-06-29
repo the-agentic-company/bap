@@ -386,7 +386,7 @@ export function useCoworkerEditorPage({
     setSelectedRunId(routeRunId);
   }, [isRunsRoute, routeBaseTab, routeRunId]);
   const [isInstructionPanelCollapsed, setIsInstructionPanelCollapsed] =
-    useState(true);
+    useState(false);
   const previousHasAgentInstructionsRef = useRef(false);
   const handleClose = useCallback(() => {
     setIsInstructionPanelCollapsed(true);
@@ -608,7 +608,6 @@ export function useCoworkerEditorPage({
       previousHasAgentInstructionsRef.current;
 
     if (!hasAgentInstructions) {
-      setIsInstructionPanelCollapsed(true);
       previousHasAgentInstructionsRef.current = false;
       return;
     }
