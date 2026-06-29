@@ -1,6 +1,6 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T } from "gt-react";
-import { AlertCircle, Download, History, Loader2, Pencil, Play } from "lucide-react";
+import { AlertCircle, ArrowLeft, Download, History, Loader2, Pencil, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   type PointerEvent as ReactPointerEvent,
@@ -271,6 +271,10 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     coworker.data?.username ?? coworkerListItem?.username ?? run.data?.coworkerUsername;
   const coworkerDefinition =
     coworker.data?.description?.trim() || coworkerListItem?.description?.trim();
+  const backToCoworkersHref = useMemo(() => {
+    const folderId = coworker.data?.folderId ?? coworkerListItem?.folderId ?? null;
+    return folderId ? `/agents/folders/${folderId}` : "/agents";
+  }, [coworker.data?.folderId, coworkerListItem?.folderId]);
 
   const detailsPanel = useMemo(
     () => (
@@ -316,6 +320,17 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     <section className="bg-background/95 z-10 hidden shrink-0 px-3 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:block md:px-6 md:py-3">
       <div className="flex min-h-10 items-center gap-2 md:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            asChild
+          >
+            <Link href={backToCoworkersHref} aria-label="Back to coworkers">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-visible">
             <CoworkerAvatar
               username={coworkerUsername}
