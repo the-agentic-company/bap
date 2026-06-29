@@ -10,6 +10,22 @@ export const RUNTIME_NO_PROGRESS_USER_MESSAGE =
   "The runtime stopped responding before producing any output. Please retry.";
 export const RUNTIME_PROGRESS_STALLED_USER_MESSAGE =
   "The runtime stopped making progress. Please retry.";
+export const SANDBOX_MISSING_USER_MESSAGE =
+  "The sandbox stopped while this run was still active. Retry the task to continue.";
+export const SANDBOX_CAPACITY_LIMIT_USER_MESSAGE =
+  "Sandbox capacity limit reached for your organization. This run could not start. Please contact support to increase your capacity.";
+
+export function resolveSandboxMissingUserMessage(ctx: GenerationContext): string {
+  const originalErrorName = ctx.debugInfo?.originalErrorName;
+  const originalErrorMessage = ctx.debugInfo?.originalErrorMessage;
+  if (
+    originalErrorName === "DaytonaValidationError" &&
+    originalErrorMessage?.includes("limit exceeded")
+  ) {
+    return SANDBOX_CAPACITY_LIMIT_USER_MESSAGE;
+  }
+  return SANDBOX_MISSING_USER_MESSAGE;
+}
 
 export async function probeOpenCodeAssistantMessageError(input: {
   runtimeClient: RuntimeHarnessClient;

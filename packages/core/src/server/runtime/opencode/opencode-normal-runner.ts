@@ -15,6 +15,7 @@ import {
   formatErrorMessage,
   isBootstrapTimeoutError,
   resolveRuntimeNoProgressTimeoutMs,
+  resolveSandboxMissingUserMessage,
 } from "./opencode-runner-support";
 import { runNormalRunnerBootstrap } from "./opencode-runner-bootstrap";
 import { RuntimeNoProgressWatchdog } from "./opencode-runner-watchdog";
@@ -663,8 +664,7 @@ export class OpenCodeNormalRunner {
       }
       if (runtimeFailure === "sandbox_missing") {
         this.callbacks.setCompletionReason(ctx, "sandbox_missing");
-        ctx.errorMessage =
-          "The sandbox stopped while this run was still active. Retry the task to continue.";
+        ctx.errorMessage = resolveSandboxMissingUserMessage(ctx);
       } else if (runtimeFailure === "broken_runtime_state") {
         this.callbacks.setCompletionReason(ctx, "broken_runtime_state");
         ctx.errorMessage =
