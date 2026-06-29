@@ -102,17 +102,17 @@ function BackToRunLink() {
   const backHref = useContext(CoworkerChatPanelBackHrefContext);
 
   if (!backHref) {
-    return <div className="h-8 w-8" aria-hidden="true" />;
+    return <div className="h-9 w-9" aria-hidden="true" />;
   }
 
   return (
     <Link
       href={backHref}
-      className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-8 items-center gap-1 rounded-xl px-2.5 text-xs font-medium transition-colors"
+      className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium transition-colors"
       title={t("Back to run")}
       aria-label={t("Back to run")}
     >
-      <ArrowLeft className="h-4 w-4" />
+      <ArrowLeft className="h-[18px] w-[18px]" />
       <T>Back to run</T>
     </Link>
   );
