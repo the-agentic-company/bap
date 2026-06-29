@@ -366,10 +366,10 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           </h1>
           {shouldShowHeaderRunMeta ? (
             <p className="text-muted-foreground min-w-0 shrink truncate text-sm">
-              {headerRunMeta.launchedAtLabel} ·{" "}
+              {headerRunMeta.launchedAtLabel} · duration:{" "}
               {headerRunMeta.runStatus === "running"
                 ? headerRunMeta.durationLabel
-                : `duration ${headerRunMeta.durationLabel}`}{" "}
+                : headerRunMeta.durationLabel}{" "}
               ·{" "}
               <span className={cn("font-semibold", headerRunMeta.statusPresentation.className)}>
                 {headerRunMeta.statusPresentation.label}
