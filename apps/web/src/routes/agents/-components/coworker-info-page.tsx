@@ -464,12 +464,47 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     </section>
   );
 
+  const mobileHeaderSection = (
+    <section className="bg-background/95 z-10 shrink-0 px-4 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:hidden">
+      <div className="flex min-h-10 items-center gap-2.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          asChild
+        >
+          <Link href={backToCoworkersHref} aria-label="Back to coworkers">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-visible">
+          <CoworkerAvatar
+            username={coworkerUsername}
+            size={40}
+            scale={82}
+            className="rounded-none"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-sm leading-tight font-semibold">{coworkerName}</h1>
+          {shouldShowHeaderRunMeta ? (
+            <p className="text-muted-foreground truncate text-xs">
+              {headerRunMeta.statusPresentation.label}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+
   if (!run.data && !coworkerRuns.data?.length) {
     return (
       <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 min-w-0 flex-col overflow-hidden md:h-dvh">
         {headerSection}
 
         <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
+          {mobileHeaderSection}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto md:hidden">
             <div className="px-4 pt-4 pb-4">
               <div className="border-border bg-card min-h-[26rem] rounded-xl border">
@@ -510,6 +545,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
 
       <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
+        {mobileHeaderSection}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:hidden">
           <div

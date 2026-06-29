@@ -150,10 +150,9 @@ describe("CoworkerInfoPage back link", () => {
   it("links back to the coworker's folder when a folderId exists", () => {
     render(<CoworkerInfoPage coworkerSlug="folder-coworker" />);
 
-    expect(screen.getByLabelText("Back to coworkers")).toHaveAttribute(
-      "href",
-      "/agents/folders/folder-123",
-    );
+    for (const link of screen.getAllByLabelText("Back to coworkers")) {
+      expect(link).toHaveAttribute("href", "/agents/folders/folder-123");
+    }
   });
 
   it("links back to the coworkers root when the coworker is not in a folder", () => {
@@ -179,6 +178,8 @@ describe("CoworkerInfoPage back link", () => {
 
     render(<CoworkerInfoPage coworkerSlug="root-coworker" />);
 
-    expect(screen.getByLabelText("Back to coworkers")).toHaveAttribute("href", "/agents");
+    for (const link of screen.getAllByLabelText("Back to coworkers")) {
+      expect(link).toHaveAttribute("href", "/agents");
+    }
   });
 });
