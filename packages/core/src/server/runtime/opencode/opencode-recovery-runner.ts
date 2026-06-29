@@ -28,6 +28,7 @@ import type {
 } from "../../services/generation/types";
 import { OpenCodeTurnEventBridge } from "./opencode-turn-events";
 import { buildOpenCodeRuntimeModelConfig } from "./model-config";
+import { resolveSandboxMissingUserMessage } from "./opencode-runner-support";
 
 export type OpenCodeRecoveryReattachOptions = {
   allowSnapshotRestore?: boolean;
@@ -396,8 +397,7 @@ export class OpenCodeRecoveryRunner {
       }
       if (runtimeFailure === "sandbox_missing") {
         this.callbacks.setCompletionReason(ctx, "sandbox_missing");
-        ctx.errorMessage =
-          "The sandbox stopped while this run was still active. Retry the task to continue.";
+        ctx.errorMessage = resolveSandboxMissingUserMessage(ctx);
       } else if (runtimeFailure === "broken_runtime_state") {
         this.callbacks.setCompletionReason(ctx, "broken_runtime_state");
         ctx.errorMessage =
