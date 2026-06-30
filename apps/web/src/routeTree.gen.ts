@@ -88,6 +88,7 @@ import { Route as AppChatRouteImport } from './routes/_app/chat'
 import { Route as AgentsRunsRouteRouteImport } from './routes/agents/runs/route'
 import { Route as ApiRpcIndexRouteImport } from './routes/api/rpc/index'
 import { Route as AgentsRunsIndexRouteImport } from './routes/agents/runs/index'
+import { Route as PublicCasUsageIndexRouteImport } from './routes/_public/cas-usage.index'
 import { Route as AppChatIndexRouteImport } from './routes/_app/chat/index'
 import { Route as ToolboxSourcesNewRouteImport } from './routes/toolbox/sources/new'
 import { Route as ToolboxSourcesIdRouteImport } from './routes/toolbox/sources/$id'
@@ -115,6 +116,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AgentsInfoSlugRouteImport } from './routes/agents/info/$slug'
 import { Route as AgentsFoldersFolderIdRouteImport } from './routes/agents/folders/$folderId'
 import { Route as AgentsDeployTemplateIdRouteImport } from './routes/agents/deploy/$templateId'
+import { Route as PublicCasUsageVerticalRouteImport } from './routes/_public/cas-usage.$vertical'
 import { Route as AuthSignInTokenRouteImport } from './routes/_auth/sign-in.$token'
 import { Route as AppChatConversationIdRouteImport } from './routes/_app/chat/$conversationId'
 import { Route as AgentsRunsIdRouteRouteImport } from './routes/agents/runs/$id/route'
@@ -566,6 +568,11 @@ const AgentsRunsIndexRoute = AgentsRunsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AgentsRunsRouteRoute,
 } as any)
+const PublicCasUsageIndexRoute = PublicCasUsageIndexRouteImport.update({
+  id: '/cas-usage/',
+  path: '/cas-usage/',
+  getParentRoute: () => PublicRoute,
+} as any)
 const AppChatIndexRoute = AppChatIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -704,6 +711,11 @@ const AgentsDeployTemplateIdRoute = AgentsDeployTemplateIdRouteImport.update({
   id: '/deploy/$templateId',
   path: '/deploy/$templateId',
   getParentRoute: () => AgentsRouteRoute,
+} as any)
+const PublicCasUsageVerticalRoute = PublicCasUsageVerticalRouteImport.update({
+  id: '/cas-usage/$vertical',
+  path: '/cas-usage/$vertical',
+  getParentRoute: () => PublicRoute,
 } as any)
 const AuthSignInTokenRoute = AuthSignInTokenRouteImport.update({
   id: '/sign-in/$token',
@@ -1107,6 +1119,7 @@ export interface FileRoutesByFullPath {
   '/agents/runs/$id': typeof AgentsRunsIdRouteRouteWithChildren
   '/chat/$conversationId': typeof AppChatConversationIdRoute
   '/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
+  '/cas-usage/$vertical': typeof PublicCasUsageVerticalRoute
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
   '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
@@ -1134,6 +1147,7 @@ export interface FileRoutesByFullPath {
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
   '/chat/': typeof AppChatIndexRoute
+  '/cas-usage/': typeof PublicCasUsageIndexRoute
   '/agents/runs/': typeof AgentsRunsIndexRoute
   '/api/rpc/': typeof ApiRpcIndexRoute
   '/sign-in/$token/confirm': typeof AuthSignInTokenConfirmRoute
@@ -1258,6 +1272,7 @@ export interface FileRoutesByTo {
   '/toolbox': typeof ToolboxIndexRoute
   '/chat/$conversationId': typeof AppChatConversationIdRoute
   '/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
+  '/cas-usage/$vertical': typeof PublicCasUsageVerticalRoute
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
   '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
@@ -1285,6 +1300,7 @@ export interface FileRoutesByTo {
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
   '/chat': typeof AppChatIndexRoute
+  '/cas-usage': typeof PublicCasUsageIndexRoute
   '/agents/runs': typeof AgentsRunsIndexRoute
   '/api/rpc': typeof ApiRpcIndexRoute
   '/sign-in/$token/confirm': typeof AuthSignInTokenConfirmRoute
@@ -1424,6 +1440,7 @@ export interface FileRoutesById {
   '/agents/runs/$id': typeof AgentsRunsIdRouteRouteWithChildren
   '/_app/chat/$conversationId': typeof AppChatConversationIdRoute
   '/_auth/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
+  '/_public/cas-usage/$vertical': typeof PublicCasUsageVerticalRoute
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
   '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
@@ -1451,6 +1468,7 @@ export interface FileRoutesById {
   '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
   '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
   '/_app/chat/': typeof AppChatIndexRoute
+  '/_public/cas-usage/': typeof PublicCasUsageIndexRoute
   '/agents/runs/': typeof AgentsRunsIndexRoute
   '/api/rpc/': typeof ApiRpcIndexRoute
   '/_auth/sign-in/$token/confirm': typeof AuthSignInTokenConfirmRoute
@@ -1588,6 +1606,7 @@ export interface FileRouteTypes {
     | '/agents/runs/$id'
     | '/chat/$conversationId'
     | '/sign-in/$token'
+    | '/cas-usage/$vertical'
     | '/agents/deploy/$templateId'
     | '/agents/folders/$folderId'
     | '/agents/info/$slug'
@@ -1615,6 +1634,7 @@ export interface FileRouteTypes {
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
     | '/chat/'
+    | '/cas-usage/'
     | '/agents/runs/'
     | '/api/rpc/'
     | '/sign-in/$token/confirm'
@@ -1739,6 +1759,7 @@ export interface FileRouteTypes {
     | '/toolbox'
     | '/chat/$conversationId'
     | '/sign-in/$token'
+    | '/cas-usage/$vertical'
     | '/agents/deploy/$templateId'
     | '/agents/folders/$folderId'
     | '/agents/info/$slug'
@@ -1766,6 +1787,7 @@ export interface FileRouteTypes {
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
     | '/chat'
+    | '/cas-usage'
     | '/agents/runs'
     | '/api/rpc'
     | '/sign-in/$token/confirm'
@@ -1904,6 +1926,7 @@ export interface FileRouteTypes {
     | '/agents/runs/$id'
     | '/_app/chat/$conversationId'
     | '/_auth/sign-in/$token'
+    | '/_public/cas-usage/$vertical'
     | '/agents/deploy/$templateId'
     | '/agents/folders/$folderId'
     | '/agents/info/$slug'
@@ -1931,6 +1954,7 @@ export interface FileRouteTypes {
     | '/toolbox/sources/$id'
     | '/toolbox/sources/new'
     | '/_app/chat/'
+    | '/_public/cas-usage/'
     | '/agents/runs/'
     | '/api/rpc/'
     | '/_auth/sign-in/$token/confirm'
@@ -2635,6 +2659,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsRunsIndexRouteImport
       parentRoute: typeof AgentsRunsRouteRoute
     }
+    '/_public/cas-usage/': {
+      id: '/_public/cas-usage/'
+      path: '/cas-usage'
+      fullPath: '/cas-usage/'
+      preLoaderRoute: typeof PublicCasUsageIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_app/chat/': {
       id: '/_app/chat/'
       path: '/'
@@ -2823,6 +2854,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/agents/deploy/$templateId'
       preLoaderRoute: typeof AgentsDeployTemplateIdRouteImport
       parentRoute: typeof AgentsRouteRoute
+    }
+    '/_public/cas-usage/$vertical': {
+      id: '/_public/cas-usage/$vertical'
+      path: '/cas-usage/$vertical'
+      fullPath: '/cas-usage/$vertical'
+      preLoaderRoute: typeof PublicCasUsageVerticalRouteImport
+      parentRoute: typeof PublicRoute
     }
     '/_auth/sign-in/$token': {
       id: '/_auth/sign-in/$token'
@@ -3525,6 +3563,8 @@ interface PublicRouteChildren {
   PublicTemplatesRoute: typeof PublicTemplatesRoute
   PublicUploadRoute: typeof PublicUploadRoute
   PublicIndexRoute: typeof PublicIndexRoute
+  PublicCasUsageVerticalRoute: typeof PublicCasUsageVerticalRoute
+  PublicCasUsageIndexRoute: typeof PublicCasUsageIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
@@ -3534,6 +3574,8 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicTemplatesRoute: PublicTemplatesRoute,
   PublicUploadRoute: PublicUploadRoute,
   PublicIndexRoute: PublicIndexRoute,
+  PublicCasUsageVerticalRoute: PublicCasUsageVerticalRoute,
+  PublicCasUsageIndexRoute: PublicCasUsageIndexRoute,
 }
 
 const PublicRouteWithChildren =
