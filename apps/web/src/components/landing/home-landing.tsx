@@ -27,6 +27,7 @@ import {
   clearPendingCoworkerPrompt,
   getPendingCoworkerGenerationContent,
   readPendingCoworkerPrompt,
+  takeDraftCoworkerPrompt,
   writePendingCoworkerPrompt,
 } from "@/components/landing/pending-coworker-prompt";
 import { startCoworkerBuilderGeneration } from "@/components/landing/start-coworker-builder-generation";
@@ -114,6 +115,15 @@ export function HomeLanding({
   const [userFirstName, setUserFirstName] = useState<string | null>(initialFirstName);
   const resumePendingPromptRef = useRef(false);
   const isRecordingRef = useRef(false);
+
+  // A "Deploy to HeyBap" click from a use-case agent stores a draft prompt. Pre-fill the composer
+  // with it (without submitting) so the user can edit and send it themselves.
+  useEffect(() => {
+    const draft = takeDraftCoworkerPrompt();
+    if (draft) {
+      setInputPrefillRequest({ id: `deploy-draft-${Date.now()}`, text: draft, mode: "replace" });
+    }
+  }, []);
   const heroAnimatedPrompts = useMemo(
     () => HERO_PROMPT_EXAMPLES.map((item) => translateHeroPrompt(item.prompt, gt)),
     [gt],

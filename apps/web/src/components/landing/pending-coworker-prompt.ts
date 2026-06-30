@@ -1,4 +1,5 @@
 const PENDING_COWORKER_PROMPT_KEY = "bap.pendingCoworkerPrompt";
+const DRAFT_COWORKER_PROMPT_KEY = "bap.draftCoworkerPrompt";
 const MAX_PENDING_PROMPT_AGE_MS = 10 * 60 * 1000;
 const ATTACHMENT_ONLY_INITIAL_MESSAGE =
   "Use the attached files as context while building this coworker.";
@@ -139,6 +140,51 @@ export function readPendingCoworkerPrompt(): PendingCoworkerPrompt | null {
     };
   } catch {
     clearPendingCoworkerPrompt();
+    return null;
+  }
+}
+
+/**
+ * Draft prompt: pre-fills the home composer WITHOUT submitting it (unlike the pending prompt,
+ * which auto-creates the coworker). The home page reads this once on mount, drops it into the
+ * prompt bar, and clears it. The user can then edit and send it themselves.
+ */
+type StoredDraftCoworkerPrompt = { text: string; createdAt: number };
+
+export function writeDraftCoworkerPrompt(text: string) {
+  if (!canUseStorage()) {
+    return;
+  }
+  const trimmed = text.trim();
+  if (!trimmed) {
+    window.localStorage.removeItem(DRAFT_COWORKER_PROMPT_KEY);
+    return;
+  }
+  const payload: StoredDraftCoworkerPrompt = { text: trimmed, createdAt: Date.now() };
+  window.localStorage.setItem(DRAFT_COWORKER_PROMPT_KEY, JSON.stringify(payload));
+}
+
+/** Reads and clears the draft prompt. Returns null if absent or stale. */
+export function takeDraftCoworkerPrompt(): string | null {
+  if (!canUseStorage()) {
+    return null;
+  }
+  const rawValue = window.localStorage.getItem(DRAFT_COWORKER_PROMPT_KEY);
+  if (!rawValue) {
+    return null;
+  }
+  window.localStorage.removeItem(DRAFT_COWORKER_PROMPT_KEY);
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<StoredDraftCoworkerPrompt>;
+    if (typeof parsed.text !== "string" || typeof parsed.createdAt !== "number") {
+      return null;
+    }
+    if (Date.now() - parsed.createdAt > MAX_PENDING_PROMPT_AGE_MS) {
+      return null;
+    }
+    const trimmed = parsed.text.trim();
+    return trimmed || null;
+  } catch {
     return null;
   }
 }

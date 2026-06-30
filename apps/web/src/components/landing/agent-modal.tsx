@@ -12,7 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { getAgentSpec } from "./agent-specs";
 import { EditableList, TriggerSelect } from "./editable-list";
-import { writePendingCoworkerPrompt } from "./pending-coworker-prompt";
+import { OutputPreview } from "./output-preview";
+import { writeDraftCoworkerPrompt } from "./pending-coworker-prompt";
 import { ToolLogo } from "./tool-logo";
 import { loc, type Localized, type UseCaseAgent, type Vertical } from "./use-cases-data";
 
@@ -46,10 +47,6 @@ const M = {
   badge: { en: "Agentic app", fr: "App agentique" },
   sample: { en: "Sample", fr: "Exemple" },
 };
-
-function isLetterOutput(label: string): boolean {
-  return /courrier|lettre|letter|reply|réponse|convocation|welcome|bienvenue/i.test(label);
-}
 
 function bullets(arr: string[]): string {
   return arr
@@ -97,45 +94,6 @@ ${bullets(outputs)}
 Tools to connect: ${tools.join(", ")}
 
 Rule: the agent proposes; a human reviews, edits and approves every action before anything is sent, with a full audit trail.`;
-}
-
-function PagePreview({ label, lines, sampleLabel }: { label: string; lines: string[]; sampleLabel: string }) {
-  const letter = isLetterOutput(label);
-  const body = lines.filter(Boolean).slice(0, 4);
-  return (
-    <figure className="overflow-hidden rounded-xl border border-[#E0D2C7] bg-white shadow-sm">
-      <div className="flex items-center gap-1.5 border-b border-[#EADFD6] bg-[#F3E9E1] px-3 py-2">
-        <span className="size-2 rounded-full bg-[#FF5F57]" />
-        <span className="size-2 rounded-full bg-[#FEBC2E]" />
-        <span className="size-2 rounded-full bg-[#28C840]" />
-        <span className="ml-1.5 truncate font-mono text-[10px] text-[#9C8A80]">{label}</span>
-        <span className="ml-auto rounded-full bg-white px-1.5 py-0.5 font-mono text-[8.5px] tracking-wide text-[#9C8A80] uppercase">
-          {sampleLabel}
-        </span>
-      </div>
-      <div className="min-h-[148px] p-4 text-[#241712]">
-        <p className="text-[13px] font-bold tracking-tight">{label}</p>
-        {letter ? (
-          <div className="mt-2 space-y-1.5 text-[11.5px] leading-relaxed text-[#6E5C53]">
-            <p>Madame, Monsieur,</p>
-            {body.slice(0, 2).map((line) => (
-              <p key={line}>{line}.</p>
-            ))}
-            <p className="pt-1 text-[#9C8A80]">Cordialement,</p>
-          </div>
-        ) : (
-          <div className="mt-2.5 space-y-2">
-            {body.map((line) => (
-              <div key={line} className="flex items-start gap-2">
-                <span className="mt-1 size-1.5 shrink-0 rounded-full bg-[#D52B0C]/60" />
-                <span className="text-[11.5px] leading-snug text-[#6E5C53]">{line}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </figure>
-  );
 }
 
 function ToolChip({ name, onRemove }: { name: string; onRemove: (name: string) => void }) {
@@ -206,8 +164,20 @@ export function AgentModal({
   const navigate = useNavigate();
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    dialogRef.current?.showModal();
-  }, []);
+    const dialog = dialogRef.current;
+    if (!dialog) {
+      return;
+    }
+    dialog.showModal();
+    // Close when the click lands on the dialog element itself (the backdrop), not its content.
+    const onBackdropClick = (event: MouseEvent) => {
+      if (event.target === dialog) {
+        onClose();
+      }
+    };
+    dialog.addEventListener("click", onBackdropClick);
+    return () => dialog.removeEventListener("click", onBackdropClick);
+  }, [onClose]);
 
   const t = (value: Localized) => loc(locale, value);
   const spec = getAgentSpec(vertical.slug, index);
@@ -246,8 +216,9 @@ export function AgentModal({
       outputs,
       tools,
     });
-    writePendingCoworkerPrompt({ initialMessage: prompt });
-    void navigate({ to: "/agents/new" });
+    // Pre-fill the home composer with the prompt WITHOUT submitting; the user edits and sends it.
+    writeDraftCoworkerPrompt(prompt);
+    void navigate({ to: "/" });
   }, [navigate, locale, agent, vertical, triggers, selectedTrigger, actions, outputs, tools]);
 
   return (
@@ -320,11 +291,13 @@ export function AgentModal({
           {previews.length > 0 ? (
             <div className="mt-3 space-y-2.5">
               {previews.map((preview) => (
-                <PagePreview
+                <OutputPreview
                   key={preview.key}
                   label={preview.label}
                   sampleLabel={t(M.sample)}
+                  locale={locale}
                   lines={preview.lines}
+                  tools={tools}
                 />
               ))}
             </div>
