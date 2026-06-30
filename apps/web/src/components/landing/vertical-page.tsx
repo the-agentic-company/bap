@@ -9,6 +9,16 @@ import { loc, type Vertical } from "./use-cases-data";
  * narrative: hero → problem → agentic apps → integrations → impact → FAQ → CTA. Styled with the
  * deck palette. The FAQ is also emitted as JSON-LD `FAQPage` (see below) for rich results / GEO.
  */
+const UI = {
+  back: { en: "All use cases", fr: "Tous les cas d'usage" },
+  agentsTitle: { en: "An agentic app for every step", fr: "Une app agentique par étape" },
+  cta: { en: "Book a demo", fr: "Réserver une démo" },
+  finalTitle: {
+    en: "Deploy your first agents in under two weeks",
+    fr: "Déployez vos premiers agents en moins de deux semaines",
+  },
+};
+
 export function VerticalPage({ vertical }: { vertical: Vertical }) {
   const { locale } = useAppLocale();
   const t = (value: { en: string; fr: string }) => loc(locale, value);
@@ -39,7 +49,7 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#6E5C53] transition-colors hover:text-[#241712]"
         >
           <ArrowLeft className="size-4" />
-          {locale === "fr" ? "Tous les cas d'usage" : "All use cases"}
+          {t(UI.back)}
         </Link>
 
         {/* ── Hero ── */}
@@ -58,7 +68,7 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {locale === "fr" ? "Réserver une démo" : "Book a demo"}
+                {t(UI.cta)}
               </a>
             </Button>
           </div>
@@ -73,7 +83,7 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
         {/* ── Agentic apps ── */}
         <section className="mt-16">
           <h2 className="text-2xl font-semibold tracking-tight">
-            {locale === "fr" ? "Une app agentique par étape" : "An agentic app for every step"}
+            {t(UI.agentsTitle)}
           </h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {vertical.agents.map((agent) => (
@@ -142,9 +152,7 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
         {/* ── CTA ── */}
         <section className="mt-16 rounded-2xl bg-[#241712] px-7 py-12 text-center text-white">
           <h2 className="text-2xl font-semibold tracking-tight">
-            {locale === "fr"
-              ? "Déployez vos premiers agents en moins de deux semaines"
-              : "Deploy your first agents in under two weeks"}
+            {t(UI.finalTitle)}
           </h2>
           <div className="mt-6">
             <Button asChild size="lg" className="bg-white px-7 text-[#241712] hover:bg-[#F3E9E1]">
@@ -153,7 +161,7 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {locale === "fr" ? "Réserver une démo" : "Book a demo"}
+                {t(UI.cta)}
               </a>
             </Button>
           </div>
