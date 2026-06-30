@@ -35,6 +35,7 @@ var insertMock: ReturnType<typeof vi.fn>;
 var ensureBucketMock: ReturnType<typeof vi.fn>;
 var uploadToS3Mock: ReturnType<typeof vi.fn>;
 var deleteFromS3Mock: ReturnType<typeof vi.fn>;
+var workspaceMemberDeleteWhereMock: ReturnType<typeof vi.fn>;
 
 vi.mock("@bap/db/client", () => ({
   db: (() => {
@@ -64,6 +65,7 @@ vi.mock("@bap/db/client", () => ({
       where: userUpdateWhereMock,
     }));
     insertMock = vi.fn();
+    workspaceMemberDeleteWhereMock = vi.fn();
 
     return {
       query: {
@@ -76,6 +78,9 @@ vi.mock("@bap/db/client", () => ({
       select: selectMock,
       update: vi.fn(() => ({
         set: userUpdateSetMock,
+      })),
+      delete: vi.fn(() => ({
+        where: workspaceMemberDeleteWhereMock,
       })),
     };
   })(),
@@ -118,6 +123,8 @@ const {
   getAdminBillingOverviewForUser,
   getExistingBillingOwnerForUser,
   resolveBillingOwnerForUser,
+  removeWorkspaceMember,
+  updateWorkspaceMemberRole,
 } = await import("./service");
 const { updateWorkspaceImage } = await import("./workspace-image");
 
@@ -455,5 +462,60 @@ describe("billing service", () => {
       name: "Alpha",
       slug: "alpha",
     });
+  });
+});
+
+describe("workspace member management", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("updates a member's role", async () => {
+    userFindFirstMock.mockResolvedValue({ id: "u-2", email: "member@example.com" });
+    workspaceMemberFindFirstMock.mockResolvedValue({ role: "member" });
+    userUpdateWhereMock.mockResolvedValue(undefined);
+
+    const result = await updateWorkspaceMemberRole("ws-1", "Member@Example.com", "admin");
+
+    expect(userUpdateSetMock).toHaveBeenCalledWith({ role: "admin" });
+    expect(result).toEqual({ email: "member@example.com", role: "admin" });
+  });
+
+  it("refuses to change the workspace owner's role", async () => {
+    userFindFirstMock.mockResolvedValue({ id: "u-owner", email: "owner@example.com" });
+    workspaceMemberFindFirstMock.mockResolvedValue({ role: "owner" });
+
+    await expect(updateWorkspaceMemberRole("ws-1", "owner@example.com", "member")).rejects.toThrow(
+      /owner/i,
+    );
+    expect(userUpdateSetMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to update a non-member", async () => {
+    userFindFirstMock.mockResolvedValue({ id: "u-3", email: "stranger@example.com" });
+    workspaceMemberFindFirstMock.mockResolvedValue(undefined);
+
+    await expect(
+      updateWorkspaceMemberRole("ws-1", "stranger@example.com", "admin"),
+    ).rejects.toThrow(/not a member/i);
+  });
+
+  it("removes a member", async () => {
+    userFindFirstMock.mockResolvedValue({ id: "u-2", email: "member@example.com" });
+    workspaceMemberFindFirstMock.mockResolvedValue({ role: "admin" });
+    workspaceMemberDeleteWhereMock.mockResolvedValue(undefined);
+
+    const result = await removeWorkspaceMember("ws-1", "member@example.com");
+
+    expect(workspaceMemberDeleteWhereMock).toHaveBeenCalled();
+    expect(result).toEqual({ email: "member@example.com" });
+  });
+
+  it("refuses to remove the workspace owner", async () => {
+    userFindFirstMock.mockResolvedValue({ id: "u-owner", email: "owner@example.com" });
+    workspaceMemberFindFirstMock.mockResolvedValue({ role: "owner" });
+
+    await expect(removeWorkspaceMember("ws-1", "owner@example.com")).rejects.toThrow(/owner/i);
+    expect(workspaceMemberDeleteWhereMock).not.toHaveBeenCalled();
   });
 });

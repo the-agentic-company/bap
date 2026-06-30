@@ -13,6 +13,11 @@ export const schema = {
   model: z.string().optional().describe("Model reference"),
   authSource: z.enum(["user", "shared"]).optional().describe("Model auth source"),
   integrations: z.array(z.string()).optional().describe("Allowed integrations"),
+  workspaceMcpServerIds: z
+    .array(z.string())
+    .optional()
+    .describe("Allowed workspace MCP server IDs"),
+  skillSlugs: z.array(z.string()).optional().describe("Allowed skill slugs"),
   files: z
     .array(
       z.object({
@@ -54,6 +59,8 @@ export default async function coworkerCreate(
     model: params.model,
     authSource: params.authSource,
     integrations: params.integrations,
+    workspaceMcpServerIds: params.workspaceMcpServerIds,
+    skillSlugs: params.skillSlugs,
     files: params.files,
   });
   return toMcpToolResult(result);

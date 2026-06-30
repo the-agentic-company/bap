@@ -6,7 +6,18 @@ import { fileAttachmentInputSchema } from "../lib/file-attachment-schema";
 import { handleCoworkerRun } from "../lib/handlers";
 
 export const schema = {
-  reference: z.string().describe("Coworker ID or @username"),
+  reference: z
+    .string()
+    .optional()
+    .describe(
+      "Coworker ID or @username. Required to start a new run; omit when continuing an existing run via runId.",
+    ),
+  runId: z
+    .string()
+    .optional()
+    .describe(
+      "Continue an existing run instead of starting one: with userInput, answers a run waiting in needs_user_input; without userInput, resumes a paused run.",
+    ),
   payload: z.record(z.string(), z.unknown()).optional().describe("Optional run payload"),
   userInput: z.string().optional().describe("Trusted first user input for coworkers that need it"),
   fileAttachments: z
@@ -18,7 +29,7 @@ export const schema = {
 export const metadata: ToolMetadata = {
   name: "coworker.run",
   description:
-    "Trigger a coworker run. The userInput may be empty when at least one ready File Asset is provided in fileAttachments.",
+    "Trigger a coworker run, or continue an existing one via runId (resume a paused run, or answer a run in needs_user_input). The userInput may be empty when at least one ready File Asset is provided in fileAttachments.",
   annotations: {
     title: "Run coworker",
     readOnlyHint: false,
@@ -37,6 +48,7 @@ export default async function coworkerRun(
   const result = await handleCoworkerRun({
     client: clientState.client,
     reference: params.reference,
+    runId: params.runId,
     payload: params.payload,
     userInput: params.userInput,
     fileAttachments: params.fileAttachments,

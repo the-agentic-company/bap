@@ -42,6 +42,94 @@ export type SkillImportResult = {
   enabled: boolean;
 };
 
+export type IntegrationSummary = {
+  id: string;
+  type: string;
+  displayName: string | null;
+  enabled: boolean;
+  setupRequired?: boolean;
+  instanceName?: string | null;
+  instanceUrl?: string | null;
+  authStatus: string | null;
+  authErrorCode: string | null;
+  scopes: string[] | null;
+  accountLabelId: string | null;
+  accountLabel: string | null;
+  createdAt: string | Date;
+};
+
+export type SkillSummary = {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  icon: string | null;
+  enabled: boolean;
+  visibility: "private" | "public";
+  isOwnedByCurrentUser?: boolean;
+  canEdit?: boolean;
+  fileCount?: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+export type SkillDetail = SkillSummary & {
+  files: Array<{
+    id: string;
+    path: string;
+    content: string;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+  }>;
+  documents: Array<{
+    id: string;
+    filename: string;
+    path: string;
+    mimeType: string;
+    sizeBytes: number | null;
+    description: string | null;
+    createdAt: string | Date;
+  }>;
+};
+
+export type WorkspaceMember = {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  role: string;
+  [key: string]: unknown;
+};
+
+export type WorkspaceMcpServerAuthType = "none" | "api_key" | "bearer" | "oauth2";
+
+export type WorkspaceMcpServerInput = {
+  kind?: "mcp";
+  name: string;
+  namespace: string;
+  endpoint: string;
+  specUrl?: string | null;
+  transport?: string | null;
+  headers?: Record<string, string>;
+  queryParams?: Record<string, string>;
+  defaultHeaders?: Record<string, string>;
+  authType?: WorkspaceMcpServerAuthType;
+  authHeaderName?: string | null;
+  authQueryParam?: string | null;
+  authPrefix?: string | null;
+  enabled?: boolean;
+};
+
+export type WorkspaceMcpServerSummary = {
+  id: string;
+  name: string;
+  namespace: string;
+  endpoint: string;
+  kind: string;
+  authType: string;
+  enabled: boolean;
+  [key: string]: unknown;
+};
+
 export type GenerationUsage = {
   inputTokens: number;
   outputTokens: number;
@@ -549,6 +637,16 @@ export interface BapApiClient {
       alreadyMembers: string[];
       notFound: string[];
     }>;
+    members(input: { workspaceId: string }): Promise<{
+      members: WorkspaceMember[];
+      membershipRole: string;
+    }>;
+    setMemberRole(input: {
+      workspaceId: string;
+      email: string;
+      role: "admin" | "member";
+    }): Promise<{ email: string; role: "admin" | "member" }>;
+    removeMember(input: { workspaceId: string; email: string }): Promise<{ email: string }>;
   };
   providerAuth: {
     status(): Promise<ProviderAuthStatus>;
@@ -583,6 +681,7 @@ export interface BapApiClient {
       success: boolean;
     }): Promise<{ success: boolean }>;
     cancelGeneration(input: { generationId: string }): Promise<{ success: boolean }>;
+    resumeGeneration(input: { generationId: string }): Promise<{ success: boolean }>;
   };
   fileAsset: {
     createUpload(input: {
@@ -604,10 +703,52 @@ export interface BapApiClient {
     }>;
   };
   integration: {
-    getAuthUrl(input: { type: string; redirectUrl: string }): Promise<{ authUrl: string }>;
+    list(): Promise<IntegrationSummary[]>;
+    getAuthUrl(input: {
+      type: string;
+      redirectUrl: string;
+      mode?: "connect" | "connect_to_label" | "reauth";
+      accountLabel?: string;
+      connectedAccountId?: string;
+    }): Promise<{ authUrl: string }>;
+    disconnect(input: { id: string }): Promise<{ success: boolean }>;
+  };
+  workspaceMcpServer: {
+    list(): Promise<{
+      workspaceId: string;
+      membershipRole: string;
+      sources: WorkspaceMcpServerSummary[];
+    }>;
+    create(input: WorkspaceMcpServerInput): Promise<{ id: string }>;
+    update(input: WorkspaceMcpServerInput & { id: string }): Promise<{ success: true }>;
+    delete(input: { id: string }): Promise<{ success: true }>;
+    startOAuth(input: {
+      workspaceMcpServerId: string;
+      redirectUrl: string;
+    }): Promise<{ authUrl: string }>;
+    setCredential(input: {
+      workspaceMcpServerId: string;
+      secret: string;
+      displayName?: string | null;
+      enabled?: boolean;
+    }): Promise<{ success: true }>;
+    disconnectCredential(input: { workspaceMcpServerId: string }): Promise<{ success: true }>;
   };
   skill: {
     import(input: SkillImportInput): Promise<SkillImportResult>;
+    list(): Promise<SkillSummary[]>;
+    get(input: { id: string }): Promise<SkillDetail>;
+    update(input: {
+      id: string;
+      name?: string;
+      displayName?: string;
+      description?: string;
+      icon?: string | null;
+      enabled?: boolean;
+    }): Promise<{ success: true }>;
+    delete(input: { id: string }): Promise<{ success: true }>;
+    share(input: { id: string }): Promise<{ success: true; id: string; visibility: "public" }>;
+    unshare(input: { id: string }): Promise<{ success: true; id: string; visibility: "private" }>;
   };
   coworker: {
     list(): Promise<CoworkerSummary[]>;
