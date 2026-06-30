@@ -49,6 +49,35 @@ function RowInput({
   );
 }
 
+// Memoized per-row change/remove handlers, shared by editable and trigger rows.
+function useRowHandlers(
+  index: number,
+  onChange: (index: number, value: string) => void,
+  onRemove: (index: number) => void,
+) {
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => onChange(index, event.target.value),
+    [onChange, index],
+  );
+  const handleRemove = useCallback(() => onRemove(index), [onRemove, index]);
+  return { handleChange, handleRemove };
+}
+
+// Memoized add / edit / remove mutators over the controlled string list, shared by both lists.
+function useListMutators(onChange: Items) {
+  const update = useCallback(
+    (index: number, value: string) =>
+      onChange((prev) => prev.map((item, i) => (i === index ? value : item))),
+    [onChange],
+  );
+  const remove = useCallback(
+    (index: number) => onChange((prev) => prev.filter((_, i) => i !== index)),
+    [onChange],
+  );
+  const add = useCallback(() => onChange((prev) => [...prev, ""]), [onChange]);
+  return { update, remove, add };
+}
+
 function EditableRow({
   value,
   index,
@@ -62,11 +91,7 @@ function EditableRow({
   onChange: (index: number, value: string) => void;
   onRemove: (index: number) => void;
 }) {
-  const handleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => onChange(index, event.target.value),
-    [onChange, index],
-  );
-  const handleRemove = useCallback(() => onRemove(index), [onRemove, index]);
+  const { handleChange, handleRemove } = useRowHandlers(index, onChange, onRemove);
   return (
     <div className="group/row flex items-center gap-2.5">
       <span className="size-1.5 shrink-0 rounded-full bg-[#D52B0C]" aria-hidden />
@@ -93,11 +118,7 @@ function TriggerRow({
   onRemove: (index: number) => void;
 }) {
   const handleSelect = useCallback(() => onSelect(index), [onSelect, index]);
-  const handleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => onChange(index, event.target.value),
-    [onChange, index],
-  );
-  const handleRemove = useCallback(() => onRemove(index), [onRemove, index]);
+  const { handleChange, handleRemove } = useRowHandlers(index, onChange, onRemove);
   return (
     <div className="group/row flex items-center gap-2.5">
       <button
@@ -169,16 +190,7 @@ export function EditableList({
   items: string[];
   onChange: Items;
 }) {
-  const update = useCallback(
-    (index: number, value: string) =>
-      onChange((prev) => prev.map((item, i) => (i === index ? value : item))),
-    [onChange],
-  );
-  const remove = useCallback(
-    (index: number) => onChange((prev) => prev.filter((_, i) => i !== index)),
-    [onChange],
-  );
-  const add = useCallback(() => onChange((prev) => [...prev, ""]), [onChange]);
+  const { update, remove, add } = useListMutators(onChange);
 
   return (
     <div>
@@ -222,16 +234,7 @@ export function TriggerSelect({
   onSelect: (index: number) => void;
   onChange: Items;
 }) {
-  const update = useCallback(
-    (index: number, value: string) =>
-      onChange((prev) => prev.map((item, i) => (i === index ? value : item))),
-    [onChange],
-  );
-  const remove = useCallback(
-    (index: number) => onChange((prev) => prev.filter((_, i) => i !== index)),
-    [onChange],
-  );
-  const add = useCallback(() => onChange((prev) => [...prev, ""]), [onChange]);
+  const { update, remove, add } = useListMutators(onChange);
 
   return (
     <div>
