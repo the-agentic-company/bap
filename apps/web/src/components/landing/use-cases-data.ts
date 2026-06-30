@@ -701,12 +701,413 @@ const veterinaires: Vertical = {
   ],
 };
 
+const pharmacies: Vertical = {
+  slug: "pharmacies",
+  name: { en: "Pharmacies", fr: "Pharmacies" },
+  emoji: "💊",
+  seoTitle: {
+    en: "AI Agent for Pharmacies — HeyBap",
+    fr: "Agent IA pour pharmacies — HeyBap",
+  },
+  seoDescription: {
+    en: "HeyBap gives pharmacy owners an AI agent that works across LGPI, Winpharma and your wholesalers. It handles stock-outs, prescription renewals and supplier messages — and you approve every action.",
+    fr: "HeyBap donne au pharmacien titulaire un agent IA qui travaille avec LGPI, Winpharma et vos grossistes. Il gère les ruptures, les renouvellements d'ordonnances et les messages labos — et vous validez chaque action.",
+  },
+  hero: {
+    eyebrow: { en: "For community pharmacies", fr: "Pour les officines" },
+    title: {
+      en: "An AI agent for your pharmacy, where you stay in control",
+      fr: "Un agent IA pour votre officine, où vous gardez la main",
+    },
+    subtitle: {
+      en: "HeyBap puts an agent to work across your existing tools — LGPI, Winpharma, your wholesalers — to take the administrative load off your team. The agent proposes, you decide.",
+      fr: "HeyBap met un agent au travail à travers vos outils existants — LGPI, Winpharma, vos grossistes — pour décharger votre équipe des tâches administratives. L'agent propose, vous décidez.",
+    },
+  },
+  problem: {
+    title: { en: "Too much time lost on the back office", fr: "Trop de temps perdu sur l'administratif" },
+    body: {
+      en: "Between chasing stock-outs, placing wholesaler orders, reminding patients about renewals and sorting through lab and supplier messages, your team spends hours away from the counter every week. These tasks are repetitive, scattered across several tools, and never stop piling up.",
+      fr: "Entre la gestion des ruptures, les commandes grossistes, les rappels de renouvellement aux patients et le tri des messages labos et fournisseurs, votre équipe passe chaque semaine des heures loin du comptoir. Ces tâches sont répétitives, éclatées entre plusieurs logiciels, et ne cessent de s'accumuler.",
+    },
+  },
+  agents: [
+    {
+      name: { en: "Stock-outs & wholesaler orders", fr: "Ruptures & commandes grossistes" },
+      description: {
+        en: "Tracks stock-outs across your stock and prepares the wholesaler orders to fill them, which you review and approve before anything is sent.",
+        fr: "Suit les ruptures dans votre stock et prépare les commandes grossistes pour les combler, que vous relisez et validez avant tout envoi.",
+      },
+    },
+    {
+      name: { en: "Prescription renewals", fr: "Renouvellement d'ordonnances" },
+      description: {
+        en: "Spots patients due for a renewal and drafts the reminders to send them, which you check and approve before they go out.",
+        fr: "Repère les patients dont l'ordonnance arrive à échéance et rédige les rappels à leur envoyer, que vous contrôlez et validez avant l'envoi.",
+      },
+    },
+    {
+      name: { en: "Lab & supplier triage", fr: "Tri des communications labos" },
+      description: {
+        en: "Sorts and summarizes incoming lab and supplier messages so you only read what matters, with the agent's suggested actions left for you to approve.",
+        fr: "Trie et résume les messages entrants des labos et fournisseurs pour que vous ne lisiez que l'essentiel, les actions suggérées par l'agent restant à votre validation.",
+      },
+    },
+  ],
+  integrations: {
+    title: { en: "Works with the tools you already use", fr: "Fonctionne avec les outils que vous utilisez déjà" },
+    items: ["LGPI", "Winpharma", "Smart RX", "LEO", "Pharmaland"],
+  },
+  stats: [
+    { value: "22 000", label: { en: "community pharmacies in France", fr: "officines en France" } },
+    { value: "< 2 sem.", label: { en: "to go live", fr: "pour démarrer" } },
+    { value: "76%", label: { en: "of the market on LGPI & Winpharma", fr: "du marché sur LGPI & Winpharma" } },
+  ],
+  faq: [
+    {
+      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
+      answer: {
+        en: "No. The agent only proposes — every order, reminder and action waits for your approval before anything happens. In a regulated health setting, you keep full control and a complete audit trail of every decision.",
+        fr: "Non. L'agent se contente de proposer — chaque commande, rappel et action attend votre validation avant de se déclencher. Dans un cadre de santé réglementé, vous gardez le contrôle total et un historique complet de chaque décision.",
+      },
+    },
+    {
+      question: {
+        en: "What about patient-data confidentiality?",
+        fr: "Qu'en est-il de la confidentialité des données patients ?",
+      },
+      answer: {
+        en: "HeyBap can be self-hosted so your data stays under your roof, with role-based access controlling who sees what and an audit trail logging every action. Confidentiality stays in your hands.",
+        fr: "HeyBap peut être auto-hébergé pour que vos données restent chez vous, avec des accès par rôle qui contrôlent qui voit quoi et un historique qui trace chaque action. La confidentialité reste entre vos mains.",
+      },
+    },
+    {
+      question: { en: "Do I have to change my software?", fr: "Dois-je changer de logiciel ?" },
+      answer: {
+        en: "No. The agent works alongside LGPI, Winpharma and your other tools without replacing them. You keep your current setup, and you can be up and running in under two weeks.",
+        fr: "Non. L'agent travaille aux côtés de LGPI, Winpharma et de vos autres outils sans les remplacer. Vous conservez votre installation actuelle, et vous pouvez être opérationnel en moins de deux semaines.",
+      },
+    },
+  ],
+};
+
+const syndicsCopropriete: Vertical = {
+  slug: "syndics-copropriete",
+  name: { en: "Property Management (Syndics)", fr: "Syndics de copropriété" },
+  emoji: "🏢",
+  seoTitle: {
+    en: "AI Agent for Property Management (Syndics) — HeyBap",
+    fr: "Agent IA pour syndics de copropriété — HeyBap",
+  },
+  seoDescription: {
+    en: "HeyBap deploys AI agents for property-management firms (syndics): general-meeting prep, calls for funds and charge reminders, rent invoicing and tenant requests — across Gercop, Vilogi and your existing tools, with human approval on every action.",
+    fr: "HeyBap déploie des agents IA pour les cabinets de syndic : préparation des AG, appels de fonds et relances de charges, quittancement et demandes locataires — à travers Gercop, Vilogi et vos outils existants, avec validation humaine sur chaque action.",
+  },
+  hero: {
+    eyebrow: { en: "For property-management firms", fr: "Pour les cabinets de syndic" },
+    title: {
+      en: "The AI agent for property managers",
+      fr: "L'agent IA pour les syndics de copropriété",
+    },
+    subtitle: {
+      en: "From general-meeting prep to calls for funds and tenant requests, an agentic app for every administrative task that overloads your firm. The agent proposes, your managers decide — and approve every action.",
+      fr: "De la préparation des AG aux appels de fonds et aux demandes locataires, une app agentique pour chaque tâche administrative qui surcharge votre cabinet. L'agent propose, vos gestionnaires décident — et valident chaque action.",
+    },
+  },
+  problem: {
+    title: { en: "Too many lots, too much admin", fr: "Trop de lots, trop d'administratif" },
+    body: {
+      en: "General meetings to prepare, calls for funds and charge reminders to send, rent invoicing to issue and a constant flow of tenant requests: your managers spend their days on repetitive paperwork instead of on the buildings and the co-owners. And it all lives in tools that barely talk to each other.",
+      fr: "Des AG à préparer, des appels de fonds et des relances de charges à envoyer, du quittancement à émettre et un flux continu de demandes locataires : vos gestionnaires passent leurs journées sur de l'administratif répétitif au lieu des immeubles et des copropriétaires. Et tout cela vit dans des outils qui se parlent à peine.",
+    },
+  },
+  agents: [
+    {
+      name: { en: "General-meeting prep", fr: "Préparation des AG" },
+      description: {
+        en: "Assembles the convocation, the agenda and the supporting documents for each general meeting from the building file — your manager reviews and approves before anything is sent to the co-owners.",
+        fr: "Assemble la convocation, l'ordre du jour et les pièces jointes de chaque assemblée générale à partir du dossier de la copropriété — votre gestionnaire relit et valide avant tout envoi aux copropriétaires.",
+      },
+    },
+    {
+      name: { en: "Calls for funds & charge reminders", fr: "Appels de fonds & relances de charges" },
+      description: {
+        en: "Prepares the calls for funds and drafts the personalized charge reminders for unpaid balances — you review and approve each batch before it goes out.",
+        fr: "Prépare les appels de fonds et rédige les relances de charges personnalisées pour les impayés — vous relisez et validez chaque lot avant l'envoi.",
+      },
+    },
+    {
+      name: { en: "Rent invoicing & reminders", fr: "Quittancement & relances loyers" },
+      description: {
+        en: "Issues the rent invoicing and drafts the reminders for late payments from each tenant's file — your team checks and validates before posting or sending.",
+        fr: "Établit le quittancement et rédige les relances de loyers en retard à partir du dossier de chaque locataire — votre équipe contrôle et valide avant comptabilisation ou envoi.",
+      },
+    },
+    {
+      name: { en: "Tenant requests & maintenance", fr: "Demandes locataires & maintenance" },
+      description: {
+        en: "Sorts incoming tenant requests, drafts a reply for each and prepares the maintenance coordination with providers — you approve every message and work order before it is sent.",
+        fr: "Trie les demandes locataires entrantes, rédige une réponse pour chacune et prépare la coordination de la maintenance avec les prestataires — vous validez chaque message et ordre de service avant l'envoi.",
+      },
+    },
+  ],
+  integrations: {
+    title: { en: "Connected to your property-management tools", fr: "Connecté à vos outils de gestion" },
+    items: ["Gercop", "ICS", "Vilogi", "Thetrawin", "Powimo", "Seiitra", "Even", "Gimini"],
+  },
+  stats: [
+    {
+      value: "12 000",
+      label: { en: "property-management firms (syndics) in France", fr: "syndics de copropriété en France" },
+    },
+    { value: "< 2 sem.", label: { en: "from kickoff to agents live", fr: "du lancement aux agents en production" } },
+  ],
+  faq: [
+    {
+      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
+      answer: {
+        en: "No. Nothing is sent, invoiced or filed on its own — the agent proposes, and a manager reviews, edits and approves every action, with a full audit trail.",
+        fr: "Non. Rien n'est envoyé, facturé ni classé de façon autonome — l'agent propose, et un gestionnaire relit, modifie et valide chaque action, avec une piste d'audit complète.",
+      },
+    },
+    {
+      question: {
+        en: "Does it work even if my software is closed?",
+        fr: "Est-ce que ça marche même si mon logiciel est fermé ?",
+      },
+      answer: {
+        en: "Yes. Even when your software has no open API, the agent starts at the edges of your stack — general-meeting prep, charge reminders, document intake by email — before any deep integration. Gercop offers a partner API we connect to when it's available.",
+        fr: "Oui. Même si votre logiciel n'a pas d'API ouverte, l'agent démarre en périphérie de vos outils — préparation des AG, relances de charges, réception des documents par email — avant toute intégration profonde. Gercop propose une API partenaire à laquelle nous nous connectons lorsqu'elle est disponible.",
+      },
+    },
+    {
+      question: {
+        en: "What about co-owner and tenant data confidentiality?",
+        fr: "Qu'en est-il de la confidentialité des données des copropriétaires et locataires ?",
+      },
+      answer: {
+        en: "HeyBap can be self-hosted on your own servers, with role-based access so each person sees only what they should, and a full audit trail of every action taken.",
+        fr: "HeyBap peut être auto-hébergé sur vos propres serveurs, avec des accès par rôle pour que chacun ne voie que ce qui le concerne, et une piste d'audit complète de chaque action.",
+      },
+    },
+  ],
+};
+
+const artisansBatiment: Vertical = {
+  slug: "artisans-batiment",
+  name: { en: "Building Trades", fr: "Artisans du bâtiment" },
+  emoji: "🛠️",
+  seoTitle: {
+    en: "AI Agent for Building Trades — HeyBap",
+    fr: "Agent IA pour artisans du bâtiment — HeyBap",
+  },
+  seoDescription: {
+    en: "HeyBap deploys AI agents for building-trade businesses: priced quotes from a site visit, quote and unpaid-invoice follow-ups, job-site scheduling and site-visit reports — across Batappli, Obat and your existing tools, with human approval on every action.",
+    fr: "HeyBap déploie des agents IA pour les artisans du bâtiment : devis chiffrés depuis un relevé, relance des devis et impayés, planning des chantiers et comptes-rendus de visite — à travers Batappli, Obat et vos outils existants, avec validation humaine sur chaque action.",
+  },
+  hero: {
+    eyebrow: { en: "For building-trade businesses", fr: "Pour les artisans et TPE du bâtiment" },
+    title: {
+      en: "The AI agent for building trades",
+      fr: "L'agent IA pour les artisans du bâtiment",
+    },
+    subtitle: {
+      en: "From a site visit dictated on the road to the quote sent to your client, an agentic app for every task that keeps you off the tools. The agent prepares the work, you review and approve every action.",
+      fr: "D'une visite dictée sur la route au devis envoyé à votre client, une app agentique pour chaque tâche qui vous tient loin du chantier. L'agent prépare le travail, vous relisez et validez chaque action.",
+    },
+  },
+  problem: {
+    title: { en: "The paperwork piles up after the job", fr: "La paperasse s'accumule après le chantier" },
+    body: {
+      en: "Drafting priced quotes, chasing the ones that go unanswered, juggling job-site scheduling and writing up each site visit eat your evenings and weekends. Every hour spent on this paperwork is an hour off the job or away from your family.",
+      fr: "Rédiger les devis chiffrés, relancer ceux qui restent sans réponse, jongler avec le planning des chantiers et rédiger chaque compte-rendu de visite dévorent vos soirées et vos week-ends. Chaque heure passée sur cette paperasse est une heure de moins sur le chantier ou en famille.",
+    },
+  },
+  agents: [
+    {
+      name: { en: "Quote from a site visit", fr: "Devis depuis un relevé" },
+      description: {
+        en: "Turns a dictated or measured site visit into a priced, itemized quote in your software — you review the lines and prices and validate before it goes to the client.",
+        fr: "Transforme une visite dictée ou un relevé de mesures en devis chiffré et détaillé dans votre logiciel — vous relisez les lignes et les prix et validez avant l'envoi au client.",
+      },
+    },
+    {
+      name: { en: "Quote & unpaid follow-ups", fr: "Relance devis & impayés" },
+      description: {
+        en: "Tracks quotes left unanswered and invoices left unpaid, drafts the right follow-up for each one — you review and send in one click.",
+        fr: "Suit les devis sans réponse et les factures impayées, rédige la relance adaptée à chacun — vous relisez et envoyez en un clic.",
+      },
+    },
+    {
+      name: { en: "Job-site & appointment scheduling", fr: "Planning chantiers & RDV" },
+      description: {
+        en: "Organizes your job sites and appointments, proposes the schedule and the client confirmations — you approve before anything is booked.",
+        fr: "Organise vos chantiers et rendez-vous, propose le planning et les confirmations client — vous validez avant toute prise de RDV.",
+      },
+    },
+    {
+      name: { en: "Site-visit report", fr: "Compte-rendu de visite" },
+      description: {
+        en: "Writes up a clean site-visit report from your dictation, ready for you to check and approve before it is filed or sent.",
+        fr: "Rédige un compte-rendu de visite propre à partir de votre dictée, prêt à être vérifié et validé avant classement ou envoi.",
+      },
+    },
+  ],
+  integrations: {
+    title: { en: "Works with your trade software", fr: "Compatible avec vos logiciels métier" },
+    items: ["Batappli", "Obat", "EBP Bâtiment", "Sage Batigest", "Codial", "Tolteck", "Extrabat"],
+  },
+  stats: [
+    {
+      value: "600 000",
+      label: { en: "craftsmen & small businesses in France", fr: "artisans & TPE du bâtiment en France" },
+    },
+    { value: "< 2 sem.", label: { en: "to go live", fr: "pour être opérationnel" } },
+    { value: "100 %", label: { en: "of actions reviewed by you", fr: "des actions validées par vous" } },
+  ],
+  faq: [
+    {
+      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
+      answer: {
+        en: "No. The agent proposes every quote, follow-up and report — and you decide. Nothing is sent or finalised without your approval, and every step is logged in a full audit trail.",
+        fr: "Non. L'agent propose chaque devis, relance et compte-rendu — et vous décidez. Rien n'est envoyé ni finalisé sans votre validation, et chaque étape est tracée dans un historique complet.",
+      },
+    },
+    {
+      question: {
+        en: "Does it work even if my software has no real API?",
+        fr: "Est-ce que ça marche même si mon logiciel n'a pas de vraie API ?",
+      },
+      answer: {
+        en: "Yes. Trade work is document-based, so the agent can start from a dictation, a photo or an email and prepare your quote or report even where the software offers no deep integration — then connect to your tools once it's ready.",
+        fr: "Oui. Le métier est documentaire : l'agent peut partir d'une dictée, d'une photo ou d'un email et préparer votre devis ou compte-rendu même là où le logiciel n'offre pas d'intégration profonde — puis se connecter à vos outils une fois prêt.",
+      },
+    },
+    {
+      question: { en: "Where does my data go?", fr: "Où vont mes données ?" },
+      answer: {
+        en: "You stay in control of your data. HeyBap can be self-hosted for full data sovereignty, with role-based access so each person sees only what they should.",
+        fr: "Vous gardez la maîtrise de vos données. HeyBap peut être auto-hébergé pour une souveraineté totale, avec des accès par rôle pour que chacun ne voie que ce qui le concerne.",
+      },
+    },
+  ],
+};
+
+const hotellerie: Vertical = {
+  slug: "hotellerie",
+  name: { en: "Independent Hotels", fr: "Hôtellerie indépendante" },
+  emoji: "🏨",
+  seoTitle: {
+    en: "AI Agent for Independent Hotels — HeyBap",
+    fr: "Agent IA pour l'hôtellerie indépendante — HeyBap",
+  },
+  seoDescription: {
+    en: "An AI agent that works across your PMS and booking channels to handle direct bookings, rate sync and guest follow-ups. It proposes, you approve every action.",
+    fr: "Un agent IA qui travaille à travers votre PMS et vos canaux de réservation pour gérer les réservations directes, la synchro tarifaire et les relances client. Il propose, vous validez chaque action.",
+  },
+  hero: {
+    eyebrow: {
+      en: "For independent hotel owners & managers",
+      fr: "Pour propriétaires et directeurs d'hôtel indépendant",
+    },
+    title: {
+      en: "An AI agent for your hotel, that never books anything without your approval",
+      fr: "Un agent IA pour votre hôtel, qui ne valide jamais rien sans votre accord",
+    },
+    subtitle: {
+      en: "HeyBap connects to your PMS and booking channels to handle direct bookings, rate synchronisation and guest follow-ups. The agent prepares every action, you review and approve it in one click.",
+      fr: "HeyBap se connecte à votre PMS et à vos canaux de réservation pour gérer les réservations directes, la synchronisation tarifaire et les relances client. L'agent prépare chaque action, vous la validez en un clic.",
+    },
+  },
+  problem: {
+    title: {
+      en: "Running a hotel front desk shouldn't mean re-typing the same data everywhere",
+      fr: "Gérer la réception ne devrait pas vous obliger à ressaisir les mêmes données partout",
+    },
+    body: {
+      en: "Between direct bookings, syncing rates and availability across every portal, review follow-ups and pre-arrival emails, the admin work piles up and no-shows cost you. HeyBap takes on this repetitive work across your existing tools, while you keep the final say on every action.",
+      fr: "Entre les réservations directes, la synchro des tarifs et disponibilités sur chaque portail, les relances avis et les emails de pré-arrivée, l'administratif s'accumule et les no-shows vous coûtent cher. HeyBap prend en charge ce travail répétitif à travers vos outils existants, pendant que vous gardez le dernier mot sur chaque action.",
+    },
+  },
+  agents: [
+    {
+      name: { en: "Direct bookings & messaging", fr: "Réservations directes & messagerie" },
+      description: {
+        en: "Captures direct booking requests and drafts guest replies across your channels, ready for you to review and send.",
+        fr: "Capte les demandes de réservation directe et rédige les réponses client sur vos canaux, prêtes à être relues et envoyées par vous.",
+      },
+    },
+    {
+      name: { en: "Rate & availability sync", fr: "Synchro tarifs & disponibilités" },
+      description: {
+        en: "Prepares rate and availability updates across your booking portals, which you approve before they go live.",
+        fr: "Prépare les mises à jour de tarifs et de disponibilités sur vos portails de réservation, que vous validez avant publication.",
+      },
+    },
+    {
+      name: { en: "Review & loyalty follow-ups", fr: "Relances avis & fidélisation" },
+      description: {
+        en: "Drafts personalised review requests and loyalty messages after each stay, sent only once you approve them.",
+        fr: "Rédige des demandes d'avis et des messages de fidélisation personnalisés après chaque séjour, envoyés seulement après votre validation.",
+      },
+    },
+    {
+      name: { en: "Pre-arrival & anti no-show", fr: "Pré-arrivée & anti no-show" },
+      description: {
+        en: "Prepares pre-arrival emails and confirmation reminders to cut no-shows, with every message left for you to approve.",
+        fr: "Prépare les emails de pré-arrivée et les rappels de confirmation pour réduire les no-shows, chaque message restant soumis à votre validation.",
+      },
+    },
+  ],
+  integrations: {
+    title: { en: "Works with the tools you already use", fr: "Compatible avec les outils que vous utilisez déjà" },
+    items: ["Mews", "Medialog", "Reservit", "D-EDGE", "Septeo Hospitality"],
+  },
+  stats: [
+    { value: "18 000", label: { en: "independent hotels in France", fr: "hôtels indépendants en France" } },
+    { value: "< 2 sem.", label: { en: "to go live", fr: "pour être opérationnel" } },
+  ],
+  faq: [
+    {
+      question: {
+        en: "Does the agent book or send anything on its own?",
+        fr: "L'agent réserve-t-il ou envoie-t-il quelque chose tout seul ?",
+      },
+      answer: {
+        en: "No. The agent proposes every action — a booking reply, a rate update, a guest email — and you decide. Nothing is sent or published without your approval, and every action is logged in an audit trail.",
+        fr: "Non. L'agent propose chaque action — une réponse de réservation, une mise à jour tarifaire, un email client — et vous décidez. Rien n'est envoyé ni publié sans votre validation, et chaque action est tracée dans un journal d'audit.",
+      },
+    },
+    {
+      question: {
+        en: "Will it connect to my existing PMS and channel manager?",
+        fr: "Se connecte-t-il à mon PMS et à mon channel manager existants ?",
+      },
+      answer: {
+        en: "Yes. Integration is quickest through the Mews Open API, and we also support Medialog, Reservit, D-EDGE and Septeo Hospitality. Most hotels are live in under two weeks.",
+        fr: "Oui. L'intégration est la plus rapide via l'Open API de Mews, et nous prenons aussi en charge Medialog, Reservit, D-EDGE et Septeo Hospitality. La plupart des hôtels sont opérationnels en moins de deux semaines.",
+      },
+    },
+    {
+      question: { en: "Where does my guest data live?", fr: "Où sont stockées les données de mes clients ?" },
+      answer: {
+        en: "Your data stays yours. HeyBap can be self-hosted for full data sovereignty, with role-based access so each team member only sees what they should.",
+        fr: "Vos données restent les vôtres. HeyBap peut être auto-hébergé pour une pleine souveraineté des données, avec des accès par rôle pour que chaque membre de l'équipe ne voie que ce qui le concerne.",
+      },
+    },
+  ],
+};
+
 export const VERTICALS: Vertical[] = [
   notaires,
   servicesALaPersonne,
   courtiersAssurance,
   expertsComptables,
+  pharmacies,
   ehpad,
+  syndicsCopropriete,
+  hotellerie,
+  artisansBatiment,
   veterinaires,
 ];
 
