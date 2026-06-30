@@ -1,26 +1,36 @@
-import { Link } from "@tanstack/react-router";
-import { Download, ListChecks, Plus, Sparkles, Workflow, Wrench, X, Zap } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { Download, ListChecks, Plus, Rocket, Sparkles, Workflow, Wrench, X, Zap } from "lucide-react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { getAgentSpec } from "./agent-specs";
-import { EditableList } from "./editable-list";
+import { EditableList, TriggerSelect } from "./editable-list";
+import { writePendingCoworkerPrompt } from "./pending-coworker-prompt";
 import { ToolLogo } from "./tool-logo";
 import { loc, type Localized, type UseCaseAgent, type Vertical } from "./use-cases-data";
 
 /**
- * Agent detail popup. Expands one agentic app and makes its bespoke nature obvious: every part
- * (triggers, actions, outputs, tools) is presented as customizable (edit / add / remove). Outputs
- * that are pages get a small framed preview. Footer deploys to HeyBap.
- *
- * Native <dialog> (showModal) so Escape, focus trap and backdrop are handled by the platform.
+ * Agent detail popup. Expands one agentic app as a bespoke, editable spec: one selected trigger
+ * (others stay available), editable actions / outputs / tools, and a framed preview of each
+ * page-type output filled with content from the agent's own steps. "Deploy to HeyBap" builds a
+ * prompt from the user's current selection and opens the HeyBap coworker builder (`/agents/new`)
+ * pre-filled with it.
  */
 const M = {
   customizable: { en: "Fully customizable", fr: "Entièrement personnalisable" },
   customizableSub: {
     en: "Edit, add or remove any trigger, action, output or tool. Every agent is tailored to you.",
-    fr: "Modifiez, ajoutez ou supprimez chaque trigger, action, output ou outil. Chaque agent est sur mesure.",
+    fr: "Modifiez, ajoutez ou supprimez chaque déclencheur, action, output ou outil. Chaque agent est sur mesure.",
   },
   triggers: { en: "Triggers", fr: "Déclencheurs" },
+  triggerHint: { en: "one active, others available", fr: "un actif, les autres disponibles" },
   addTrigger: { en: "Add a trigger", fr: "Ajouter un déclencheur" },
   triggerPlaceholder: { en: "When should it run?", fr: "Quand doit-il se lancer ?" },
   actions: { en: "What it does", fr: "Ce qu'il fait" },
@@ -31,27 +41,98 @@ const M = {
   outputPlaceholder: { en: "What does it deliver?", fr: "Que produit-il ?" },
   tools: { en: "Connected tools", fr: "Outils connectés" },
   addTool: { en: "Add a tool", fr: "Ajouter un outil" },
-  preview: { en: "Preview", fr: "Aperçu" },
   deploy: { en: "Deploy to HeyBap", fr: "Déployer sur HeyBap" },
   close: { en: "Close", fr: "Fermer" },
   badge: { en: "Agentic app", fr: "App agentique" },
+  sample: { en: "Sample", fr: "Exemple" },
 };
 
-function PagePreview({ label }: { label: string }) {
+function isLetterOutput(label: string): boolean {
+  return /courrier|lettre|letter|reply|réponse|convocation|welcome|bienvenue/i.test(label);
+}
+
+function bullets(arr: string[]): string {
+  return arr
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => `- ${item}`)
+    .join("\n");
+}
+
+function buildPrompt(params: {
+  locale: string;
+  agentName: string;
+  verticalName: string;
+  trigger: string;
+  actions: string[];
+  outputs: string[];
+  tools: string[];
+}): string {
+  const { locale, agentName, verticalName, trigger, actions, outputs, tools } = params;
+  if (locale === "fr") {
+    return `Crée un coworker IA "${agentName}" pour ${verticalName}.
+
+Déclencheur : ${trigger}
+
+Ce qu'il doit faire :
+${bullets(actions)}
+
+Ce qu'il doit produire :
+${bullets(outputs)}
+
+Outils à connecter : ${tools.join(", ")}
+
+Règle : l'agent propose, un humain relit, modifie et valide chaque action avant tout envoi, avec une piste d'audit complète.`;
+  }
+  return `Create an AI coworker "${agentName}" for ${verticalName}.
+
+Trigger: ${trigger}
+
+What it should do:
+${bullets(actions)}
+
+What it should produce:
+${bullets(outputs)}
+
+Tools to connect: ${tools.join(", ")}
+
+Rule: the agent proposes; a human reviews, edits and approves every action before anything is sent, with a full audit trail.`;
+}
+
+function PagePreview({ label, lines, sampleLabel }: { label: string; lines: string[]; sampleLabel: string }) {
+  const letter = isLetterOutput(label);
+  const body = lines.filter(Boolean).slice(0, 4);
   return (
-    <figure className="overflow-hidden rounded-xl border border-[#E0D2C7] bg-white">
+    <figure className="overflow-hidden rounded-xl border border-[#E0D2C7] bg-white shadow-sm">
       <div className="flex items-center gap-1.5 border-b border-[#EADFD6] bg-[#F3E9E1] px-3 py-2">
         <span className="size-2 rounded-full bg-[#FF5F57]" />
         <span className="size-2 rounded-full bg-[#FEBC2E]" />
         <span className="size-2 rounded-full bg-[#28C840]" />
-        <span className="ml-1 truncate font-mono text-[10px] text-[#9C8A80]">{label}</span>
+        <span className="ml-1.5 truncate font-mono text-[10px] text-[#9C8A80]">{label}</span>
+        <span className="ml-auto rounded-full bg-white px-1.5 py-0.5 font-mono text-[8.5px] tracking-wide text-[#9C8A80] uppercase">
+          {sampleLabel}
+        </span>
       </div>
-      <div className="space-y-1.5 p-3">
-        <div className="h-2 w-2/5 rounded-full bg-[#D52B0C]/70" />
-        <div className="h-1.5 w-full rounded-full bg-[#EADFD6]" />
-        <div className="h-1.5 w-11/12 rounded-full bg-[#EADFD6]" />
-        <div className="h-1.5 w-3/4 rounded-full bg-[#EADFD6]" />
-        <div className="mt-2 h-6 w-24 rounded-md bg-[#F3E9E1]" />
+      <div className="min-h-[148px] p-4 text-[#241712]">
+        <p className="text-[13px] font-bold tracking-tight">{label}</p>
+        {letter ? (
+          <div className="mt-2 space-y-1.5 text-[11.5px] leading-relaxed text-[#6E5C53]">
+            <p>Madame, Monsieur,</p>
+            {body.slice(0, 2).map((line) => (
+              <p key={line}>{line}.</p>
+            ))}
+            <p className="pt-1 text-[#9C8A80]">Cordialement,</p>
+          </div>
+        ) : (
+          <div className="mt-2.5 space-y-2">
+            {body.map((line) => (
+              <div key={line} className="flex items-start gap-2">
+                <span className="mt-1 size-1.5 shrink-0 rounded-full bg-[#D52B0C]/60" />
+                <span className="text-[11.5px] leading-snug text-[#6E5C53]">{line}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </figure>
   );
@@ -75,16 +156,23 @@ function ToolChip({ name, onRemove }: { name: string; onRemove: (name: string) =
   );
 }
 
-function ToolChips({ initial, addLabel }: { initial: string[]; addLabel: string }) {
-  const counterRef = useRef(0);
-  const [tools, setTools] = useState(initial);
-  const remove = useCallback((name: string) => {
-    setTools((prev) => prev.filter((tool) => tool !== name));
-  }, []);
-  const add = useCallback(() => {
-    counterRef.current += 1;
-    setTools((prev) => [...prev, `New tool ${counterRef.current}`]);
-  }, []);
+function ToolChips({
+  tools,
+  onChange,
+  addLabel,
+}: {
+  tools: string[];
+  onChange: Dispatch<SetStateAction<string[]>>;
+  addLabel: string;
+}) {
+  const remove = useCallback(
+    (name: string) => onChange((prev) => prev.filter((tool) => tool !== name)),
+    [onChange],
+  );
+  const add = useCallback(
+    () => onChange((prev) => [...prev, `New tool ${prev.length + 1}`]),
+    [onChange],
+  );
   return (
     <div className="mt-2.5 flex flex-wrap items-center gap-2">
       {tools.map((tool) => (
@@ -115,6 +203,7 @@ export function AgentModal({
   locale: string;
   onClose: () => void;
 }) {
+  const navigate = useNavigate();
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     dialogRef.current?.showModal();
@@ -122,18 +211,44 @@ export function AgentModal({
 
   const t = (value: Localized) => loc(locale, value);
   const spec = getAgentSpec(vertical.slug, index);
-  const outputs = spec?.outputs ?? [];
-  const triggers = useMemo(() => (spec?.triggers ?? []).map((v) => loc(locale, v)), [spec, locale]);
-  const actions = useMemo(() => (spec?.actions ?? []).map((v) => loc(locale, v)), [spec, locale]);
-  const outputLabels = useMemo(
-    () => (spec?.outputs ?? []).map((output) => loc(locale, output.label)),
-    [spec, locale],
+
+  const [triggers, setTriggers] = useState<string[]>(() =>
+    (spec?.triggers ?? []).map((value) => loc(locale, value)),
   );
-  const tools = useMemo(
-    () => (spec?.tools?.length ? spec.tools : vertical.integrations.items),
-    [spec, vertical],
+  const [selectedTrigger, setSelectedTrigger] = useState(0);
+  const [actions, setActions] = useState<string[]>(() =>
+    (spec?.actions ?? []).map((value) => loc(locale, value)),
   );
-  const pageOutputs = outputs.filter((output) => output.isPage);
+  const [outputs, setOutputs] = useState<string[]>(() =>
+    (spec?.outputs ?? []).map((output) => loc(locale, output.label)),
+  );
+  const [tools, setTools] = useState<string[]>(() =>
+    spec?.tools?.length ? spec.tools : vertical.integrations.items,
+  );
+
+  // Framed previews for page-type outputs, filled with the agent's own steps as sample content.
+  const previews = useMemo(() => {
+    const pageOutputs = (spec?.outputs ?? []).filter((output) => output.isPage);
+    return pageOutputs.map((output, position) => ({
+      key: output.label.en,
+      label: loc(locale, output.label),
+      lines: actions.slice(position * 2, position * 2 + 4),
+    }));
+  }, [spec, locale, actions]);
+
+  const handleDeploy = useCallback(() => {
+    const prompt = buildPrompt({
+      locale,
+      agentName: loc(locale, agent.name),
+      verticalName: loc(locale, vertical.name),
+      trigger: triggers[selectedTrigger] ?? triggers[0] ?? "",
+      actions,
+      outputs,
+      tools,
+    });
+    writePendingCoworkerPrompt({ initialMessage: prompt });
+    void navigate({ to: "/agents/new" });
+  }, [navigate, locale, agent, vertical, triggers, selectedTrigger, actions, outputs, tools]);
 
   return (
     <dialog
@@ -174,12 +289,16 @@ export function AgentModal({
       </div>
 
       <div className="mt-6 space-y-6">
-        <EditableList
+        <TriggerSelect
           label={t(M.triggers)}
           icon={Zap}
+          hint={t(M.triggerHint)}
           addLabel={t(M.addTrigger)}
           placeholder={t(M.triggerPlaceholder)}
           items={triggers}
+          selected={selectedTrigger}
+          onSelect={setSelectedTrigger}
+          onChange={setTriggers}
         />
         <EditableList
           label={t(M.actions)}
@@ -187,6 +306,7 @@ export function AgentModal({
           addLabel={t(M.addAction)}
           placeholder={t(M.actionPlaceholder)}
           items={actions}
+          onChange={setActions}
         />
         <div>
           <EditableList
@@ -194,33 +314,39 @@ export function AgentModal({
             icon={Download}
             addLabel={t(M.addOutput)}
             placeholder={t(M.outputPlaceholder)}
-            items={outputLabels}
+            items={outputs}
+            onChange={setOutputs}
           />
-          {pageOutputs.length > 0 ? (
-            <div className="mt-3 grid grid-cols-2 gap-2.5">
-              {pageOutputs.map((output) => (
-                <PagePreview key={output.label.en} label={t(output.label)} />
+          {previews.length > 0 ? (
+            <div className="mt-3 space-y-2.5">
+              {previews.map((preview) => (
+                <PagePreview
+                  key={preview.key}
+                  label={preview.label}
+                  sampleLabel={t(M.sample)}
+                  lines={preview.lines}
+                />
               ))}
             </div>
           ) : null}
         </div>
         <div>
           <p className="flex items-center gap-1.5 font-mono text-[10.5px] font-medium tracking-[0.1em] text-[#9C8A80] uppercase">
-            <span className="text-[#D52B0C]">
-              <Wrench className="size-3.5" />
-            </span>
+            <Wrench className="size-3.5 text-[#D52B0C]" />
             {t(M.tools)}
           </p>
-          <ToolChips initial={tools} addLabel={t(M.addTool)} />
+          <ToolChips tools={tools} onChange={setTools} addLabel={t(M.addTool)} />
         </div>
       </div>
 
       <div className="mt-7">
-        <Button asChild className="h-11 w-full bg-[#241712] text-white hover:bg-[#3C1E0A]">
-          <Link to="/login">
-            <Download className="mr-1.5 size-4" />
-            {t(M.deploy)}
-          </Link>
+        <Button
+          type="button"
+          onClick={handleDeploy}
+          className="h-11 w-full bg-[#241712] text-white hover:bg-[#3C1E0A]"
+        >
+          <Rocket className="mr-1.5 size-4" />
+          {t(M.deploy)}
         </Button>
       </div>
     </dialog>
