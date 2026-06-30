@@ -10,6 +10,45 @@ import { type ComponentType, type Dispatch, type SetStateAction, useCallback } f
  */
 type Items = Dispatch<SetStateAction<string[]>>;
 
+// Shared row body (text input + remove button) used by both editable and single-select rows.
+function RowInput({
+  value,
+  placeholder,
+  active,
+  onChange,
+  onRemove,
+}: {
+  value: string;
+  placeholder: string;
+  active?: boolean;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <>
+      <input
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className={[
+          "min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm transition-colors hover:border-[#E0D2C7] focus:border-[#D52B0C] focus:bg-[#FBF5F0] focus:outline-none",
+          active === false ? "text-[#6E5C53]" : "text-[#241712]",
+          active ? "font-medium" : "",
+        ].join(" ")}
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove"
+        className="flex size-6 shrink-0 items-center justify-center rounded-md text-[#9C8A80] opacity-0 transition group-hover/row:opacity-100 hover:bg-[#FAE5DF] hover:text-[#D52B0C]"
+      >
+        <X className="size-3.5" />
+      </button>
+    </>
+  );
+}
+
 function EditableRow({
   value,
   index,
@@ -31,21 +70,55 @@ function EditableRow({
   return (
     <div className="group/row flex items-center gap-2.5">
       <span className="size-1.5 shrink-0 rounded-full bg-[#D52B0C]" aria-hidden />
-      <input
-        value={value}
-        onChange={handleChange}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm text-[#241712] transition-colors hover:border-[#E0D2C7] focus:border-[#D52B0C] focus:bg-[#FBF5F0] focus:outline-none"
-      />
+      <RowInput value={value} placeholder={placeholder} onChange={handleChange} onRemove={handleRemove} />
+    </div>
+  );
+}
+
+function TriggerRow({
+  value,
+  index,
+  active,
+  placeholder,
+  onSelect,
+  onChange,
+  onRemove,
+}: {
+  value: string;
+  index: number;
+  active: boolean;
+  placeholder: string;
+  onSelect: (index: number) => void;
+  onChange: (index: number, value: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  const handleSelect = useCallback(() => onSelect(index), [onSelect, index]);
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => onChange(index, event.target.value),
+    [onChange, index],
+  );
+  const handleRemove = useCallback(() => onRemove(index), [onRemove, index]);
+  return (
+    <div className="group/row flex items-center gap-2.5">
       <button
         type="button"
-        onClick={handleRemove}
-        aria-label="Remove"
-        className="flex size-6 shrink-0 items-center justify-center rounded-md text-[#9C8A80] opacity-0 transition group-hover/row:opacity-100 hover:bg-[#FAE5DF] hover:text-[#D52B0C]"
+        onClick={handleSelect}
+        aria-pressed={active}
+        aria-label={`Select: ${value}`}
+        className={[
+          "flex size-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
+          active ? "border-[#D52B0C] bg-[#D52B0C]" : "border-[#E0D2C7] bg-white hover:border-[#D52B0C]",
+        ].join(" ")}
       >
-        <X className="size-3.5" />
+        {active ? <span className="size-1.5 rounded-full bg-white" /> : null}
       </button>
+      <RowInput
+        value={value}
+        placeholder={placeholder}
+        active={active}
+        onChange={handleChange}
+        onRemove={handleRemove}
+      />
     </div>
   );
 }
@@ -124,65 +197,6 @@ export function EditableList({
         ))}
       </div>
       <AddButton label={addLabel} onClick={add} />
-    </div>
-  );
-}
-
-function TriggerRow({
-  value,
-  index,
-  active,
-  placeholder,
-  onSelect,
-  onChange,
-  onRemove,
-}: {
-  value: string;
-  index: number;
-  active: boolean;
-  placeholder: string;
-  onSelect: (index: number) => void;
-  onChange: (index: number, value: string) => void;
-  onRemove: (index: number) => void;
-}) {
-  const handleSelect = useCallback(() => onSelect(index), [onSelect, index]);
-  const handleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => onChange(index, event.target.value),
-    [onChange, index],
-  );
-  const handleRemove = useCallback(() => onRemove(index), [onRemove, index]);
-  return (
-    <div className="group/row flex items-center gap-2.5">
-      <button
-        type="button"
-        onClick={handleSelect}
-        aria-pressed={active}
-        aria-label={`Select: ${value}`}
-        className={[
-          "flex size-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
-          active ? "border-[#D52B0C] bg-[#D52B0C]" : "border-[#E0D2C7] bg-white hover:border-[#D52B0C]",
-        ].join(" ")}
-      >
-        {active ? <span className="size-1.5 rounded-full bg-white" /> : null}
-      </button>
-      <input
-        value={value}
-        onChange={handleChange}
-        placeholder={placeholder}
-        aria-label={placeholder}
-        className={[
-          "min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm transition-colors hover:border-[#E0D2C7] focus:border-[#D52B0C] focus:bg-[#FBF5F0] focus:outline-none",
-          active ? "font-medium text-[#241712]" : "text-[#6E5C53]",
-        ].join(" ")}
-      />
-      <button
-        type="button"
-        onClick={handleRemove}
-        aria-label="Remove"
-        className="flex size-6 shrink-0 items-center justify-center rounded-md text-[#9C8A80] opacity-0 transition group-hover/row:opacity-100 hover:bg-[#FAE5DF] hover:text-[#D52B0C]"
-      >
-        <X className="size-3.5" />
-      </button>
     </div>
   );
 }
