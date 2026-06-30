@@ -27,6 +27,11 @@ const UI = {
   },
   open: { en: "Customize & deploy", fr: "Personnaliser et déployer" },
   sample: { en: "Sample output", fr: "Exemple de sortie" },
+  howKicker: { en: "How it works", fr: "Comment ça marche" },
+  howTitle: {
+    en: "From your tools to a working agent, in three steps",
+    fr: "De vos outils à un agent au travail, en trois étapes",
+  },
   cta: { en: "Book a demo", fr: "Réserver une démo" },
   ctaTitle: {
     en: "Deploy your first agents in under two weeks",
@@ -139,6 +144,53 @@ function AgentShowcase({
   );
 }
 
+// A real sequence (connect → review → deploy), so numbered markers carry meaning here.
+const STEPS = [
+  {
+    n: "01",
+    title: { en: "Connect your tools", fr: "Connectez vos outils" },
+    body: {
+      en: "Connect your existing tools once. Any tool with an MCP server works out of the box.",
+      fr: "Connectez vos outils existants une fois. Tout outil disposant d'un serveur MCP marche directement.",
+    },
+  },
+  {
+    n: "02",
+    title: { en: "The agent proposes, you approve", fr: "L'agent propose, vous validez" },
+    body: {
+      en: "It drafts the work; a human reviews, edits and approves every action, with a full audit trail.",
+      fr: "Il prépare le travail ; un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
+    },
+  },
+  {
+    n: "03",
+    title: { en: "Deploy and let it run", fr: "Déployez et laissez tourner" },
+    body: {
+      en: "Once you trust it, let the agent run the steps you choose on its own. You decide where the line sits.",
+      fr: "Une fois en confiance, laissez l'agent exécuter seul les étapes que vous choisissez. Vous fixez la limite.",
+    },
+  },
+];
+
+function HowItWorks({ locale }: { locale: string }) {
+  const t = (value: Localized) => loc(locale, value);
+  return (
+    <section className="mt-16">
+      <p className="font-mono text-[11px] font-medium tracking-[0.2em] text-[#D52B0C] uppercase">{t(UI.howKicker)}</p>
+      <h2 className="mt-2 text-2xl font-bold tracking-tight">{t(UI.howTitle)}</h2>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {STEPS.map((step) => (
+          <div key={step.n} className="rounded-3xl border border-[#EADFD6] bg-white p-6 shadow-sm">
+            <p className="font-mono text-sm font-semibold tracking-[0.05em] text-[#D52B0C]">{step.n}</p>
+            <h3 className="mt-2.5 text-base font-bold tracking-tight">{t(step.title)}</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-[#6E5C53]">{t(step.body)}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function VerticalPage({ vertical }: { vertical: Vertical }) {
   const { locale } = useAppLocale();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -196,12 +248,6 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
           </div>
         </header>
 
-        {/* Problem */}
-        <section className="mt-16 rounded-3xl border border-[#EADFD6] bg-white p-7 shadow-sm">
-          <h2 className="text-2xl font-bold tracking-tight">{t(vertical.problem.title)}</h2>
-          <p className="mt-3 leading-relaxed text-[#6E5C53]">{t(vertical.problem.body)}</p>
-        </section>
-
         {/* Agentic apps */}
         <section className="mt-16">
           <p className="font-mono text-[11px] font-medium tracking-[0.2em] text-[#D52B0C] uppercase">
@@ -221,6 +267,15 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
               />
             ))}
           </div>
+        </section>
+
+        {/* How it works */}
+        <HowItWorks locale={locale} />
+
+        {/* Problem */}
+        <section className="mt-16 rounded-3xl border border-[#EADFD6] bg-white p-7 shadow-sm">
+          <h2 className="text-2xl font-bold tracking-tight">{t(vertical.problem.title)}</h2>
+          <p className="mt-3 leading-relaxed text-[#6E5C53]">{t(vertical.problem.body)}</p>
         </section>
 
         {/* Integrations */}
