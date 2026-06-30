@@ -35,6 +35,7 @@ const UI = {
     fr: "Connectez vos outils une fois. Vos agents se mettent au travail, avec un humain qui valide chaque étape.",
   },
   deployCta: { en: "Deploy on HeyBap", fr: "Déployer sur HeyBap" },
+  moreTools: { en: "and many more tools", fr: "et bien d'autres outils" },
 };
 
 function AgentCard({
@@ -172,16 +173,19 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
         {/* Integrations */}
         <section className="mt-16">
           <h2 className="text-2xl font-bold tracking-tight">{t(vertical.integrations.title)}</h2>
-          <div className="mt-5 flex flex-wrap gap-2.5">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             {vertical.integrations.items.map((item) => (
               <span
                 key={item}
-                className="inline-flex items-center gap-2 rounded-full border border-[#E0D2C7] bg-white py-1.5 pr-4 pl-2.5 text-sm font-medium text-[#3C1E0A]"
+                className="inline-flex items-center gap-3 rounded-2xl border border-[#E0D2C7] bg-white py-3 pr-5 pl-4 text-base font-semibold text-[#3C1E0A] shadow-sm"
               >
-                <ToolLogo name={item} size={18} />
+                <ToolLogo name={item} size={30} />
                 {item}
               </span>
             ))}
+            <span className="inline-flex items-center rounded-2xl border border-dashed border-[#E0D2C7] px-5 py-3 text-base font-medium text-[#6E5C53]">
+              {t(UI.moreTools)}
+            </span>
           </div>
         </section>
 

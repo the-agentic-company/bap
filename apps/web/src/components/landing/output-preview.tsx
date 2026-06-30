@@ -69,6 +69,34 @@ function pick(lines: string[], samples: string[]): string[] {
 function DashboardBody({ locale }: BodyProps) {
   return (
     <div>
+      <div className="mb-2.5 flex items-center gap-3 rounded-lg border border-[#EADFD6] bg-[#FBF5F0] p-2.5">
+        <div className="relative size-12 shrink-0">
+          <svg viewBox="0 0 36 36" className="size-full -rotate-90" aria-hidden>
+            <circle cx="18" cy="18" r="15.915" fill="none" stroke="#EADFD6" strokeWidth="3.4" />
+            <circle
+              cx="18"
+              cy="18"
+              r="15.915"
+              fill="none"
+              stroke="#D52B0C"
+              strokeWidth="3.4"
+              strokeLinecap="round"
+              strokeDasharray="78 100"
+            />
+          </svg>
+          <span className="absolute inset-0 grid place-items-center text-[12px] font-bold text-[#241712] tabular-nums">
+            78
+          </span>
+        </div>
+        <div>
+          <p className="font-mono text-[8px] tracking-wide text-[#9C8A80] uppercase">
+            {locale === "fr" ? "Score global" : "Overall score"}
+          </p>
+          <p className="text-[13px] font-bold tracking-tight text-[#241712]">
+            {locale === "fr" ? "En bonne voie" : "On track"} <span className="text-[#2E8B57]">+5</span>
+          </p>
+        </div>
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {KPIS.map((kpi) => (
           <div key={kpi.id} className="rounded-lg border border-[#EADFD6] bg-[#FBF5F0] p-2">
@@ -81,7 +109,7 @@ function DashboardBody({ locale }: BodyProps) {
           </div>
         ))}
       </div>
-      <div className="mt-3 flex h-12 items-end gap-1.5">
+      <div className="mt-2.5 flex h-10 items-end gap-1.5">
         {BARS.map((bar) => (
           <div
             key={bar.id}

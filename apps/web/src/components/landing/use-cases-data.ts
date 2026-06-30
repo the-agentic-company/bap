@@ -73,6 +73,23 @@ export interface Vertical {
   faq: UseCaseFaq[];
 }
 
+// Shared FAQs reused across every vertical (the message is the same everywhere).
+const AUTONOMY_FAQ: UseCaseFaq = {
+  question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
+  answer: {
+    en: "It is your choice. By default the agent proposes and a human reviews, edits and approves every action, with a full audit trail. If you prefer, you can let it run trusted steps on its own, you decide where the line sits.",
+    fr: "C'est vous qui décidez. Par défaut, l'agent propose et un humain relit, modifie et valide chaque action, avec une piste d'audit complète. Si vous le souhaitez, vous pouvez le laisser exécuter seul les étapes de confiance : vous fixez la limite.",
+  },
+};
+
+const INTEGRATIONS_FAQ: UseCaseFaq = {
+  question: { en: "What if a tool we use isn't listed?", fr: "Et si un de nos outils n'est pas listé ?" },
+  answer: {
+    en: "Any tool with an MCP server connects out of the box, and we build any missing integration ourselves. Your existing stack is never a blocker.",
+    fr: "Tout outil disposant d'un serveur MCP se connecte directement, et nous développons nous-mêmes toute intégration manquante. Votre stack existant n'est jamais un frein.",
+  },
+};
+
 const notaires: Vertical = {
   slug: "notaires",
   name: { en: "Notaries", fr: "Notaires" },
@@ -152,13 +169,7 @@ const notaires: Vertical = {
     { value: "< 2 sem.", label: { en: "from kickoff to agents live", fr: "du lancement aux agents en production" } },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
-      answer: {
-        en: "No. Nothing is sent, filed or registered on its own, the agent proposes, and a clerk reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. Rien n'est envoyé, classé ni enregistré de façon autonome, l'agent propose, et un clerc relit, corrige et valide chaque action, avec une piste d'audit complète.",
-      },
-    },
+    AUTONOMY_FAQ,
     {
       question: {
         en: "Is it compatible with notarial secrecy and our data?",
@@ -169,16 +180,7 @@ const notaires: Vertical = {
         fr: "Oui. HeyBap peut être auto-hébergé sur vos propres serveurs, avec accès par rôle et piste d'audit complète, pensé pour respecter le secret notarial.",
       },
     },
-    {
-      question: {
-        en: "Does it work with Genapi / iNot?",
-        fr: "Est-ce que ça fonctionne avec Genapi / iNot ?",
-      },
-      answer: {
-        en: "Yes. The agents work across your existing stack: Genapi (iNot), Fichorga, Fiducial and the administrations you already use. No rip-and-replace needed.",
-        fr: "Oui. Les agents travaillent à travers votre stack existant : Genapi (iNot), Fichorga, Fiducial et les administrations que vous utilisez déjà. Sans rien remplacer.",
-      },
-    },
+    INTEGRATIONS_FAQ,
   ],
 };
 
@@ -267,30 +269,8 @@ const servicesALaPersonne: Vertical = {
     { value: "< 2 sem.", label: { en: "from kickoff to agents live", fr: "du lancement aux agents en production" } },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
-      answer: {
-        en: "No. Nothing is sent, scheduled or changed on its own, the agent proposes, and a human reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. Rien n'est envoyé, planifié ni modifié de façon autonome, l'agent propose, et un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
-      },
-    },
-    {
-      question: { en: "How does it connect to Ogust?", fr: "Comment se connecte-t-il à Ogust ?" },
-      answer: {
-        en: "Ogust exposes an open API and a Zapier connection, so HeyBap plugs in directly, no IT project on your side. Apologic, Ximi and Domatel can be connected the same way.",
-        fr: "Ogust expose une API ouverte et une connexion Zapier : HeyBap s'y branche directement, sans projet informatique de votre côté. Apologic, Ximi et Domatel se connectent de la même façon.",
-      },
-    },
-    {
-      question: {
-        en: "What if my software has no open API?",
-        fr: "Et si mon logiciel n'a pas d'API ouverte ?",
-      },
-      answer: {
-        en: "The agent can start at the edges of your stack, via email, WhatsApp or voice, to handle family follow-ups and replacements before any deep integration, then connect to your software once it's ready.",
-        fr: "L'agent peut démarrer en périphérie de vos outils, par email, WhatsApp ou téléphone, pour gérer le suivi des familles et les remplacements avant toute intégration profonde, puis se connecter à votre logiciel une fois prêt.",
-      },
-    },
+    AUTONOMY_FAQ,
+    INTEGRATIONS_FAQ,
   ],
 };
 
@@ -370,23 +350,8 @@ const courtiersAssurance: Vertical = {
     },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
-      answer: {
-        en: "No. The agent proposes, you decide, nothing is created or sent on its own. A human reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. L'agent propose, vous décidez, rien n'est créé ni envoyé de façon autonome. Un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
-      },
-    },
-    {
-      question: {
-        en: "Does it connect to my brokerage software?",
-        fr: "Se connecte-t-il à mon logiciel de courtage ?",
-      },
-      answer: {
-        en: "Yes. CourtiGo offers the best integration surface of the whole sector, a REST API and a native MCP server, so an agent can be connected in a matter of days. Antenia's open, secured APIs and EDI Courtage NEO are supported too.",
-        fr: "Oui. CourtiGo offre la meilleure surface d'intégration du secteur, une API REST et un serveur MCP natif, ce qui permet de connecter un agent en quelques jours. Les API ouvertes et sécurisées d'Antenia et EDI Courtage NEO sont également prises en charge.",
-      },
-    },
+    AUTONOMY_FAQ,
+    INTEGRATIONS_FAQ,
     {
       question: {
         en: "Is it compliant for a regulated activity?",
@@ -475,23 +440,8 @@ const expertsComptables: Vertical = {
     },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
-      answer: {
-        en: "No. Nothing is posted, sent or changed on its own, the agent proposes, and a human reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. Rien n'est comptabilisé, envoyé ni modifié de façon autonome, l'agent propose, et un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
-      },
-    },
-    {
-      question: {
-        en: "Does it work with Sage, Cegid or Pennylane?",
-        fr: "Est-ce compatible avec Sage, Cegid ou Pennylane ?",
-      },
-      answer: {
-        en: "Yes. The agent works across your existing production tools (Sage Coala, Cegid Expert, ACD, Agiris, RCA, Pennylane) via their APIs and EDI, with no change to your software.",
-        fr: "Oui. L'agent travaille à travers vos outils de production existants (Sage Coala, Cegid Expert, ACD, Agiris, RCA, Pennylane) via leurs API et l'EDI, sans changer de logiciel.",
-      },
-    },
+    AUTONOMY_FAQ,
+    INTEGRATIONS_FAQ,
     {
       question: { en: "Where does my client data live?", fr: "Où sont hébergées les données de mes clients ?" },
       answer: {
@@ -568,13 +518,7 @@ const ehpad: Vertical = {
     { value: "100 %", label: { en: "of actions reviewed by your team", fr: "des actions validées par votre équipe" } },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
-      answer: {
-        en: "No. The agent proposes, your team decides. Every reply, message and file is drafted for a human to review, edit and approve before anything happens. Nothing is sent or acted on without a caregiver's validation.",
-        fr: "Non. L'agent propose, votre équipe décide. Chaque réponse, message et dossier est préparé pour qu'un humain le relise, le modifie et le valide avant toute action. Rien n'est envoyé ni exécuté sans la validation d'un soignant.",
-      },
-    },
+    AUTONOMY_FAQ,
     {
       question: {
         en: "What about resident data confidentiality?",
@@ -585,16 +529,7 @@ const ehpad: Vertical = {
         fr: "HeyBap peut être auto-hébergé pour que vos données restent sous votre contrôle, avec des accès par rôle pour que chacun ne voie que ce qui le concerne, et une traçabilité complète de chaque action.",
       },
     },
-    {
-      question: {
-        en: "Does it integrate with NetSoins and Ségur?",
-        fr: "S'intègre-t-il à NetSoins et au Ségur ?",
-      },
-      answer: {
-        en: "Yes. The agent works across your existing tools, including NetSoins (Orisha Socialcare) and its Ségur interoperability, rather than asking you to change software.",
-        fr: "Oui. L'agent travaille à travers vos outils existants, dont NetSoins (Orisha Socialcare) et son interopérabilité Ségur, sans vous demander de changer de logiciel.",
-      },
-    },
+    INTEGRATIONS_FAQ,
   ],
 };
 
@@ -674,23 +609,8 @@ const veterinaires: Vertical = {
     },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
-      answer: {
-        en: "No. The agent proposes every action, a reply, an appointment, a report, an order, and you decide. Nothing is sent or finalised without your approval, and every step is logged in a full audit trail.",
-        fr: "Non. L'agent propose chaque action, une réponse, un RDV, un compte-rendu, une commande, et vous décidez. Rien n'est envoyé ni finalisé sans votre validation, et chaque étape est tracée dans un historique complet.",
-      },
-    },
-    {
-      question: {
-        en: "Does it need deep access to my practice software?",
-        fr: "A-t-il besoin d'un accès profond à mon logiciel métier ?",
-      },
-      answer: {
-        en: "No. The agent works at the surface, phone, email, messages, and does not need write access to your animal records or regulated drug stock. It fits alongside Vetocom, Bourgelat or your current software without touching the sensitive data inside.",
-        fr: "Non. L'agent travaille en surface, téléphone, e-mail, messages, et n'a pas besoin d'un accès en écriture à vos fiches animaux ou à votre stock de médicaments réglementés. Il s'intègre à côté de Vetocom, Bourgelat ou de votre logiciel actuel sans toucher aux données sensibles.",
-      },
-    },
+    AUTONOMY_FAQ,
+    INTEGRATIONS_FAQ,
     {
       question: { en: "Where does my clinic's data go?", fr: "Où vont les données de ma clinique ?" },
       answer: {
@@ -764,13 +684,7 @@ const pharmacies: Vertical = {
     { value: "76%", label: { en: "of the market on LGPI & Winpharma", fr: "du marché sur LGPI & Winpharma" } },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
-      answer: {
-        en: "No. The agent only proposes, every order, reminder and action waits for your approval before anything happens. In a regulated health setting, you keep full control and a complete audit trail of every decision.",
-        fr: "Non. L'agent se contente de proposer, chaque commande, rappel et action attend votre validation avant de se déclencher. Dans un cadre de santé réglementé, vous gardez le contrôle total et un historique complet de chaque décision.",
-      },
-    },
+    AUTONOMY_FAQ,
     {
       question: {
         en: "What about patient-data confidentiality?",
@@ -781,13 +695,7 @@ const pharmacies: Vertical = {
         fr: "HeyBap peut être auto-hébergé pour que vos données restent chez vous, avec des accès par rôle qui contrôlent qui voit quoi et un historique qui trace chaque action. La confidentialité reste entre vos mains.",
       },
     },
-    {
-      question: { en: "Do I have to change my software?", fr: "Dois-je changer de logiciel ?" },
-      answer: {
-        en: "No. The agent works alongside LGPI, Winpharma and your other tools without replacing them. You keep your current setup, and you can be up and running in under two weeks.",
-        fr: "Non. L'agent travaille aux côtés de LGPI, Winpharma et de vos autres outils sans les remplacer. Vous conservez votre installation actuelle, et vous pouvez être opérationnel en moins de deux semaines.",
-      },
-    },
+    INTEGRATIONS_FAQ,
   ],
 };
 
@@ -863,23 +771,8 @@ const syndicsCopropriete: Vertical = {
     { value: "< 2 sem.", label: { en: "from kickoff to agents live", fr: "du lancement aux agents en production" } },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
-      answer: {
-        en: "No. Nothing is sent, invoiced or filed on its own, the agent proposes, and a manager reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. Rien n'est envoyé, facturé ni classé de façon autonome, l'agent propose, et un gestionnaire relit, modifie et valide chaque action, avec une piste d'audit complète.",
-      },
-    },
-    {
-      question: {
-        en: "Does it work even if my software is closed?",
-        fr: "Est-ce que ça marche même si mon logiciel est fermé ?",
-      },
-      answer: {
-        en: "Yes. Even when your software has no open API, the agent starts at the edges of your stack, general-meeting prep, charge reminders, document intake by email, before any deep integration. Gercop offers a partner API we connect to when it's available.",
-        fr: "Oui. Même si votre logiciel n'a pas d'API ouverte, l'agent démarre en périphérie de vos outils, préparation des AG, relances de charges, réception des documents par email, avant toute intégration profonde. Gercop propose une API partenaire à laquelle nous nous connectons lorsqu'elle est disponible.",
-      },
-    },
+    AUTONOMY_FAQ,
+    INTEGRATIONS_FAQ,
     {
       question: {
         en: "What about co-owner and tenant data confidentiality?",
@@ -966,23 +859,8 @@ const artisansBatiment: Vertical = {
     { value: "100 %", label: { en: "of actions reviewed by you", fr: "des actions validées par vous" } },
   ],
   faq: [
-    {
-      question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
-      answer: {
-        en: "No. The agent proposes every quote, follow-up and report, and you decide. Nothing is sent or finalised without your approval, and every step is logged in a full audit trail.",
-        fr: "Non. L'agent propose chaque devis, relance et compte-rendu, et vous décidez. Rien n'est envoyé ni finalisé sans votre validation, et chaque étape est tracée dans un historique complet.",
-      },
-    },
-    {
-      question: {
-        en: "Does it work even if my software has no real API?",
-        fr: "Est-ce que ça marche même si mon logiciel n'a pas de vraie API ?",
-      },
-      answer: {
-        en: "Yes. Trade work is document-based, so the agent can start from a dictation, a photo or an email and prepare your quote or report even where the software offers no deep integration, then connect to your tools once it's ready.",
-        fr: "Oui. Le métier est documentaire : l'agent peut partir d'une dictée, d'une photo ou d'un email et préparer votre devis ou compte-rendu même là où le logiciel n'offre pas d'intégration profonde, puis se connecter à vos outils une fois prêt.",
-      },
-    },
+    AUTONOMY_FAQ,
+    INTEGRATIONS_FAQ,
     {
       question: { en: "Where does my data go?", fr: "Où vont mes données ?" },
       answer: {
@@ -1068,26 +946,8 @@ const hotellerie: Vertical = {
     { value: "< 2 sem.", label: { en: "to go live", fr: "pour être opérationnel" } },
   ],
   faq: [
-    {
-      question: {
-        en: "Does the agent book or send anything on its own?",
-        fr: "L'agent réserve-t-il ou envoie-t-il quelque chose tout seul ?",
-      },
-      answer: {
-        en: "No. The agent proposes every action, a booking reply, a rate update, a guest email, and you decide. Nothing is sent or published without your approval, and every action is logged in an audit trail.",
-        fr: "Non. L'agent propose chaque action, une réponse de réservation, une mise à jour tarifaire, un email client, et vous décidez. Rien n'est envoyé ni publié sans votre validation, et chaque action est tracée dans un journal d'audit.",
-      },
-    },
-    {
-      question: {
-        en: "Will it connect to my existing PMS and channel manager?",
-        fr: "Se connecte-t-il à mon PMS et à mon channel manager existants ?",
-      },
-      answer: {
-        en: "Yes. Integration is quickest through the Mews Open API, and we also support Medialog, Reservit, D-EDGE and Septeo Hospitality. Most hotels are live in under two weeks.",
-        fr: "Oui. L'intégration est la plus rapide via l'Open API de Mews, et nous prenons aussi en charge Medialog, Reservit, D-EDGE et Septeo Hospitality. La plupart des hôtels sont opérationnels en moins de deux semaines.",
-      },
-    },
+    AUTONOMY_FAQ,
+    INTEGRATIONS_FAQ,
     {
       question: { en: "Where does my guest data live?", fr: "Où sont stockées les données de mes clients ?" },
       answer: {
