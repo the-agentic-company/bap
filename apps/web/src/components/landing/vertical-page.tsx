@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { useAppLocale } from "@/components/general-translation-provider";
 import { Button } from "@/components/ui/button";
 import { AgentModal } from "./agent-modal";
+import { getAgentSpec } from "./agent-specs";
+import { ToolLogo } from "./tool-logo";
 import { loc, type Localized, type UseCaseAgent, type Vertical } from "./use-cases-data";
 
 /**
@@ -37,17 +39,20 @@ const UI = {
 
 function AgentCard({
   agent,
+  slug,
   locale,
   index,
   onOpen,
 }: {
   agent: UseCaseAgent;
+  slug: string;
   locale: string;
   index: number;
   onOpen: (index: number) => void;
 }) {
   const t = (value: Localized) => loc(locale, value);
   const handleOpen = useCallback(() => onOpen(index), [onOpen, index]);
+  const tools = (getAgentSpec(slug, index)?.tools ?? []).slice(0, 3);
   return (
     <button
       type="button"
@@ -59,6 +64,19 @@ function AgentCard({
       </div>
       <h3 className="mt-4 text-lg font-bold tracking-tight">{t(agent.name)}</h3>
       <p className="mt-1.5 flex-1 text-sm leading-relaxed text-[#6E5C53]">{t(agent.description)}</p>
+      {tools.length > 0 ? (
+        <div className="mt-3.5 flex flex-wrap gap-1.5">
+          {tools.map((tool) => (
+            <span
+              key={tool}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#EADFD6] bg-[#FBF5F0] py-0.5 pr-2 pl-1.5 text-[11px] font-medium text-[#6E5C53]"
+            >
+              <ToolLogo name={tool} size={13} />
+              {tool}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <span className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] font-medium tracking-[0.1em] text-[#D52B0C] uppercase">
         {t(UI.open)}
         <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -83,8 +101,6 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
       acceptedAnswer: { "@type": "Answer", text: t(item.answer) },
     })),
   };
-  const openAgent = openIndex === null ? null : vertical.agents[openIndex];
-
   return (
     <main className="min-h-screen bg-[#FBF5F0] font-sans text-[#241712]">
       <script
@@ -144,6 +160,7 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
               <AgentCard
                 key={agent.name.en}
                 agent={agent}
+                slug={vertical.slug}
                 locale={locale}
                 index={index}
                 onOpen={openAt}
@@ -159,8 +176,9 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
             {vertical.integrations.items.map((item) => (
               <span
                 key={item}
-                className="rounded-full border border-[#E0D2C7] bg-white px-4 py-1.5 text-sm font-medium text-[#3C1E0A]"
+                className="inline-flex items-center gap-2 rounded-full border border-[#E0D2C7] bg-white py-1.5 pr-4 pl-2.5 text-sm font-medium text-[#3C1E0A]"
               >
+                <ToolLogo name={item} size={18} />
                 {item}
               </span>
             ))}
@@ -220,10 +238,11 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
         </section>
       </div>
 
-      {openAgent ? (
+      {openIndex !== null ? (
         <AgentModal
-          agent={openAgent}
+          agent={vertical.agents[openIndex]}
           vertical={vertical}
+          index={openIndex}
           locale={locale}
           onClose={closeModal}
         />
