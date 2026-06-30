@@ -10,6 +10,11 @@ type Kind = "dashboard" | "table" | "list" | "letter" | "schedule" | "document";
 
 type BodyProps = { locale: string; lines: string[]; tools: string[] };
 
+// Small locale picker: keeps the decision out of the body functions (lower complexity).
+function tr(locale: string, en: string, fr: string): string {
+  return locale === "fr" ? fr : en;
+}
+
 const KIND_RULES: [RegExp, Kind][] = [
   [/courrier|lettre|letter|reply|réponse|convocation|welcome|bienvenue/i, "letter"],
   [/dashboard|tableau de bord|board|status|statut|état|suivi|impayé|balance/i, "dashboard"],
@@ -36,6 +41,12 @@ const KPIS = [
   { id: "k1", value: "128", en: "Total", fr: "Total" },
   { id: "k2", value: "12", en: "To review", fr: "À traiter" },
   { id: "k3", value: "98%", en: "On track", fr: "Conformes" },
+];
+
+// Even / odd row styling for the list preview (kept as data to avoid per-row branching).
+const LIST_STATES = [
+  { dot: "bg-[#E8A33D]", pill: "bg-[#FAE5DF] text-[#B0240A]", en: "To do", fr: "À faire" },
+  { dot: "bg-[#2E8B57]", pill: "bg-[#E6F2EB] text-[#2E8B57]", en: "Done", fr: "Validé" },
 ];
 
 const CELLS = [
@@ -90,10 +101,10 @@ function DashboardBody({ locale }: BodyProps) {
         </div>
         <div>
           <p className="font-mono text-[8px] tracking-wide text-[#9C8A80] uppercase">
-            {locale === "fr" ? "Score global" : "Overall score"}
+            {tr(locale, "Overall score", "Score global")}
           </p>
           <p className="text-[13px] font-bold tracking-tight text-[#241712]">
-            {locale === "fr" ? "En bonne voie" : "On track"} <span className="text-[#2E8B57]">+5</span>
+            {tr(locale, "On track", "En bonne voie")} <span className="text-[#2E8B57]">+5</span>
           </p>
         </div>
       </div>
@@ -104,7 +115,7 @@ function DashboardBody({ locale }: BodyProps) {
               {kpi.value}
             </p>
             <p className="mt-0.5 font-mono text-[8px] tracking-wide text-[#9C8A80] uppercase">
-              {locale === "fr" ? kpi.fr : kpi.en}
+              {tr(locale, kpi.en, kpi.fr)}
             </p>
           </div>
         ))}
@@ -127,9 +138,9 @@ function TableBody({ locale, tools }: BodyProps) {
   return (
     <div>
       <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-b border-[#EADFD6] pb-1 font-mono text-[8.5px] tracking-wide text-[#9C8A80] uppercase">
-        <span>{locale === "fr" ? "Élément" : "Item"}</span>
-        <span className="text-right">{locale === "fr" ? "Qté" : "Qty"}</span>
-        <span className="text-right">{locale === "fr" ? "Montant" : "Amount"}</span>
+        <span>{tr(locale, "Item", "Élément")}</span>
+        <span className="text-right">{tr(locale, "Qty", "Qté")}</span>
+        <span className="text-right">{tr(locale, "Amount", "Montant")}</span>
       </div>
       {rows.map((row, i) => (
         <div
@@ -153,35 +164,34 @@ function ListBody({ locale, lines }: BodyProps) {
   const items = pick(lines, ["Dossier Martin", "Dossier Bernard", "Dossier Petit", "Dossier Durand"]).slice(0, 4);
   return (
     <div className="space-y-1.5">
-      {items.map((item, i) => (
-        <div key={item} className="flex items-center gap-2">
-          <span className={`size-1.5 shrink-0 rounded-full ${i % 2 === 0 ? "bg-[#E8A33D]" : "bg-[#2E8B57]"}`} />
-          <span className="flex-1 truncate text-[10.5px] text-[#3C1E0A]">{item}</span>
-          <span
-            className={`rounded-full px-1.5 py-0.5 font-mono text-[8px] ${
-              i % 2 === 0 ? "bg-[#FAE5DF] text-[#B0240A]" : "bg-[#E6F2EB] text-[#2E8B57]"
-            }`}
-          >
-            {i % 2 === 0 ? (locale === "fr" ? "À faire" : "To do") : locale === "fr" ? "Validé" : "Done"}
-          </span>
-        </div>
-      ))}
+      {items.map((item, i) => {
+        const st = LIST_STATES[i % 2];
+        return (
+          <div key={item} className="flex items-center gap-2">
+            <span className={`size-1.5 shrink-0 rounded-full ${st.dot}`} />
+            <span className="flex-1 truncate text-[10.5px] text-[#3C1E0A]">{item}</span>
+            <span className={`rounded-full px-1.5 py-0.5 font-mono text-[8px] ${st.pill}`}>
+              {tr(locale, st.en, st.fr)}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 function LetterBody({ locale, lines }: BodyProps) {
   const body = pick(lines, [
-    locale === "fr" ? "Nous faisons suite à votre dossier" : "Following up on your file",
-    locale === "fr" ? "Les éléments sont prêts pour validation" : "The items are ready for review",
+    tr(locale, "Following up on your file", "Nous faisons suite à votre dossier"),
+    tr(locale, "The items are ready for review", "Les éléments sont prêts pour validation"),
   ]).slice(0, 2);
   return (
     <div className="space-y-1.5 text-[10.5px] leading-relaxed text-[#6E5C53]">
-      <p>{locale === "fr" ? "Madame, Monsieur," : "Dear Sir or Madam,"}</p>
+      <p>{tr(locale, "Dear Sir or Madam,", "Madame, Monsieur,")}</p>
       {body.map((line) => (
         <p key={line}>{line}.</p>
       ))}
-      <p className="pt-1 text-[#9C8A80]">{locale === "fr" ? "Cordialement," : "Kind regards,"}</p>
+      <p className="pt-1 text-[#9C8A80]">{tr(locale, "Kind regards,", "Cordialement,")}</p>
     </div>
   );
 }
@@ -192,7 +202,7 @@ function ScheduleBody({ locale }: BodyProps) {
       <div className="mb-1 grid grid-cols-5 gap-1 font-mono text-[8px] tracking-wide text-[#9C8A80] uppercase">
         {SCHEDULE_DAYS.map((day) => (
           <span key={day.id} className="text-center">
-            {locale === "fr" ? day.fr : day.en}
+            {tr(locale, day.en, day.fr)}
           </span>
         ))}
       </div>
