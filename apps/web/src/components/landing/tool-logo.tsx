@@ -69,42 +69,40 @@ function monogramColor(name: string): string {
   return MONO_PALETTE[hash % MONO_PALETTE.length];
 }
 
+function Monogram({ name, size }: { name: string; size: number }) {
+  const style = useMemo(
+    () => ({ width: size, height: size, backgroundColor: monogramColor(name), fontSize: size * 0.5 }),
+    [name, size],
+  );
+  const letter = (name.match(/[A-Za-z0-9]/)?.[0] ?? "?").toUpperCase();
+  return (
+    <span
+      aria-hidden
+      style={style}
+      className="flex shrink-0 items-center justify-center rounded-[5px] font-semibold text-white"
+    >
+      {letter}
+    </span>
+  );
+}
+
 export function ToolLogo({ name, size = 20 }: { name: string; size?: number }) {
   const domain = TOOL_DOMAINS[name];
   const [failed, setFailed] = useState(false);
   const onError = useCallback(() => setFailed(true), []);
   const imgStyle = useMemo(() => ({ width: size, height: size }), [size]);
-  const monoStyle = useMemo(
-    () => ({
-      width: size,
-      height: size,
-      backgroundColor: monogramColor(name),
-      fontSize: size * 0.5,
-    }),
-    [name, size],
-  );
 
-  if (domain && !failed) {
-    return (
-      <img
-        src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
-        alt=""
-        loading="lazy"
-        onError={onError}
-        style={imgStyle}
-        className="shrink-0 rounded-[5px] object-contain"
-      />
-    );
+  if (!domain || failed) {
+    return <Monogram name={name} size={size} />;
   }
-
-  const letter = (name.match(/[A-Za-z0-9]/)?.[0] ?? "?").toUpperCase();
   return (
-    <span
-      aria-hidden
-      style={monoStyle}
-      className="flex shrink-0 items-center justify-center rounded-[5px] font-semibold text-white"
-    >
-      {letter}
-    </span>
+    <img
+      src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
+      alt=""
+      loading="lazy"
+      onError={onError}
+      style={imgStyle}
+      className="shrink-0 rounded-[5px] object-contain"
+    />
   );
 }

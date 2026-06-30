@@ -136,6 +136,23 @@ function LandingTopBar({ isAnonymous }: { isAnonymous: boolean }) {
   );
 }
 
+function automateHeadline(userFirstName: string | null, gt: ReturnType<typeof useGT>): string {
+  if (userFirstName) {
+    return gt("What do you want to automate {name}?", { name: userFirstName });
+  }
+  return gt("What do you want to automate today?");
+}
+
+function heroDepartment(
+  activeExample: (typeof HERO_PROMPT_EXAMPLES)[number] | undefined,
+  gt: ReturnType<typeof useGT>,
+) {
+  return {
+    label: translateHeroDepartment(activeExample?.department, gt),
+    color: activeExample?.color ?? "#3B82F6",
+  };
+}
+
 function HeroHeadline({
   isAnonymous,
   activeExample,
@@ -148,22 +165,13 @@ function HeroHeadline({
   userFirstName: string | null;
 }) {
   if (!isAnonymous) {
-    return (
-      <>
-        {userFirstName
-          ? gt("What do you want to automate {name}?", { name: userFirstName })
-          : gt("What do you want to automate today?")}
-      </>
-    );
+    return <>{automateHeadline(userFirstName, gt)}</>;
   }
+  const department = heroDepartment(activeExample, gt);
   return (
     <>
       <T>What do you want to automate in</T>{" "}
-      <AnimatedDepartment
-        department={translateHeroDepartment(activeExample?.department, gt)}
-        color={activeExample?.color ?? "#3B82F6"}
-        isActive
-      />
+      <AnimatedDepartment department={department.label} color={department.color} isActive />
       ?
     </>
   );
@@ -302,19 +310,17 @@ export function HomeLanding({
     [],
   );
   const modelSelectorNode = useMemo(
-    () =>
-      isAnonymous ? undefined : (
-        <ModelSelector
-          selectedModel={model}
-          selectedAuthSource={modelAuthSource}
-          providerAvailability={providerAvailability}
-          onSelectionChange={handleModelChange}
-          disabled={isCreating || isRecording || isProcessingVoice}
-        />
-      ),
+    () => (
+      <ModelSelector
+        selectedModel={model}
+        selectedAuthSource={modelAuthSource}
+        providerAvailability={providerAvailability}
+        onSelectionChange={handleModelChange}
+        disabled={isCreating || isRecording || isProcessingVoice}
+      />
+    ),
     [
       handleModelChange,
-      isAnonymous,
       isCreating,
       isProcessingVoice,
       isRecording,
@@ -581,7 +587,7 @@ export function HomeLanding({
                 onStopRecording={stopRecordingAndTranscribe}
                 voiceInteractionMode="toggle"
                 prefillRequest={inputPrefillRequest}
-                renderModelSelector={modelSelectorNode}
+                renderModelSelector={!isAnonymous ? modelSelectorNode : undefined}
                 renderDebugControls={debugControlNode}
               />
               <HeroVoice
