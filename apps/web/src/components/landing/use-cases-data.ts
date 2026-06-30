@@ -2,14 +2,14 @@
  * Vertical use-case content for the public SEO pages under `/_public/cas-usage`.
  *
  * Each vertical renders one dedicated, server-rendered page (`/cas-usage/<slug>`) that is its
- * own SEO target — e.g. `/cas-usage/notaires` ranks for "Agent IA Notaire". The content is
+ * own SEO target, e.g. `/cas-usage/notaires` ranks for "Agent IA Notaire". The content is
  * intentionally data-driven so non-engineers can extend it: add a `Vertical` entry here and a
  * new page exists, fully localized and with structured data.
  *
  * Copy is bilingual (EN default + FR) via the `{ en, fr }` shape; render with `loc(locale, …)`.
  *
  * Content is grounded in the GTM / ICP Notion notes (verticals, métier tools, pain points,
- * personas). Copy is a reviewable first draft — figures are factual market context, not invented
+ * personas). Copy is a reviewable first draft, figures are factual market context, not invented
  * ROI. The vertical set below is curated (6 of ~35 ICPs in the base); extend as needed.
  */
 
@@ -41,7 +41,7 @@ export interface UseCaseFaq {
 }
 
 export interface Vertical {
-  /** URL slug — keep it keyword-rich and stable. */
+  /** URL slug, keep it keyword-rich and stable. */
   slug: string;
   /** Display name of the profession / segment, e.g. "Notaires". */
   name: Localized;
@@ -64,12 +64,12 @@ export interface Vertical {
   agents: UseCaseAgent[];
   integrations: {
     title: Localized;
-    /** Brand names of the métier tools — not localized. */
+    /** Brand names of the métier tools, not localized. */
     items: string[];
   };
   /** Indicative / factual context figures. */
   stats: UseCaseStat[];
-  /** FAQ — also emitted as JSON-LD FAQPage for rich results / GEO. */
+  /** FAQ, also emitted as JSON-LD FAQPage for rich results / GEO. */
   faq: UseCaseFaq[];
 }
 
@@ -78,19 +78,19 @@ const notaires: Vertical = {
   name: { en: "Notaries", fr: "Notaires" },
   emoji: "⚖️",
   seoTitle: {
-    en: "AI Agent for Notaries — HeyBap",
-    fr: "Agent IA pour notaires — HeyBap",
+    en: "AI Agent for Notaries · HeyBap",
+    fr: "Agent IA pour notaires · HeyBap",
   },
   seoDescription: {
-    en: "HeyBap deploys AI agents for notarial offices: normalized deed summaries, accounting-document filing, reconciliation and email drafting — across Genapi/iNot and your existing tools, with human approval on every action.",
-    fr: "HeyBap déploie des agents IA pour les études notariales : résumés normalisés des actes, classement des pièces comptables, pointage et rédaction d'e-mails — à travers Genapi/iNot et vos outils existants, avec validation humaine sur chaque action.",
+    en: "HeyBap deploys AI agents for notarial offices: normalized deed summaries, accounting-document filing, reconciliation and email drafting, across Genapi/iNot and your existing tools, with human approval on every action.",
+    fr: "HeyBap déploie des agents IA pour les études notariales : résumés normalisés des actes, classement des pièces comptables, pointage et rédaction d'e-mails, à travers Genapi/iNot et vos outils existants, avec validation humaine sur chaque action.",
   },
   hero: {
     eyebrow: { en: "For notarial offices", fr: "Pour les études notariales" },
     title: { en: "The AI agent for notaries", fr: "L'agent IA pour les notaires" },
     subtitle: {
-      en: "For every document-heavy task of the office, an agent works across your tools and prepares the output — your clerks review, edit and approve. The agent proposes, you decide.",
-      fr: "Pour chaque tâche documentaire de l'étude, un agent travaille à travers vos outils et prépare le résultat — vos clercs relisent, corrigent et valident. L'agent propose, vous décidez.",
+      en: "For every document-heavy task of the office, an agent works across your tools and prepares the output, your clerks review, edit and approve. The agent proposes, you decide.",
+      fr: "Pour chaque tâche documentaire de l'étude, un agent travaille à travers vos outils et prépare le résultat, vos clercs relisent, corrigent et valident. L'agent propose, vous décidez.",
     },
   },
   problem: {
@@ -107,15 +107,15 @@ const notaires: Vertical = {
     {
       name: { en: "Normalized deed summary", fr: "Résumé normalisé des actes" },
       description: {
-        en: "Reads each deed and produces a standardized summary highlighting key clauses and parties — the clerk reviews and validates it before it goes in the file.",
-        fr: "Lit chaque acte et produit un résumé standardisé mettant en avant les clauses clés et les parties — le clerc le relit et le valide avant versement au dossier.",
+        en: "Reads each deed and produces a standardized summary highlighting key clauses and parties, the clerk reviews and validates it before it goes in the file.",
+        fr: "Lit chaque acte et produit un résumé standardisé mettant en avant les clauses clés et les parties, le clerc le relit et le valide avant versement au dossier.",
       },
     },
     {
       name: { en: "Accounting-document filing", fr: "Classement des pièces comptables" },
       description: {
-        en: "Classifies incoming accounting documents and files them in the right place in your software — you approve the classification in one click.",
-        fr: "Classe les pièces comptables entrantes et les range au bon endroit dans votre logiciel — vous validez le classement en un clic.",
+        en: "Classifies incoming accounting documents and files them in the right place in your software, you approve the classification in one click.",
+        fr: "Classe les pièces comptables entrantes et les range au bon endroit dans votre logiciel, vous validez le classement en un clic.",
       },
     },
     {
@@ -131,8 +131,8 @@ const notaires: Vertical = {
     {
       name: { en: "Email reply drafting", fr: "Reformulation des réponses e-mail" },
       description: {
-        en: "Drafts clear, on-tone replies to client and counterparty e-mails from the file context — you edit and send in one click.",
-        fr: "Rédige des réponses claires et au bon ton aux e-mails des clients et confrères à partir du contexte du dossier — vous éditez et envoyez en un clic.",
+        en: "Drafts clear, on-tone replies to client and counterparty e-mails from the file context, you edit and send in one click.",
+        fr: "Rédige des réponses claires et au bon ton aux e-mails des clients et confrères à partir du contexte du dossier, vous éditez et envoyez en un clic.",
       },
     },
   ],
@@ -155,8 +155,8 @@ const notaires: Vertical = {
     {
       question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
       answer: {
-        en: "No. Nothing is sent, filed or registered on its own — the agent proposes, and a clerk reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. Rien n'est envoyé, classé ni enregistré de façon autonome — l'agent propose, et un clerc relit, corrige et valide chaque action, avec une piste d'audit complète.",
+        en: "No. Nothing is sent, filed or registered on its own, the agent proposes, and a clerk reviews, edits and approves every action, with a full audit trail.",
+        fr: "Non. Rien n'est envoyé, classé ni enregistré de façon autonome, l'agent propose, et un clerc relit, corrige et valide chaque action, avec une piste d'audit complète.",
       },
     },
     {
@@ -165,8 +165,8 @@ const notaires: Vertical = {
         fr: "Est-ce compatible avec le secret notarial et nos données ?",
       },
       answer: {
-        en: "Yes. HeyBap can be self-hosted on your own servers, with role-based access and a full audit trail — built to respect notarial confidentiality.",
-        fr: "Oui. HeyBap peut être auto-hébergé sur vos propres serveurs, avec accès par rôle et piste d'audit complète — pensé pour respecter le secret notarial.",
+        en: "Yes. HeyBap can be self-hosted on your own servers, with role-based access and a full audit trail, built to respect notarial confidentiality.",
+        fr: "Oui. HeyBap peut être auto-hébergé sur vos propres serveurs, avec accès par rôle et piste d'audit complète, pensé pour respecter le secret notarial.",
       },
     },
     {
@@ -175,8 +175,8 @@ const notaires: Vertical = {
         fr: "Est-ce que ça fonctionne avec Genapi / iNot ?",
       },
       answer: {
-        en: "Yes. The agents work across your existing stack — Genapi (iNot), Fichorga, Fiducial and the administrations you already use — with no rip-and-replace.",
-        fr: "Oui. Les agents travaillent à travers votre stack existant — Genapi (iNot), Fichorga, Fiducial et les administrations que vous utilisez déjà — sans tout remplacer.",
+        en: "Yes. The agents work across your existing stack: Genapi (iNot), Fichorga, Fiducial and the administrations you already use. No rip-and-replace needed.",
+        fr: "Oui. Les agents travaillent à travers votre stack existant : Genapi (iNot), Fichorga, Fiducial et les administrations que vous utilisez déjà. Sans rien remplacer.",
       },
     },
   ],
@@ -187,12 +187,12 @@ const servicesALaPersonne: Vertical = {
   name: { en: "Home-care & personal services", fr: "Services à la personne" },
   emoji: "🏠",
   seoTitle: {
-    en: "AI Agent for Home-Care Providers — HeyBap",
-    fr: "Agent IA pour les services à la personne — HeyBap",
+    en: "AI Agent for Home-Care Providers · HeyBap",
+    fr: "Agent IA pour les services à la personne · HeyBap",
   },
   seoDescription: {
-    en: "HeyBap deploys AI agents for home-care providers: scheduling and replacements, family follow-ups, URSSAF/CAF contracts and clocking reconciliation — across Ogust and your existing tools, with human approval on every action.",
-    fr: "HeyBap déploie des agents IA pour les structures de services à la personne : planning et remplacements, suivi des familles, contrats URSSAF/CAF et rapprochement de la télégestion — à travers Ogust et vos outils existants, avec validation humaine sur chaque action.",
+    en: "HeyBap deploys AI agents for home-care providers: scheduling and replacements, family follow-ups, URSSAF/CAF contracts and clocking reconciliation, across Ogust and your existing tools, with human approval on every action.",
+    fr: "HeyBap déploie des agents IA pour les structures de services à la personne : planning et remplacements, suivi des familles, contrats URSSAF/CAF et rapprochement de la télégestion, à travers Ogust et vos outils existants, avec validation humaine sur chaque action.",
   },
   hero: {
     eyebrow: {
@@ -204,8 +204,8 @@ const servicesALaPersonne: Vertical = {
       fr: "L'agent IA pour les services à la personne",
     },
     subtitle: {
-      en: "From the schedule to the call to the family, an agentic app for every administrative task that eats your days. The agent proposes, your coordinators decide — and approve every action.",
-      fr: "Du planning à l'appel aux familles, une app agentique pour chaque tâche administrative qui dévore vos journées. L'agent propose, vos coordinateurs décident — et valident chaque action.",
+      en: "From the schedule to the call to the family, an agentic app for every administrative task that eats your days. The agent proposes, your coordinators decide, and approve every action.",
+      fr: "Du planning à l'appel aux familles, une app agentique pour chaque tâche administrative qui dévore vos journées. L'agent propose, vos coordinateurs décident, et valident chaque action.",
     },
   },
   problem: {
@@ -222,8 +222,8 @@ const servicesALaPersonne: Vertical = {
     {
       name: { en: "Scheduling & replacements", fr: "Planning & remplacements" },
       description: {
-        en: "When a caregiver cancels, it finds the available replacements, proposes the best fit and drafts the reshuffled schedule — your coordinator validates before anything moves.",
-        fr: "Quand un intervenant se décommande, il identifie les remplaçants disponibles, propose le meilleur profil et prépare le planning réajusté — votre coordinateur valide avant tout changement.",
+        en: "When a caregiver cancels, it finds the available replacements, proposes the best fit and drafts the reshuffled schedule, your coordinator validates before anything moves.",
+        fr: "Quand un intervenant se décommande, il identifie les remplaçants disponibles, propose le meilleur profil et prépare le planning réajusté, votre coordinateur valide avant tout changement.",
       },
     },
     {
@@ -236,15 +236,15 @@ const servicesALaPersonne: Vertical = {
     {
       name: { en: "URSSAF/CAF contracts", fr: "Contrats URSSAF/CAF" },
       description: {
-        en: "It assembles the contract and compliance paperwork from the client file and flags what's missing — you review and approve before any document goes out.",
-        fr: "Il assemble les contrats et les pièces de conformité à partir du dossier client et signale ce qui manque — vous relisez et validez avant tout envoi.",
+        en: "It assembles the contract and compliance paperwork from the client file and flags what's missing, you review and approve before any document goes out.",
+        fr: "Il assemble les contrats et les pièces de conformité à partir du dossier client et signale ce qui manque, vous relisez et validez avant tout envoi.",
       },
     },
     {
       name: { en: "Clocking reconciliation", fr: "Télégestion & pointage" },
       description: {
-        en: "It cross-checks remote clocking against the planned schedule, flags the gaps to correct, and prepares the reconciliation — your office approves each adjustment.",
-        fr: "Il rapproche les pointages de la télégestion avec le planning prévu, signale les écarts à corriger et prépare le rapprochement — votre bureau valide chaque ajustement.",
+        en: "It cross-checks remote clocking against the planned schedule, flags the gaps to correct, and prepares the reconciliation, your office approves each adjustment.",
+        fr: "Il rapproche les pointages de la télégestion avec le planning prévu, signale les écarts à corriger et prépare le rapprochement, votre bureau valide chaque ajustement.",
       },
     },
   ],
@@ -270,14 +270,14 @@ const servicesALaPersonne: Vertical = {
     {
       question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
       answer: {
-        en: "No. Nothing is sent, scheduled or changed on its own — the agent proposes, and a human reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. Rien n'est envoyé, planifié ni modifié de façon autonome — l'agent propose, et un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
+        en: "No. Nothing is sent, scheduled or changed on its own, the agent proposes, and a human reviews, edits and approves every action, with a full audit trail.",
+        fr: "Non. Rien n'est envoyé, planifié ni modifié de façon autonome, l'agent propose, et un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
       },
     },
     {
       question: { en: "How does it connect to Ogust?", fr: "Comment se connecte-t-il à Ogust ?" },
       answer: {
-        en: "Ogust exposes an open API and a Zapier connection, so HeyBap plugs in directly — no IT project on your side. Apologic, Ximi and Domatel can be connected the same way.",
+        en: "Ogust exposes an open API and a Zapier connection, so HeyBap plugs in directly, no IT project on your side. Apologic, Ximi and Domatel can be connected the same way.",
         fr: "Ogust expose une API ouverte et une connexion Zapier : HeyBap s'y branche directement, sans projet informatique de votre côté. Apologic, Ximi et Domatel se connectent de la même façon.",
       },
     },
@@ -287,8 +287,8 @@ const servicesALaPersonne: Vertical = {
         fr: "Et si mon logiciel n'a pas d'API ouverte ?",
       },
       answer: {
-        en: "The agent can start at the edges of your stack — via email, WhatsApp or voice — to handle family follow-ups and replacements before any deep integration, then connect to your software once it's ready.",
-        fr: "L'agent peut démarrer en périphérie de vos outils — par email, WhatsApp ou téléphone — pour gérer le suivi des familles et les remplacements avant toute intégration profonde, puis se connecter à votre logiciel une fois prêt.",
+        en: "The agent can start at the edges of your stack, via email, WhatsApp or voice, to handle family follow-ups and replacements before any deep integration, then connect to your software once it's ready.",
+        fr: "L'agent peut démarrer en périphérie de vos outils, par email, WhatsApp ou téléphone, pour gérer le suivi des familles et les remplacements avant toute intégration profonde, puis se connecter à votre logiciel une fois prêt.",
       },
     },
   ],
@@ -299,12 +299,12 @@ const courtiersAssurance: Vertical = {
   name: { en: "Insurance Brokers", fr: "Courtiers en assurance" },
   emoji: "🛡️",
   seoTitle: {
-    en: "AI Agent for Insurance Brokers — HeyBap",
-    fr: "Agent IA pour courtiers en assurance — HeyBap",
+    en: "AI Agent for Insurance Brokers · HeyBap",
+    fr: "Agent IA pour courtiers en assurance · HeyBap",
   },
   seoDescription: {
-    en: "HeyBap deploys AI agents for insurance brokerage firms: claims intake, quote prep and follow-ups, document tracking and ACPR compliance — across your existing tools, with human approval on every step.",
-    fr: "HeyBap déploie des agents IA pour les cabinets de courtage en assurance : création de sinistres, préparation des devis et relances, suivi des pièces et conformité ACPR — à travers vos outils existants, avec validation humaine à chaque étape.",
+    en: "HeyBap deploys AI agents for insurance brokerage firms: claims intake, quote prep and follow-ups, document tracking and ACPR compliance, across your existing tools, with human approval on every step.",
+    fr: "HeyBap déploie des agents IA pour les cabinets de courtage en assurance : création de sinistres, préparation des devis et relances, suivi des pièces et conformité ACPR, à travers vos outils existants, avec validation humaine à chaque étape.",
   },
   hero: {
     eyebrow: { en: "For insurance brokerage firms", fr: "Pour les cabinets de courtage" },
@@ -313,44 +313,44 @@ const courtiersAssurance: Vertical = {
       fr: "L'agent IA pour les courtiers en assurance",
     },
     subtitle: {
-      en: "From a claim reported on WhatsApp to the quote sent to your client, an agentic app for every step of your firm's workflow. The agent proposes, you decide — and approve every action.",
-      fr: "D'un sinistre déclaré sur WhatsApp au devis envoyé à votre client, une app agentique pour chaque étape du flux de votre cabinet. L'agent propose, vous décidez — et validez chaque action.",
+      en: "From a claim reported on WhatsApp to the quote sent to your client, an agentic app for every step of your firm's workflow. The agent proposes, you decide, and approve every action.",
+      fr: "D'un sinistre déclaré sur WhatsApp au devis envoyé à votre client, une app agentique pour chaque étape du flux de votre cabinet. L'agent propose, vous décidez, et validez chaque action.",
     },
   },
   problem: {
     title: { en: "The cost of a fragmented firm", fr: "Le coût d'un cabinet fragmenté" },
     body: {
-      en: "Your CRM, contracts, document management, insurer extranets and claims handling all live in separate tools that don't talk to each other. Your team loses hours re-keying the same data and chasing documents — time that should go to your clients and to staying ACPR-compliant.",
-      fr: "Votre CRM, les contrats, la GED, les extranets assureurs et la gestion des sinistres vivent dans des outils séparés qui ne se parlent pas. Votre équipe perd des heures à ressaisir les mêmes données et à relancer les pièces — du temps qui devrait aller à vos clients et au respect de la conformité ACPR.",
+      en: "Your CRM, contracts, document management, insurer extranets and claims handling all live in separate tools that don't talk to each other. Your team loses hours re-keying the same data and chasing documents, time that should go to your clients and to staying ACPR-compliant.",
+      fr: "Votre CRM, les contrats, la GED, les extranets assureurs et la gestion des sinistres vivent dans des outils séparés qui ne se parlent pas. Votre équipe perd des heures à ressaisir les mêmes données et à relancer les pièces, du temps qui devrait aller à vos clients et au respect de la conformité ACPR.",
     },
   },
   agents: [
     {
       name: { en: "Claims intake & creation", fr: "Création de sinistres" },
       description: {
-        en: "Collects a claim reported by WhatsApp or email, builds the document checklist and drafts the claim in your software — you review and validate the creation.",
-        fr: "Recueille un sinistre déclaré par WhatsApp ou email, établit la liste des pièces à fournir et prépare la création du sinistre dans votre logiciel — vous relisez et validez la création.",
+        en: "Collects a claim reported by WhatsApp or email, builds the document checklist and drafts the claim in your software, you review and validate the creation.",
+        fr: "Recueille un sinistre déclaré par WhatsApp ou email, établit la liste des pièces à fournir et prépare la création du sinistre dans votre logiciel, vous relisez et validez la création.",
       },
     },
     {
       name: { en: "Quote prep & follow-ups", fr: "Préparation des devis & relances" },
       description: {
-        en: "Assembles the data for a quote and drafts the client follow-ups — you review, adjust and send in one click.",
-        fr: "Rassemble les données d'un devis et rédige les relances client — vous relisez, ajustez et envoyez en un clic.",
+        en: "Assembles the data for a quote and drafts the client follow-ups, you review, adjust and send in one click.",
+        fr: "Rassemble les données d'un devis et rédige les relances client, vous relisez, ajustez et envoyez en un clic.",
       },
     },
     {
       name: { en: "Document & ACPR tracking", fr: "Suivi des pièces & conformité ACPR" },
       description: {
-        en: "Tracks which documents are still missing across each file and flags compliance gaps for ACPR — you approve every reminder before it goes out.",
-        fr: "Suit les pièces encore manquantes dossier par dossier et signale les manques de conformité ACPR — vous validez chaque relance avant l'envoi.",
+        en: "Tracks which documents are still missing across each file and flags compliance gaps for ACPR, you approve every reminder before it goes out.",
+        fr: "Suit les pièces encore manquantes dossier par dossier et signale les manques de conformité ACPR, vous validez chaque relance avant l'envoi.",
       },
     },
     {
       name: { en: "Client request triage", fr: "Tri & réponse aux demandes clients" },
       description: {
-        en: "Sorts incoming client requests by priority and drafts a reply for each one — you review and approve before anything is sent.",
-        fr: "Trie les demandes clients entrantes par priorité et rédige une réponse pour chacune — vous relisez et validez avant tout envoi.",
+        en: "Sorts incoming client requests by priority and drafts a reply for each one, you review and approve before anything is sent.",
+        fr: "Trie les demandes clients entrantes par priorité et rédige une réponse pour chacune, vous relisez et validez avant tout envoi.",
       },
     },
   ],
@@ -373,8 +373,8 @@ const courtiersAssurance: Vertical = {
     {
       question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
       answer: {
-        en: "No. The agent proposes, you decide — nothing is created or sent on its own. A human reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. L'agent propose, vous décidez — rien n'est créé ni envoyé de façon autonome. Un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
+        en: "No. The agent proposes, you decide, nothing is created or sent on its own. A human reviews, edits and approves every action, with a full audit trail.",
+        fr: "Non. L'agent propose, vous décidez, rien n'est créé ni envoyé de façon autonome. Un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
       },
     },
     {
@@ -383,8 +383,8 @@ const courtiersAssurance: Vertical = {
         fr: "Se connecte-t-il à mon logiciel de courtage ?",
       },
       answer: {
-        en: "Yes. CourtiGo offers the best integration surface of the whole sector — a REST API and a native MCP server — so an agent can be connected in a matter of days. Antenia's open, secured APIs and EDI Courtage NEO are supported too.",
-        fr: "Oui. CourtiGo offre la meilleure surface d'intégration du secteur — une API REST et un serveur MCP natif — ce qui permet de connecter un agent en quelques jours. Les API ouvertes et sécurisées d'Antenia et EDI Courtage NEO sont également prises en charge.",
+        en: "Yes. CourtiGo offers the best integration surface of the whole sector, a REST API and a native MCP server, so an agent can be connected in a matter of days. Antenia's open, secured APIs and EDI Courtage NEO are supported too.",
+        fr: "Oui. CourtiGo offre la meilleure surface d'intégration du secteur, une API REST et un serveur MCP natif, ce qui permet de connecter un agent en quelques jours. Les API ouvertes et sécurisées d'Antenia et EDI Courtage NEO sont également prises en charge.",
       },
     },
     {
@@ -393,8 +393,8 @@ const courtiersAssurance: Vertical = {
         fr: "Est-ce conforme pour une activité réglementée ?",
       },
       answer: {
-        en: "HeyBap can be self-hosted on your own servers, with role-based access and a full audit trail of every action — built for an ACPR-regulated activity. You can bring your own LLM or use ours.",
-        fr: "HeyBap peut être auto-hébergé sur vos propres serveurs, avec accès par rôle et une piste d'audit complète de chaque action — pensé pour une activité réglementée par l'ACPR. Vous pouvez utiliser votre propre LLM ou le nôtre.",
+        en: "HeyBap can be self-hosted on your own servers, with role-based access and a full audit trail of every action, built for an ACPR-regulated activity. You can bring your own LLM or use ours.",
+        fr: "HeyBap peut être auto-hébergé sur vos propres serveurs, avec accès par rôle et une piste d'audit complète de chaque action, pensé pour une activité réglementée par l'ACPR. Vous pouvez utiliser votre propre LLM ou le nôtre.",
       },
     },
   ],
@@ -405,12 +405,12 @@ const expertsComptables: Vertical = {
   name: { en: "Accounting Firms", fr: "Experts-comptables" },
   emoji: "🧮",
   seoTitle: {
-    en: "AI Agent for Accounting Firms — HeyBap",
-    fr: "Agent IA pour experts-comptables — HeyBap",
+    en: "AI Agent for Accounting Firms · HeyBap",
+    fr: "Agent IA pour experts-comptables · HeyBap",
   },
   seoDescription: {
-    en: "HeyBap deploys AI agents for accounting firms: document collection and chasing, data pre-entry, bank reconciliation and client replies — across Sage, Cegid and Pennylane, with human approval on every step.",
-    fr: "HeyBap déploie des agents IA pour les cabinets d'expertise comptable : collecte et relance des pièces, pré-saisie, rapprochement bancaire et réponses clients — à travers Sage, Cegid et Pennylane, avec validation humaine à chaque étape.",
+    en: "HeyBap deploys AI agents for accounting firms: document collection and chasing, data pre-entry, bank reconciliation and client replies, across Sage, Cegid and Pennylane, with human approval on every step.",
+    fr: "HeyBap déploie des agents IA pour les cabinets d'expertise comptable : collecte et relance des pièces, pré-saisie, rapprochement bancaire et réponses clients, à travers Sage, Cegid et Pennylane, avec validation humaine à chaque étape.",
   },
   hero: {
     eyebrow: { en: "For accounting firms", fr: "Pour les cabinets d'expertise comptable" },
@@ -434,22 +434,22 @@ const expertsComptables: Vertical = {
     {
       name: { en: "Document collection & chasing", fr: "Collecte & relance des pièces" },
       description: {
-        en: "Tracks which documents each client still owes and drafts the personalized follow-up — you review and send in one click.",
-        fr: "Suit les pièces que chaque client doit encore fournir et rédige la relance personnalisée — vous relisez et envoyez en un clic.",
+        en: "Tracks which documents each client still owes and drafts the personalized follow-up, you review and send in one click.",
+        fr: "Suit les pièces que chaque client doit encore fournir et rédige la relance personnalisée, vous relisez et envoyez en un clic.",
       },
     },
     {
       name: { en: "Data pre-entry & bank reconciliation", fr: "Pré-saisie & rapprochement bancaire" },
       description: {
-        en: "Reads the invoices and bank statements, proposes the accounting entries and matches transactions — your collaborator checks and validates before posting.",
-        fr: "Lit les factures et relevés bancaires, propose les écritures comptables et rapproche les opérations — votre collaborateur contrôle et valide avant comptabilisation.",
+        en: "Reads the invoices and bank statements, proposes the accounting entries and matches transactions, your collaborator checks and validates before posting.",
+        fr: "Lit les factures et relevés bancaires, propose les écritures comptables et rapproche les opérations, votre collaborateur contrôle et valide avant comptabilisation.",
       },
     },
     {
       name: { en: "Client question replies", fr: "Réponses aux questions clients" },
       description: {
-        en: "Drafts answers to recurring client questions from the file data — you review, adjust and send.",
-        fr: "Rédige les réponses aux questions clients récurrentes à partir des données du dossier — vous relisez, ajustez et envoyez.",
+        en: "Drafts answers to recurring client questions from the file data, you review, adjust and send.",
+        fr: "Rédige les réponses aux questions clients récurrentes à partir des données du dossier, vous relisez, ajustez et envoyez.",
       },
     },
     {
@@ -478,8 +478,8 @@ const expertsComptables: Vertical = {
     {
       question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
       answer: {
-        en: "No. Nothing is posted, sent or changed on its own — the agent proposes, and a human reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. Rien n'est comptabilisé, envoyé ni modifié de façon autonome — l'agent propose, et un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
+        en: "No. Nothing is posted, sent or changed on its own, the agent proposes, and a human reviews, edits and approves every action, with a full audit trail.",
+        fr: "Non. Rien n'est comptabilisé, envoyé ni modifié de façon autonome, l'agent propose, et un humain relit, modifie et valide chaque action, avec une piste d'audit complète.",
       },
     },
     {
@@ -488,8 +488,8 @@ const expertsComptables: Vertical = {
         fr: "Est-ce compatible avec Sage, Cegid ou Pennylane ?",
       },
       answer: {
-        en: "Yes. The agent works across your existing production tools — Sage Coala, Cegid Expert, ACD, Agiris, RCA, Pennylane — via their APIs and EDI, with no change to your software.",
-        fr: "Oui. L'agent travaille à travers vos outils de production existants — Sage Coala, Cegid Expert, ACD, Agiris, RCA, Pennylane — via leurs API et l'EDI, sans changer de logiciel.",
+        en: "Yes. The agent works across your existing production tools (Sage Coala, Cegid Expert, ACD, Agiris, RCA, Pennylane) via their APIs and EDI, with no change to your software.",
+        fr: "Oui. L'agent travaille à travers vos outils de production existants (Sage Coala, Cegid Expert, ACD, Agiris, RCA, Pennylane) via leurs API et l'EDI, sans changer de logiciel.",
       },
     },
     {
@@ -507,8 +507,8 @@ const ehpad: Vertical = {
   name: { en: "Nursing Homes (EHPAD)", fr: "EHPAD" },
   emoji: "🧓",
   seoTitle: {
-    en: "AI Agent for Nursing Homes (EHPAD) — HeyBap",
-    fr: "Agent IA pour les EHPAD — HeyBap",
+    en: "AI Agent for Nursing Homes (EHPAD) · HeyBap",
+    fr: "Agent IA pour les EHPAD · HeyBap",
   },
   seoDescription: {
     en: "An AI agent that works across your NetSoins and existing tools to handle admissions, family communication and resident paperwork. It proposes, your team decides. Live in under 2 weeks.",
@@ -517,8 +517,8 @@ const ehpad: Vertical = {
   hero: {
     eyebrow: { en: "For nursing home directors", fr: "Pour les directeurs d'établissement" },
     title: {
-      en: "Give your teams back the time they spend on paperwork",
-      fr: "Rendez à vos équipes le temps perdu en administratif",
+      en: "The AI agent for nursing homes (EHPAD)",
+      fr: "L'agent IA pour les EHPAD",
     },
     subtitle: {
       en: "HeyBap deploys an AI agent shaped to your facility's workflow. It drafts the admission replies, the family updates and the aid follow-ups; your staff reviews and approves every action before anything goes out.",
@@ -603,8 +603,8 @@ const veterinaires: Vertical = {
   name: { en: "Veterinary Clinics", fr: "Vétérinaires" },
   emoji: "🐾",
   seoTitle: {
-    en: "AI Agent for Veterinary Clinics — HeyBap",
-    fr: "Agent IA pour vétérinaires — HeyBap",
+    en: "AI Agent for Veterinary Clinics · HeyBap",
+    fr: "Agent IA pour vétérinaires · HeyBap",
   },
   seoDescription: {
     en: "An AI agent that handles your clinic's phone calls, appointments, vaccine reminders and reports across your existing tools. The agent proposes, you approve every action.",
@@ -613,8 +613,8 @@ const veterinaires: Vertical = {
   hero: {
     eyebrow: { en: "For veterinary clinics", fr: "Pour les cliniques vétérinaires" },
     title: {
-      en: "Your clinic's admin, handled. You stay in control.",
-      fr: "L'administratif de votre clinique, géré. Vous gardez la main.",
+      en: "The AI agent for veterinary clinics",
+      fr: "L'agent IA pour les vétérinaires",
     },
     subtitle: {
       en: "HeyBap deploys an AI agent that fields calls, books appointments and drafts your reports across the tools you already use. Nothing goes out until you approve it.",
@@ -677,8 +677,8 @@ const veterinaires: Vertical = {
     {
       question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
       answer: {
-        en: "No. The agent proposes every action — a reply, an appointment, a report, an order — and you decide. Nothing is sent or finalised without your approval, and every step is logged in a full audit trail.",
-        fr: "Non. L'agent propose chaque action — une réponse, un RDV, un compte-rendu, une commande — et vous décidez. Rien n'est envoyé ni finalisé sans votre validation, et chaque étape est tracée dans un historique complet.",
+        en: "No. The agent proposes every action, a reply, an appointment, a report, an order, and you decide. Nothing is sent or finalised without your approval, and every step is logged in a full audit trail.",
+        fr: "Non. L'agent propose chaque action, une réponse, un RDV, un compte-rendu, une commande, et vous décidez. Rien n'est envoyé ni finalisé sans votre validation, et chaque étape est tracée dans un historique complet.",
       },
     },
     {
@@ -687,8 +687,8 @@ const veterinaires: Vertical = {
         fr: "A-t-il besoin d'un accès profond à mon logiciel métier ?",
       },
       answer: {
-        en: "No. The agent works at the surface — phone, email, messages — and does not need write access to your animal records or regulated drug stock. It fits alongside Vetocom, Bourgelat or your current software without touching the sensitive data inside.",
-        fr: "Non. L'agent travaille en surface — téléphone, e-mail, messages — et n'a pas besoin d'un accès en écriture à vos fiches animaux ou à votre stock de médicaments réglementés. Il s'intègre à côté de Vetocom, Bourgelat ou de votre logiciel actuel sans toucher aux données sensibles.",
+        en: "No. The agent works at the surface, phone, email, messages, and does not need write access to your animal records or regulated drug stock. It fits alongside Vetocom, Bourgelat or your current software without touching the sensitive data inside.",
+        fr: "Non. L'agent travaille en surface, téléphone, e-mail, messages, et n'a pas besoin d'un accès en écriture à vos fiches animaux ou à votre stock de médicaments réglementés. Il s'intègre à côté de Vetocom, Bourgelat ou de votre logiciel actuel sans toucher aux données sensibles.",
       },
     },
     {
@@ -706,22 +706,22 @@ const pharmacies: Vertical = {
   name: { en: "Pharmacies", fr: "Pharmacies" },
   emoji: "💊",
   seoTitle: {
-    en: "AI Agent for Pharmacies — HeyBap",
-    fr: "Agent IA pour pharmacies — HeyBap",
+    en: "AI Agent for Pharmacies · HeyBap",
+    fr: "Agent IA pour pharmacies · HeyBap",
   },
   seoDescription: {
-    en: "HeyBap gives pharmacy owners an AI agent that works across LGPI, Winpharma and your wholesalers. It handles stock-outs, prescription renewals and supplier messages — and you approve every action.",
-    fr: "HeyBap donne au pharmacien titulaire un agent IA qui travaille avec LGPI, Winpharma et vos grossistes. Il gère les ruptures, les renouvellements d'ordonnances et les messages labos — et vous validez chaque action.",
+    en: "HeyBap gives pharmacy owners an AI agent that works across LGPI, Winpharma and your wholesalers. It handles stock-outs, prescription renewals and supplier messages, and you approve every action.",
+    fr: "HeyBap donne au pharmacien titulaire un agent IA qui travaille avec LGPI, Winpharma et vos grossistes. Il gère les ruptures, les renouvellements d'ordonnances et les messages labos, et vous validez chaque action.",
   },
   hero: {
     eyebrow: { en: "For community pharmacies", fr: "Pour les officines" },
     title: {
-      en: "An AI agent for your pharmacy, where you stay in control",
-      fr: "Un agent IA pour votre officine, où vous gardez la main",
+      en: "The AI agent for pharmacies",
+      fr: "L'agent IA pour les pharmacies",
     },
     subtitle: {
-      en: "HeyBap puts an agent to work across your existing tools — LGPI, Winpharma, your wholesalers — to take the administrative load off your team. The agent proposes, you decide.",
-      fr: "HeyBap met un agent au travail à travers vos outils existants — LGPI, Winpharma, vos grossistes — pour décharger votre équipe des tâches administratives. L'agent propose, vous décidez.",
+      en: "HeyBap puts an agent to work across your existing tools (LGPI, Winpharma, your wholesalers) to take the administrative load off your team. The agent proposes, you decide.",
+      fr: "HeyBap met un agent au travail à travers vos outils existants (LGPI, Winpharma, vos grossistes) pour décharger votre équipe des tâches administratives. L'agent propose, vous décidez.",
     },
   },
   problem: {
@@ -767,8 +767,8 @@ const pharmacies: Vertical = {
     {
       question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
       answer: {
-        en: "No. The agent only proposes — every order, reminder and action waits for your approval before anything happens. In a regulated health setting, you keep full control and a complete audit trail of every decision.",
-        fr: "Non. L'agent se contente de proposer — chaque commande, rappel et action attend votre validation avant de se déclencher. Dans un cadre de santé réglementé, vous gardez le contrôle total et un historique complet de chaque décision.",
+        en: "No. The agent only proposes, every order, reminder and action waits for your approval before anything happens. In a regulated health setting, you keep full control and a complete audit trail of every decision.",
+        fr: "Non. L'agent se contente de proposer, chaque commande, rappel et action attend votre validation avant de se déclencher. Dans un cadre de santé réglementé, vous gardez le contrôle total et un historique complet de chaque décision.",
       },
     },
     {
@@ -796,12 +796,12 @@ const syndicsCopropriete: Vertical = {
   name: { en: "Property Management (Syndics)", fr: "Syndics de copropriété" },
   emoji: "🏢",
   seoTitle: {
-    en: "AI Agent for Property Management (Syndics) — HeyBap",
-    fr: "Agent IA pour syndics de copropriété — HeyBap",
+    en: "AI Agent for Property Management (Syndics) · HeyBap",
+    fr: "Agent IA pour syndics de copropriété · HeyBap",
   },
   seoDescription: {
-    en: "HeyBap deploys AI agents for property-management firms (syndics): general-meeting prep, calls for funds and charge reminders, rent invoicing and tenant requests — across Gercop, Vilogi and your existing tools, with human approval on every action.",
-    fr: "HeyBap déploie des agents IA pour les cabinets de syndic : préparation des AG, appels de fonds et relances de charges, quittancement et demandes locataires — à travers Gercop, Vilogi et vos outils existants, avec validation humaine sur chaque action.",
+    en: "HeyBap deploys AI agents for property-management firms (syndics): general-meeting prep, calls for funds and charge reminders, rent invoicing and tenant requests, across Gercop, Vilogi and your existing tools, with human approval on every action.",
+    fr: "HeyBap déploie des agents IA pour les cabinets de syndic : préparation des AG, appels de fonds et relances de charges, quittancement et demandes locataires, à travers Gercop, Vilogi et vos outils existants, avec validation humaine sur chaque action.",
   },
   hero: {
     eyebrow: { en: "For property-management firms", fr: "Pour les cabinets de syndic" },
@@ -810,8 +810,8 @@ const syndicsCopropriete: Vertical = {
       fr: "L'agent IA pour les syndics de copropriété",
     },
     subtitle: {
-      en: "From general-meeting prep to calls for funds and tenant requests, an agentic app for every administrative task that overloads your firm. The agent proposes, your managers decide — and approve every action.",
-      fr: "De la préparation des AG aux appels de fonds et aux demandes locataires, une app agentique pour chaque tâche administrative qui surcharge votre cabinet. L'agent propose, vos gestionnaires décident — et valident chaque action.",
+      en: "From general-meeting prep to calls for funds and tenant requests, an agentic app for every administrative task that overloads your firm. The agent proposes, your managers decide, and approve every action.",
+      fr: "De la préparation des AG aux appels de fonds et aux demandes locataires, une app agentique pour chaque tâche administrative qui surcharge votre cabinet. L'agent propose, vos gestionnaires décident, et valident chaque action.",
     },
   },
   problem: {
@@ -825,29 +825,29 @@ const syndicsCopropriete: Vertical = {
     {
       name: { en: "General-meeting prep", fr: "Préparation des AG" },
       description: {
-        en: "Assembles the convocation, the agenda and the supporting documents for each general meeting from the building file — your manager reviews and approves before anything is sent to the co-owners.",
-        fr: "Assemble la convocation, l'ordre du jour et les pièces jointes de chaque assemblée générale à partir du dossier de la copropriété — votre gestionnaire relit et valide avant tout envoi aux copropriétaires.",
+        en: "Assembles the convocation, the agenda and the supporting documents for each general meeting from the building file, your manager reviews and approves before anything is sent to the co-owners.",
+        fr: "Assemble la convocation, l'ordre du jour et les pièces jointes de chaque assemblée générale à partir du dossier de la copropriété, votre gestionnaire relit et valide avant tout envoi aux copropriétaires.",
       },
     },
     {
       name: { en: "Calls for funds & charge reminders", fr: "Appels de fonds & relances de charges" },
       description: {
-        en: "Prepares the calls for funds and drafts the personalized charge reminders for unpaid balances — you review and approve each batch before it goes out.",
-        fr: "Prépare les appels de fonds et rédige les relances de charges personnalisées pour les impayés — vous relisez et validez chaque lot avant l'envoi.",
+        en: "Prepares the calls for funds and drafts the personalized charge reminders for unpaid balances, you review and approve each batch before it goes out.",
+        fr: "Prépare les appels de fonds et rédige les relances de charges personnalisées pour les impayés, vous relisez et validez chaque lot avant l'envoi.",
       },
     },
     {
       name: { en: "Rent invoicing & reminders", fr: "Quittancement & relances loyers" },
       description: {
-        en: "Issues the rent invoicing and drafts the reminders for late payments from each tenant's file — your team checks and validates before posting or sending.",
-        fr: "Établit le quittancement et rédige les relances de loyers en retard à partir du dossier de chaque locataire — votre équipe contrôle et valide avant comptabilisation ou envoi.",
+        en: "Issues the rent invoicing and drafts the reminders for late payments from each tenant's file, your team checks and validates before posting or sending.",
+        fr: "Établit le quittancement et rédige les relances de loyers en retard à partir du dossier de chaque locataire, votre équipe contrôle et valide avant comptabilisation ou envoi.",
       },
     },
     {
       name: { en: "Tenant requests & maintenance", fr: "Demandes locataires & maintenance" },
       description: {
-        en: "Sorts incoming tenant requests, drafts a reply for each and prepares the maintenance coordination with providers — you approve every message and work order before it is sent.",
-        fr: "Trie les demandes locataires entrantes, rédige une réponse pour chacune et prépare la coordination de la maintenance avec les prestataires — vous validez chaque message et ordre de service avant l'envoi.",
+        en: "Sorts incoming tenant requests, drafts a reply for each and prepares the maintenance coordination with providers, you approve every message and work order before it is sent.",
+        fr: "Trie les demandes locataires entrantes, rédige une réponse pour chacune et prépare la coordination de la maintenance avec les prestataires, vous validez chaque message et ordre de service avant l'envoi.",
       },
     },
   ],
@@ -866,8 +866,8 @@ const syndicsCopropriete: Vertical = {
     {
       question: { en: "Does the agent act on its own?", fr: "L'agent agit-il de lui-même ?" },
       answer: {
-        en: "No. Nothing is sent, invoiced or filed on its own — the agent proposes, and a manager reviews, edits and approves every action, with a full audit trail.",
-        fr: "Non. Rien n'est envoyé, facturé ni classé de façon autonome — l'agent propose, et un gestionnaire relit, modifie et valide chaque action, avec une piste d'audit complète.",
+        en: "No. Nothing is sent, invoiced or filed on its own, the agent proposes, and a manager reviews, edits and approves every action, with a full audit trail.",
+        fr: "Non. Rien n'est envoyé, facturé ni classé de façon autonome, l'agent propose, et un gestionnaire relit, modifie et valide chaque action, avec une piste d'audit complète.",
       },
     },
     {
@@ -876,8 +876,8 @@ const syndicsCopropriete: Vertical = {
         fr: "Est-ce que ça marche même si mon logiciel est fermé ?",
       },
       answer: {
-        en: "Yes. Even when your software has no open API, the agent starts at the edges of your stack — general-meeting prep, charge reminders, document intake by email — before any deep integration. Gercop offers a partner API we connect to when it's available.",
-        fr: "Oui. Même si votre logiciel n'a pas d'API ouverte, l'agent démarre en périphérie de vos outils — préparation des AG, relances de charges, réception des documents par email — avant toute intégration profonde. Gercop propose une API partenaire à laquelle nous nous connectons lorsqu'elle est disponible.",
+        en: "Yes. Even when your software has no open API, the agent starts at the edges of your stack, general-meeting prep, charge reminders, document intake by email, before any deep integration. Gercop offers a partner API we connect to when it's available.",
+        fr: "Oui. Même si votre logiciel n'a pas d'API ouverte, l'agent démarre en périphérie de vos outils, préparation des AG, relances de charges, réception des documents par email, avant toute intégration profonde. Gercop propose une API partenaire à laquelle nous nous connectons lorsqu'elle est disponible.",
       },
     },
     {
@@ -898,12 +898,12 @@ const artisansBatiment: Vertical = {
   name: { en: "Building Trades", fr: "Artisans du bâtiment" },
   emoji: "🛠️",
   seoTitle: {
-    en: "AI Agent for Building Trades — HeyBap",
-    fr: "Agent IA pour artisans du bâtiment — HeyBap",
+    en: "AI Agent for Building Trades · HeyBap",
+    fr: "Agent IA pour artisans du bâtiment · HeyBap",
   },
   seoDescription: {
-    en: "HeyBap deploys AI agents for building-trade businesses: priced quotes from a site visit, quote and unpaid-invoice follow-ups, job-site scheduling and site-visit reports — across Batappli, Obat and your existing tools, with human approval on every action.",
-    fr: "HeyBap déploie des agents IA pour les artisans du bâtiment : devis chiffrés depuis un relevé, relance des devis et impayés, planning des chantiers et comptes-rendus de visite — à travers Batappli, Obat et vos outils existants, avec validation humaine sur chaque action.",
+    en: "HeyBap deploys AI agents for building-trade businesses: priced quotes from a site visit, quote and unpaid-invoice follow-ups, job-site scheduling and site-visit reports, across Batappli, Obat and your existing tools, with human approval on every action.",
+    fr: "HeyBap déploie des agents IA pour les artisans du bâtiment : devis chiffrés depuis un relevé, relance des devis et impayés, planning des chantiers et comptes-rendus de visite, à travers Batappli, Obat et vos outils existants, avec validation humaine sur chaque action.",
   },
   hero: {
     eyebrow: { en: "For building-trade businesses", fr: "Pour les artisans et TPE du bâtiment" },
@@ -927,22 +927,22 @@ const artisansBatiment: Vertical = {
     {
       name: { en: "Quote from a site visit", fr: "Devis depuis un relevé" },
       description: {
-        en: "Turns a dictated or measured site visit into a priced, itemized quote in your software — you review the lines and prices and validate before it goes to the client.",
-        fr: "Transforme une visite dictée ou un relevé de mesures en devis chiffré et détaillé dans votre logiciel — vous relisez les lignes et les prix et validez avant l'envoi au client.",
+        en: "Turns a dictated or measured site visit into a priced, itemized quote in your software, you review the lines and prices and validate before it goes to the client.",
+        fr: "Transforme une visite dictée ou un relevé de mesures en devis chiffré et détaillé dans votre logiciel, vous relisez les lignes et les prix et validez avant l'envoi au client.",
       },
     },
     {
       name: { en: "Quote & unpaid follow-ups", fr: "Relance devis & impayés" },
       description: {
-        en: "Tracks quotes left unanswered and invoices left unpaid, drafts the right follow-up for each one — you review and send in one click.",
-        fr: "Suit les devis sans réponse et les factures impayées, rédige la relance adaptée à chacun — vous relisez et envoyez en un clic.",
+        en: "Tracks quotes left unanswered and invoices left unpaid, drafts the right follow-up for each one, you review and send in one click.",
+        fr: "Suit les devis sans réponse et les factures impayées, rédige la relance adaptée à chacun, vous relisez et envoyez en un clic.",
       },
     },
     {
       name: { en: "Job-site & appointment scheduling", fr: "Planning chantiers & RDV" },
       description: {
-        en: "Organizes your job sites and appointments, proposes the schedule and the client confirmations — you approve before anything is booked.",
-        fr: "Organise vos chantiers et rendez-vous, propose le planning et les confirmations client — vous validez avant toute prise de RDV.",
+        en: "Organizes your job sites and appointments, proposes the schedule and the client confirmations, you approve before anything is booked.",
+        fr: "Organise vos chantiers et rendez-vous, propose le planning et les confirmations client, vous validez avant toute prise de RDV.",
       },
     },
     {
@@ -969,8 +969,8 @@ const artisansBatiment: Vertical = {
     {
       question: { en: "Does the agent act on its own?", fr: "L'agent agit-il tout seul ?" },
       answer: {
-        en: "No. The agent proposes every quote, follow-up and report — and you decide. Nothing is sent or finalised without your approval, and every step is logged in a full audit trail.",
-        fr: "Non. L'agent propose chaque devis, relance et compte-rendu — et vous décidez. Rien n'est envoyé ni finalisé sans votre validation, et chaque étape est tracée dans un historique complet.",
+        en: "No. The agent proposes every quote, follow-up and report, and you decide. Nothing is sent or finalised without your approval, and every step is logged in a full audit trail.",
+        fr: "Non. L'agent propose chaque devis, relance et compte-rendu, et vous décidez. Rien n'est envoyé ni finalisé sans votre validation, et chaque étape est tracée dans un historique complet.",
       },
     },
     {
@@ -979,8 +979,8 @@ const artisansBatiment: Vertical = {
         fr: "Est-ce que ça marche même si mon logiciel n'a pas de vraie API ?",
       },
       answer: {
-        en: "Yes. Trade work is document-based, so the agent can start from a dictation, a photo or an email and prepare your quote or report even where the software offers no deep integration — then connect to your tools once it's ready.",
-        fr: "Oui. Le métier est documentaire : l'agent peut partir d'une dictée, d'une photo ou d'un email et préparer votre devis ou compte-rendu même là où le logiciel n'offre pas d'intégration profonde — puis se connecter à vos outils une fois prêt.",
+        en: "Yes. Trade work is document-based, so the agent can start from a dictation, a photo or an email and prepare your quote or report even where the software offers no deep integration, then connect to your tools once it's ready.",
+        fr: "Oui. Le métier est documentaire : l'agent peut partir d'une dictée, d'une photo ou d'un email et préparer votre devis ou compte-rendu même là où le logiciel n'offre pas d'intégration profonde, puis se connecter à vos outils une fois prêt.",
       },
     },
     {
@@ -998,8 +998,8 @@ const hotellerie: Vertical = {
   name: { en: "Independent Hotels", fr: "Hôtellerie indépendante" },
   emoji: "🏨",
   seoTitle: {
-    en: "AI Agent for Independent Hotels — HeyBap",
-    fr: "Agent IA pour l'hôtellerie indépendante — HeyBap",
+    en: "AI Agent for Independent Hotels · HeyBap",
+    fr: "Agent IA pour l'hôtellerie indépendante · HeyBap",
   },
   seoDescription: {
     en: "An AI agent that works across your PMS and booking channels to handle direct bookings, rate sync and guest follow-ups. It proposes, you approve every action.",
@@ -1011,8 +1011,8 @@ const hotellerie: Vertical = {
       fr: "Pour propriétaires et directeurs d'hôtel indépendant",
     },
     title: {
-      en: "An AI agent for your hotel, that never books anything without your approval",
-      fr: "Un agent IA pour votre hôtel, qui ne valide jamais rien sans votre accord",
+      en: "The AI agent for independent hotels",
+      fr: "L'agent IA pour l'hôtellerie indépendante",
     },
     subtitle: {
       en: "HeyBap connects to your PMS and booking channels to handle direct bookings, rate synchronisation and guest follow-ups. The agent prepares every action, you review and approve it in one click.",
@@ -1074,8 +1074,8 @@ const hotellerie: Vertical = {
         fr: "L'agent réserve-t-il ou envoie-t-il quelque chose tout seul ?",
       },
       answer: {
-        en: "No. The agent proposes every action — a booking reply, a rate update, a guest email — and you decide. Nothing is sent or published without your approval, and every action is logged in an audit trail.",
-        fr: "Non. L'agent propose chaque action — une réponse de réservation, une mise à jour tarifaire, un email client — et vous décidez. Rien n'est envoyé ni publié sans votre validation, et chaque action est tracée dans un journal d'audit.",
+        en: "No. The agent proposes every action, a booking reply, a rate update, a guest email, and you decide. Nothing is sent or published without your approval, and every action is logged in an audit trail.",
+        fr: "Non. L'agent propose chaque action, une réponse de réservation, une mise à jour tarifaire, un email client, et vous décidez. Rien n'est envoyé ni publié sans votre validation, et chaque action est tracée dans un journal d'audit.",
       },
     },
     {

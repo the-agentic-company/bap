@@ -21,9 +21,9 @@ export const Route = createFileRoute("/_public/cas-usage/")({
       fr: "Cas d'usage des agents IA par métier · HeyBap",
     });
     const description = localizedText(
-      "Discover the HeyBap agentic apps built for your profession — connected across your tools, with a human approving every step.",
+      "Discover the HeyBap agentic apps built for your profession, connected across your tools, with a human approving every step.",
       {
-        fr: "Découvrez les apps agentiques HeyBap conçues pour votre métier — connectées à vos outils, avec un humain qui valide chaque étape.",
+        fr: "Découvrez les apps agentiques HeyBap conçues pour votre métier, connectées à vos outils, avec un humain qui valide chaque étape.",
       },
     );
     return {
