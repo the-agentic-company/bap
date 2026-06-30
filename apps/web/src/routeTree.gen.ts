@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TemplateRouteImport } from './routes/template'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as InstanceRouteImport } from './routes/instance'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as PublicRouteImport } from './routes/_public'
@@ -180,9 +182,19 @@ const TemplateRoute = TemplateRouteImport.update({
   path: '/template',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InstanceRoute = InstanceRouteImport.update({
@@ -1054,7 +1066,9 @@ export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/accounts': typeof AccountsRoute
   '/instance': typeof InstanceRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/template': typeof TemplateRouteWithChildren
   '/agents/runs': typeof AgentsRunsRouteRouteWithChildren
   '/chat': typeof AppChatRouteWithChildren
@@ -1212,7 +1226,9 @@ export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/accounts': typeof AccountsRoute
   '/instance': typeof InstanceRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/inbox': typeof AppInboxRoute
   '/invite-only': typeof AuthInviteOnlyRoute
   '/login': typeof AuthLoginRoute
@@ -1374,7 +1390,9 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteWithChildren
   '/accounts': typeof AccountsRoute
   '/instance': typeof InstanceRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/template': typeof TemplateRouteWithChildren
   '/agents/runs': typeof AgentsRunsRouteRouteWithChildren
   '/_app/chat': typeof AppChatRouteWithChildren
@@ -1541,7 +1559,9 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/instance'
+    | '/robots.txt'
     | '/search'
+    | '/sitemap.xml'
     | '/template'
     | '/agents/runs'
     | '/chat'
@@ -1699,7 +1719,9 @@ export interface FileRouteTypes {
     | '/'
     | '/accounts'
     | '/instance'
+    | '/robots.txt'
     | '/search'
+    | '/sitemap.xml'
     | '/inbox'
     | '/invite-only'
     | '/login'
@@ -1860,7 +1882,9 @@ export interface FileRouteTypes {
     | '/_public'
     | '/accounts'
     | '/instance'
+    | '/robots.txt'
     | '/search'
+    | '/sitemap.xml'
     | '/template'
     | '/agents/runs'
     | '/_app/chat'
@@ -2028,7 +2052,9 @@ export interface RootRouteChildren {
   PublicRoute: typeof PublicRouteWithChildren
   AccountsRoute: typeof AccountsRoute
   InstanceRoute: typeof InstanceRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchRoute: typeof SearchRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TemplateRoute: typeof TemplateRouteWithChildren
   ApiHealthRoute: typeof ApiHealthRoute
   ApiLiveRoute: typeof ApiLiveRoute
@@ -2113,11 +2139,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TemplateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search': {
       id: '/search'
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/instance': {
@@ -3622,7 +3662,9 @@ const rootRouteChildren: RootRouteChildren = {
   PublicRoute: PublicRouteWithChildren,
   AccountsRoute: AccountsRoute,
   InstanceRoute: InstanceRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SearchRoute: SearchRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TemplateRoute: TemplateRouteWithChildren,
   ApiHealthRoute: ApiHealthRoute,
   ApiLiveRoute: ApiLiveRoute,

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { localizedText } from "@/components/general-translation-provider";
 import { UseCasesHub } from "@/components/landing/use-cases-hub";
-import { env } from "@/env";
+import { alternateLinks, SITE_URL, socialMeta } from "@/lib/seo";
 
 /**
  * Public use-cases hub (`/cas-usage`). Lists every vertical, each linking to its own
@@ -12,8 +12,7 @@ import { env } from "@/env";
  * the localized <title>/<meta> per request is a follow-up (read cookie / Accept-Language in a
  * server fn), tracked separately.
  */
-const siteUrl = (env.VITE_APP_URL ?? "https://heybap.com").replace(/\/$/, "");
-const canonical = `${siteUrl}/cas-usage`;
+const canonical = `${SITE_URL}/cas-usage`;
 
 export const Route = createFileRoute("/_public/cas-usage/")({
   head: () => {
@@ -30,12 +29,9 @@ export const Route = createFileRoute("/_public/cas-usage/")({
       meta: [
         { title },
         { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:url", content: canonical },
-        { property: "og:type", content: "website" },
+        ...socialMeta({ title, description, url: canonical }),
       ],
-      links: [{ rel: "canonical", href: canonical }],
+      links: alternateLinks(canonical),
     };
   },
   component: UseCasesHub,
