@@ -173,19 +173,14 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
         {/* Integrations */}
         <section className="mt-16">
           <h2 className="text-2xl font-bold tracking-tight">{t(vertical.integrations.title)}</h2>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-x-7 gap-y-4">
             {vertical.integrations.items.map((item) => (
-              <span
-                key={item}
-                className="inline-flex items-center gap-3 rounded-2xl border border-[#E0D2C7] bg-white py-3 pr-5 pl-4 text-base font-semibold text-[#3C1E0A] shadow-sm"
-              >
-                <ToolLogo name={item} size={30} />
+              <span key={item} className="inline-flex items-center gap-2.5 text-sm font-medium text-[#3C1E0A]">
+                <ToolLogo name={item} size={28} />
                 {item}
               </span>
             ))}
-            <span className="inline-flex items-center rounded-2xl border border-dashed border-[#E0D2C7] px-5 py-3 text-base font-medium text-[#6E5C53]">
-              {t(UI.moreTools)}
-            </span>
+            <span className="text-sm font-medium text-[#9C8A80]">{t(UI.moreTools)}</span>
           </div>
         </section>
 

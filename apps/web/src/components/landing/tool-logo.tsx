@@ -1,49 +1,60 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 /**
- * Small brand logo for a métier tool / integration. When we know the tool's domain we show its
- * real favicon (the site's own icon) via Google's favicon service; otherwise we fall back to a
- * tasteful monogram in the warm brand palette. Used in tool chips on the vertical pages and in
- * the agent modal.
+ * Real brand logo for a métier tool / integration. We use DuckDuckGo's icon service, which returns
+ * solid full-color brand icons and cleanly 404s when it has none, so we can fall back to a tasteful
+ * colored monogram instead of a broken/blank image. Every tool is mapped to its domain; the handful
+ * of ultra-niche tools DDG doesn't index (and non-products like "Any API / MCP") show the monogram.
  *
- * Note: the favicon is an external image. The app has no CSP today; if one is added in prod,
- * allow `img-src https://www.google.com` (or self-host the icons).
+ * Note: external image. The app has no CSP today; if one is added in prod, allow
+ * `img-src https://icons.duckduckgo.com` (or self-host the icons).
  */
-
-// High-confidence domains only. Unknown tools render a monogram (better than a wrong favicon).
+// Only domains that DuckDuckGo actually serves a real icon for. Tools whose domain has no public
+// favicon (a dozen ultra-niche French SaaS, plus non-products like "Any API / MCP") are omitted on
+// purpose so they render a clean monogram rather than DDG's invisible placeholder.
 const TOOL_DOMAINS: Record<string, string> = {
+  // notaires
   "Genapi (iNot)": "genapi.fr",
   Fichorga: "fichorga.com",
   Fiducial: "fiducial.fr",
   Yousign: "yousign.com",
   Infogreffe: "infogreffe.fr",
-  Ogust: "ogust.com",
-  Apologic: "apologic.fr",
-  Antenia: "antenia.com",
+  // courtiers / common
   WhatsApp: "whatsapp.com",
+  "Gmail / Outlook": "gmail.com",
+  // experts-comptables
   "Sage Coala": "sage.com",
   "Sage Batigest": "sage.com",
   "Cegid Expert": "cegid.com",
+  "ACD (Cador)": "acd-groupe.fr",
   Agiris: "agiris.fr",
   RCA: "rca.fr",
   Pennylane: "pennylane.com",
+  // pharmacies
   Winpharma: "winpharma.com",
   LEO: "leo-officine.fr",
-  NetSoins: "teranga-software.com",
-  Teranga: "teranga-software.com",
+  // ehpad
   "Orisha Socialcare": "orisha.com",
+  Ségur: "esante.gouv.fr",
   Posos: "posos.co",
-  MedgicNet: "medgicnet.com",
-  Vilogi: "vilogi.com",
+  // syndics
+  Gercop: "gercop.com",
+  Powimo: "powimo.com",
+  Seiitra: "seiitra.com",
+  // hôtellerie
   Mews: "mews.com",
+  Medialog: "medialog.fr",
   Reservit: "reservit.com",
   "D-EDGE": "d-edge.com",
   "Septeo Hospitality": "septeo.com",
-  "EBP Bâtiment": "ebp.com",
-  Tolteck: "tolteck.com",
-  Extrabat: "extrabat.com",
+  // artisans bâtiment
   Batappli: "batappli.fr",
   Obat: "obat.fr",
+  "EBP Bâtiment": "ebp.com",
+  Codial: "codial.fr",
+  Tolteck: "tolteck.com",
+  Extrabat: "extrabat.com",
+  // vétérinaires
   Vetup: "vetup.com",
   DrVeto: "drveto.com",
 };
@@ -58,27 +69,30 @@ function monogramColor(name: string): string {
   return MONO_PALETTE[hash % MONO_PALETTE.length];
 }
 
-export function ToolLogo({ name, size = 16 }: { name: string; size?: number }) {
+export function ToolLogo({ name, size = 20 }: { name: string; size?: number }) {
   const domain = TOOL_DOMAINS[name];
+  const [failed, setFailed] = useState(false);
+  const onError = useCallback(() => setFailed(true), []);
   const imgStyle = useMemo(() => ({ width: size, height: size }), [size]);
   const monoStyle = useMemo(
     () => ({
       width: size,
       height: size,
       backgroundColor: monogramColor(name),
-      fontSize: size * 0.55,
+      fontSize: size * 0.5,
     }),
     [name, size],
   );
 
-  if (domain) {
+  if (domain && !failed) {
     return (
       <img
-        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+        src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
         alt=""
         loading="lazy"
+        onError={onError}
         style={imgStyle}
-        className="shrink-0 rounded-[4px] object-contain"
+        className="shrink-0 rounded-[5px] object-contain"
       />
     );
   }
@@ -88,7 +102,7 @@ export function ToolLogo({ name, size = 16 }: { name: string; size?: number }) {
     <span
       aria-hidden
       style={monoStyle}
-      className="flex shrink-0 items-center justify-center rounded-[4px] font-semibold text-white"
+      className="flex shrink-0 items-center justify-center rounded-[5px] font-semibold text-white"
     >
       {letter}
     </span>
