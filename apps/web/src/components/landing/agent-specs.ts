@@ -1,4 +1,4 @@
-import type { Localized } from "./use-cases-data";
+import { loc, type Localized } from "./use-cases-data";
 
 /**
  * Per-agent bespoke specs (triggers / actions / outputs / tools), grounded in the real workflows
@@ -959,4 +959,30 @@ export const AGENT_SPECS: Record<string, AgentSpec[]> = {
 
 export function getAgentSpec(slug: string, index: number): AgentSpec | undefined {
   return AGENT_SPECS[slug]?.[index];
+}
+
+export interface AgentPreview {
+  key: string;
+  label: string;
+  lines: string[];
+}
+
+/**
+ * Framed page-output previews for an agent: one per `isPage` output, each seeded with a slice of
+ * the agent's (already-localized) actions as sample content. Shared by the inline page showcase
+ * and the agent modal so the two stay in lockstep. `limit` caps how many previews are returned.
+ */
+export function buildAgentPreviews(
+  spec: AgentSpec | undefined,
+  locale: string,
+  actions: string[],
+  limit?: number,
+): AgentPreview[] {
+  const pageOutputs = (spec?.outputs ?? []).filter((output) => output.isPage);
+  const selected = limit ? pageOutputs.slice(0, limit) : pageOutputs;
+  return selected.map((output, position) => ({
+    key: output.label.en,
+    label: loc(locale, output.label),
+    lines: actions.slice(position * 2, position * 2 + 4),
+  }));
 }

@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { getAgentSpec } from "./agent-specs";
+import { buildAgentPreviews, getAgentSpec } from "./agent-specs";
 import { EditableList, TriggerSelect } from "./editable-list";
 import { OutputPreview } from "./output-preview";
 import { writeDraftCoworkerPrompt } from "./pending-coworker-prompt";
@@ -197,14 +197,7 @@ export function AgentModal({
   );
 
   // Framed previews for page-type outputs, filled with the agent's own steps as sample content.
-  const previews = useMemo(() => {
-    const pageOutputs = (spec?.outputs ?? []).filter((output) => output.isPage);
-    return pageOutputs.map((output, position) => ({
-      key: output.label.en,
-      label: loc(locale, output.label),
-      lines: actions.slice(position * 2, position * 2 + 4),
-    }));
-  }, [spec, locale, actions]);
+  const previews = useMemo(() => buildAgentPreviews(spec, locale, actions), [spec, locale, actions]);
 
   const handleDeploy = useCallback(() => {
     const prompt = buildPrompt({

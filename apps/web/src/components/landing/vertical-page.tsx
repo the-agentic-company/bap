@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Workflow } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAppLocale } from "@/components/general-translation-provider";
 import { Button } from "@/components/ui/button";
 import { AgentModal } from "./agent-modal";
-import { getAgentSpec } from "./agent-specs";
+import { buildAgentPreviews, getAgentSpec } from "./agent-specs";
+import { OutputPreview } from "./output-preview";
 import { ToolLogo } from "./tool-logo";
 import { loc, type Localized, type UseCaseAgent, type Vertical } from "./use-cases-data";
 
@@ -21,10 +22,11 @@ const UI = {
   agentsKicker: { en: "Agentic apps", fr: "Apps agentiques" },
   agentsTitle: { en: "An agentic app for every step", fr: "Une app agentique par étape" },
   agentsSub: {
-    en: "Tap an agent to see how it works and deploy it to HeyBap.",
-    fr: "Cliquez sur un agent pour voir comment il fonctionne et le déployer sur HeyBap.",
+    en: "A real sample output from each agent. Open one to customize it and deploy it to HeyBap.",
+    fr: "Un exemple concret de sortie pour chaque agent. Ouvrez-en un pour le personnaliser et le déployer sur HeyBap.",
   },
-  open: { en: "See the agent", fr: "Voir l'agent" },
+  open: { en: "Customize & deploy", fr: "Personnaliser et déployer" },
+  sample: { en: "Sample output", fr: "Exemple de sortie" },
   cta: { en: "Book a demo", fr: "Réserver une démo" },
   ctaTitle: {
     en: "Deploy your first agents in under two weeks",
@@ -38,7 +40,65 @@ const UI = {
   moreTools: { en: "and many more tools", fr: "et bien d'autres outils" },
 };
 
-function AgentCard({
+const NO_TOOLS: string[] = [];
+
+function ToolChipRow({ tools }: { tools: string[] }) {
+  if (tools.length === 0) {
+    return null;
+  }
+  return (
+    <div className="mt-4 flex flex-wrap gap-1.5">
+      {tools.map((tool) => (
+        <span
+          key={tool}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#EADFD6] bg-[#FBF5F0] py-0.5 pr-2 pl-1.5 text-[11px] font-medium text-[#6E5C53]"
+        >
+          <ToolLogo name={tool} size={13} />
+          {tool}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// The agent's page-type outputs, rendered inline on the page (not hidden in the modal) so the
+// real, app-grade output is the visual centerpiece of each agent block.
+function AgentOutputs({
+  slug,
+  index,
+  locale,
+  sampleLabel,
+}: {
+  slug: string;
+  index: number;
+  locale: string;
+  sampleLabel: string;
+}) {
+  const spec = getAgentSpec(slug, index);
+  const tools = spec?.tools ?? NO_TOOLS;
+  const actions = useMemo(() => (spec?.actions ?? []).map((value) => loc(locale, value)), [spec, locale]);
+  const previews = useMemo(() => buildAgentPreviews(spec, locale, actions, 2), [spec, locale, actions]);
+
+  if (previews.length === 0) {
+    return null;
+  }
+  return (
+    <div className="mt-5 space-y-4">
+      {previews.map((preview) => (
+        <OutputPreview
+          key={preview.key}
+          label={preview.label}
+          sampleLabel={sampleLabel}
+          locale={locale}
+          lines={preview.lines}
+          tools={tools}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AgentShowcase({
   agent,
   slug,
   locale,
@@ -53,36 +113,29 @@ function AgentCard({
 }) {
   const t = (value: Localized) => loc(locale, value);
   const handleOpen = useCallback(() => onOpen(index), [onOpen, index]);
-  const tools = (getAgentSpec(slug, index)?.tools ?? []).slice(0, 3);
+  const chipTools = (getAgentSpec(slug, index)?.tools ?? NO_TOOLS).slice(0, 4);
   return (
-    <button
-      type="button"
-      onClick={handleOpen}
-      className="group flex flex-col rounded-3xl border border-[#EADFD6] bg-white p-6 text-left shadow-sm transition hover:border-[#E0D2C7] hover:shadow-md"
-    >
-      <div className="flex size-11 items-center justify-center rounded-2xl bg-[#F3E9E1]">
-        <Workflow className="size-[22px] text-[#D52B0C]" />
-      </div>
-      <h3 className="mt-4 text-lg font-bold tracking-tight">{t(agent.name)}</h3>
-      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-[#6E5C53]">{t(agent.description)}</p>
-      {tools.length > 0 ? (
-        <div className="mt-3.5 flex flex-wrap gap-1.5">
-          {tools.map((tool) => (
-            <span
-              key={tool}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#EADFD6] bg-[#FBF5F0] py-0.5 pr-2 pl-1.5 text-[11px] font-medium text-[#6E5C53]"
-            >
-              <ToolLogo name={tool} size={13} />
-              {tool}
-            </span>
-          ))}
+    <div className="rounded-3xl border border-[#EADFD6] bg-white p-6 shadow-sm">
+      <div className="flex items-start gap-4">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#F3E9E1]">
+          <Workflow className="size-[22px] text-[#D52B0C]" />
         </div>
-      ) : null}
-      <span className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] font-medium tracking-[0.1em] text-[#D52B0C] uppercase">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-lg font-bold tracking-tight">{t(agent.name)}</h3>
+          <p className="mt-1 text-sm leading-relaxed text-[#6E5C53]">{t(agent.description)}</p>
+        </div>
+      </div>
+      <ToolChipRow tools={chipTools} />
+      <AgentOutputs slug={slug} index={index} locale={locale} sampleLabel={t(UI.sample)} />
+      <button
+        type="button"
+        onClick={handleOpen}
+        className="group mt-5 inline-flex items-center gap-1.5 font-mono text-[11px] font-medium tracking-[0.1em] text-[#D52B0C] uppercase transition-colors hover:text-[#B0240A]"
+      >
         {t(UI.open)}
         <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -156,9 +209,9 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight">{t(UI.agentsTitle)}</h2>
           <p className="mt-2 text-[#6E5C53]">{t(UI.agentsSub)}</p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 space-y-5">
             {vertical.agents.map((agent, index) => (
-              <AgentCard
+              <AgentShowcase
                 key={agent.name.en}
                 agent={agent}
                 slug={vertical.slug}
