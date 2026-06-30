@@ -63,4 +63,9 @@ describe("Bap MCP tool schemas", () => {
   it("keeps workspace.list callable with empty input", () => {
     expect(Object.keys(workspaceListSchema)).toEqual([]);
   });
+
+  it("lets coworker.create wire skills and MCP servers at creation", () => {
+    expect(Object.hasOwn(coworkerCreateSchema, "skillSlugs")).toBe(true);
+    expect(Object.hasOwn(coworkerCreateSchema, "workspaceMcpServerIds")).toBe(true);
+  });
 });

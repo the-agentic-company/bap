@@ -137,6 +137,8 @@ export async function handleCoworkerCreate(params: {
   model?: string;
   authSource?: "user" | "shared";
   integrations?: string[];
+  workspaceMcpServerIds?: string[];
+  skillSlugs?: string[];
   folderPath?: string;
   files?: Array<{
     filename: string;
@@ -157,6 +159,8 @@ export async function handleCoworkerCreate(params: {
     authSource: params.authSource,
     toolAccessMode: allowedIntegrations ? "selected" : undefined,
     allowedIntegrations,
+    allowedWorkspaceMcpServerIds: params.workspaceMcpServerIds,
+    allowedSkillSlugs: params.skillSlugs,
   });
 
   const trimmedFolderPath = params.folderPath?.trim();
