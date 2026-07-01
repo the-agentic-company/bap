@@ -12,7 +12,7 @@ import { loc, type Localized, type UseCaseAgent, type Vertical } from "./use-cas
  * "connected tools" band, so repeating the same métier software on every agent added noise.
  */
 type LayoutProps = { vertical: Vertical; locale: string };
-type LayoutKey = "stack" | "split" | "tabs";
+type LayoutKey = "stack" | "split" | "tabs" | "wide-grid";
 
 const CARD = "rounded-3xl border border-[#EADFD6] bg-white p-6 shadow-sm";
 const SAMPLE = { en: "Sample output", fr: "Exemple de sortie" };
@@ -229,6 +229,19 @@ function AgentSplit({ vertical, locale }: LayoutProps) {
   );
 }
 
+function AgentWideGrid({ vertical, locale }: LayoutProps) {
+  return (
+    <div className="relative left-1/2 mt-6 w-[min(calc(100vw-3rem),1120px)] -translate-x-1/2">
+      <AgentCardList
+        vertical={vertical}
+        locale={locale}
+        outputMax={1}
+        className="grid gap-5 lg:grid-cols-2"
+      />
+    </div>
+  );
+}
+
 function TabButton({
   label,
   index,
@@ -293,14 +306,15 @@ const LAYOUTS: Record<LayoutKey, ComponentType<LayoutProps>> = {
   stack: AgentStack,
   split: AgentSplit,
   tabs: AgentTabs,
+  "wide-grid": AgentWideGrid,
 };
 
-// Keep the first three use cases on different reviewed layouts for quick demo comparisons.
+// Keep the first four use cases on different layouts for quick demo comparisons.
 const LAYOUT_BY_SLUG: Record<string, LayoutKey> = {
   notaires: "tabs",
   "services-a-la-personne": "split",
   "courtiers-assurance": "stack",
-  "experts-comptables": "tabs",
+  "experts-comptables": "wide-grid",
   ehpad: "stack",
   veterinaires: "split",
   pharmacies: "stack",
