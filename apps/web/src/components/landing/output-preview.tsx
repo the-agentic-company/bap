@@ -17,16 +17,31 @@ function tr(locale: string, en: string, fr: string): string {
 }
 
 function pick(lines: string[], samples: string[]): string[] {
-  const cleaned = lines.map((line) => line.trim()).filter(Boolean);
+  const cleaned = lines.flatMap((line) => {
+    const trimmed = line.trim();
+    return trimmed ? [trimmed] : [];
+  });
   return cleaned.length > 0 ? cleaned : samples;
 }
 
 const KIND_RULES: [RegExp, Kind][] = [
-  [/courrier|lettre|letter|reply|réponse|email|message|convocation|welcome|bienvenue|accusé|acknowledg|relance|brouillon|draft/i, "letter"],
+  [
+    /courrier|lettre|letter|reply|réponse|email|message|convocation|welcome|bienvenue|accusé|acknowledg|relance|brouillon|draft/i,
+    "letter",
+  ],
   [/schedule|planning|agenda|arrival|arrivée|calendar|créneau|tournée|semaine/i, "schedule"],
-  [/summary|synthèse|résumé|report|rapport|bilan|profil|score|analy|dashboard|tableau de bord|état|statut/i, "brief"],
-  [/devis|quote|invoice|facture|order|commande|entries|écriture|quittance|avis|bon|stock|montant/i, "table"],
-  [/list|liste|checklist|queue|reminder|rappel|renewal|renouvellement|alert|alerte|recap|récap|pièce|digest|segment|missing|manquant|todo|tâche/i, "list"],
+  [
+    /summary|synthèse|résumé|report|rapport|bilan|profil|score|analy|dashboard|tableau de bord|état|statut/i,
+    "brief",
+  ],
+  [
+    /devis|quote|invoice|facture|order|commande|entries|écriture|quittance|avis|bon|stock|montant/i,
+    "table",
+  ],
+  [
+    /list|liste|checklist|queue|reminder|rappel|renewal|renouvellement|alert|alerte|recap|récap|pièce|digest|segment|missing|manquant|todo|tâche/i,
+    "list",
+  ],
 ];
 
 function previewKind(label: string): Kind {
@@ -66,7 +81,13 @@ const DAYS = [
 ];
 const ROWS = ["r0", "r1", "r2"];
 
-function SectionLabel({ icon: Icon, children }: { icon: ComponentType<{ className?: string }>; children: ReactNode }) {
+function SectionLabel({
+  icon: Icon,
+  children,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  children: ReactNode;
+}) {
   return (
     <div className="mt-3 mb-1.5 flex items-center gap-2">
       <Icon className="size-3 text-[#D52B0C]" />
@@ -79,7 +100,9 @@ function SectionLabel({ icon: Icon, children }: { icon: ComponentType<{ classNam
 }
 
 function Card({ children }: { children: ReactNode }) {
-  return <div className="overflow-hidden rounded-lg border border-[#E0D2C7] bg-white">{children}</div>;
+  return (
+    <div className="overflow-hidden rounded-lg border border-[#E0D2C7] bg-white">{children}</div>
+  );
 }
 
 function Ring({ value }: { value: number }) {
@@ -111,7 +134,9 @@ function StatStrip({ locale }: { locale: string }) {
       {STATS.map((s) => (
         <div key={s.id} className="rounded-lg border border-[#EADFD6] bg-[#FBF5F0] px-2.5 py-1.5">
           <p className="text-[14px] font-bold tracking-tight text-[#241712] tabular-nums">{s.v}</p>
-          <p className="font-mono text-[7px] tracking-wide text-[#9C8A80] uppercase">{tr(locale, s.en, s.fr)}</p>
+          <p className="font-mono text-[7px] tracking-wide text-[#9C8A80] uppercase">
+            {tr(locale, s.en, s.fr)}
+          </p>
         </div>
       ))}
     </div>
@@ -119,16 +144,26 @@ function StatStrip({ locale }: { locale: string }) {
 }
 
 function VerdictRows({ lines, locale }: { lines: string[]; locale: string }) {
-  const rows = pick(lines, ["Item reviewed", "Cross-checked against file", "Flagged for review", "Prepared draft"]).slice(0, 4);
+  const rows = pick(lines, [
+    "Item reviewed",
+    "Cross-checked against file",
+    "Flagged for review",
+    "Prepared draft",
+  ]).slice(0, 4);
   return (
     <Card>
       {rows.map((row, i) => {
         const v = VERDICTS[i % VERDICTS.length];
         return (
-          <div key={row} className="flex items-center gap-2 border-b border-[#F3E9E1] px-2.5 py-1.5 last:border-b-0">
+          <div
+            key={row}
+            className="flex items-center gap-2 border-b border-[#F3E9E1] px-2.5 py-1.5 last:border-b-0"
+          >
             <span className="size-1 shrink-0 rounded-full bg-[#D52B0C]" />
             <span className="flex-1 truncate text-[9.5px] text-[#3C1E0A]">{row}</span>
-            <span className={`rounded-md px-1.5 py-0.5 font-mono text-[7px] font-semibold uppercase ${v.cls}`}>
+            <span
+              className={`rounded-md px-1.5 py-0.5 font-mono text-[7px] font-semibold uppercase ${v.cls}`}
+            >
               {tr(locale, v.en, v.fr)}
             </span>
           </div>
@@ -141,7 +176,9 @@ function VerdictRows({ lines, locale }: { lines: string[]; locale: string }) {
 function ReviewCol({ title, tone, items }: { title: string; tone: string; items: string[] }) {
   return (
     <Card>
-      <p className={`border-b border-[#F3E9E1] px-2.5 py-1.5 font-mono text-[7px] font-semibold tracking-wide uppercase ${tone}`}>
+      <p
+        className={`border-b border-[#F3E9E1] px-2.5 py-1.5 font-mono text-[7px] font-semibold tracking-wide uppercase ${tone}`}
+      >
         {title}
       </p>
       <div className="space-y-1 p-2.5">
@@ -157,7 +194,12 @@ function ReviewCol({ title, tone, items }: { title: string; tone: string; items:
 }
 
 function BriefBody({ locale, lines }: BodyProps) {
-  const all = pick(lines, ["Reviewed the file", "Cross-checked data", "Prepared the draft", "Flagged anomalies"]);
+  const all = pick(lines, [
+    "Reviewed the file",
+    "Cross-checked data",
+    "Prepared the draft",
+    "Flagged anomalies",
+  ]);
   const verified = all.slice(0, 2);
   const toConfirm = all.slice(2, 4);
   return (
@@ -176,12 +218,22 @@ function BriefBody({ locale, lines }: BodyProps) {
           {tr(locale, "Ready", "Prêt")}
         </span>
       </div>
-      <SectionLabel icon={Zap}>{tr(locale, "Checks · 3 of 4 clear", "Contrôles · 3 sur 4 OK")}</SectionLabel>
+      <SectionLabel icon={Zap}>
+        {tr(locale, "Checks · 3 of 4 clear", "Contrôles · 3 sur 4 OK")}
+      </SectionLabel>
       <VerdictRows lines={lines} locale={locale} />
       <SectionLabel icon={Check}>{tr(locale, "Review", "Revue")}</SectionLabel>
       <div className="grid grid-cols-2 gap-1.5">
-        <ReviewCol title={tr(locale, "Verified", "Vérifié")} tone="text-[#2E8B57]" items={verified} />
-        <ReviewCol title={tr(locale, "To confirm", "À confirmer")} tone="text-[#B0240A]" items={toConfirm} />
+        <ReviewCol
+          title={tr(locale, "Verified", "Vérifié")}
+          tone="text-[#2E8B57]"
+          items={verified}
+        />
+        <ReviewCol
+          title={tr(locale, "To confirm", "À confirmer")}
+          tone="text-[#B0240A]"
+          items={toConfirm}
+        />
       </div>
     </div>
   );
@@ -198,7 +250,10 @@ function ListBody({ locale, lines }: BodyProps) {
 }
 
 function TableBody({ locale, tools }: BodyProps) {
-  const rows = pick(tools, ["Référence A", "Référence B", "Référence C", "Référence D"]).slice(0, 4);
+  const rows = pick(tools, ["Référence A", "Référence B", "Référence C", "Référence D"]).slice(
+    0,
+    4,
+  );
   return (
     <div>
       <StatStrip locale={locale} />
@@ -230,8 +285,16 @@ function TableBody({ locale, tools }: BodyProps) {
 
 function LetterBody({ locale, lines }: BodyProps) {
   const body = pick(lines, [
-    tr(locale, "As discussed, here is the summary and the next step.", "Comme convenu, voici la synthèse et la prochaine étape."),
-    tr(locale, "Let me know if anything needs adjusting.", "Dites-moi si quelque chose doit être ajusté."),
+    tr(
+      locale,
+      "As discussed, here is the summary and the next step.",
+      "Comme convenu, voici la synthèse et la prochaine étape.",
+    ),
+    tr(
+      locale,
+      "Let me know if anything needs adjusting.",
+      "Dites-moi si quelque chose doit être ajusté.",
+    ),
   ]).slice(0, 2);
   return (
     <Card>
@@ -245,7 +308,9 @@ function LetterBody({ locale, lines }: BodyProps) {
         </span>
       </div>
       <div className="border-b border-[#F3E9E1] px-3 py-2 text-[10.5px] font-semibold text-[#241712]">
-        <span className="mr-1.5 font-mono text-[7.5px] text-[#9C8A80] uppercase">{tr(locale, "Subject", "Objet")}</span>
+        <span className="mr-1.5 font-mono text-[7.5px] text-[#9C8A80] uppercase">
+          {tr(locale, "Subject", "Objet")}
+        </span>
         {tr(locale, "Following up on your file", "Suite à votre dossier")}
       </div>
       <div className="space-y-1.5 px-3 py-2.5 text-[9.5px] leading-relaxed text-[#6E5C53]">
@@ -286,7 +351,12 @@ function ScheduleBody({ locale }: BodyProps) {
               <div key={rowId} className="grid grid-cols-5 gap-1">
                 {DAYS.map((day, col) => {
                   const cell = CELLS.find((item) => item.col === col && item.row === row);
-                  return <div key={day.id} className={`h-3 rounded-sm ${cell ? TONE[cell.tone] : "bg-[#F3E9E1]"}`} />;
+                  return (
+                    <div
+                      key={day.id}
+                      className={`h-3 rounded-sm ${cell ? TONE[cell.tone] : "bg-[#F3E9E1]"}`}
+                    />
+                  );
                 })}
               </div>
             ))}
