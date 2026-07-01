@@ -1,20 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, Workflow } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useAppLocale } from "@/components/general-translation-provider";
 import { Button } from "@/components/ui/button";
-import { buildAgentPreviews, getAgentSpec } from "./agent-specs";
-import { OutputPreview } from "./output-preview";
+import { AgentApps } from "./agent-apps";
 import { ToolLogo } from "./tool-logo";
-import { loc, type Localized, type UseCaseAgent, type Vertical } from "./use-cases-data";
+import { loc, type Localized, type Vertical } from "./use-cases-data";
 
 /**
- * Server-rendered vertical use-case page (`/cas-usage/<slug>`). Narrative: hero → problem →
- * agentic apps → integrations → impact → FAQ → CTA. Styled after the cmdclaw audit demo (warm
- * palette, mono eyebrows/labels via Geist Mono, heavy Geist headings, macOS-deck feel).
+ * Server-rendered vertical use-case page (`/cas-usage/<slug>`). Narrative: hero → integrations →
+ * agentic apps → how it works → problem → impact → FAQ → CTA. Styled after the cmdclaw audit demo
+ * (warm palette, mono eyebrows/labels via Geist Mono, heavy Geist headings, macOS-deck feel).
  *
- * Each "agentic app" block lays out its trigger / actions / outputs as concise bullets plus an
- * inline preview of the real output. The FAQ is emitted as JSON-LD `FAQPage` for rich results / GEO.
+ * The agentic-apps section is rendered by `AgentApps`, whose layout varies per vertical (see
+ * `agent-apps.tsx`). The FAQ is emitted as JSON-LD `FAQPage` for rich results / GEO.
  */
 const UI = {
   back: { en: "All use cases", fr: "Tous les cas d'usage" },
@@ -24,7 +22,6 @@ const UI = {
     en: "Each agent's trigger, steps and results, with a real sample of what it produces.",
     fr: "Le déclencheur, les étapes et les résultats de chaque agent, avec un exemple concret de ce qu'il produit.",
   },
-  sample: { en: "Sample output", fr: "Exemple de sortie" },
   howKicker: { en: "How it works", fr: "Comment ça marche" },
   howTitle: {
     en: "From your tools to a working agent, in three steps",
@@ -42,148 +39,6 @@ const UI = {
   deployCta: { en: "Deploy on HeyBap", fr: "Déployer sur HeyBap" },
   moreTools: { en: "and many more tools", fr: "et bien d'autres outils" },
 };
-
-const NO_TOOLS: string[] = [];
-
-function ToolChipRow({ tools }: { tools: string[] }) {
-  if (tools.length === 0) {
-    return null;
-  }
-  return (
-    <div className="mt-4 flex flex-wrap gap-2">
-      {tools.map((tool) => (
-        <span
-          key={tool}
-          className="inline-flex items-center gap-2 rounded-full border border-[#EADFD6] bg-[#FBF5F0] py-1 pr-3.5 pl-2 text-[13px] font-medium text-[#3C1E0A]"
-        >
-          <ToolLogo name={tool} size={22} />
-          {tool}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// The agent's page-type outputs, rendered inline on the page (not hidden in the modal) so the
-// real, app-grade output is the visual centerpiece of each agent block.
-function AgentOutputs({
-  slug,
-  index,
-  locale,
-  sampleLabel,
-}: {
-  slug: string;
-  index: number;
-  locale: string;
-  sampleLabel: string;
-}) {
-  const spec = getAgentSpec(slug, index);
-  const tools = spec?.tools ?? NO_TOOLS;
-  const actions = useMemo(() => (spec?.actions ?? []).map((value) => loc(locale, value)), [spec, locale]);
-  const previews = useMemo(() => buildAgentPreviews(spec, locale, actions, 2), [spec, locale, actions]);
-
-  if (previews.length === 0) {
-    return null;
-  }
-  return (
-    <div className="mt-5 space-y-4">
-      {previews.map((preview) => (
-        <OutputPreview
-          key={preview.key}
-          label={preview.label}
-          sampleLabel={sampleLabel}
-          locale={locale}
-          lines={preview.lines}
-          tools={tools}
-        />
-      ))}
-    </div>
-  );
-}
-
-const SPEC_LABELS = {
-  trigger: { en: "Trigger", fr: "Déclencheur" },
-  does: { en: "What it does", fr: "Ce qu'il fait" },
-  outputs: { en: "You get", fr: "Vous obtenez" },
-};
-
-function SpecLabel({ children }: { children: string }) {
-  return <p className="font-mono text-[10px] font-semibold tracking-[0.12em] text-[#9C8A80] uppercase">{children}</p>;
-}
-
-// Concise, bulleted breakdown of an agent's trigger / actions / outputs, straight from its spec.
-function AgentSpecSummary({ slug, index, locale }: { slug: string; index: number; locale: string }) {
-  const spec = getAgentSpec(slug, index);
-  if (!spec) {
-    return null;
-  }
-  const t = (value: Localized) => loc(locale, value);
-  const actions = spec.actions.slice(0, 3);
-  const outputs = spec.outputs.map((output) => t(output.label)).join(", ");
-  const trigger = spec.triggers[0];
-  return (
-    <div className="mt-4 space-y-3">
-      {trigger ? (
-        <div>
-          <SpecLabel>{t(SPEC_LABELS.trigger)}</SpecLabel>
-          <p className="mt-1 text-sm leading-snug text-[#6E5C53]">{t(trigger)}</p>
-        </div>
-      ) : null}
-      <div>
-        <SpecLabel>{t(SPEC_LABELS.does)}</SpecLabel>
-        <ul className="mt-1.5 space-y-1">
-          {actions.map((action) => (
-            <li key={action.en} className="flex gap-2 text-sm leading-snug text-[#6E5C53]">
-              <span className="mt-[7px] size-1 shrink-0 rounded-full bg-[#D52B0C]" />
-              {t(action)}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <SpecLabel>{t(SPEC_LABELS.outputs)}</SpecLabel>
-        <p className="mt-1 text-sm leading-snug text-[#6E5C53]">{outputs}</p>
-      </div>
-    </div>
-  );
-}
-
-// The agent's own tools first, then the rest of the vertical's stack (deduped), so each block
-// shows a fuller set of connected tools without repeating any.
-function mergeTools(primary: string[], extra: string[]): string[] {
-  const seen = new Set(primary);
-  return [...primary, ...extra.filter((tool) => !seen.has(tool))];
-}
-
-function AgentShowcase({
-  agent,
-  slug,
-  locale,
-  index,
-  verticalTools,
-}: {
-  agent: UseCaseAgent;
-  slug: string;
-  locale: string;
-  index: number;
-  verticalTools: string[];
-}) {
-  const t = (value: Localized) => loc(locale, value);
-  const chipTools = mergeTools(getAgentSpec(slug, index)?.tools ?? NO_TOOLS, verticalTools).slice(0, 6);
-  return (
-    <div className="rounded-3xl border border-[#EADFD6] bg-white p-6 shadow-sm">
-      <div className="flex items-center gap-4">
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#F3E9E1]">
-          <Workflow className="size-[22px] text-[#D52B0C]" />
-        </div>
-        <h3 className="text-lg font-bold tracking-tight">{t(agent.name)}</h3>
-      </div>
-      <AgentSpecSummary slug={slug} index={index} locale={locale} />
-      <ToolChipRow tools={chipTools} />
-      <AgentOutputs slug={slug} index={index} locale={locale} sampleLabel={t(UI.sample)} />
-    </div>
-  );
-}
 
 // A real sequence (connect → review → deploy), so numbered markers carry meaning here.
 const STEPS = [
@@ -286,6 +141,22 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
           </div>
         </header>
 
+        {/* Integrations — "works with your stack" trust band, right under the hero */}
+        <section className="mt-12">
+          <h2 className="font-mono text-[11px] font-medium tracking-[0.16em] text-[#6E5C53] uppercase">
+            {t(vertical.integrations.title)}
+          </h2>
+          <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-4">
+            {vertical.integrations.items.map((item) => (
+              <span key={item} className="inline-flex items-center gap-2.5 text-sm font-medium text-[#3C1E0A]">
+                <ToolLogo name={item} size={28} />
+                {item}
+              </span>
+            ))}
+            <span className="text-sm font-medium text-[#9C8A80]">{t(UI.moreTools)}</span>
+          </div>
+        </section>
+
         {/* Agentic apps */}
         <section className="mt-16">
           <p className="font-mono text-[11px] font-medium tracking-[0.2em] text-[#D52B0C] uppercase">
@@ -293,18 +164,7 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight">{t(UI.agentsTitle)}</h2>
           <p className="mt-2 text-[#6E5C53]">{t(UI.agentsSub)}</p>
-          <div className="mt-6 space-y-5">
-            {vertical.agents.map((agent, index) => (
-              <AgentShowcase
-                key={agent.name.en}
-                agent={agent}
-                slug={vertical.slug}
-                locale={locale}
-                index={index}
-                verticalTools={vertical.integrations.items}
-              />
-            ))}
-          </div>
+          <AgentApps vertical={vertical} locale={locale} />
         </section>
 
         {/* How it works */}
@@ -314,20 +174,6 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
         <section className="mt-16 rounded-3xl border border-[#EADFD6] bg-white p-7 shadow-sm">
           <h2 className="text-2xl font-bold tracking-tight">{t(vertical.problem.title)}</h2>
           <p className="mt-3 leading-relaxed text-[#6E5C53]">{t(vertical.problem.body)}</p>
-        </section>
-
-        {/* Integrations */}
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold tracking-tight">{t(vertical.integrations.title)}</h2>
-          <div className="mt-6 flex flex-wrap items-center gap-x-7 gap-y-4">
-            {vertical.integrations.items.map((item) => (
-              <span key={item} className="inline-flex items-center gap-2.5 text-sm font-medium text-[#3C1E0A]">
-                <ToolLogo name={item} size={28} />
-                {item}
-              </span>
-            ))}
-            <span className="text-sm font-medium text-[#9C8A80]">{t(UI.moreTools)}</span>
-          </div>
         </section>
 
         {/* Impact */}
