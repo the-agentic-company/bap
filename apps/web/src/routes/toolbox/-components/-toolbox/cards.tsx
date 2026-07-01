@@ -15,6 +15,20 @@ import { AppImage } from "../../-lib/app-image";
 import { AppLink } from "../../-lib/app-link";
 import { CARD_MOTION, type CommunitySkill } from "./data";
 
+function formatCredentialExpiryShort(value: Date | string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const label = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return date.getTime() <= Date.now() ? `Expired ${label}` : `Expires ${label}`;
+}
+
 export function IntegrationToolCard({
   config,
   href,
@@ -411,10 +425,12 @@ export function WorkspaceMcpServerToolCard({
     enabled: boolean;
     connected: boolean;
     credentialEnabled: boolean;
+    credentialExpiresAt?: Date | string | null;
   };
 }) {
   const isActive = source.enabled && source.connected && source.credentialEnabled;
   const needsSetup = !source.connected;
+  const credentialExpiryLabel = formatCredentialExpiryShort(source.credentialExpiresAt);
 
   return (
     <motion.div
@@ -486,6 +502,9 @@ export function WorkspaceMcpServerToolCard({
         <p className="text-muted-foreground mt-3 line-clamp-2 text-xs leading-relaxed">
           {source.namespace} · {source.endpoint}
         </p>
+        {source.connected && credentialExpiryLabel ? (
+          <p className="text-muted-foreground mt-2 text-[11px]">{credentialExpiryLabel}</p>
+        ) : null}
 
         {/* Footer */}
         <div className="mt-auto flex items-center justify-between pt-4">

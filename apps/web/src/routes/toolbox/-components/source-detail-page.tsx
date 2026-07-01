@@ -25,6 +25,38 @@ import {
 } from "@/orpc/hooks/workspace-mcp-servers";
 import { AppLink } from "../-lib/app-link";
 
+function formatCredentialExpiry(value: Date | string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const isExpired = date.getTime() <= Date.now();
+  const formatted = date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+  return isExpired ? `Expired on ${formatted}` : `Expires on ${formatted}`;
+}
+
+function toDateInputValue(value: Date | string | null | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
 export function SourceDetailPage() {
   const t = useGT();
 
@@ -51,6 +83,7 @@ export function SourceDetailPage() {
 
   const [secret, setSecret] = useState("");
   const [credDisplayName, setCredDisplayName] = useState("");
+  const [credExpiresAt, setCredExpiresAt] = useState("");
   const [galienUsername, setGalienUsername] = useState("");
   const [galienPassword, setGalienPassword] = useState("");
   const isManagedSource = Boolean(source?.internalKey);
@@ -99,6 +132,10 @@ export function SourceDetailPage() {
     setCredDisplayName(e.target.value);
   }, []);
 
+  const handleCredExpiresAtChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setCredExpiresAt(e.target.value);
+  }, []);
+
   const handleGalienUsernameChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setGalienUsername(e.target.value);
   }, []);
@@ -110,6 +147,7 @@ export function SourceDetailPage() {
   useEffect(() => {
     if (source) {
       setCredDisplayName(source.credentialDisplayName ?? "");
+      setCredExpiresAt(toDateInputValue(source.credentialExpiresAt));
     }
   }, [source]);
 
@@ -188,13 +226,14 @@ export function SourceDetailPage() {
         workspaceMcpServerId: source.id,
         secret: trimmedSecret,
         displayName: credDisplayName.trim(),
+        expiresAt: credExpiresAt || null,
       });
       setSecret("");
       toast.success(t("Credential saved."));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save credential.");
     }
-  }, [credDisplayName, secret, setCredential, source, t]);
+  }, [credDisplayName, credExpiresAt, secret, setCredential, source, t]);
 
   const handleStartOAuth = useCallback(async () => {
     if (!source) {
@@ -211,6 +250,8 @@ export function SourceDetailPage() {
       toast.error(error instanceof Error ? error.message : "Failed to start OAuth.");
     }
   }, [source, startOAuth]);
+
+  const credentialExpiryLabel = formatCredentialExpiry(source?.credentialExpiresAt);
 
   const handleDisconnectCredential = useCallback(async () => {
     if (!source) {
@@ -304,6 +345,9 @@ export function SourceDetailPage() {
               <p className="text-muted-foreground mt-2 text-sm">
                 {source.connected ? "Connected" : "Not connected"} · {authLabel}
               </p>
+              {source.connected && credentialExpiryLabel ? (
+                <p className="text-muted-foreground mt-1 text-sm">{credentialExpiryLabel}</p>
+              ) : null}
             </div>
           </div>
 
@@ -427,6 +471,10 @@ export function SourceDetailPage() {
             </div>
           ) : source.authType !== "none" ? (
             <div className="mt-5 space-y-4">
+              {source.connected && credentialExpiryLabel ? (
+                <p className="text-muted-foreground text-xs">{credentialExpiryLabel}</p>
+              ) : null}
+
               <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
                 <Input
                   value={secret}
@@ -438,6 +486,13 @@ export function SourceDetailPage() {
                   value={credDisplayName}
                   onChange={handleCredDisplayNameChange}
                   placeholder={t("Label (optional)")}
+                />
+                <Input
+                  value={credExpiresAt}
+                  onChange={handleCredExpiresAtChange}
+                  placeholder={t("Expiration date")}
+                  type="date"
+                  className="sm:col-start-2"
                 />
               </div>
 

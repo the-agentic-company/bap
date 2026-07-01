@@ -108,6 +108,21 @@ function normalizeAuthSettings(input: {
   };
 }
 
+function normalizeCredentialExpiresAt(value: string | null | undefined): Date | null {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed.includes("T") ? trimmed : `${trimmed}T23:59:59.999Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Credential expiration date is invalid.",
+    });
+  }
+  return parsed;
+}
+
 async function requireAdmin(context: Pick<AuthenticatedContext, "db" | "user">) {
   const currentUser = await context.db.query.user.findFirst({
     where: eq(user.id, context.user.id),
@@ -592,6 +607,7 @@ const setCredential = protectedProcedure
       workspaceMcpServerId: z.string(),
       secret: z.string().min(1),
       displayName: z.string().max(120).nullish(),
+      expiresAt: z.string().max(40).nullish(),
       enabled: z.boolean().default(true),
     }),
   )
@@ -623,6 +639,7 @@ const setCredential = protectedProcedure
       userId: context.user.id,
       secret: input.secret,
       displayName: input.displayName,
+      expiresAt: normalizeCredentialExpiresAt(input.expiresAt),
       enabled: input.enabled,
     });
 
@@ -636,6 +653,7 @@ const adminSetCredential = protectedProcedure
       workspaceMcpServerId: z.string(),
       secret: z.string().min(1),
       displayName: z.string().max(120).nullish(),
+      expiresAt: z.string().max(40).nullish(),
       enabled: z.boolean().default(true),
     }),
   )
@@ -655,6 +673,7 @@ const adminSetCredential = protectedProcedure
       userId: context.user.id,
       secret: input.secret,
       displayName: input.displayName,
+      expiresAt: normalizeCredentialExpiresAt(input.expiresAt),
       enabled: input.enabled,
     });
 

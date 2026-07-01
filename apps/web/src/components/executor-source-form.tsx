@@ -43,6 +43,7 @@ export type WorkspaceMcpServerListItem = {
   connected: boolean;
   credentialEnabled: boolean;
   credentialDisplayName: string | null;
+  credentialExpiresAt: Date | string | null;
   specUrl: string | null;
   transport: string | null;
   headers: Record<string, string> | null;
