@@ -295,11 +295,11 @@ const LAYOUTS: Record<LayoutKey, ComponentType<LayoutProps>> = {
   tabs: AgentTabs,
 };
 
-// One layout per vertical. Reviewed: keep split / tabs / stack (liked), drop grid + featured.
+// Keep the first three use cases on different reviewed layouts for quick demo comparisons.
 const LAYOUT_BY_SLUG: Record<string, LayoutKey> = {
   notaires: "tabs",
   "services-a-la-personne": "split",
-  "courtiers-assurance": "split",
+  "courtiers-assurance": "stack",
   "experts-comptables": "tabs",
   ehpad: "stack",
   veterinaires: "split",
