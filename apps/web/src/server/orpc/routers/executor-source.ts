@@ -185,6 +185,27 @@ async function getAdminSource(
   return source;
 }
 
+async function getActiveWorkspaceMcpServer(
+  context: Pick<AuthenticatedContext, "db" | "user">,
+  workspaceMcpServerId: string,
+) {
+  const access = await requireActiveWorkspaceAccess(context.user.id);
+  const source = await context.db.query.workspaceMcpServer.findFirst({
+    where: and(
+      eq(workspaceMcpServer.id, workspaceMcpServerId),
+      eq(workspaceMcpServer.workspaceId, access.workspace.id),
+    ),
+  });
+
+  if (!source) {
+    throw new ORPCError("NOT_FOUND", {
+      message: "Workspace MCP Server not found.",
+    });
+  }
+  assertManualCredentialSource(source);
+  return source;
+}
+
 function assertMutableWorkspaceMcpServer(
   source: Pick<typeof workspaceMcpServer.$inferSelect, "internalKey">,
 ) {
@@ -616,20 +637,7 @@ const adminDelete = protectedProcedure
 const setCredential = protectedProcedure
   .input(workspaceMcpServerCredentialInputSchema)
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
-    const source = await context.db.query.workspaceMcpServer.findFirst({
-      where: and(
-        eq(workspaceMcpServer.id, input.workspaceMcpServerId),
-        eq(workspaceMcpServer.workspaceId, access.workspace.id),
-      ),
-    });
-
-    if (!source) {
-      throw new ORPCError("NOT_FOUND", {
-        message: "Workspace MCP Server not found.",
-      });
-    }
-    assertManualCredentialSource(source);
+    const source = await getActiveWorkspaceMcpServer(context, input.workspaceMcpServerId);
 
     if (source.authType === "oauth2") {
       throw new ORPCError("BAD_REQUEST", {
@@ -678,20 +686,7 @@ const adminSetCredential = protectedProcedure
 const disconnectCredential = protectedProcedure
   .input(z.object({ workspaceMcpServerId: z.string() }))
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
-    const source = await context.db.query.workspaceMcpServer.findFirst({
-      where: and(
-        eq(workspaceMcpServer.id, input.workspaceMcpServerId),
-        eq(workspaceMcpServer.workspaceId, access.workspace.id),
-      ),
-    });
-
-    if (!source) {
-      throw new ORPCError("NOT_FOUND", {
-        message: "Workspace MCP Server not found.",
-      });
-    }
-    assertManualCredentialSource(source);
+    const source = await getActiveWorkspaceMcpServer(context, input.workspaceMcpServerId);
 
     await context.db
       .delete(workspaceMcpAuthorization)
