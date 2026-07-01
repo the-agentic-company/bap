@@ -1,9 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Workflow } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useAppLocale } from "@/components/general-translation-provider";
 import { Button } from "@/components/ui/button";
-import { AgentModal } from "./agent-modal";
 import { buildAgentPreviews, getAgentSpec } from "./agent-specs";
 import { OutputPreview } from "./output-preview";
 import { ToolLogo } from "./tool-logo";
@@ -14,18 +13,17 @@ import { loc, type Localized, type UseCaseAgent, type Vertical } from "./use-cas
  * agentic apps → integrations → impact → FAQ → CTA. Styled after the cmdclaw audit demo (warm
  * palette, mono eyebrows/labels via Geist Mono, heavy Geist headings, macOS-deck feel).
  *
- * The "agentic apps" cards open an `AgentModal` popup with a "Deploy to HeyBap" CTA. The FAQ is
- * emitted as JSON-LD `FAQPage` for rich results / GEO.
+ * Each "agentic app" block lays out its trigger / actions / outputs as concise bullets plus an
+ * inline preview of the real output. The FAQ is emitted as JSON-LD `FAQPage` for rich results / GEO.
  */
 const UI = {
   back: { en: "All use cases", fr: "Tous les cas d'usage" },
   agentsKicker: { en: "Agentic apps", fr: "Apps agentiques" },
   agentsTitle: { en: "An agentic app for every step", fr: "Une app agentique par étape" },
   agentsSub: {
-    en: "A real sample output from each agent. Open one to customize it and deploy it to HeyBap.",
-    fr: "Un exemple concret de sortie pour chaque agent. Ouvrez-en un pour le personnaliser et le déployer sur HeyBap.",
+    en: "Each agent's trigger, steps and results, with a real sample of what it produces.",
+    fr: "Le déclencheur, les étapes et les résultats de chaque agent, avec un exemple concret de ce qu'il produit.",
   },
-  open: { en: "Customize & deploy", fr: "Personnaliser et déployer" },
   sample: { en: "Sample output", fr: "Exemple de sortie" },
   howKicker: { en: "How it works", fr: "Comment ça marche" },
   howTitle: {
@@ -103,43 +101,77 @@ function AgentOutputs({
   );
 }
 
+const SPEC_LABELS = {
+  trigger: { en: "Trigger", fr: "Déclencheur" },
+  does: { en: "What it does", fr: "Ce qu'il fait" },
+  outputs: { en: "You get", fr: "Vous obtenez" },
+};
+
+function SpecLabel({ children }: { children: string }) {
+  return <p className="font-mono text-[10px] font-semibold tracking-[0.12em] text-[#9C8A80] uppercase">{children}</p>;
+}
+
+// Concise, bulleted breakdown of an agent's trigger / actions / outputs, straight from its spec.
+function AgentSpecSummary({ slug, index, locale }: { slug: string; index: number; locale: string }) {
+  const spec = getAgentSpec(slug, index);
+  if (!spec) {
+    return null;
+  }
+  const t = (value: Localized) => loc(locale, value);
+  const actions = spec.actions.slice(0, 3);
+  const outputs = spec.outputs.map((output) => t(output.label)).join(", ");
+  const trigger = spec.triggers[0];
+  return (
+    <div className="mt-4 space-y-3">
+      {trigger ? (
+        <div>
+          <SpecLabel>{t(SPEC_LABELS.trigger)}</SpecLabel>
+          <p className="mt-1 text-sm leading-snug text-[#6E5C53]">{t(trigger)}</p>
+        </div>
+      ) : null}
+      <div>
+        <SpecLabel>{t(SPEC_LABELS.does)}</SpecLabel>
+        <ul className="mt-1.5 space-y-1">
+          {actions.map((action) => (
+            <li key={action.en} className="flex gap-2 text-sm leading-snug text-[#6E5C53]">
+              <span className="mt-[7px] size-1 shrink-0 rounded-full bg-[#D52B0C]" />
+              {t(action)}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <SpecLabel>{t(SPEC_LABELS.outputs)}</SpecLabel>
+        <p className="mt-1 text-sm leading-snug text-[#6E5C53]">{outputs}</p>
+      </div>
+    </div>
+  );
+}
+
 function AgentShowcase({
   agent,
   slug,
   locale,
   index,
-  onOpen,
 }: {
   agent: UseCaseAgent;
   slug: string;
   locale: string;
   index: number;
-  onOpen: (index: number) => void;
 }) {
   const t = (value: Localized) => loc(locale, value);
-  const handleOpen = useCallback(() => onOpen(index), [onOpen, index]);
   const chipTools = (getAgentSpec(slug, index)?.tools ?? NO_TOOLS).slice(0, 4);
   return (
     <div className="rounded-3xl border border-[#EADFD6] bg-white p-6 shadow-sm">
-      <div className="flex items-start gap-4">
+      <div className="flex items-center gap-4">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#F3E9E1]">
           <Workflow className="size-[22px] text-[#D52B0C]" />
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-bold tracking-tight">{t(agent.name)}</h3>
-          <p className="mt-1 text-sm leading-relaxed text-[#6E5C53]">{t(agent.description)}</p>
-        </div>
+        <h3 className="text-lg font-bold tracking-tight">{t(agent.name)}</h3>
       </div>
+      <AgentSpecSummary slug={slug} index={index} locale={locale} />
       <ToolChipRow tools={chipTools} />
       <AgentOutputs slug={slug} index={index} locale={locale} sampleLabel={t(UI.sample)} />
-      <button
-        type="button"
-        onClick={handleOpen}
-        className="group mt-5 inline-flex items-center gap-1.5 font-mono text-[11px] font-medium tracking-[0.1em] text-[#D52B0C] uppercase transition-colors hover:text-[#B0240A]"
-      >
-        {t(UI.open)}
-        <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-      </button>
     </div>
   );
 }
@@ -193,9 +225,6 @@ function HowItWorks({ locale }: { locale: string }) {
 
 export function VerticalPage({ vertical }: { vertical: Vertical }) {
   const { locale } = useAppLocale();
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const openAt = useCallback((index: number) => setOpenIndex(index), []);
-  const closeModal = useCallback(() => setOpenIndex(null), []);
   const t = (value: Localized) => loc(locale, value);
 
   const faqJsonLd = {
@@ -263,7 +292,6 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
                 slug={vertical.slug}
                 locale={locale}
                 index={index}
-                onOpen={openAt}
               />
             ))}
           </div>
@@ -344,16 +372,6 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
           </Button>
         </section>
       </div>
-
-      {openIndex !== null ? (
-        <AgentModal
-          agent={vertical.agents[openIndex]}
-          vertical={vertical}
-          index={openIndex}
-          locale={locale}
-          onClose={closeModal}
-        />
-      ) : null}
     </main>
   );
 }
