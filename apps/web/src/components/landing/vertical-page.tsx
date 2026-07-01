@@ -50,13 +50,13 @@ function ToolChipRow({ tools }: { tools: string[] }) {
     return null;
   }
   return (
-    <div className="mt-4 flex flex-wrap gap-1.5">
+    <div className="mt-4 flex flex-wrap gap-2">
       {tools.map((tool) => (
         <span
           key={tool}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#EADFD6] bg-[#FBF5F0] py-0.5 pr-2 pl-1.5 text-[11px] font-medium text-[#6E5C53]"
+          className="inline-flex items-center gap-2 rounded-full border border-[#EADFD6] bg-[#FBF5F0] py-1 pr-3.5 pl-2 text-[13px] font-medium text-[#3C1E0A]"
         >
-          <ToolLogo name={tool} size={13} />
+          <ToolLogo name={tool} size={22} />
           {tool}
         </span>
       ))}
@@ -148,19 +148,28 @@ function AgentSpecSummary({ slug, index, locale }: { slug: string; index: number
   );
 }
 
+// The agent's own tools first, then the rest of the vertical's stack (deduped), so each block
+// shows a fuller set of connected tools without repeating any.
+function mergeTools(primary: string[], extra: string[]): string[] {
+  const seen = new Set(primary);
+  return [...primary, ...extra.filter((tool) => !seen.has(tool))];
+}
+
 function AgentShowcase({
   agent,
   slug,
   locale,
   index,
+  verticalTools,
 }: {
   agent: UseCaseAgent;
   slug: string;
   locale: string;
   index: number;
+  verticalTools: string[];
 }) {
   const t = (value: Localized) => loc(locale, value);
-  const chipTools = (getAgentSpec(slug, index)?.tools ?? NO_TOOLS).slice(0, 4);
+  const chipTools = mergeTools(getAgentSpec(slug, index)?.tools ?? NO_TOOLS, verticalTools).slice(0, 6);
   return (
     <div className="rounded-3xl border border-[#EADFD6] bg-white p-6 shadow-sm">
       <div className="flex items-center gap-4">
@@ -292,6 +301,7 @@ export function VerticalPage({ vertical }: { vertical: Vertical }) {
                 slug={vertical.slug}
                 locale={locale}
                 index={index}
+                verticalTools={vertical.integrations.items}
               />
             ))}
           </div>
