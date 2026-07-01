@@ -3,7 +3,7 @@ import type { TemplateCatalogTemplate } from "@bap/db/template-catalog";
 import { DEFAULT_CONNECTED_CHATGPT_MODEL } from "@bap/core/lib/chat-model-defaults";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PromptBar, type AttachmentData } from "@/components/prompt-bar";
 import {
   ChatDebugPopover,
@@ -82,6 +82,161 @@ function getFirstName(name: string | null | undefined) {
   return name?.trim().split(/\s+/, 1).find(Boolean) ?? null;
 }
 
+// ── Presentational sub-sections (keep HomeLanding's own complexity low) ──
+
+function LandingBackdrop({ isAnonymous }: { isAnonymous: boolean }) {
+  const mask = isAnonymous
+    ? "[mask-image:linear-gradient(to_bottom,black_0%,black_75%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_75%,transparent_100%)]"
+    : "";
+  return (
+    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${mask}`}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.22),transparent_55%),radial-gradient(circle_at_80%_10%,rgba(125,211,252,0.2),transparent_45%),linear-gradient(180deg,rgba(2,6,23,0.5)_0%,rgba(2,6,23,0.82)_100%)]" />
+      <picture className="absolute inset-0 block overflow-hidden" style={HERO_BACKGROUND_PLACEHOLDER_STYLE}>
+        <source media="(max-width: 767px)" srcSet="/landing/brick-building-mobile.avif" />
+        <img
+          src="/landing/brick-building.avif"
+          alt=""
+          aria-hidden
+          width={2600}
+          height={1463}
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          className="size-full animate-[landing-ocean-drift_28s_ease-in-out_infinite_alternate] object-cover object-center opacity-80 saturate-110 md:object-[74%_60%] lg:object-center"
+        />
+      </picture>
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,23,0.24)_0%,rgba(3,8,23,0.5)_45%,rgba(3,8,23,0.76)_100%)]" />
+    </div>
+  );
+}
+
+function LandingTopBar({ isAnonymous }: { isAnonymous: boolean }) {
+  if (!isAnonymous) {
+    return null;
+  }
+  return (
+    <div className="flex items-center justify-end gap-2 pt-5">
+      <Button variant="outline" size="sm" asChild className="border-white/45 bg-white/80 hover:bg-white">
+        <Link to="/login">
+          <T>Log in</T>
+        </Link>
+      </Button>
+      <Button
+        size="sm"
+        asChild
+        className="bg-slate-950 text-white shadow-[0_16px_32px_rgba(2,6,23,0.35)] hover:bg-slate-900"
+      >
+        {/* oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- TanStack Router search requires an inline object */}
+        <Link to="/login" search={{ mode: "getting-started" }}>
+          <T>Get Started</T>
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function automateHeadline(userFirstName: string | null, gt: ReturnType<typeof useGT>): string {
+  if (userFirstName) {
+    return gt("What do you want to automate {name}?", { name: userFirstName });
+  }
+  return gt("What do you want to automate today?");
+}
+
+function heroDepartment(
+  activeExample: (typeof HERO_PROMPT_EXAMPLES)[number] | undefined,
+  gt: ReturnType<typeof useGT>,
+) {
+  return {
+    label: translateHeroDepartment(activeExample?.department, gt),
+    color: activeExample?.color ?? "#3B82F6",
+  };
+}
+
+function HeroHeadline({
+  isAnonymous,
+  activeExample,
+  gt,
+  userFirstName,
+}: {
+  isAnonymous: boolean;
+  activeExample: (typeof HERO_PROMPT_EXAMPLES)[number] | undefined;
+  gt: ReturnType<typeof useGT>;
+  userFirstName: string | null;
+}) {
+  if (!isAnonymous) {
+    return <>{automateHeadline(userFirstName, gt)}</>;
+  }
+  const department = heroDepartment(activeExample, gt);
+  return (
+    <>
+      <T>What do you want to automate in</T>{" "}
+      <AnimatedDepartment department={department.label} color={department.color} isActive />
+      ?
+    </>
+  );
+}
+
+function HeroVoice({
+  isRecording,
+  isProcessingVoice,
+  voiceError,
+  gt,
+}: {
+  isRecording: boolean;
+  isProcessingVoice: boolean;
+  voiceError: ComponentProps<typeof VoiceIndicator>["error"];
+  gt: ReturnType<typeof useGT>;
+}) {
+  if (!isRecording && !isProcessingVoice && !voiceError) {
+    return null;
+  }
+  return (
+    <div className="mt-4">
+      <VoiceIndicator
+        isRecording={isRecording}
+        isProcessing={isProcessingVoice}
+        error={voiceError}
+        variant="hero"
+        recordingLabel={gt("Recording... Click the mic again to stop")}
+      />
+    </div>
+  );
+}
+
+function LandingPreviewModal({
+  isMobile,
+  featuredTemplates,
+  previewId,
+}: {
+  isMobile: boolean;
+  featuredTemplates: TemplateCatalogTemplate[];
+  previewId: string | null;
+}) {
+  if (isMobile) {
+    return null;
+  }
+  return (
+    <TemplatePreviewModal
+      template={featuredTemplates.find((template) => template.id === previewId) ?? null}
+      closeHref="/"
+    />
+  );
+}
+
+function AnonymousLandingSections({ isAnonymous }: { isAnonymous: boolean }) {
+  if (!isAnonymous) {
+    return null;
+  }
+  return (
+    <>
+      <BentoFeaturesSection />
+      <AnimatedHowItWorksSection />
+      <TeamShowcaseSection />
+      <LandingFooterSection />
+    </>
+  );
+}
+
 export function HomeLanding({
   initialHasSession = false,
   initialFirstName = null,
@@ -114,6 +269,7 @@ export function HomeLanding({
   const [userFirstName, setUserFirstName] = useState<string | null>(initialFirstName);
   const resumePendingPromptRef = useRef(false);
   const isRecordingRef = useRef(false);
+
   const heroAnimatedPrompts = useMemo(
     () => HERO_PROMPT_EXAMPLES.map((item) => translateHeroPrompt(item.prompt, gt)),
     [gt],
@@ -132,9 +288,6 @@ export function HomeLanding({
   );
 
   const activeExample = HERO_PROMPT_EXAMPLES[activePromptIndex % HERO_PROMPT_EXAMPLES.length];
-  const loggedInHeadline = userFirstName
-    ? gt("What do you want to automate {name}?", { name: userFirstName })
-    : gt("What do you want to automate today?");
   const handleModelChange = useCallback(
     (input: { model: string; authSource?: ProviderAuthSource | null }) => {
       const normalized = normalizeChatModelSelection(input);
@@ -386,76 +539,24 @@ export function HomeLanding({
   return (
     <>
       <div className="relative min-h-screen overflow-visible">
-        <div
-          className={`pointer-events-none absolute inset-0 overflow-hidden ${isAnonymous ? "[mask-image:linear-gradient(to_bottom,black_0%,black_75%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_75%,transparent_100%)]" : ""}`}
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.22),transparent_55%),radial-gradient(circle_at_80%_10%,rgba(125,211,252,0.2),transparent_45%),linear-gradient(180deg,rgba(2,6,23,0.5)_0%,rgba(2,6,23,0.82)_100%)]" />
-          <picture
-            className="absolute inset-0 block overflow-hidden"
-            style={HERO_BACKGROUND_PLACEHOLDER_STYLE}
-          >
-            <source media="(max-width: 767px)" srcSet="/landing/brick-building-mobile.avif" />
-            <img
-              src="/landing/brick-building.avif"
-              alt=""
-              aria-hidden
-              width={2600}
-              height={1463}
-              fetchPriority="high"
-              loading="eager"
-              decoding="async"
-              className="size-full animate-[landing-ocean-drift_28s_ease-in-out_infinite_alternate] object-cover object-center opacity-80 saturate-110 md:object-[74%_60%] lg:object-center"
-            />
-          </picture>
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,23,0.24)_0%,rgba(3,8,23,0.5)_45%,rgba(3,8,23,0.76)_100%)]" />
-        </div>
+        <LandingBackdrop isAnonymous={isAnonymous} />
 
         <div className="pointer-events-none absolute right-0 bottom-0 left-0 z-20 h-20 bg-gradient-to-b from-transparent to-slate-950/70 sm:hidden" />
 
         <div className="relative z-10 mx-auto w-full max-w-[1500px] px-6 pb-10">
           {/* ── Top bar ── */}
-          {isAnonymous ? (
-            <div className="flex items-center justify-end gap-2 pt-5">
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="border-white/45 bg-white/80 hover:bg-white"
-              >
-                <Link to="/login">
-                  <T>Log in</T>
-                </Link>
-              </Button>
-              <Button
-                size="sm"
-                asChild
-                className="bg-slate-950 text-white shadow-[0_16px_32px_rgba(2,6,23,0.35)] hover:bg-slate-900"
-              >
-                {/* oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- TanStack Router search requires an inline object */}
-                <Link to="/login" search={{ mode: "getting-started" }}>
-                  <T>Get Started</T>
-                </Link>
-              </Button>
-            </div>
-          ) : null}
+          <LandingTopBar isAnonymous={isAnonymous} />
 
           {/* ── Prompt area — centered hero ── */}
           <section className="flex min-h-[62vh] items-center justify-center pt-8 md:min-h-[max(22rem,calc(100dvh-21rem))] md:pt-10 lg:min-h-[max(23rem,calc(100dvh-22rem))] lg:pt-12">
             <div className="mx-auto w-full max-w-3xl">
               <h1 className="mb-3 text-center text-3xl font-semibold tracking-tight text-white drop-shadow-[0_0_30px_rgba(56,189,248,0.25)] md:text-4xl lg:text-5xl">
-                {isAnonymous ? (
-                  <>
-                    <T>What do you want to automate in</T>{" "}
-                    <AnimatedDepartment
-                      department={translateHeroDepartment(activeExample?.department, gt)}
-                      color={activeExample?.color ?? "#3B82F6"}
-                      isActive
-                    />
-                    ?
-                  </>
-                ) : (
-                  loggedInHeadline
-                )}
+                <HeroHeadline
+                  isAnonymous={isAnonymous}
+                  activeExample={activeExample}
+                  gt={gt}
+                  userFirstName={userFirstName}
+                />
               </h1>
               <p className="mx-auto mb-8 max-w-md text-center text-base text-white/70 md:text-lg">
                 <T>Describe a task and we&apos;ll build it step by step</T>
@@ -480,40 +581,23 @@ export function HomeLanding({
                 renderModelSelector={!isAnonymous ? modelSelectorNode : undefined}
                 renderDebugControls={debugControlNode}
               />
-              {(isRecording || isProcessingVoice || voiceError) && (
-                <div className="mt-4">
-                  <VoiceIndicator
-                    isRecording={isRecording}
-                    isProcessing={isProcessingVoice}
-                    error={voiceError}
-                    variant="hero"
-                    recordingLabel={gt("Recording... Click the mic again to stop")}
-                  />
-                </div>
-              )}
+              <HeroVoice
+                isRecording={isRecording}
+                isProcessingVoice={isProcessingVoice}
+                voiceError={voiceError}
+                gt={gt}
+              />
             </div>
           </section>
 
           {/* ── Templates ── */}
           <LandingTemplatesSection featuredTemplates={featuredTemplates} isMobile={isMobile} />
         </div>
-        {!isMobile ? (
-          <TemplatePreviewModal
-            template={featuredTemplates.find((template) => template.id === previewId) ?? null}
-            closeHref="/"
-          />
-        ) : null}
+        <LandingPreviewModal isMobile={isMobile} featuredTemplates={featuredTemplates} previewId={previewId} />
       </div>
 
       {/* ── Landing sections (anonymous only) ── */}
-      {isAnonymous ? (
-        <>
-          <BentoFeaturesSection />
-          <AnimatedHowItWorksSection />
-          <TeamShowcaseSection />
-          <LandingFooterSection />
-        </>
-      ) : null}
+      <AnonymousLandingSections isAnonymous={isAnonymous} />
     </>
   );
 }

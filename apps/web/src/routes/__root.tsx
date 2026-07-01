@@ -12,6 +12,7 @@ import {
 import { RootErrorBoundary } from "@/components/root-error-boundary";
 import { RootNotFound } from "@/components/root-not-found";
 import { env } from "@/env";
+import { SITE_NAME, SITE_URL } from "@/lib/seo";
 // Local font assets set the "Geist" / "Geist Mono" font-family names that Tailwind resolves
 // via the --font-geist-sans / --font-geist-mono CSS variables in globals.css.
 // oxlint-disable no-unassigned-import
@@ -53,6 +54,32 @@ const CRITICAL_MOUNT_STYLE = `
 }
 `;
 const CRITICAL_MOUNT_STYLE_HTML = { __html: CRITICAL_MOUNT_STYLE };
+
+// Sitewide structured data: Organization (the brand) + WebSite (the site itself). Static, so it
+// is stringified once at module scope and injected via a hoisted `{ __html }` const, mirroring
+// the CRITICAL_MOUNT_STYLE pattern to satisfy react-perf (no inline object as a JSX prop).
+const ORGANIZATION_AND_WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/logo.png`,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+  ],
+};
+const ORGANIZATION_AND_WEBSITE_JSON_LD_HTML = {
+  __html: JSON.stringify(ORGANIZATION_AND_WEBSITE_JSON_LD),
+};
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
@@ -107,6 +134,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       {/* TanStack Start owns the full document; a real <head> element is required here. */}
       <head>
         <style dangerouslySetInnerHTML={CRITICAL_MOUNT_STYLE_HTML} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={ORGANIZATION_AND_WEBSITE_JSON_LD_HTML} />
         <HeadContent />
       </head>
       <body className="antialiased" data-edition={edition}>
