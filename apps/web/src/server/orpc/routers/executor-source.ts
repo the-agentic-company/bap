@@ -72,6 +72,18 @@ const adminWorkspaceMcpServerUpdateInputSchema = adminWorkspaceMcpServerBaseSche
   .extend({ id: z.string() })
   .superRefine(validateWorkspaceMcpServerInput);
 
+const workspaceMcpServerCredentialInputSchema = z.object({
+  workspaceMcpServerId: z.string(),
+  secret: z.string().min(1),
+  displayName: z.string().max(120).nullish(),
+  expiresAt: z.string().max(40).nullish(),
+  enabled: z.boolean().default(true),
+});
+
+const adminWorkspaceMcpServerCredentialInputSchema = workspaceIdSchema.extend(
+  workspaceMcpServerCredentialInputSchema.shape,
+);
+
 function normalizeStringMap(
   value: Record<string, string> | undefined,
 ): Record<string, string> | null {
@@ -602,15 +614,7 @@ const adminDelete = protectedProcedure
   });
 
 const setCredential = protectedProcedure
-  .input(
-    z.object({
-      workspaceMcpServerId: z.string(),
-      secret: z.string().min(1),
-      displayName: z.string().max(120).nullish(),
-      expiresAt: z.string().max(40).nullish(),
-      enabled: z.boolean().default(true),
-    }),
-  )
+  .input(workspaceMcpServerCredentialInputSchema)
   .handler(async ({ input, context }) => {
     const access = await requireActiveWorkspaceAccess(context.user.id);
     const source = await context.db.query.workspaceMcpServer.findFirst({
@@ -647,16 +651,7 @@ const setCredential = protectedProcedure
   });
 
 const adminSetCredential = protectedProcedure
-  .input(
-    z.object({
-      workspaceId: z.string(),
-      workspaceMcpServerId: z.string(),
-      secret: z.string().min(1),
-      displayName: z.string().max(120).nullish(),
-      expiresAt: z.string().max(40).nullish(),
-      enabled: z.boolean().default(true),
-    }),
-  )
+  .input(adminWorkspaceMcpServerCredentialInputSchema)
   .handler(async ({ input, context }) => {
     const source = await getAdminSource(context, input.workspaceId, input.workspaceMcpServerId);
     assertManualCredentialSource(source);

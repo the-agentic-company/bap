@@ -23,39 +23,8 @@ import {
   useSetWorkspaceMcpServerCredential,
   useDisconnectWorkspaceMcpServerCredential,
 } from "@/orpc/hooks/workspace-mcp-servers";
+import { formatCredentialExpiry, toDateInputValue } from "./credential-expiry";
 import { AppLink } from "../-lib/app-link";
-
-function formatCredentialExpiry(value: Date | string | null | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  const isExpired = date.getTime() <= Date.now();
-  const formatted = date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-  return isExpired ? `Expired on ${formatted}` : `Expires on ${formatted}`;
-}
-
-function toDateInputValue(value: Date | string | null | undefined): string {
-  if (!value) {
-    return "";
-  }
-
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toISOString().slice(0, 10);
-}
 
 export function SourceDetailPage() {
   const t = useGT();
