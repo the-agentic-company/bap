@@ -414,6 +414,20 @@ type WorkspaceMcpServerCardSource = {
 
 type WorkspaceMcpStatus = "connected" | "paused" | "not_connected" | "disabled";
 
+const WORKSPACE_MCP_STATUS_DOT_CLASS: Record<Exclude<WorkspaceMcpStatus, "not_connected">, string> =
+  {
+    connected: "inline-block h-1.5 w-1.5 rounded-full bg-emerald-500",
+    paused: "inline-block h-1.5 w-1.5 rounded-full bg-amber-500",
+    disabled: "inline-block h-1.5 w-1.5 rounded-full bg-amber-500",
+  };
+
+const WORKSPACE_MCP_STATUS_LABEL_CLASS: Record<WorkspaceMcpStatus, string> = {
+  connected: "text-[10px] font-medium text-emerald-600 dark:text-emerald-400",
+  paused: "text-[10px] font-medium text-amber-600 dark:text-amber-400",
+  not_connected: "text-muted-foreground text-[10px] font-medium",
+  disabled: "text-[10px] font-medium text-amber-600 dark:text-amber-400",
+};
+
 function getWorkspaceMcpStatus(source: WorkspaceMcpServerCardSource): WorkspaceMcpStatus {
   if (!source.connected) {
     return "not_connected";
@@ -437,27 +451,18 @@ function WorkspaceMcpStatusLabel({ status }: { status: WorkspaceMcpStatus }) {
   return <T>Not connected</T>;
 }
 
+function WorkspaceMcpStatusDot({ status }: { status: WorkspaceMcpStatus }) {
+  if (status === "not_connected") {
+    return null;
+  }
+  return <span className={WORKSPACE_MCP_STATUS_DOT_CLASS[status]} />;
+}
+
 function WorkspaceMcpServerStatus({ status }: { status: WorkspaceMcpStatus }) {
-  const isConnected = status === "connected";
-  const isMuted = status === "not_connected";
   return (
     <>
-      {isMuted ? null : (
-        <span
-          className={cn(
-            "inline-block h-1.5 w-1.5 rounded-full",
-            isConnected ? "bg-emerald-500" : "bg-amber-500",
-          )}
-        />
-      )}
-      <span
-        className={cn(
-          "text-[10px] font-medium",
-          isMuted && "text-muted-foreground",
-          isConnected && "text-emerald-600 dark:text-emerald-400",
-          !isConnected && !isMuted && "text-amber-600 dark:text-amber-400",
-        )}
-      >
+      <WorkspaceMcpStatusDot status={status} />
+      <span className={WORKSPACE_MCP_STATUS_LABEL_CLASS[status]}>
         <WorkspaceMcpStatusLabel status={status} />
       </span>
     </>
