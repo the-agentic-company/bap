@@ -94,6 +94,7 @@ export function useSetWorkspaceMcpServerCredential() {
       workspaceMcpServerId: string;
       secret: string;
       displayName?: string | null;
+      expiresAt?: string | null;
       enabled?: boolean;
     }) => client.workspaceMcpServer.setCredential(input),
     onSuccess: () => {

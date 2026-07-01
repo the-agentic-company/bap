@@ -692,6 +692,7 @@ export async function listWorkspaceMcpServers(input: {
         connected,
         credentialEnabled: source.internalKey ? connected : (credential?.enabled ?? false),
         credentialDisplayName: credential?.displayName ?? null,
+        credentialExpiresAt: credential?.expiresAt ?? null,
         credentialUpdatedAt: credential?.updatedAt ?? null,
       };
     }),
@@ -834,6 +835,7 @@ export async function setWorkspaceMcpServerCredential(input: {
   userId: string;
   secret: string;
   displayName?: string | null;
+  expiresAt?: Date | null;
   enabled?: boolean;
 }) {
   const database = input.database ?? db;
@@ -850,7 +852,7 @@ export async function setWorkspaceMcpServerCredential(input: {
       secret: encrypt(normalizedSecret),
       accessToken: null,
       refreshToken: null,
-      expiresAt: null,
+      expiresAt: input.expiresAt ?? null,
       oauthMetadata: null,
       displayName: input.displayName?.trim() || null,
       enabled: input.enabled ?? true,
@@ -864,7 +866,7 @@ export async function setWorkspaceMcpServerCredential(input: {
         secret: encrypt(normalizedSecret),
         accessToken: null,
         refreshToken: null,
-        expiresAt: null,
+        expiresAt: input.expiresAt ?? null,
         oauthMetadata: null,
         displayName: input.displayName?.trim() || null,
         enabled: input.enabled ?? true,

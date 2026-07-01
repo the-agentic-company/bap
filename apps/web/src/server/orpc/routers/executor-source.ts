@@ -72,6 +72,18 @@ const adminWorkspaceMcpServerUpdateInputSchema = adminWorkspaceMcpServerBaseSche
   .extend({ id: z.string() })
   .superRefine(validateWorkspaceMcpServerInput);
 
+const workspaceMcpServerCredentialInputSchema = z.object({
+  workspaceMcpServerId: z.string(),
+  secret: z.string().min(1),
+  displayName: z.string().max(120).nullish(),
+  expiresAt: z.string().max(40).nullish(),
+  enabled: z.boolean().default(true),
+});
+
+const adminWorkspaceMcpServerCredentialInputSchema = workspaceIdSchema.extend(
+  workspaceMcpServerCredentialInputSchema.shape,
+);
+
 function normalizeStringMap(
   value: Record<string, string> | undefined,
 ): Record<string, string> | null {
@@ -106,6 +118,21 @@ function normalizeAuthSettings(input: {
     authQueryParam: input.kind === "mcp" ? input.authQueryParam?.trim() || null : null,
     authPrefix: input.authPrefix ?? null,
   };
+}
+
+function normalizeCredentialExpiresAt(value: string | null | undefined): Date | null {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed.includes("T") ? trimmed : `${trimmed}T23:59:59.999Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Credential expiration date is invalid.",
+    });
+  }
+  return parsed;
 }
 
 async function requireAdmin(context: Pick<AuthenticatedContext, "db" | "user">) {
@@ -155,6 +182,27 @@ async function getAdminSource(
     throw new ORPCError("NOT_FOUND", { message: "Workspace MCP Server not found." });
   }
 
+  return source;
+}
+
+async function getActiveWorkspaceMcpServer(
+  context: Pick<AuthenticatedContext, "db" | "user">,
+  workspaceMcpServerId: string,
+) {
+  const access = await requireActiveWorkspaceAccess(context.user.id);
+  const source = await context.db.query.workspaceMcpServer.findFirst({
+    where: and(
+      eq(workspaceMcpServer.id, workspaceMcpServerId),
+      eq(workspaceMcpServer.workspaceId, access.workspace.id),
+    ),
+  });
+
+  if (!source) {
+    throw new ORPCError("NOT_FOUND", {
+      message: "Workspace MCP Server not found.",
+    });
+  }
+  assertManualCredentialSource(source);
   return source;
 }
 
@@ -587,29 +635,9 @@ const adminDelete = protectedProcedure
   });
 
 const setCredential = protectedProcedure
-  .input(
-    z.object({
-      workspaceMcpServerId: z.string(),
-      secret: z.string().min(1),
-      displayName: z.string().max(120).nullish(),
-      enabled: z.boolean().default(true),
-    }),
-  )
+  .input(workspaceMcpServerCredentialInputSchema)
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
-    const source = await context.db.query.workspaceMcpServer.findFirst({
-      where: and(
-        eq(workspaceMcpServer.id, input.workspaceMcpServerId),
-        eq(workspaceMcpServer.workspaceId, access.workspace.id),
-      ),
-    });
-
-    if (!source) {
-      throw new ORPCError("NOT_FOUND", {
-        message: "Workspace MCP Server not found.",
-      });
-    }
-    assertManualCredentialSource(source);
+    const source = await getActiveWorkspaceMcpServer(context, input.workspaceMcpServerId);
 
     if (source.authType === "oauth2") {
       throw new ORPCError("BAD_REQUEST", {
@@ -623,6 +651,7 @@ const setCredential = protectedProcedure
       userId: context.user.id,
       secret: input.secret,
       displayName: input.displayName,
+      expiresAt: normalizeCredentialExpiresAt(input.expiresAt),
       enabled: input.enabled,
     });
 
@@ -630,15 +659,7 @@ const setCredential = protectedProcedure
   });
 
 const adminSetCredential = protectedProcedure
-  .input(
-    z.object({
-      workspaceId: z.string(),
-      workspaceMcpServerId: z.string(),
-      secret: z.string().min(1),
-      displayName: z.string().max(120).nullish(),
-      enabled: z.boolean().default(true),
-    }),
-  )
+  .input(adminWorkspaceMcpServerCredentialInputSchema)
   .handler(async ({ input, context }) => {
     const source = await getAdminSource(context, input.workspaceId, input.workspaceMcpServerId);
     assertManualCredentialSource(source);
@@ -655,6 +676,7 @@ const adminSetCredential = protectedProcedure
       userId: context.user.id,
       secret: input.secret,
       displayName: input.displayName,
+      expiresAt: normalizeCredentialExpiresAt(input.expiresAt),
       enabled: input.enabled,
     });
 
@@ -664,20 +686,7 @@ const adminSetCredential = protectedProcedure
 const disconnectCredential = protectedProcedure
   .input(z.object({ workspaceMcpServerId: z.string() }))
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
-    const source = await context.db.query.workspaceMcpServer.findFirst({
-      where: and(
-        eq(workspaceMcpServer.id, input.workspaceMcpServerId),
-        eq(workspaceMcpServer.workspaceId, access.workspace.id),
-      ),
-    });
-
-    if (!source) {
-      throw new ORPCError("NOT_FOUND", {
-        message: "Workspace MCP Server not found.",
-      });
-    }
-    assertManualCredentialSource(source);
+    const source = await getActiveWorkspaceMcpServer(context, input.workspaceMcpServerId);
 
     await context.db
       .delete(workspaceMcpAuthorization)

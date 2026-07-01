@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import { type DisplayIntegrationType } from "@/lib/integration-icons";
 import { cn } from "@/lib/utils";
+import { formatCredentialExpiryShort } from "../credential-expiry";
 import { AppImage } from "../../-lib/app-image";
 import { AppLink } from "../../-lib/app-link";
 import { CARD_MOTION, type CommunitySkill } from "./data";
@@ -399,22 +400,98 @@ export function CustomToolCard({
   );
 }
 
-export function WorkspaceMcpServerToolCard({
-  source,
-}: {
-  source: {
-    id: string;
-    name: string;
-    namespace: string;
-    kind: "mcp";
-    endpoint: string;
-    enabled: boolean;
-    connected: boolean;
-    credentialEnabled: boolean;
+type WorkspaceMcpServerCardSource = {
+  id: string;
+  name: string;
+  namespace: string;
+  kind: "mcp";
+  endpoint: string;
+  enabled: boolean;
+  connected: boolean;
+  credentialEnabled: boolean;
+  credentialExpiresAt?: Date | string | null;
+};
+
+type WorkspaceMcpStatus = "connected" | "paused" | "not_connected" | "disabled";
+
+const WORKSPACE_MCP_STATUS_DOT_CLASS: Record<Exclude<WorkspaceMcpStatus, "not_connected">, string> =
+  {
+    connected: "inline-block h-1.5 w-1.5 rounded-full bg-emerald-500",
+    paused: "inline-block h-1.5 w-1.5 rounded-full bg-amber-500",
+    disabled: "inline-block h-1.5 w-1.5 rounded-full bg-amber-500",
   };
-}) {
-  const isActive = source.enabled && source.connected && source.credentialEnabled;
-  const needsSetup = !source.connected;
+
+const WORKSPACE_MCP_STATUS_LABEL_CLASS: Record<WorkspaceMcpStatus, string> = {
+  connected: "text-[10px] font-medium text-emerald-600 dark:text-emerald-400",
+  paused: "text-[10px] font-medium text-amber-600 dark:text-amber-400",
+  not_connected: "text-muted-foreground text-[10px] font-medium",
+  disabled: "text-[10px] font-medium text-amber-600 dark:text-amber-400",
+};
+
+function getWorkspaceMcpStatus(source: WorkspaceMcpServerCardSource): WorkspaceMcpStatus {
+  if (!source.connected) {
+    return "not_connected";
+  }
+  if (!source.credentialEnabled) {
+    return "paused";
+  }
+  return source.enabled ? "connected" : "disabled";
+}
+
+function WorkspaceMcpStatusLabel({ status }: { status: WorkspaceMcpStatus }) {
+  if (status === "connected") {
+    return <T>Connected</T>;
+  }
+  if (status === "paused") {
+    return <T>Paused</T>;
+  }
+  if (status === "disabled") {
+    return <T>Disabled</T>;
+  }
+  return <T>Not connected</T>;
+}
+
+function WorkspaceMcpStatusDot({ status }: { status: WorkspaceMcpStatus }) {
+  if (status === "not_connected") {
+    return null;
+  }
+  return <span className={WORKSPACE_MCP_STATUS_DOT_CLASS[status]} />;
+}
+
+function WorkspaceMcpServerStatus({ status }: { status: WorkspaceMcpStatus }) {
+  return (
+    <>
+      <WorkspaceMcpStatusDot status={status} />
+      <span className={WORKSPACE_MCP_STATUS_LABEL_CLASS[status]}>
+        <WorkspaceMcpStatusLabel status={status} />
+      </span>
+    </>
+  );
+}
+
+function WorkspaceMcpServerPowerState({ isActive }: { isActive: boolean }) {
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <span
+        className={cn("mt-0.5 size-2 rounded-full", isActive ? "bg-green-500" : "bg-muted-foreground/30")}
+      />
+      <span className="text-muted-foreground text-xs">{isActive ? "On" : "Off"}</span>
+    </div>
+  );
+}
+
+function WorkspaceMcpCredentialExpiryLine({ label }: { label: string | null }) {
+  if (!label) {
+    return null;
+  }
+  return <p className="text-muted-foreground mt-2 text-[11px]">{label}</p>;
+}
+
+export function WorkspaceMcpServerToolCard({ source }: { source: WorkspaceMcpServerCardSource }) {
+  const status = getWorkspaceMcpStatus(source);
+  const credentialExpiryLabel = source.connected
+    ? formatCredentialExpiryShort(source.credentialExpiresAt)
+    : null;
 
   return (
     <motion.div
@@ -441,51 +518,19 @@ export function WorkspaceMcpServerToolCard({
             <div className="min-w-0">
               <p className="text-[13px] leading-tight font-medium">{source.name}</p>
               <div className="mt-1 flex items-center gap-1.5">
-                {isActive ? (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <T>Connected</T>
-                    </span>
-                  </>
-                ) : source.connected && !source.credentialEnabled ? (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                      <T>Paused</T>
-                    </span>
-                  </>
-                ) : needsSetup ? (
-                  <span className="text-muted-foreground text-[10px] font-medium">
-                    <T>Not connected</T>
-                  </span>
-                ) : (
-                  <>
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                      <T>Disabled</T>
-                    </span>
-                  </>
-                )}
+                <WorkspaceMcpServerStatus status={status} />
               </div>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span
-              className={cn(
-                "mt-0.5 size-2 rounded-full",
-                isActive ? "bg-green-500" : "bg-muted-foreground/30",
-              )}
-            />
-            <span className="text-muted-foreground text-xs">{isActive ? "On" : "Off"}</span>
-          </div>
+          <WorkspaceMcpServerPowerState isActive={status === "connected"} />
         </div>
 
         {/* Description */}
         <p className="text-muted-foreground mt-3 line-clamp-2 text-xs leading-relaxed">
           {source.namespace} · {source.endpoint}
         </p>
+        <WorkspaceMcpCredentialExpiryLine label={credentialExpiryLabel} />
 
         {/* Footer */}
         <div className="mt-auto flex items-center justify-between pt-4">
