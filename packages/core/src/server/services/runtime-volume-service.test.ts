@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   buildCoworkerDocumentsRuntimeVolumePrefix,
   buildOwnedSkillsRuntimeVolumePrefix,
+  buildRuntimeVolumeCredentialPolicy,
   buildRuntimeVolumeObjectKey,
   buildSharedSkillsRuntimeVolumePrefix,
   computeRuntimeVolumeManifestHash,
   sanitizeRuntimeVolumeRelativePath,
 } from "./runtime-volume-service";
+import { BUCKET_NAME } from "../storage/s3-client";
 
 describe("runtime-volume-service", () => {
   it("builds canonical Runtime Volume prefixes", () => {
@@ -67,6 +69,46 @@ describe("runtime-volume-service", () => {
         { ...entries[0], etag: "etag-beta-updated" },
         entries[1],
       ]),
+    );
+  });
+
+  it("scopes generated S3 credentials to exact Runtime Volume prefixes and read/write modes", () => {
+    const ownedPrefix = "runtime-volumes/workspace-1/users/user-1/skills/";
+    const sharedPrefix = "runtime-volumes/workspace-1/shared-skills/research/";
+    const policy = buildRuntimeVolumeCredentialPolicy([
+      { storagePrefix: ownedPrefix, readOnly: false },
+      { storagePrefix: sharedPrefix, readOnly: true },
+    ]) as {
+      Statement: Array<{
+        Action: string[];
+        Resource: string[];
+        Condition?: { StringLike?: { "s3:prefix"?: string[] } };
+      }>;
+    };
+
+    const readStatement = policy.Statement.find((statement) =>
+      statement.Action.includes("s3:GetObject"),
+    );
+    expect(readStatement?.Resource).toEqual(
+      expect.arrayContaining([
+        `arn:aws:s3:::${BUCKET_NAME}/${ownedPrefix}*`,
+        `arn:aws:s3:::${BUCKET_NAME}/${sharedPrefix}*`,
+      ]),
+    );
+
+    const writeStatement = policy.Statement.find((statement) =>
+      statement.Action.includes("s3:PutObject"),
+    );
+    expect(writeStatement?.Resource).toEqual([`arn:aws:s3:::${BUCKET_NAME}/${ownedPrefix}*`]);
+    expect(writeStatement?.Resource).not.toContain(
+      `arn:aws:s3:::${BUCKET_NAME}/${sharedPrefix}*`,
+    );
+
+    const listStatement = policy.Statement.find((statement) =>
+      statement.Action.includes("s3:ListBucket"),
+    );
+    expect(listStatement?.Condition?.StringLike?.["s3:prefix"]).toEqual(
+      expect.arrayContaining([ownedPrefix, `${ownedPrefix}*`, sharedPrefix, `${sharedPrefix}*`]),
     );
   });
 });

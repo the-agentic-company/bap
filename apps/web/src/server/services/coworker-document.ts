@@ -8,6 +8,7 @@ import {
   buildRuntimeVolumeObjectKey,
   deleteRuntimeVolumeFile,
   readRuntimeVolumeFile,
+  reconcileRuntimeVolumeProjection,
   writeRuntimeVolumeFile,
 } from "@bap/core/server/services/runtime-volume-service";
 import { downloadFromS3 } from "@bap/core/server/storage/s3-client";
@@ -18,6 +19,21 @@ import { and, count, eq } from "drizzle-orm";
 import { validateFileUpload } from "@/server/storage/validation";
 
 type Database = typeof db;
+
+async function refreshCoworkerDocumentsRuntimeVolumeProjection(input: {
+  workspaceId: string;
+  coworkerId: string;
+}): Promise<void> {
+  await reconcileRuntimeVolumeProjection({
+    workspaceId: input.workspaceId,
+    kind: "coworker_documents",
+    coworkerId: input.coworkerId,
+    storagePrefix: buildCoworkerDocumentsRuntimeVolumePrefix(input),
+    mountPath: "/home/user/coworker-documents",
+    readOnly: false,
+    generationId: null,
+  });
+}
 
 export async function uploadCoworkerDocument(params: {
   database: Database;
@@ -88,6 +104,10 @@ export async function uploadCoworkerDocument(params: {
       description: params.description,
     })
     .returning();
+  await refreshCoworkerDocumentsRuntimeVolumeProjection({
+    workspaceId: existingCoworker.workspaceId,
+    coworkerId: params.coworkerId,
+  });
 
   return {
     id: document.id,
@@ -260,6 +280,12 @@ export async function updateCoworkerDocument(params: {
       relativePath: existingDocument.filename,
     }).catch(() => undefined);
   }
+  if (existingCoworker.workspaceId && (hasFilename || isFileReplacement)) {
+    await refreshCoworkerDocumentsRuntimeVolumeProjection({
+      workspaceId: existingCoworker.workspaceId,
+      coworkerId: existingDocument.coworkerId,
+    });
+  }
 
   return {
     id: updatedDocument.id,
@@ -345,6 +371,12 @@ export async function deleteCoworkerDocument(params: {
   await params.database
     .delete(coworkerDocument)
     .where(eq(coworkerDocument.id, existingDocument.id));
+  if (existingCoworker.workspaceId) {
+    await refreshCoworkerDocumentsRuntimeVolumeProjection({
+      workspaceId: existingCoworker.workspaceId,
+      coworkerId: existingDocument.coworkerId,
+    });
+  }
 
   return {
     success: true,

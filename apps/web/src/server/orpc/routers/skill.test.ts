@@ -337,6 +337,15 @@ describe("skillRouter", () => {
         visibility: "private",
       }),
     );
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "owned_skills",
+      ownerUserId: "user-1",
+      storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/",
+      mountPath: "/runtime/skills",
+      readOnly: false,
+      generationId: null,
+    });
   });
 
   it("delegates imports with the active workspace id", async () => {
@@ -357,6 +366,15 @@ describe("skillRouter", () => {
       filename: "skill.zip",
       contentBase64: "Zm9v",
     });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "owned_skills",
+      ownerUserId: "user-1",
+      storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/",
+      mountPath: "/runtime/skills",
+      readOnly: false,
+      generationId: null,
+    });
   });
 
   it("shares and unshares owned skills", async () => {
@@ -376,11 +394,27 @@ describe("skillRouter", () => {
       id: "skill-1",
       visibility: "public",
     });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenLastCalledWith({
+      workspaceId: "ws-1",
+      kind: "shared_skills",
+      storagePrefix: "runtime-volumes/ws-1/shared-skills/",
+      mountPath: "/runtime/shared-skills",
+      readOnly: true,
+      generationId: null,
+    });
 
     await expect(skillRouterAny.unshare({ input: { id: "skill-1" }, context })).resolves.toEqual({
       success: true,
       id: "skill-1",
       visibility: "private",
+    });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenLastCalledWith({
+      workspaceId: "ws-1",
+      kind: "shared_skills",
+      storagePrefix: "runtime-volumes/ws-1/shared-skills/",
+      mountPath: "/runtime/shared-skills",
+      readOnly: true,
+      generationId: null,
     });
   });
 
@@ -415,6 +449,61 @@ describe("skillRouter", () => {
         visibility: "private",
       }),
     );
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "owned_skills",
+      ownerUserId: "user-1",
+      storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/",
+      mountPath: "/runtime/skills",
+      readOnly: false,
+      generationId: null,
+    });
+  });
+
+  it("refreshes owned skill projections after file writes and deletes", async () => {
+    const context = createContext();
+    context.db.query.skill.findFirst.mockResolvedValue({
+      id: "skill-1",
+      name: "my-skill",
+      userId: "user-1",
+      workspaceId: "ws-1",
+    });
+    context.db.query.skillFile.findFirst.mockResolvedValue({
+      id: "file-1",
+      path: "notes.md",
+      skill: {
+        id: "skill-1",
+        name: "my-skill",
+        userId: "user-1",
+        workspaceId: "ws-1",
+      },
+    });
+    context.mocks.insertReturningMock.mockResolvedValue([{ id: "file-2", path: "extra.md" }]);
+
+    await skillRouterAny.addFile({
+      input: {
+        skillId: "skill-1",
+        path: "extra.md",
+        contentBase64: Buffer.from("hello").toString("base64"),
+      },
+      context,
+    });
+    await skillRouterAny.updateFile({
+      input: { id: "file-1", contentBase64: Buffer.from("updated").toString("base64") },
+      context,
+    });
+    await skillRouterAny.deleteFile({ input: { id: "file-1" }, context });
+
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledTimes(3);
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenLastCalledWith({
+      workspaceId: "ws-1",
+      kind: "owned_skills",
+      ownerUserId: "user-1",
+      storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/",
+      mountPath: "/runtime/skills",
+      readOnly: false,
+      generationId: null,
+    });
   });
 
   it("returns a document url for readable shared skills", async () => {

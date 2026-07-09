@@ -310,80 +310,6 @@ export async function runNormalRunnerBootstrap(
   const runtimeMcpWarnings: Array<{ serverName: string; message: string }> = [];
   let resolvedWorkspaceMcpServerNames: string[] = [];
 
-  const runtimeSessionPromise = (async () => {
-    try {
-      const sessionMcpServers = await workspaceMcpSessionServersPromise;
-      const session = await withTimeout(
-        runtimeInit.completeAgentInit({ sessionMcpServers }),
-        remainingPreparingTimeoutMs(),
-        buildPreparingTimeoutMessage(),
-      );
-      client = session.harnessClient;
-      sessionId = session.session.id;
-      runtimeMcpWarnings.push(...(session.mcpWarnings ?? []));
-      await callbacks.persistRuntimeSessionBinding(ctx, {
-        runtimeMetadata,
-        sessionId,
-      });
-      ctx.agentInitReadyAt = Date.now();
-      callbacks.markPhase(ctx, "agent_init_ready");
-      callbacks.broadcast(ctx, {
-        type: "status_change",
-        status: "agent_init_ready",
-        metadata: {
-          runtimeId: ctx.runtimeId,
-          sandboxProvider: runtimeMetadata?.sandboxProvider,
-          runtimeHarness: runtimeMetadata?.runtimeHarness,
-          runtimeProtocolVersion: runtimeMetadata?.runtimeProtocolVersion,
-          sandboxId: runtimeSandbox.sandboxId,
-          sessionId,
-        },
-      });
-      logger.info({
-        event: "AGENT_INIT_READY",
-        ...{
-          source: "generation-manager",
-          traceId: ctx.traceId,
-          generationId: ctx.id,
-          conversationId: ctx.conversationId,
-          userId: ctx.userId,
-          sessionId,
-          sandboxId: runtimeSandbox.sandboxId,
-        },
-        ...{
-          durationMs: ctx.agentInitReadyAt - agentInitStartedAt,
-          sandboxProvider: runtimeMetadata?.sandboxProvider,
-          runtimeHarness: runtimeMetadata?.runtimeHarness,
-          runtimeProtocolVersion: runtimeMetadata?.runtimeProtocolVersion,
-        },
-      });
-    } catch (error) {
-      ctx.agentInitFailedAt = Date.now();
-      callbacks.markPhase(ctx, "agent_init_failed");
-      callbacks.broadcast(ctx, {
-        type: "status_change",
-        status: "agent_init_failed",
-      });
-      logger.error({
-        event: "AGENT_INIT_FAILED",
-        ...{
-          source: "generation-manager",
-          traceId: ctx.traceId,
-          generationId: ctx.id,
-          conversationId: ctx.conversationId,
-          userId: ctx.userId,
-        },
-        ...{
-          durationMs: ctx.agentInitFailedAt - agentInitStartedAt,
-          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-        },
-      });
-      throw error;
-    } finally {
-      clearTimeout(agentInitWarnTimer);
-    }
-  })();
-
   ctx.generationMarkerTime = Date.now();
   ctx.sentFilePaths = new Set();
   ctx.userStagedFilePaths = new Set();
@@ -544,6 +470,83 @@ export async function runNormalRunnerBootstrap(
     prePromptCacheHit = preparedAssets.prePromptCacheHit;
     startPostPromptCacheWrite = preparedAssets.startPostPromptCacheWrite;
     runtimeVolumeMountPlan = preparedAssets.runtimeVolumeMountPlan;
+  })();
+
+  const runtimeSessionPromise = (async () => {
+    try {
+      // Daytona Runtime Volumes reset /app/.opencode/skills. Complete agent
+      // init only after that reset so OpenCode cannot hold the FUSE mount busy.
+      await skillAssetPreparePromise;
+      const sessionMcpServers = await workspaceMcpSessionServersPromise;
+      const session = await withTimeout(
+        runtimeInit.completeAgentInit({ sessionMcpServers }),
+        remainingPreparingTimeoutMs(),
+        buildPreparingTimeoutMessage(),
+      );
+      client = session.harnessClient;
+      sessionId = session.session.id;
+      runtimeMcpWarnings.push(...(session.mcpWarnings ?? []));
+      await callbacks.persistRuntimeSessionBinding(ctx, {
+        runtimeMetadata,
+        sessionId,
+      });
+      ctx.agentInitReadyAt = Date.now();
+      callbacks.markPhase(ctx, "agent_init_ready");
+      callbacks.broadcast(ctx, {
+        type: "status_change",
+        status: "agent_init_ready",
+        metadata: {
+          runtimeId: ctx.runtimeId,
+          sandboxProvider: runtimeMetadata?.sandboxProvider,
+          runtimeHarness: runtimeMetadata?.runtimeHarness,
+          runtimeProtocolVersion: runtimeMetadata?.runtimeProtocolVersion,
+          sandboxId: runtimeSandbox.sandboxId,
+          sessionId,
+        },
+      });
+      logger.info({
+        event: "AGENT_INIT_READY",
+        ...{
+          source: "generation-manager",
+          traceId: ctx.traceId,
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+          sessionId,
+          sandboxId: runtimeSandbox.sandboxId,
+        },
+        ...{
+          durationMs: ctx.agentInitReadyAt - agentInitStartedAt,
+          sandboxProvider: runtimeMetadata?.sandboxProvider,
+          runtimeHarness: runtimeMetadata?.runtimeHarness,
+          runtimeProtocolVersion: runtimeMetadata?.runtimeProtocolVersion,
+        },
+      });
+    } catch (error) {
+      ctx.agentInitFailedAt = Date.now();
+      callbacks.markPhase(ctx, "agent_init_failed");
+      callbacks.broadcast(ctx, {
+        type: "status_change",
+        status: "agent_init_failed",
+      });
+      logger.error({
+        event: "AGENT_INIT_FAILED",
+        ...{
+          source: "generation-manager",
+          traceId: ctx.traceId,
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+        },
+        ...{
+          durationMs: ctx.agentInitFailedAt - agentInitStartedAt,
+          error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+        },
+      });
+      throw error;
+    } finally {
+      clearTimeout(agentInitWarnTimer);
+    }
   })();
 
   await Promise.all([

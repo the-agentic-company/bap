@@ -224,7 +224,7 @@ export async function runLocalTunnelProxy(): Promise<void> {
         requestUrl.pathname,
         worktreeMetadata,
       );
-      if (runtimeVolumeS3Target) {
+      if (runtimeVolumeS3Target || matchesConfiguredLocalS3Bucket(requestUrl.pathname)) {
         const target = new URL(`${requestUrl.pathname}${requestUrl.search}`, resolveLocalMinioUrl());
         return await fetch(buildProxyRequest(request, target, requestUrl, { preserveHost: true }));
       }
@@ -288,6 +288,15 @@ function matchRuntimeVolumeS3ProxyTarget(
   }
 
   return null;
+}
+
+function matchesConfiguredLocalS3Bucket(pathname: string): boolean {
+  const bucket = process.env.AWS_S3_BUCKET_NAME?.trim();
+  if (!bucket) {
+    return false;
+  }
+
+  return pathname === `/${bucket}` || pathname.startsWith(`/${bucket}/`);
 }
 
 if (import.meta.main) {

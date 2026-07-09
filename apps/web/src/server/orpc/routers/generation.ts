@@ -154,15 +154,15 @@ const startGeneration = protectedProcedure
     };
 
     try {
-      if (input.conversationId) {
-        await requireConversationAccessInActiveWorkspace(
-          context.user.id,
-          input.conversationId,
-          context.workspaceId,
-        );
-      } else {
-        await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
-      }
+      const activeWorkspaceId = input.conversationId
+        ? (
+            await requireConversationAccessInActiveWorkspace(
+              context.user.id,
+              input.conversationId,
+              context.workspaceId,
+            )
+          ).workspaceId
+        : (await requireActiveWorkspaceAccess(context.user.id, context.workspaceId)).workspace.id;
       // Runtime-Originated Runs (ADR-0013): calls from the platform MCP server
       // carry a Spawn Depth; refuse beyond the platform maximum. Evaluated before
       // any run is started, including the pending-coworker path below.
@@ -216,7 +216,7 @@ const startGeneration = protectedProcedure
         debugForceRuntimeNoProgressAfterPrompt: input.debugForceRuntimeNoProgressAfterPrompt,
         selectedPlatformSkillSlugs: input.selectedPlatformSkillSlugs,
         fileAttachments: input.fileAttachments,
-        workspaceId: context.workspaceId,
+        workspaceId: activeWorkspaceId,
         spawnDepth,
       });
 
@@ -245,6 +245,7 @@ const startGeneration = protectedProcedure
           "bap.generation.file_attachment_count": input.fileAttachments?.length ?? 0,
           "bap.generation.selected_platform_skill_count":
             input.selectedPlatformSkillSlugs?.length ?? 0,
+          "bap.workspace.id": activeWorkspaceId,
           "bap.auth.source": context.authSource,
           "bap.spawn.depth": spawnDepth ?? 0,
         },

@@ -1,6 +1,7 @@
 import { env } from "../../../env";
 import type { SandboxHandle } from "../core/types";
 import { escapeShell } from "../opencode-session-support";
+import { resolvePublicCallbackBaseUrl } from "../../../lib/worktree-routing";
 import { BUCKET_NAME } from "../../storage/s3-client";
 import {
   appendRuntimeVolumeSkillSlug,
@@ -193,7 +194,12 @@ export function resolveRuntimeVolumeMountEndpointUrl(): string {
     return env.AWS_ENDPOINT_URL;
   }
 
-  const callbackBaseUrl = env.E2B_CALLBACK_BASE_URL;
+  const callbackBaseUrl = resolvePublicCallbackBaseUrl({
+    callbackBaseUrl: env.E2B_CALLBACK_BASE_URL,
+    appUrl: env.APP_URL,
+    viteAppUrl: env.VITE_APP_URL,
+    nodeEnv: process.env.NODE_ENV,
+  });
   if (!callbackBaseUrl) {
     return env.AWS_ENDPOINT_URL;
   }
@@ -207,11 +213,12 @@ export function resolveRuntimeVolumeMountEndpointUrl(): string {
 
 export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): string {
   const needsS3Mounts = plan.roots.length > 0;
+  const needsMergedSkillsMount = needsSkillMerge(plan);
+  const planSignature = buildRuntimeVolumeMountPlanSignature(plan);
+  const canReuseSignedMounts = canReuseRuntimeVolumeMounts(plan);
   const dependencyChecks = [
     ...(needsS3Mounts ? ["command -v s3fs >/dev/null 2>&1 || missing+=(s3fs)"] : []),
-    ...(needsSkillMerge(plan)
-      ? ["command -v mergerfs >/dev/null 2>&1 || missing+=(mergerfs)"]
-      : []),
+    ...(needsMergedSkillsMount ? ["command -v mergerfs >/dev/null 2>&1 || missing+=(mergerfs)"] : []),
   ];
   const credentialSetup = needsS3Mounts
     ? [
@@ -245,6 +252,9 @@ export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): st
           "  exit 78",
           "fi",
           ...credentialSetup,
+          `RUNTIME_VOLUME_PLAN_SIGNATURE=${escapeShell(planSignature)}`,
+          'RUNTIME_VOLUME_MOUNT_SIGNATURE_FILE="/tmp/bap-runtime-volume-mount.signature"',
+          `RUNTIME_VOLUME_CAN_REUSE_SIGNED=${canReuseSignedMounts ? "1" : "0"}`,
           "mount_s3_prefix() {",
           '  local target="$1"',
           '  local mount_path="$2"',
@@ -265,11 +275,80 @@ export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): st
           "  fi",
           '  s3fs "$target" "$mount_path" "${opts[@]}"',
           "}",
-          "reset_mountpoint() {",
+          "verify_runtime_volume_mount() {",
           '  local mount_path="$1"',
-          '  if mountpoint -q "$mount_path"; then',
-          '    fusermount -u "$mount_path" 2>/dev/null || umount "$mount_path"',
+          '  local _mode="$2"',
+          '  if ! is_runtime_volume_mountpoint "$mount_path"; then',
+          '    printf "runtime_volume_mount_missing: %s\\n" "$mount_path" >&2',
+          "    return 1",
           "  fi",
+          "  return 0",
+          "}",
+          "is_runtime_volume_mountpoint() {",
+          '  local mount_path="$1"',
+          '  mountpoint -q "$mount_path" && return 0',
+          "  command -v findmnt >/dev/null 2>&1 || return 1",
+          '  findmnt -rn -o TARGET | grep -Fx -- "$mount_path" >/dev/null 2>&1',
+          "}",
+          "runtime_volume_mount_signature() {",
+          '  printf "%s\\ncredentialAccessKeyId=%s" "$RUNTIME_VOLUME_PLAN_SIGNATURE" "${RUNTIME_VOLUME_AWS_ACCESS_KEY_ID:-}"',
+          "}",
+          "write_runtime_volume_mount_signature() {",
+          '  runtime_volume_mount_signature > "$RUNTIME_VOLUME_MOUNT_SIGNATURE_FILE"',
+          "}",
+          "runtime_volume_mounts_ready() {",
+          '  [ "$RUNTIME_VOLUME_CAN_REUSE_SIGNED" = "1" ] || return 1',
+          '  [ -f "$RUNTIME_VOLUME_MOUNT_SIGNATURE_FILE" ] || return 1',
+          '  [ "$(cat "$RUNTIME_VOLUME_MOUNT_SIGNATURE_FILE")" = "$(runtime_volume_mount_signature)" ] || return 1',
+          ...(needsMergedSkillsMount
+            ? [`  is_runtime_volume_mountpoint ${escapeShell(OPENCODE_SKILLS_PATH)} || return 1`]
+            : []),
+          ...plan.roots.map(
+            (root) =>
+              `  verify_runtime_volume_mount ${escapeShell(root.mountPath)} ${
+                root.readOnly ? "ro" : "rw"
+              } || return 1`,
+          ),
+          "  return 0",
+          "}",
+          "stop_opencode_server_if_skills_mounted() {",
+          '  local mount_path="$1"',
+          '  is_runtime_volume_mountpoint "$mount_path" || return 0',
+          '  pkill -f "opencode serve .*--port 4096" 2>/dev/null || true',
+          '  pkill -f "mergerfs .* $mount_path" 2>/dev/null || true',
+          "  for _ in 1 2 3 4 5; do",
+          '    pgrep -f "opencode serve .*--port 4096" >/dev/null 2>&1 || return 0',
+          "    sleep 0.2",
+          "  done",
+          '  pkill -9 -f "opencode serve .*--port 4096" 2>/dev/null || true',
+          "}",
+          "print_unmount_diagnostics() {",
+          '  local mount_path="$1"',
+          '  printf "runtime_volume_unmount_diagnostics: %s\\n" "$mount_path" >&2',
+          '  findmnt -rn -o TARGET,FSTYPE,SOURCE,OPTIONS | grep -F -- "$mount_path" >&2 || true',
+          '  ps -eo pid,ppid,stat,comm,args | grep -F -e opencode -e mergerfs -e s3fs -e fuse | grep -v grep >&2 || true',
+          "  if command -v fuser >/dev/null 2>&1; then",
+          '    fuser -vm "$mount_path" >&2 || true',
+          "  fi",
+          "}",
+          "unmount_if_mounted() {",
+          '  local mount_path="$1"',
+          '  if ! is_runtime_volume_mountpoint "$mount_path"; then',
+          "    return 0",
+          "  fi",
+          '  if fusermount -u "$mount_path" 2>/dev/null || umount "$mount_path" 2>/dev/null; then',
+          "    return 0",
+          "  fi",
+          '  if fusermount -uz "$mount_path" 2>/dev/null || umount -l "$mount_path" 2>/dev/null; then',
+          '    is_runtime_volume_mountpoint "$mount_path" || return 0',
+          "  fi",
+          '  is_runtime_volume_mountpoint "$mount_path" || return 0',
+          '  print_unmount_diagnostics "$mount_path"',
+          '  printf "runtime_volume_unmount_failed: %s\\n" "$mount_path" >&2',
+          "  return 1",
+          "}",
+          "reset_mountpoint() {",
+          '  unmount_if_mounted "$1"',
           "}",
           "reset_runtime_volume_mounts() {",
           "  command -v findmnt >/dev/null 2>&1 || return 0",
@@ -279,12 +358,18 @@ export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): st
           '    [ -n "$mount_path" ] || continue',
           '    case "$mount_path" in',
           "      /runtime/skills|/runtime/skills/*|/runtime/shared-skills|/runtime/shared-skills/*|/runtime/selected-skills|/runtime/selected-skills/*|/home/user/coworker-documents)",
-          '        fusermount -u "$mount_path" 2>/dev/null || umount "$mount_path"',
+          '        unmount_if_mounted "$mount_path"',
           "        ;;",
           "    esac",
           '  done < "$mounts_file"',
           '  rm -f "$mounts_file"',
           "}",
+          "if runtime_volume_mounts_ready; then",
+          "  write_runtime_volume_mount_signature",
+          "  sync",
+          "  exit 0",
+          "fi",
+          `stop_opencode_server_if_skills_mounted ${escapeShell(OPENCODE_SKILLS_PATH)}`,
           `reset_mountpoint ${escapeShell(OPENCODE_SKILLS_PATH)}`,
           "reset_runtime_volume_mounts",
           `rm -rf ${escapeShell(OPENCODE_SKILLS_PATH)}`,
@@ -295,13 +380,62 @@ export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): st
             (root) =>
               `mount_s3_prefix ${escapeShell(root.s3MountTarget)} ${escapeShell(root.mountPath)} ${
                 root.readOnly ? "ro" : "rw"
+              }\nverify_runtime_volume_mount ${escapeShell(root.mountPath)} ${
+                root.readOnly ? "ro" : "rw"
               }`,
           ),
           ...buildSkillMergeCommands(plan),
+          "write_runtime_volume_mount_signature",
           "sync",
         ].join("\n");
 
   return `bash <<'BAP_RUNTIME_VOLUME_SCRIPT'\n${script}\nBAP_RUNTIME_VOLUME_SCRIPT`;
+}
+
+export function buildRuntimeVolumeMountPlanSignature(plan: RuntimeVolumeMountPlan): string {
+  return JSON.stringify({
+    coworkerDocumentsPath: plan.coworkerDocumentsPath ?? null,
+    roots: plan.roots.map((root) => ({
+      kind: root.kind,
+      mountPath: root.mountPath,
+      readOnly: root.readOnly,
+      s3MountTarget: root.s3MountTarget,
+      storagePrefix: root.storagePrefix,
+    })),
+    skillScope: plan.skillScope,
+    visibleSkillNames: plan.visibleSkillNames,
+  });
+}
+
+export function buildRuntimeVolumeMountSignature(input: {
+  plan: RuntimeVolumeMountPlan;
+  credentialAccessKeyId?: string | null;
+}): string {
+  return `${buildRuntimeVolumeMountPlanSignature(input.plan)}\ncredentialAccessKeyId=${
+    input.credentialAccessKeyId ?? ""
+  }`;
+}
+
+export function canReuseRuntimeVolumeMounts(plan: RuntimeVolumeMountPlan): boolean {
+  return plan.roots.length > 0 && plan.roots.every((root) => Boolean(root.generationId));
+}
+
+export function canReuseRuntimeVolumeMountSignature(input: {
+  plan: RuntimeVolumeMountPlan;
+  credentialAccessKeyId?: string | null;
+  storedSignature?: string | null;
+}): boolean {
+  if (!canReuseRuntimeVolumeMounts(input.plan) || !input.storedSignature) {
+    return false;
+  }
+
+  return (
+    input.storedSignature ===
+    buildRuntimeVolumeMountSignature({
+      plan: input.plan,
+      credentialAccessKeyId: input.credentialAccessKeyId,
+    })
+  );
 }
 
 function buildSkillMergeCommands(plan: RuntimeVolumeMountPlan): string[] {

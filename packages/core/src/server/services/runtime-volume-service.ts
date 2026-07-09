@@ -327,7 +327,7 @@ function buildRuntimeVolumeCredentialSessionName(generationId?: string | null): 
   return `bap-rv-${suffix}`;
 }
 
-function buildRuntimeVolumeCredentialPolicy(
+export function buildRuntimeVolumeCredentialPolicy(
   roots: readonly Pick<RuntimeVolumeProjectionInput, "storagePrefix" | "readOnly">[],
 ) {
   const readResources = roots.map(
@@ -688,7 +688,7 @@ async function reconcileOwnedSkillsFromRuntimeVolume(
       storagePrefix: input.storagePrefix,
       relativePath: skillMdEntry.objectRelativePath,
     })).toString("utf8");
-    const metadata = parseSkillMarkdownMetadata(skillMd, skillSlug);
+    const metadata = parseSkillMarkdownMetadata(skillMd, skillSlug, existing);
 
     if (existing && existing.userId !== input.ownerUserId) {
       logger.warn({
@@ -732,6 +732,17 @@ async function reconcileOwnedSkillsFromRuntimeVolume(
       continue;
     }
 
+    const existingDocuments = await db.query.skillDocument.findMany({
+      where: eq(skillDocument.skillId, skillId),
+      columns: {
+        path: true,
+        description: true,
+      },
+    });
+    const existingDocumentDescriptions = new Map(
+      existingDocuments.map((document) => [document.path, document.description]),
+    );
+
     await db.delete(skillFile).where(eq(skillFile.skillId, skillId));
     await db.delete(skillDocument).where(eq(skillDocument.skillId, skillId));
 
@@ -760,6 +771,7 @@ async function reconcileOwnedSkillsFromRuntimeVolume(
           mimeType: inferRuntimeVolumeMimeType(entry.relativePath),
           sizeBytes: entry.sizeBytes,
           storageKey: buildRuntimeVolumeObjectKey(input.storagePrefix, entry.objectRelativePath),
+          description: existingDocumentDescriptions.get(entry.relativePath) ?? null,
         })),
       );
     }
@@ -848,17 +860,22 @@ function getSelectedSkillSlugFromStoragePrefix(storagePrefix: string): string | 
   return rest || null;
 }
 
-function parseSkillMarkdownMetadata(markdown: string, fallbackSlug: string): {
+function parseSkillMarkdownMetadata(
+  markdown: string,
+  fallbackSlug: string,
+  existing?: { displayName: string; description: string } | null,
+): {
   displayName: string;
   description: string;
 } {
   const frontmatter = markdown.match(/^---\n([\s\S]*?)\n---/);
   const name = frontmatter ? parseFrontmatterScalar(frontmatter[1], "name") : null;
+  const displayName = frontmatter ? parseFrontmatterScalar(frontmatter[1], "displayName") : null;
   const description = frontmatter ? parseFrontmatterScalar(frontmatter[1], "description") : null;
 
   return {
-    displayName: name || fallbackSlug,
-    description: description || "Runtime Volume skill",
+    displayName: displayName || existing?.displayName || name || fallbackSlug,
+    description: description || existing?.description || "Runtime Volume skill",
   };
 }
 

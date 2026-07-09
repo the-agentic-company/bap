@@ -31,6 +31,7 @@ const {
   generationInterruptFindFirstMock,
   dbMock,
   generationManagerMock,
+  requireActiveWorkspaceAccessMock,
   startPendingCoworkerRunMock,
 } = vi.hoisted(() => {
   const generationFindFirstMock = vi.fn<VitestProcedure>();
@@ -72,6 +73,10 @@ const {
     getGenerationForConversation: vi.fn<VitestProcedure>(),
     getStreamCountersSnapshot: vi.fn<VitestProcedure>(),
   };
+  const requireActiveWorkspaceAccessMock = vi.fn<VitestProcedure>(async () => ({
+    workspace: { id: "ws-1" },
+    membership: { role: "member" },
+  }));
   const startPendingCoworkerRunMock = vi.fn<VitestProcedure>();
 
   return {
@@ -81,6 +86,7 @@ const {
     generationInterruptFindFirstMock,
     dbMock,
     generationManagerMock,
+    requireActiveWorkspaceAccessMock,
     startPendingCoworkerRunMock,
   };
 });
@@ -114,10 +120,7 @@ vi.mock("@bap/core/server/utils/observability", () => ({
 }));
 
 vi.mock("../workspace-access", () => ({
-  requireActiveWorkspaceAccess: vi.fn<VitestProcedure>(async () => ({
-    workspace: { id: "ws-1" },
-    membership: { role: "member" },
-  })),
+  requireActiveWorkspaceAccess: requireActiveWorkspaceAccessMock,
 }));
 
 import { generationRouter } from "./generation";
@@ -133,6 +136,10 @@ async function* emptyGenerationStream(): AsyncGenerator<never> {}
 describe("generationRouter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requireActiveWorkspaceAccessMock.mockResolvedValue({
+      workspace: { id: "ws-1" },
+      membership: { role: "member" },
+    });
     conversationFindFirstMock.mockResolvedValue({
       id: "conv-1",
       userId: "user-1",
@@ -549,6 +556,38 @@ describe("generationRouter", () => {
       expect.objectContaining({
         content: "read this file",
         fileAttachments,
+      }),
+    );
+  });
+
+  it("passes the resolved active workspace into startGeneration when session context has none", async () => {
+    generationManagerMock.startGeneration.mockResolvedValueOnce({
+      generationId: "gen-start",
+      conversationId: "conv-start",
+      traceId: "trace-start",
+    });
+
+    const result = await generationRouterAny.startGeneration({
+      input: {
+        content: "hello",
+        model: "openai/gpt-5.4-mini",
+        autoApprove: true,
+        sandboxProvider: "daytona",
+      },
+      context: { ...context, workspaceId: null },
+    });
+
+    expect(result).toEqual({
+      generationId: "gen-start",
+      conversationId: "conv-start",
+      traceId: "trace-start",
+    });
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", null);
+    expect(generationManagerMock.startGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoApprove: true,
+        sandboxProvider: "daytona",
+        workspaceId: "ws-1",
       }),
     );
   });

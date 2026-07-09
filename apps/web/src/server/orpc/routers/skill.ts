@@ -5,15 +5,11 @@ import {
   resolveUniqueSkillNameInWorkspace,
 } from "@bap/core/server/services/workspace-skill-service";
 import {
-  appendRuntimeVolumeSkillSlug,
-  buildOwnedSkillsRuntimeVolumePrefix,
-  buildSharedSkillsRuntimeVolumePrefix,
   buildRuntimeVolumeObjectKey,
   copyRuntimeVolumePrefix,
   deleteRuntimeVolumeFile,
   deleteRuntimeVolumePrefix,
   readRuntimeVolumeFile,
-  reconcileRuntimeVolumeProjection,
   writeRuntimeVolumeFile,
 } from "@bap/core/server/services/runtime-volume-service";
 import {
@@ -27,6 +23,13 @@ import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { extractSkillToolIntegrations } from "@/lib/skill-markdown";
 import { importSkill } from "@/server/services/skill-import";
+import {
+  buildOwnedSkillRuntimeVolumePrefix,
+  buildReadableSkillRuntimeVolumePrefix,
+  buildSharedSkillRuntimeVolumePrefix,
+  refreshOwnedSkillsRuntimeVolumeProjection,
+  refreshSharedSkillsRuntimeVolumeProjection,
+} from "@/server/services/skill-runtime-volume";
 import { validateFileUpload } from "@/server/storage/validation";
 import { protectedProcedure } from "../middleware";
 import { requireActiveWorkspaceAccess } from "../workspace-access";
@@ -54,53 +57,6 @@ Add your skill instructions here...
 
 function decodeRpcContent(contentBase64: string): string {
   return Buffer.from(contentBase64, "base64").toString("utf8");
-}
-
-function buildOwnedSkillRuntimeVolumePrefix(input: {
-  workspaceId: string;
-  userId: string;
-  skillName: string;
-}): string {
-  return appendRuntimeVolumeSkillSlug(
-    buildOwnedSkillsRuntimeVolumePrefix({
-      workspaceId: input.workspaceId,
-      userId: input.userId,
-    }),
-    input.skillName,
-  );
-}
-
-function buildSharedSkillRuntimeVolumePrefix(input: {
-  workspaceId: string;
-  skillName: string;
-}): string {
-  return appendRuntimeVolumeSkillSlug(
-    buildSharedSkillsRuntimeVolumePrefix({ workspaceId: input.workspaceId }),
-    input.skillName,
-  );
-}
-
-function buildReadableSkillRuntimeVolumePrefix(input: {
-  workspaceId: string;
-  currentUserId: string;
-  skill: {
-    name: string;
-    userId: string;
-    visibility: "private" | "public";
-  };
-}): string {
-  if (input.skill.userId === input.currentUserId) {
-    return buildOwnedSkillRuntimeVolumePrefix({
-      workspaceId: input.workspaceId,
-      userId: input.currentUserId,
-      skillName: input.skill.name,
-    });
-  }
-
-  return buildSharedSkillRuntimeVolumePrefix({
-    workspaceId: input.workspaceId,
-    skillName: input.skill.name,
-  });
 }
 
 async function hydrateSkillTextFiles(input: {
@@ -387,6 +343,10 @@ const create = protectedProcedure
       path: "SKILL.md",
       content: null,
     });
+    await refreshOwnedSkillsRuntimeVolumeProjection({
+      workspaceId,
+      userId: context.user.id,
+    });
 
     return {
       id: newSkill.id,
@@ -427,6 +387,10 @@ const importSkillDefinition = protectedProcedure
     } = await requireActiveWorkspaceAccess(context.user.id);
 
     const created = await importSkill(context.db as never, context.user.id, workspaceId, input);
+    await refreshOwnedSkillsRuntimeVolumeProjection({
+      workspaceId,
+      userId: context.user.id,
+    });
 
     console.info("[Skill Debug] Imported skill", {
       skillId: created.id,
@@ -527,6 +491,10 @@ const update = protectedProcedure
           skillName: existingSkill.name,
         }),
       );
+      await refreshOwnedSkillsRuntimeVolumeProjection({
+        workspaceId,
+        userId: context.user.id,
+      });
     }
 
     return { success: true };
@@ -555,6 +523,10 @@ const deleteSkill = protectedProcedure
     if (result.length === 0) {
       throw new ORPCError("NOT_FOUND", { message: "Skill not found" });
     }
+    await refreshOwnedSkillsRuntimeVolumeProjection({
+      workspaceId,
+      userId: context.user.id,
+    });
 
     return { success: true };
   });
@@ -582,6 +554,7 @@ const share = protectedProcedure
       .set({ visibility: "public" })
       .where(eq(skill.id, input.id))
       .returning({ id: skill.id, visibility: skill.visibility });
+    await refreshSharedSkillsRuntimeVolumeProjection({ workspaceId });
 
     return {
       success: true,
@@ -608,6 +581,7 @@ const unshare = protectedProcedure
       .set({ visibility: "private" })
       .where(eq(skill.id, input.id))
       .returning({ id: skill.id, visibility: skill.visibility });
+    await refreshSharedSkillsRuntimeVolumeProjection({ workspaceId });
 
     return {
       success: true,
@@ -658,18 +632,9 @@ const saveShared = protectedProcedure
         skillName: copiedSkill.name,
       }),
     });
-    await reconcileRuntimeVolumeProjection({
+    await refreshOwnedSkillsRuntimeVolumeProjection({
       workspaceId,
-      kind: "owned_skills",
-      ownerUserId: context.user.id,
-      storagePrefix: buildOwnedSkillRuntimeVolumePrefix({
-        workspaceId,
-        userId: context.user.id,
-        skillName: copiedSkill.name,
-      }),
-      mountPath: `/app/.opencode/skills/${copiedSkill.name}`,
-      readOnly: false,
-      generationId: null,
+      userId: context.user.id,
     });
 
     return {
@@ -717,6 +682,10 @@ const addFile = protectedProcedure
         content: null,
       })
       .returning();
+    await refreshOwnedSkillsRuntimeVolumeProjection({
+      workspaceId,
+      userId: context.user.id,
+    });
 
     return {
       id: newFile.id,
@@ -787,6 +756,10 @@ const updateFile = protectedProcedure
       .update(skillFile)
       .set({ updatedAt: new Date() })
       .where(eq(skillFile.id, input.id));
+    await refreshOwnedSkillsRuntimeVolumeProjection({
+      workspaceId,
+      userId: context.user.id,
+    });
 
     return { success: true };
   });
@@ -826,6 +799,10 @@ const deleteFile = protectedProcedure
       relativePath: existingFile.path,
     });
     await context.db.delete(skillFile).where(eq(skillFile.id, input.id));
+    await refreshOwnedSkillsRuntimeVolumeProjection({
+      workspaceId,
+      userId: context.user.id,
+    });
 
     return { success: true };
   });
@@ -888,6 +865,10 @@ const uploadDocument = protectedProcedure
         description: input.description,
       })
       .returning();
+    await refreshOwnedSkillsRuntimeVolumeProjection({
+      workspaceId,
+      userId: context.user.id,
+    });
 
     return {
       id: newDocument.id,
@@ -964,6 +945,10 @@ const deleteDocument = protectedProcedure
       relativePath: document.path,
     });
     await context.db.delete(skillDocument).where(eq(skillDocument.id, input.id));
+    await refreshOwnedSkillsRuntimeVolumeProjection({
+      workspaceId,
+      userId: context.user.id,
+    });
 
     return { success: true };
   });

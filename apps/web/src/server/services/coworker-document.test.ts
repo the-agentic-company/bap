@@ -11,6 +11,7 @@ const {
   readRuntimeVolumeFileMock,
   writeRuntimeVolumeFileMock,
   deleteRuntimeVolumeFileMock,
+  reconcileRuntimeVolumeProjectionMock,
   validateFileUploadMock,
 } = vi.hoisted(() => ({
   createFileAssetFromBufferMock: vi.fn<VitestProcedure>(),
@@ -18,6 +19,7 @@ const {
   readRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
   writeRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
   deleteRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  reconcileRuntimeVolumeProjectionMock: vi.fn<VitestProcedure>(),
   validateFileUploadMock: vi.fn<VitestProcedure>(),
 }));
 
@@ -40,6 +42,7 @@ vi.mock("@bap/core/server/services/runtime-volume-service", () => ({
   buildRuntimeVolumeObjectKey: (prefix: string, relativePath: string) => `${prefix}${relativePath}`,
   deleteRuntimeVolumeFile: deleteRuntimeVolumeFileMock,
   readRuntimeVolumeFile: readRuntimeVolumeFileMock,
+  reconcileRuntimeVolumeProjection: reconcileRuntimeVolumeProjectionMock,
   writeRuntimeVolumeFile: writeRuntimeVolumeFileMock,
 }));
 
@@ -47,7 +50,11 @@ vi.mock("@/server/storage/validation", () => ({
   validateFileUpload: validateFileUploadMock,
 }));
 
-import { updateCoworkerDocument } from "./coworker-document";
+import {
+  deleteCoworkerDocument,
+  updateCoworkerDocument,
+  uploadCoworkerDocument,
+} from "./coworker-document";
 
 function createDatabase() {
   const updateReturningMock = vi.fn<VitestProcedure>();
@@ -64,7 +71,30 @@ function createDatabase() {
         findFirst: vi.fn<VitestProcedure>(),
       },
     },
+    insert: vi.fn<VitestProcedure>(() => ({
+      values: vi.fn<VitestProcedure>(() => ({
+        returning: vi.fn<VitestProcedure>().mockResolvedValue([
+          {
+            id: "doc-new",
+            filename: "brief.pdf",
+            mimeType: "application/pdf",
+            sizeBytes: 4,
+            storageKey: "runtime-volumes/ws-1/coworkers/cw-1/documents/brief.pdf",
+            fileAssetId: null,
+            description: "Reference brief",
+          },
+        ]),
+      })),
+    })),
     update: updateMock,
+    delete: vi.fn<VitestProcedure>(() => ({
+      where: vi.fn<VitestProcedure>().mockResolvedValue(undefined),
+    })),
+    select: vi.fn<VitestProcedure>(() => ({
+      from: vi.fn<VitestProcedure>(() => ({
+        where: vi.fn<VitestProcedure>().mockResolvedValue([{ value: 0 }]),
+      })),
+    })),
   };
 
   database.query.coworkerDocument.findFirst.mockResolvedValue({
@@ -123,7 +153,36 @@ describe("coworker document service", () => {
     readRuntimeVolumeFileMock.mockResolvedValue(Buffer.from("old"));
     writeRuntimeVolumeFileMock.mockResolvedValue(undefined);
     deleteRuntimeVolumeFileMock.mockResolvedValue(undefined);
+    reconcileRuntimeVolumeProjectionMock.mockResolvedValue({
+      changed: true,
+      manifestHash: "hash",
+      entryCount: 1,
+    });
     validateFileUploadMock.mockReturnValue(undefined);
+  });
+
+  it("uploads a document and refreshes the Coworker Document projection", async () => {
+    const { database } = createDatabase();
+
+    await uploadCoworkerDocument({
+      database: database as never,
+      userId: "user-1",
+      coworkerId: "cw-1",
+      filename: "brief.pdf",
+      mimeType: "application/pdf",
+      contentBase64: Buffer.from("test").toString("base64"),
+      description: "Reference brief",
+    });
+
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "coworker_documents",
+      coworkerId: "cw-1",
+      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+      mountPath: "/home/user/coworker-documents",
+      readOnly: false,
+      generationId: null,
+    });
   });
 
   it("renames document projection and Runtime Volume file without replacing bytes", async () => {
@@ -164,6 +223,15 @@ describe("coworker document service", () => {
       relativePath: "brief-renamed.pdf",
       body: Buffer.from("old"),
       contentType: "application/pdf",
+    });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "coworker_documents",
+      coworkerId: "cw-1",
+      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+      mountPath: "/home/user/coworker-documents",
+      readOnly: false,
+      generationId: null,
     });
     expect(result).toEqual({
       id: "doc-1",
@@ -217,6 +285,15 @@ describe("coworker document service", () => {
       storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
       relativePath: "brief.pdf",
     });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "coworker_documents",
+      coworkerId: "cw-1",
+      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+      mountPath: "/home/user/coworker-documents",
+      readOnly: false,
+      generationId: null,
+    });
     expect(result).toEqual({
       id: "doc-1",
       fileAssetId: null,
@@ -243,6 +320,32 @@ describe("coworker document service", () => {
     ).rejects.toThrow("database down");
 
     expect(deleteRuntimeVolumeFileMock).not.toHaveBeenCalled();
+    expect(reconcileRuntimeVolumeProjectionMock).not.toHaveBeenCalled();
+  });
+
+  it("deletes a document and refreshes the Coworker Document projection", async () => {
+    const { database } = createDatabase();
+
+    await expect(
+      deleteCoworkerDocument({
+        database: database as never,
+        userId: "user-1",
+        documentId: "doc-1",
+      }),
+    ).resolves.toEqual({
+      success: true,
+      filename: "brief.pdf",
+    });
+
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "coworker_documents",
+      coworkerId: "cw-1",
+      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+      mountPath: "/home/user/coworker-documents",
+      readOnly: false,
+      generationId: null,
+    });
   });
 
   it("rejects an empty document update", async () => {
