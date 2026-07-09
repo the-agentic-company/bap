@@ -8,6 +8,24 @@ type RenderApiError = {
   error?: string;
 };
 
+export class RenderRequestError extends Error {
+  readonly method: string;
+  readonly path: string;
+  readonly status: number;
+  readonly apiMessage: string;
+
+  constructor(input: { method: string; path: string; status: number; apiMessage: string }) {
+    super(
+      `Render API ${input.method} ${input.path} failed with ${input.status}: ${input.apiMessage}`,
+    );
+    this.name = "RenderRequestError";
+    this.method = input.method;
+    this.path = input.path;
+    this.status = input.status;
+    this.apiMessage = input.apiMessage;
+  }
+}
+
 type RenderService = {
   id: string;
   name: string;
@@ -109,6 +127,7 @@ function writeOutput(name: string, value: string): void {
 }
 
 async function renderRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = init.method ?? "GET";
   const response = await fetch(`${renderApiBaseUrl}${path}`, {
     ...init,
     headers: {
@@ -124,11 +143,12 @@ async function renderRequest<T>(path: string, init: RequestInit = {}): Promise<T
 
   if (!response.ok) {
     const error = body as RenderApiError | null;
-    throw new Error(
-      `Render API ${init.method ?? "GET"} ${path} failed with ${response.status}: ${
-        error?.message ?? error?.error ?? text
-      }`,
-    );
+    throw new RenderRequestError({
+      method,
+      path,
+      status: response.status,
+      apiMessage: error?.message ?? error?.error ?? text,
+    });
   }
 
   return body as T;
@@ -314,6 +334,15 @@ function lifecyclePath(resource: Resource, id: string, command: Command): string
   return `/key-value/${id}/${command}`;
 }
 
+export function isRenderResumeNotUserSuspendedError(error: unknown): boolean {
+  return (
+    error instanceof RenderRequestError &&
+    error.method === "POST" &&
+    error.status === 400 &&
+    error.apiMessage.toLowerCase().includes("only services suspended by a user can be resumed")
+  );
+}
+
 async function waitForState(command: Command, resource: Resource, id: string): Promise<void> {
   const timeoutMs = getTimeoutMs();
   const startedAt = Date.now();
@@ -350,7 +379,29 @@ async function applyLifecycle(command: Command, resource: Resource): Promise<voi
   }
 
   console.log(`[render-staging-lifecycle] ${command} ${resource.kind} ${resource.name}`);
-  await renderRequest(lifecyclePath(resource, id, command), { method: "POST" });
+  try {
+    await renderRequest(lifecyclePath(resource, id, command), { method: "POST" });
+  } catch (error) {
+    if (command === "resume" && isRenderResumeNotUserSuspendedError(error)) {
+      const latest = await getResource(resource, id);
+      if (isInTargetState(command, resource, latest)) {
+        console.log(
+          `[render-staging-lifecycle] ${resource.name} already ${describeState(resource, latest)}`,
+        );
+        return;
+      }
+      if (resource.optional) {
+        console.log(
+          `[render-staging-lifecycle] ${resource.name} cannot be resumed by Render API from ${describeState(
+            resource,
+            latest,
+          )}; skipping optional resource`,
+        );
+        return;
+      }
+    }
+    throw error;
+  }
   await waitForState(command, resource, id);
 }
 
