@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import corePackageJson from "../../../../packages/core/package.json";
 import sandboxPackageJson from "../../package.json";
-import { OPENCODE_PLUGIN_VERSION, OPENCODE_VERSION } from "./versions";
+import { BUN_VERSION, OPENCODE_PLUGIN_VERSION, OPENCODE_VERSION } from "./versions";
 
 type PackageJson = {
   dependencies?: Record<string, string>;
@@ -29,5 +29,6 @@ describe("OpenCode sandbox versions", () => {
     );
     expect(dependencyVersion(sandboxPackageJson, "@opencode-ai/sdk")).toBe(OPENCODE_VERSION);
     expect(dependencyVersion(corePackageJson, "@opencode-ai/sdk")).toBe(OPENCODE_VERSION);
+    expect(BUN_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
