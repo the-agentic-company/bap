@@ -27,6 +27,8 @@ type RenderKeyValue = {
   status?: string;
 };
 
+type RenderResource = RenderService | RenderPostgres | RenderKeyValue;
+
 type Resource = {
   kind: ResourceKind;
   name: string;
@@ -72,23 +74,32 @@ function getApiKey(): string {
   return apiKey;
 }
 
-function readArg(name: string): string | null {
-  const prefix = `${name}=`;
-  const value = process.argv.find((arg) => arg.startsWith(prefix));
-  if (value) {
-    return value.slice(prefix.length);
-  }
+function readCliArg(name: string): string | null {
+  const inlinePrefix = `${name}=`;
+  for (const [index, arg] of process.argv.entries()) {
+    if (arg === name) {
+      return process.argv[index + 1] ?? null;
+    }
 
-  const index = process.argv.indexOf(name);
-  if (index >= 0) {
-    return process.argv[index + 1] ?? null;
+    if (arg.startsWith(inlinePrefix)) {
+      return arg.slice(inlinePrefix.length);
+    }
   }
 
   return null;
 }
 
+function writeGithubOutput(name: string, value: string): void {
+  const line = `${name}=${value}`;
+  const githubOutput = process.env.GITHUB_OUTPUT;
+  if (githubOutput) {
+    appendFileSync(githubOutput, `${line}\n`);
+  }
+  console.log(line);
+}
+
 function getTimeoutMs(): number {
-  const rawValue = readArg("--timeout-ms")?.trim();
+  const rawValue = readCliArg("--timeout-ms")?.trim();
   if (!rawValue) {
     return defaultTimeoutMs;
   }
@@ -100,35 +111,51 @@ function getTimeoutMs(): number {
   return value;
 }
 
-function writeOutput(name: string, value: string): void {
-  const githubOutput = process.env.GITHUB_OUTPUT;
-  if (githubOutput) {
-    appendFileSync(githubOutput, `${name}=${value}\n`);
+function parseRenderResponse(text: string): unknown {
+  const trimmed = text.trim();
+  return trimmed ? JSON.parse(trimmed) : null;
+}
+
+function isRenderApiError(value: unknown): value is RenderApiError {
+  if (typeof value !== "object" || value === null) {
+    return false;
   }
-  console.log(`${name}=${value}`);
+  const record = value as RenderApiError;
+  return typeof record.message === "string" || typeof record.error === "string";
+}
+
+function formatRenderRequestError(
+  method: string,
+  path: string,
+  status: number,
+  body: unknown,
+  fallback: string,
+): string {
+  const detail = isRenderApiError(body) ? (body.message ?? body.error) : fallback;
+  return `Render API ${method} ${path} failed with ${status}: ${detail}`;
+}
+
+function buildRenderHeaders(initHeaders: HeadersInit | undefined): HeadersInit {
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${getApiKey()}`,
+    "Content-Type": "application/json",
+    ...(initHeaders ?? {}),
+  };
 }
 
 async function renderRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = init.method ?? "GET";
   const response = await fetch(`${renderApiBaseUrl}${path}`, {
     ...init,
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${getApiKey()}`,
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
+    headers: buildRenderHeaders(init.headers),
   });
 
   const text = await response.text();
-  const body = text.trim() ? JSON.parse(text) : null;
+  const body = parseRenderResponse(text);
 
   if (!response.ok) {
-    const error = body as RenderApiError | null;
-    throw new Error(
-      `Render API ${init.method ?? "GET"} ${path} failed with ${response.status}: ${
-        error?.message ?? error?.error ?? text
-      }`,
-    );
+    throw new Error(formatRenderRequestError(method, path, response.status, body, text));
   }
 
   return body as T;
@@ -139,30 +166,86 @@ function appendQuery(path: string, params: URLSearchParams): string {
   return query ? `${path}?${query}` : path;
 }
 
-function findNamed<T extends { id: string; name: string }>(
-  value: unknown,
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getWrappedCandidate(entry: unknown, wrapperKey: string): unknown {
+  if (!isObjectRecord(entry)) {
+    return null;
+  }
+
+  if (wrapperKey in entry) {
+    return entry[wrapperKey];
+  }
+
+  return entry;
+}
+
+function unwrapNamedCandidate<T extends { id: string; name: string }>(
+  entry: unknown,
   wrapperKey: string,
-  name: string,
 ): T | null {
+  const candidate = getWrappedCandidate(entry, wrapperKey);
+  if (!isObjectRecord(candidate)) {
+    return null;
+  }
+
+  return candidate as T;
+}
+
+function expectRenderList(value: unknown, name: string): unknown[] {
   if (!Array.isArray(value)) {
     fail(`Render API response for "${name}" was not a list`);
   }
 
-  const matches = value.flatMap((entry) => {
-    if (typeof entry !== "object" || entry === null) {
-      return [];
-    }
+  return value;
+}
 
-    const record = entry as Record<string, unknown>;
-    const candidate = wrapperKey in record ? record[wrapperKey] : entry;
-    if (typeof candidate !== "object" || candidate === null) {
-      return [];
-    }
+function toNamedMatch<T extends { id: string; name: string }>(
+  entry: unknown,
+  wrapperKey: string,
+  name: string,
+): T[] {
+  const resource = unwrapNamedCandidate<T>(entry, wrapperKey);
+  if (!resource) {
+    return [];
+  }
 
-    const resource = candidate as T;
-    return resource.name === name ? [resource] : [];
-  });
+  if (resource.name !== name) {
+    return [];
+  }
 
+  return [resource];
+}
+
+function collectNamedMatches<T extends { id: string; name: string }>(
+  entries: unknown[],
+  wrapperKey: string,
+  name: string,
+): T[] {
+  return entries.flatMap((entry) => toNamedMatch<T>(entry, wrapperKey, name));
+}
+
+function assertResourceIdentity(
+  resource: { id: string; name: string },
+  wrapperKey: string,
+  name: string,
+): void {
+  if (!resource.id) {
+    fail(`Render ${wrapperKey} resource "${name}" did not include an id`);
+  }
+
+  if (!resource.name) {
+    fail(`Render ${wrapperKey} resource "${name}" did not include a name`);
+  }
+}
+
+function pickSingleNamedMatch<T extends { id: string; name: string }>(
+  matches: T[],
+  wrapperKey: string,
+  name: string,
+): T | null {
   if (matches.length === 0) {
     return null;
   }
@@ -172,11 +255,18 @@ function findNamed<T extends { id: string; name: string }>(
   }
 
   const resource = matches[0];
-  if (!resource.id || !resource.name) {
-    fail(`Render ${wrapperKey} resource "${name}" did not include an id and name`);
-  }
-
+  assertResourceIdentity(resource, wrapperKey, name);
   return resource;
+}
+
+function findNamed<T extends { id: string; name: string }>(
+  value: unknown,
+  wrapperKey: string,
+  name: string,
+): T | null {
+  const entries = expectRenderList(value, name);
+  const matches = collectNamedMatches<T>(entries, wrapperKey, name);
+  return pickSingleNamedMatch(matches, wrapperKey, name);
 }
 
 function unwrapFound<T extends { id: string; name: string }>(
@@ -197,66 +287,51 @@ function unwrapFound<T extends { id: string; name: string }>(
   fail(message);
 }
 
-async function resolveResource(resource: Resource): Promise<string | null> {
+async function resolveNamedResource<T extends { id: string; name: string }>(
+  resource: Resource,
+  wrapperKey: string,
+  path: string,
+  label: string,
+): Promise<string | null> {
   const params = new URLSearchParams({ limit: "100" });
   params.append("name", resource.name);
 
-  if (resource.kind === "service") {
-    const service = unwrapFound(
-      resource,
-      "service",
-      findNamed<RenderService>(
-        await renderRequest(appendQuery("/services", params)),
-        "service",
-        resource.name,
-      ),
-    );
-    if (!service) {
-      return null;
-    }
-    console.log(`[render-staging-lifecycle] Resolved service "${service.name}" to ${service.id}`);
-    return service.id;
-  }
-
-  if (resource.kind === "postgres") {
-    const postgres = unwrapFound(
-      resource,
-      "postgres",
-      findNamed<RenderPostgres>(
-        await renderRequest(appendQuery("/postgres", params)),
-        "postgres",
-        resource.name,
-      ),
-    );
-    if (!postgres) {
-      return null;
-    }
-    console.log(
-      `[render-staging-lifecycle] Resolved Postgres "${postgres.name}" to ${postgres.id}`,
-    );
-    return postgres.id;
-  }
-
-  const keyValue = unwrapFound(
+  const found = unwrapFound(
     resource,
-    "keyValue",
-    findNamed<RenderKeyValue>(
-      await renderRequest(appendQuery("/key-value", params)),
-      "keyValue",
-      resource.name,
-    ),
+    wrapperKey,
+    findNamed<T>(await renderRequest(appendQuery(path, params)), wrapperKey, resource.name),
   );
-  if (!keyValue) {
+  if (!found) {
     return null;
   }
-  console.log(`[render-staging-lifecycle] Resolved Key Value "${keyValue.name}" to ${keyValue.id}`);
-  return keyValue.id;
+
+  console.log(`[render-staging-lifecycle] Resolved ${label} "${found.name}" to ${found.id}`);
+  return found.id;
 }
 
-async function getResource(
-  resource: Resource,
-  id: string,
-): Promise<RenderService | RenderPostgres | RenderKeyValue> {
+async function resolveService(resource: Resource): Promise<string | null> {
+  return resolveNamedResource<RenderService>(resource, "service", "/services", "service");
+}
+
+async function resolvePostgres(resource: Resource): Promise<string | null> {
+  return resolveNamedResource<RenderPostgres>(resource, "postgres", "/postgres", "Postgres");
+}
+
+async function resolveKeyValue(resource: Resource): Promise<string | null> {
+  return resolveNamedResource<RenderKeyValue>(resource, "keyValue", "/key-value", "Key Value");
+}
+
+const resourceResolvers = {
+  service: resolveService,
+  postgres: resolvePostgres,
+  "key-value": resolveKeyValue,
+} satisfies Record<ResourceKind, (resource: Resource) => Promise<string | null>>;
+
+async function resolveResource(resource: Resource): Promise<string | null> {
+  return resourceResolvers[resource.kind](resource);
+}
+
+async function getResource(resource: Resource, id: string): Promise<RenderResource> {
   if (resource.kind === "service") {
     return renderRequest<RenderService>(`/services/${id}`);
   }
@@ -268,16 +343,48 @@ async function getResource(
   return renderRequest<RenderKeyValue>(`/key-value/${id}`);
 }
 
-function describeState(
-  resource: Resource,
-  value: RenderService | RenderPostgres | RenderKeyValue,
-): string {
-  if (resource.kind === "key-value") {
-    return (value as RenderKeyValue).status ?? "unknown";
-  }
+function describedValue(value: string | undefined): string {
+  return value ?? "unknown";
+}
 
+function describeKeyValueState(value: RenderResource): string {
+  return describedValue((value as RenderKeyValue).status);
+}
+
+function describeSuspendedState(value: RenderResource): string {
   const suspended = (value as RenderService | RenderPostgres).suspended;
-  return suspended ?? (value as RenderPostgres).status ?? "unknown";
+  return describedValue(suspended ?? (value as RenderPostgres).status);
+}
+
+const stateDescriptors = {
+  service: describeSuspendedState,
+  postgres: describeSuspendedState,
+  "key-value": describeKeyValueState,
+} satisfies Record<ResourceKind, (value: RenderResource) => string>;
+
+function describeState(resource: Resource, value: RenderResource): string {
+  return stateDescriptors[resource.kind](value);
+}
+
+function isKeyValueInTargetState(command: Command, value: RenderKeyValue): boolean {
+  if (command === "resume") {
+    return value.status === "available";
+  }
+  return value.status === "suspended";
+}
+
+function isPostgresInTargetState(command: Command, value: RenderPostgres): boolean {
+  if (command === "resume") {
+    return value.suspended === "not_suspended" && value.status === "available";
+  }
+  return value.suspended === "suspended";
+}
+
+function isServiceInTargetState(command: Command, value: RenderService): boolean {
+  if (command === "resume") {
+    return value.suspended === "not_suspended";
+  }
+  return value.suspended === "suspended";
 }
 
 function isInTargetState(
@@ -286,20 +393,14 @@ function isInTargetState(
   value: RenderService | RenderPostgres | RenderKeyValue,
 ): boolean {
   if (resource.kind === "key-value") {
-    const status = (value as RenderKeyValue).status;
-    return command === "resume" ? status === "available" : status === "suspended";
+    return isKeyValueInTargetState(command, value as RenderKeyValue);
   }
 
   if (resource.kind === "postgres") {
-    const postgres = value as RenderPostgres;
-    if (command === "resume") {
-      return postgres.suspended === "not_suspended" && postgres.status === "available";
-    }
-    return postgres.suspended === "suspended";
+    return isPostgresInTargetState(command, value as RenderPostgres);
   }
 
-  const suspended = (value as RenderService | RenderPostgres).suspended;
-  return command === "resume" ? suspended === "not_suspended" : suspended === "suspended";
+  return isServiceInTargetState(command, value as RenderService);
 }
 
 function lifecyclePath(resource: Resource, id: string, command: Command): string {
@@ -344,59 +445,128 @@ async function waitForState(command: Command, resource: Resource, id: string): P
   }
 }
 
+async function postLifecycle(command: Command, resource: Resource, id: string): Promise<void> {
+  await renderRequest(lifecyclePath(resource, id, command), { method: "POST" });
+}
+
+async function handleLifecyclePostError(
+  command: Command,
+  resource: Resource,
+  id: string,
+  error: unknown,
+): Promise<boolean> {
+  if (!shouldHandleResumePostError(command, error)) {
+    return false;
+  }
+
+  return handleResumePostError(resource, id);
+}
+
+function shouldHandleResumePostError(command: Command, error: unknown): boolean {
+  if (command !== "resume") {
+    return false;
+  }
+
+  return isRenderResumeNotUserSuspendedError(error);
+}
+
+async function handleResumePostError(resource: Resource, id: string): Promise<boolean> {
+  const latest = await getResource(resource, id);
+  if (isInTargetState("resume", resource, latest)) {
+    console.log(
+      `[render-staging-lifecycle] ${resource.name} already ${describeState(resource, latest)}`,
+    );
+    return true;
+  }
+
+  if (!resource.optional) {
+    return false;
+  }
+
+  console.log(
+    `[render-staging-lifecycle] ${resource.name} cannot be resumed by Render API from ${describeState(
+      resource,
+      latest,
+    )}; skipping optional resource`,
+  );
+  return true;
+}
+
+async function isAlreadyInTargetState(
+  command: Command,
+  resource: Resource,
+  id: string,
+): Promise<boolean> {
+  const current = await getResource(resource, id);
+  if (!isInTargetState(command, resource, current)) {
+    return false;
+  }
+
+  console.log(
+    `[render-staging-lifecycle] ${resource.name} already ${describeState(resource, current)}`,
+  );
+  return true;
+}
+
+async function postLifecycleOrRecover(
+  command: Command,
+  resource: Resource,
+  id: string,
+): Promise<void> {
+  try {
+    await postLifecycle(command, resource, id);
+  } catch (error) {
+    if (await handleLifecyclePostError(command, resource, id, error)) {
+      return;
+    }
+    throw error;
+  }
+}
+
 async function applyLifecycle(command: Command, resource: Resource): Promise<void> {
   const id = await resolveResource(resource);
   if (!id) {
     return;
   }
 
-  const current = await getResource(resource, id);
-  if (isInTargetState(command, resource, current)) {
-    console.log(
-      `[render-staging-lifecycle] ${resource.name} already ${describeState(resource, current)}`,
-    );
+  if (await isAlreadyInTargetState(command, resource, id)) {
     return;
   }
 
   console.log(`[render-staging-lifecycle] ${command} ${resource.kind} ${resource.name}`);
-  try {
-    await renderRequest(lifecyclePath(resource, id, command), { method: "POST" });
-  } catch (error) {
-    if (command === "resume" && isRenderResumeNotUserSuspendedError(error)) {
-      const latest = await getResource(resource, id);
-      if (isInTargetState(command, resource, latest)) {
-        console.log(
-          `[render-staging-lifecycle] ${resource.name} already ${describeState(resource, latest)}`,
-        );
-        return;
-      }
-      if (resource.optional) {
-        console.log(
-          `[render-staging-lifecycle] ${resource.name} cannot be resumed by Render API from ${describeState(
-            resource,
-            latest,
-          )}; skipping optional resource`,
-        );
-        return;
-      }
-    }
-    throw error;
-  }
+  await postLifecycleOrRecover(command, resource, id);
   await waitForState(command, resource, id);
 }
 
-async function main(): Promise<void> {
-  const command = process.argv[2] as Command | undefined;
-  if (command !== "resume" && command !== "suspend") {
+function isCommand(value: string | undefined): value is Command {
+  return value === "resume" || value === "suspend";
+}
+
+function readCommand(): Command {
+  const command = process.argv[2];
+  if (!isCommand(command)) {
     fail("Usage: bun scripts/release/render-staging-lifecycle.ts <resume|suspend>");
   }
 
-  const resources = command === "resume" ? stagingResources : [...stagingResources].reverse();
+  return command;
+}
+
+function resourcesFor(command: Command): Resource[] {
+  if (command === "resume") {
+    return stagingResources;
+  }
+
+  return [...stagingResources].reverse();
+}
+
+async function main(): Promise<void> {
+  const command = readCommand();
+  const resources = resourcesFor(command);
   for (const resource of resources) {
     await applyLifecycle(command, resource);
   }
 
-  writeOutput("staging_lifecycle", command);
+  writeGithubOutput("staging_lifecycle", command);
 }
 
 if (import.meta.main) {
