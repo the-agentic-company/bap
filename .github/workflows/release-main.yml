@@ -183,8 +183,6 @@ jobs:
 
   checks:
     needs: resolve
-    # Temporary fast path for validating staging verify/preflight changes.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -244,8 +242,6 @@ jobs:
         run: bun scripts/release/render-staging-lifecycle.ts resume
 
   staging-db:
-    # Temporary fast path for validating staging verify/preflight changes.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     needs:
       - resolve
       - staging-resume
@@ -256,8 +252,6 @@ jobs:
     secrets: inherit
 
   staging-daytona:
-    # Temporary fast path for validating staging verify/preflight changes.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     needs:
       - resolve
       - staging-resume
@@ -279,47 +273,33 @@ jobs:
     secrets: inherit
 
   staging-observability:
-    # Temporary fast path for validating staging verify/preflight changes.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     needs:
       - resolve
       - staging-resume
-      # Temporarily bypass observability change detection while the stack is
-      # being iterated on heavily. Keep deploying every main release until this
-      # gate is restored.
-      # - observability-changes
-    # if: ${{ needs.observability-changes.outputs.any == 'true' }}
+      - observability-changes
+    if: ${{ needs.observability-changes.outputs.any == 'true' }}
     uses: ./.github/workflows/render-observability-deploy.yml
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
       environment: staging
-      deploy_grafana: true
-      deploy_victoria_metrics: true
-      deploy_vmalert: true
-      deploy_alertmanager: true
-      deploy_vector: true
-      deploy_caddy: true
-      # deploy_grafana: ${{ needs.observability-changes.outputs.grafana == 'true' }}
-      # deploy_victoria_metrics: ${{ needs.observability-changes.outputs.victoria_metrics == 'true' }}
-      # deploy_vmalert: ${{ needs.observability-changes.outputs.vmalert == 'true' }}
-      # deploy_alertmanager: ${{ needs.observability-changes.outputs.alertmanager == 'true' }}
-      # deploy_vector: ${{ needs.observability-changes.outputs.vector == 'true' }}
-      # deploy_caddy: ${{ needs.observability-changes.outputs.caddy == 'true' }}
+      deploy_grafana: ${{ needs.observability-changes.outputs.grafana == 'true' }}
+      deploy_victoria_metrics: ${{ needs.observability-changes.outputs.victoria_metrics == 'true' }}
+      deploy_vmalert: ${{ needs.observability-changes.outputs.vmalert == 'true' }}
+      deploy_alertmanager: ${{ needs.observability-changes.outputs.alertmanager == 'true' }}
+      deploy_vector: ${{ needs.observability-changes.outputs.vector == 'true' }}
+      deploy_caddy: ${{ needs.observability-changes.outputs.caddy == 'true' }}
     secrets: inherit
 
   staging-observability-verify:
-    # Temporary fast path for validating staging verify/preflight changes.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.ref == '__run_disabled_release_job__' }}
     needs:
+      - observability-changes
       - staging-observability
-    # if: ${{ needs.observability-changes.outputs.verify_grafana == 'true' || needs.observability-changes.outputs.verify_vmalert == 'true' }}
+    if: ${{ needs.observability-changes.outputs.verify_grafana == 'true' || needs.observability-changes.outputs.verify_vmalert == 'true' }}
     uses: ./.github/workflows/verify-observability.yml
     with:
       environment: staging
-      verify_grafana: true
-      verify_vmalert: true
-      # verify_grafana: ${{ needs.observability-changes.outputs.verify_grafana == 'true' }}
-      # verify_vmalert: ${{ needs.observability-changes.outputs.verify_vmalert == 'true' }}
+      verify_grafana: ${{ needs.observability-changes.outputs.verify_grafana == 'true' }}
+      verify_vmalert: ${{ needs.observability-changes.outputs.verify_vmalert == 'true' }}
     secrets: inherit
 
   staging-verify:
