@@ -23,9 +23,17 @@ export type SystemProcess = {
   command: string;
 };
 
+type RemoteWorkerWaitOptions = {
+  timeoutMs: number;
+  intervalMs: number;
+  sleep: (ms: number) => Promise<void>;
+};
+
 const DEFAULT_SERVER_URL = "http://localhost:3000";
 const DEFAULT_LOCAL_TUNNEL_HEALTH_URL = "http://127.0.0.1:3399/__localcan/health";
 const DEFAULT_HEALTH_TIMEOUT_MS = 800;
+const DEFAULT_REMOTE_WORKER_READY_TIMEOUT_MS = 180_000;
+const DEFAULT_REMOTE_WORKER_READY_INTERVAL_MS = 5_000;
 
 const webRecovery =
   "Start the web server with `bun run dev` or `bun run dev:web`, then rerun the command.";
@@ -63,6 +71,10 @@ function formatError(error: unknown): string {
     return error.message;
   }
   return String(error);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function normalizePath(path: string): string {
@@ -271,35 +283,50 @@ async function checkLocalTunnel(): Promise<CliLivePreflightCheck> {
   });
 }
 
-async function checkRemoteWorker(env: NodeJS.ProcessEnv): Promise<CliLivePreflightCheck> {
+function resolveRemoteWorkerRequest(
+  env: NodeJS.ProcessEnv,
+): { ok: true; url: string; secret: string } | { ok: false; check: CliLivePreflightCheck } {
   const secret = env.APP_SERVER_SECRET?.trim();
   if (!secret) {
-    return missing(
-      "worker",
-      "APP_SERVER_SECRET is not configured, so remote worker readiness cannot be checked",
-      remoteWorkerRecovery,
-    );
+    return {
+      ok: false,
+      check: missing(
+        "worker",
+        "APP_SERVER_SECRET is not configured, so remote worker readiness cannot be checked",
+        remoteWorkerRecovery,
+      ),
+    };
   }
 
   let url: string;
   try {
     url = resolveCliLiveTestingApiUrl(env);
   } catch (error) {
-    return unhealthy(
-      "worker",
-      `APP_SERVER_URL is invalid: ${formatError(error)}`,
-      remoteWorkerRecovery,
-    );
+    return {
+      ok: false,
+      check: unhealthy(
+        "worker",
+        `APP_SERVER_URL is invalid: ${formatError(error)}`,
+        remoteWorkerRecovery,
+      ),
+    };
   }
 
+  return { ok: true, url, secret };
+}
+
+async function checkRemoteWorkerOnce(args: {
+  url: string;
+  secret: string;
+}): Promise<CliLivePreflightCheck> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_HEALTH_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(args.url, {
       method: "POST",
       headers: {
-        authorization: `Bearer ${secret}`,
+        authorization: `Bearer ${args.secret}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({ action: "worker:queue-ready" }),
@@ -308,13 +335,13 @@ async function checkRemoteWorker(env: NodeJS.ProcessEnv): Promise<CliLivePreflig
     const text = await response.text();
     const body = parseJsonText(text);
     if (body === null) {
-      return unhealthy("worker", `POST ${url} did not return JSON`, remoteWorkerRecovery);
+      return unhealthy("worker", `POST ${args.url} did not return JSON`, remoteWorkerRecovery);
     }
 
     if (!response.ok) {
       return unhealthy(
         "worker",
-        `POST ${url} returned HTTP ${response.status}`,
+        `POST ${args.url} returned HTTP ${response.status}`,
         remoteWorkerRecovery,
       );
     }
@@ -330,10 +357,46 @@ async function checkRemoteWorker(env: NodeJS.ProcessEnv): Promise<CliLivePreflig
       error instanceof Error && error.name === "AbortError"
         ? `timed out after ${DEFAULT_HEALTH_TIMEOUT_MS}ms`
         : formatError(error);
-    return missing("worker", `POST ${url} failed: ${reason}`, remoteWorkerRecovery);
+    return missing("worker", `POST ${args.url} failed: ${reason}`, remoteWorkerRecovery);
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function checkRemoteWorker(
+  env: NodeJS.ProcessEnv,
+  options: Partial<RemoteWorkerWaitOptions> = {},
+): Promise<CliLivePreflightCheck> {
+  const request = resolveRemoteWorkerRequest(env);
+  if (!request.ok) {
+    return request.check;
+  }
+
+  const timeoutMs = options.timeoutMs ?? DEFAULT_REMOTE_WORKER_READY_TIMEOUT_MS;
+  const intervalMs = options.intervalMs ?? DEFAULT_REMOTE_WORKER_READY_INTERVAL_MS;
+  const sleepFn = options.sleep ?? sleep;
+  const deadline = Date.now() + timeoutMs;
+  const poll = async (): Promise<CliLivePreflightCheck> => {
+    const check = await checkRemoteWorkerOnce({
+      url: request.url,
+      secret: request.secret,
+    });
+    if (check.status === "ok") {
+      return check;
+    }
+
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      return {
+        ...check,
+        detail: `${check.detail} after waiting ${Math.round(timeoutMs / 1000)}s`,
+      };
+    }
+    await sleepFn(Math.min(intervalMs, remainingMs));
+    return poll();
+  };
+
+  return poll();
 }
 
 async function checkBapMcp(env: NodeJS.ProcessEnv): Promise<CliLivePreflightCheck> {
@@ -574,13 +637,14 @@ function checkWorkerProcess(env: NodeJS.ProcessEnv, repoRoot: string): CliLivePr
 export async function runCliLivePreflight(args: {
   env: NodeJS.ProcessEnv;
   repoRoot: string;
+  remoteWorkerWait?: Partial<RemoteWorkerWaitOptions>;
 }): Promise<CliLivePreflightResult> {
   const target = resolveCliLivePreflightTarget(args.env);
   const [web, worker, tunnel, bapMcp] =
     target === "remote"
       ? await Promise.all([
           checkWebServer(args.env, target),
-          checkRemoteWorker(args.env),
+          checkRemoteWorker(args.env, args.remoteWorkerWait),
           Promise.resolve<CliLivePreflightCheck | null>(null),
           checkBapMcp(args.env),
         ])

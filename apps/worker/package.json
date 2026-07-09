@@ -1,7 +1,7 @@
 {
   "name": "@bap/worker",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "bun --watch --env-file=../../.env index.ts",
@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@bap/core": "workspace:*",
-    "@bap/db": "workspace:*"
+    "@bap/db": "workspace:*",
+    "sharp": "0.35.1"
   },
   "devDependencies": {
     "typescript": "^5"
