@@ -13,10 +13,7 @@
   },
   "dependencies": {
     "@bap/core": "workspace:*",
-    "@bap/db": "workspace:*",
-    "@bap/sandbox": "workspace:*",
-    "form-data": "^4.0.5",
-    "sharp": "0.35.1"
+    "@bap/db": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5"
