@@ -45,6 +45,29 @@ describe("permission-checker", () => {
     });
   });
 
+  it("parses integration commands with leading global options", () => {
+    expect(parseBashCommand('slack --account baptiste-2 send -c C123 -t "hi" --as bot')).toEqual({
+      integration: "slack",
+      operation: "send",
+      integrationName: "Slack",
+      isWrite: true,
+    });
+
+    expect(
+      checkToolPermissions(
+        "bash",
+        { command: 'slack --account baptiste-2 send -c C123 -t "hi" --as bot' },
+        ["slack"],
+      ),
+    ).toEqual({
+      allowed: false,
+      needsApproval: true,
+      needsAuth: false,
+      integration: "slack",
+      integrationName: "Slack",
+    });
+  });
+
   it("parses agent-browser commands for tool metadata", () => {
     expect(parseBashCommand("agent-browser screenshot --full /tmp/example.png")).toEqual({
       integration: "agent-browser",
