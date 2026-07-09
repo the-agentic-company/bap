@@ -512,12 +512,13 @@ async function postLifecycleOrRecover(
   command: Command,
   resource: Resource,
   id: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await postLifecycle(command, resource, id);
+    return true;
   } catch (error) {
     if (await handleLifecyclePostError(command, resource, id, error)) {
-      return;
+      return false;
     }
     throw error;
   }
@@ -534,8 +535,9 @@ async function applyLifecycle(command: Command, resource: Resource): Promise<voi
   }
 
   console.log(`[render-staging-lifecycle] ${command} ${resource.kind} ${resource.name}`);
-  await postLifecycleOrRecover(command, resource, id);
-  await waitForState(command, resource, id);
+  if (await postLifecycleOrRecover(command, resource, id)) {
+    await waitForState(command, resource, id);
+  }
 }
 
 function isCommand(value: string | undefined): value is Command {
