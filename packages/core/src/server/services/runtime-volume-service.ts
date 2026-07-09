@@ -242,16 +242,7 @@ function getRuntimeVolumeStsClient(): STSClient {
 }
 
 function getRuntimeVolumeStsEndpoint(): string | undefined {
-  if (!env.AWS_ENDPOINT_URL) {
-    return undefined;
-  }
-
-  try {
-    const host = new URL(env.AWS_ENDPOINT_URL).host;
-    return host.endsWith("amazonaws.com") ? undefined : env.AWS_ENDPOINT_URL;
-  } catch {
-    return env.AWS_ENDPOINT_URL;
-  }
+  return undefined;
 }
 
 export async function issueRuntimeVolumeS3Credentials(input: {
@@ -267,9 +258,9 @@ export async function issueRuntimeVolumeS3Credentials(input: {
     throw new Error("runtime_volume_credentials_no_roots: no Runtime Volume roots requested");
   }
 
-  if (shouldUseStaticRuntimeVolumeCredentialsForLocalS3()) {
+  if (shouldUseStaticRuntimeVolumeCredentialsForEndpoint(env.AWS_ENDPOINT_URL)) {
     logger.warn({
-      event: "runtime_volume.local_static_s3_credentials",
+      event: "runtime_volume.static_s3_credentials",
       endpointHost: getRuntimeVolumeS3EndpointHost(),
       rootCount: roots.length,
     });
@@ -299,25 +290,29 @@ export async function issueRuntimeVolumeS3Credentials(input: {
   };
 }
 
-function shouldUseStaticRuntimeVolumeCredentialsForLocalS3(): boolean {
-  const host = getRuntimeVolumeS3EndpointHost();
+export function shouldUseStaticRuntimeVolumeCredentialsForEndpoint(endpointUrl?: string): boolean {
+  const host = getRuntimeVolumeS3EndpointHost(endpointUrl);
   if (!host) {
     return false;
   }
 
-  const hostname = host.split(":")[0]?.toLowerCase();
-  return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1";
+  return !isAwsS3EndpointHost(host);
 }
 
-function getRuntimeVolumeS3EndpointHost(): string | undefined {
-  if (!env.AWS_ENDPOINT_URL) {
+function isAwsS3EndpointHost(host: string): boolean {
+  const hostname = host.split(":")[0]?.toLowerCase();
+  return Boolean(hostname?.endsWith("amazonaws.com") || hostname?.endsWith("amazonaws.com.cn"));
+}
+
+function getRuntimeVolumeS3EndpointHost(endpointUrl = env.AWS_ENDPOINT_URL): string | undefined {
+  if (!endpointUrl) {
     return undefined;
   }
 
   try {
-    return new URL(env.AWS_ENDPOINT_URL).host;
+    return new URL(endpointUrl).host;
   } catch {
-    return env.AWS_ENDPOINT_URL;
+    return endpointUrl;
   }
 }
 
