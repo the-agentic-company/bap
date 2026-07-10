@@ -9,6 +9,8 @@ export type HostedMcpScope = HostedMcpAudience;
 export type HostedMcpAccessTokenClaims = {
   userId: string;
   workspaceId: string;
+  allowedWorkspaceIds: string[];
+  allowAllWorkspaces: boolean;
   audience: HostedMcpAudience;
   scope: HostedMcpScope[];
   clientId: string;
@@ -21,6 +23,8 @@ export type HostedMcpAccessTokenClaims = {
 
 type HostedMcpJwtPayload = {
   workspace_id: string;
+  allowed_workspace_ids?: string[];
+  allow_all_workspaces?: boolean;
   client_id: string;
   grant_id: string;
   scope: string;
@@ -28,6 +32,36 @@ type HostedMcpJwtPayload = {
 
 function getSigningKey(secret: string): Uint8Array {
   return new TextEncoder().encode(secret);
+}
+
+function normalizeHostedMcpWorkspaceIds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .map((workspaceId) => (typeof workspaceId === "string" ? workspaceId.trim() : ""))
+        .filter((workspaceId) => workspaceId.length > 0),
+    ),
+  );
+}
+
+function readRequiredHostedMcpString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function resolveHostedMcpAudienceClaim(value: unknown): HostedMcpAudience | null {
+  const audience =
+    typeof value === "string" ? value : Array.isArray(value) ? readRequiredHostedMcpString(value[0]) : null;
+
+  return audience && isHostedMcpAudience(audience) ? audience : null;
 }
 
 function normalizeIssuerCandidate(value: string | URL): URL {
@@ -73,6 +107,8 @@ export function hashHostedMcpSecret(value: string): string {
 export async function signHostedMcpAccessToken(input: {
   userId: string;
   workspaceId: string;
+  allowedWorkspaceIds?: string[];
+  allowAllWorkspaces?: boolean;
   audience: HostedMcpAudience;
   scope: HostedMcpScope[];
   clientId: string;
@@ -93,6 +129,8 @@ export async function signHostedMcpAccessToken(input: {
 
   return new SignJWT({
     workspace_id: input.workspaceId,
+    allowed_workspace_ids: normalizeHostedMcpWorkspaceIds(input.allowedWorkspaceIds ?? []),
+    allow_all_workspaces: input.allowAllWorkspaces ?? false,
     client_id: input.clientId,
     grant_id: input.grantId,
     scope: scope.join(" "),
@@ -125,20 +163,17 @@ export async function verifyHostedMcpAccessToken(
   });
 
   const payload = verified.payload as typeof verified.payload & HostedMcpJwtPayload;
-  const userId = typeof payload.sub === "string" ? payload.sub : null;
-  const workspaceId = typeof payload.workspace_id === "string" ? payload.workspace_id.trim() : "";
-  const clientId = typeof payload.client_id === "string" ? payload.client_id.trim() : "";
-  const grantId = typeof payload.grant_id === "string" ? payload.grant_id.trim() : "";
-  const audience =
-    typeof payload.aud === "string"
-      ? payload.aud
-      : Array.isArray(payload.aud)
-        ? payload.aud[0]
-        : null;
+  const userId = readRequiredHostedMcpString(payload.sub);
+  const workspaceId = readRequiredHostedMcpString(payload.workspace_id);
+  const allowedWorkspaceIds = normalizeHostedMcpWorkspaceIds(payload.allowed_workspace_ids);
+  const allowAllWorkspaces = payload.allow_all_workspaces === true;
+  const clientId = readRequiredHostedMcpString(payload.client_id);
+  const grantId = readRequiredHostedMcpString(payload.grant_id);
+  const audience = resolveHostedMcpAudienceClaim(payload.aud);
   const scopes = normalizeHostedMcpScopes(payload.scope);
   const exp = typeof payload.exp === "number" ? payload.exp : null;
   const iat = typeof payload.iat === "number" ? payload.iat : null;
-  const iss = typeof payload.iss === "string" ? payload.iss : issuer;
+  const iss = readRequiredHostedMcpString(payload.iss) ?? issuer;
 
   if (
     !userId ||
@@ -146,7 +181,6 @@ export async function verifyHostedMcpAccessToken(
     !clientId ||
     !grantId ||
     !audience ||
-    !isHostedMcpAudience(audience) ||
     scopes.length === 0 ||
     exp === null ||
     iat === null
@@ -157,6 +191,8 @@ export async function verifyHostedMcpAccessToken(
   return {
     userId,
     workspaceId,
+    allowedWorkspaceIds,
+    allowAllWorkspaces,
     audience,
     scope: scopes,
     clientId,

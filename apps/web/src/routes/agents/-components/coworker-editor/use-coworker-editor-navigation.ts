@@ -211,7 +211,7 @@ export function useCoworkerEditorNavigation({
 
   const handleTabChange = useCallback(
     (key: string) => {
-      const nextTab = (key === "runs" ? "instruction" : key) as CoworkerTab;
+      const nextTab = (key === "runs" ? "instruction" : key) as Exclude<CoworkerTab, "runs">;
       setActiveTab(nextTab);
       setSelectedRunId(null);
 

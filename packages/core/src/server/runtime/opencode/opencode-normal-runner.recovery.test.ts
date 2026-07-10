@@ -100,6 +100,7 @@ function preparedAssets() {
     writtenIntegrationSkills: [],
     prePromptCacheHit: false,
     startPostPromptCacheWrite: null,
+    runtimeVolumeMountPlan: null,
   };
 }
 
@@ -153,7 +154,7 @@ function createContext(overrides: Partial<GenerationContext> = {}): GenerationCo
 
 function createSandbox(overrides: Partial<SandboxHandle> = {}): SandboxHandle {
   return {
-    provider: "e2b",
+    provider: "daytona",
     sandboxId: "sandbox-1",
     exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
     writeFile: vi.fn().mockResolvedValue(undefined),

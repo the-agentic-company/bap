@@ -163,6 +163,13 @@ export type DoneArtifactsData = {
   sandboxFiles: SandboxFileData[];
 };
 
+export type FileAttachmentInput = {
+  fileAssetId: string;
+  name?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+};
+
 export type GenerationStartInput = {
   conversationId?: string;
   content: string;
@@ -176,12 +183,7 @@ export type GenerationStartInput = {
   debugRuntimeNoProgressTimeoutMs?: number;
   debugForceRuntimeNoProgressAfterPrompt?: boolean;
   selectedPlatformSkillSlugs?: string[];
-  fileAttachments?: Array<{
-    fileAssetId: string;
-    name?: string;
-    mimeType?: string;
-    sizeBytes?: number;
-  }>;
+  fileAttachments?: FileAttachmentInput[];
 };
 
 export type GenerationStreamEvent = {
@@ -319,6 +321,7 @@ export type CoworkerDetails = {
     startedAt: string | Date;
     finishedAt: string | Date | null;
     errorMessage: string | null;
+    failureKind: string | null;
   }>;
 };
 
@@ -442,6 +445,7 @@ export type CoworkerRun = {
   startedAt: string | Date;
   finishedAt: string | Date | null;
   errorMessage: string | null;
+  failureKind: string | null;
   debugInfo: unknown;
   events: CoworkerRunEvent[];
 };
@@ -452,6 +456,7 @@ export type CoworkerRunSummary = {
   startedAt: string | Date;
   finishedAt: string | Date | null;
   errorMessage: string | null;
+  failureKind: string | null;
 };
 
 export type CoworkerRunStatus =
@@ -510,6 +515,44 @@ export interface BapApiClient {
   user: {
     me(): Promise<BapUser>;
   };
+  billing: {
+    overview(): Promise<{
+      owner: {
+        ownerType: "workspace";
+        ownerId: string;
+        planId: string;
+        autumnCustomerId?: string;
+      };
+      plan?: unknown;
+      feature?: unknown;
+      recentCharges?: unknown[];
+      recentTopUps?: unknown[];
+      workspaces: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        imageUrl: string | null;
+        role: string;
+        billingPlanId: string;
+        active: boolean;
+      }>;
+    }>;
+    createWorkspace(input: { name: string }): Promise<{
+      id: string;
+      name: string;
+      billingPlanId: string;
+    }>;
+    switchWorkspace(input: { workspaceId: string | null }): Promise<{ success: boolean }>;
+    inviteMembers(input: {
+      workspaceId: string;
+      emails: string[];
+      role?: "admin" | "member";
+    }): Promise<{
+      added: string[];
+      alreadyMembers: string[];
+      notFound: string[];
+    }>;
+  };
   providerAuth: {
     status(): Promise<ProviderAuthStatus>;
     freeModels(): Promise<FreeModelsResponse>;
@@ -518,6 +561,13 @@ export interface BapApiClient {
     startGeneration(input: GenerationStartInput): Promise<{
       generationId: string;
       conversationId: string;
+    }>;
+    markCurrentCoworkerRunFailed(input: { reason: string; message?: string }): Promise<{
+      status: "failed";
+      generationId: string;
+      conversationId: string;
+      coworkerRunId: string;
+      active: boolean;
     }>;
     getActiveGeneration(input: { conversationId: string }): Promise<{
       generationId: string | null;
@@ -574,6 +624,17 @@ export interface BapApiClient {
     get(input: { id: string }): Promise<CoworkerDetails>;
     create(input: CoworkerCreateInput): Promise<CoworkerCreateResult>;
     update(input: CoworkerUpdateInput): Promise<{ success: true }>;
+    delete(input: { id: string }): Promise<{ success: boolean }>;
+    moveWorkspace(input: {
+      coworkerId: string;
+      targetWorkspaceId: string;
+    }): Promise<{
+      id: string;
+      workspaceId: string;
+      sourceWorkspaceId: string;
+      targetWorkspaceId: string;
+      triggerType: string;
+    }>;
     uploadDocument(input: CoworkerDocumentUploadInput): Promise<CoworkerDocumentUploadResult>;
     updateDocument(input: CoworkerDocumentUpdateInput): Promise<CoworkerDocumentUpdateResult>;
     deleteDocument(input: { id: string }): Promise<{ success: true; filename: string }>;
@@ -583,6 +644,7 @@ export interface BapApiClient {
       payload?: unknown;
       debugRunDeadlineMs?: number;
       trustedUserInput?: string;
+      fileAttachments?: FileAttachmentInput[];
     }): Promise<CoworkerTriggerResult>;
     getRun(input: { id: string }): Promise<CoworkerRun>;
     listRuns(input: { coworkerId: string; limit: number }): Promise<CoworkerRunSummary[]>;

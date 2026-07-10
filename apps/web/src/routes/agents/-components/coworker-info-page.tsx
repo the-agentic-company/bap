@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { ChatArea } from "@/components/chat/chat-area";
 import { findLatestAgenticAppFile } from "@/components/chat/agentic-app-selection";
 import { mapPersistedMessagesToChatMessages } from "@/components/chat/persisted-message-mapper";
 import { ChatShareControls } from "@/components/chat/chat-share-controls";
@@ -20,6 +19,10 @@ import {
   extractRemoteRunSourceDetails,
   RemoteRunSourceBanner,
 } from "@/components/coworkers/remote-run-source-banner";
+import {
+  isRunnerDeclaredFailure,
+  RunnerDeclaredFailureChatArea,
+} from "@/components/coworkers/runner-declared-failure";
 import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -84,7 +87,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const selectedRunId =
     coworkerRuns.data?.some((candidate) => candidate.id === requestedRunId) && requestedRunId
       ? requestedRunId
-      : coworkerRuns.data?.[0]?.id ?? latestKnownRunId;
+      : (coworkerRuns.data?.[0]?.id ?? latestKnownRunId);
   const run = useCoworkerRun(selectedRunId, {
     enabled: Boolean(selectedRunId),
   });
@@ -97,12 +100,14 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const shouldWaitForCoworkerList = !routeCoworkerId;
   const shouldWaitForCoworkerRuns = Boolean(requestedRunId || latestKnownRunId);
-  const isRunSelectionLoading = shouldWaitForCoworkerRuns && !selectedRunId && coworkerRuns.isLoading;
+  const isRunSelectionLoading =
+    shouldWaitForCoworkerRuns && !selectedRunId && coworkerRuns.isLoading;
   const isRunLoading =
     (shouldWaitForCoworkerList && coworkerList.isLoading) ||
     isRunSelectionLoading ||
     Boolean(selectedRunId && run.isLoading);
   const conversationId = run.data?.conversationId ?? undefined;
+  const runnerDeclaredFailure = isRunnerDeclaredFailure(run.data?.failureKind);
   const conversation = useConversation(conversationId);
   const { mutateAsync: downloadSandboxFile, isPending: isDownloadingOutput } =
     useDownloadSandboxFile();
@@ -166,6 +171,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         latestCoworkerMessage={latestCoworkerMessage}
         runStatus={run.data?.status}
         runErrorMessage={run.data?.errorMessage}
+        runFailureKind={run.data?.failureKind}
         showOutputToolbar={false}
       />
     ),
@@ -174,6 +180,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       latestCoworkerMessage,
       outputFile,
       run.data?.errorMessage,
+      run.data?.failureKind,
       run.data?.status,
     ],
   );
@@ -303,9 +310,11 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       <RunDetailsPanel
         conversationId={conversationId}
         hiddenMessageContents={hiddenErrorMessageContents}
+        runDebugInfo={run.data?.debugInfo}
+        runFailureKind={run.data?.failureKind}
       />
     ),
-    [conversationId, hiddenErrorMessageContents],
+    [conversationId, hiddenErrorMessageContents, run.data?.debugInfo, run.data?.failureKind],
   );
   const emptyOutputPanel = useMemo(
     () => (
@@ -342,13 +351,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     <section className="bg-background/95 z-10 hidden shrink-0 px-3 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:block md:px-6 md:py-3">
       <div className="flex min-h-10 items-center gap-2 md:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            asChild
-          >
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
             <Link href={backToCoworkersHref} aria-label="Back to coworkers">
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -366,11 +369,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           </h1>
           {shouldShowHeaderRunMeta ? (
             <p className="text-muted-foreground min-w-0 shrink truncate text-sm">
-              {headerRunMeta.launchedAtLabel} · duration:{" "}
-              {headerRunMeta.runStatus === "running"
-                ? headerRunMeta.durationLabel
-                : headerRunMeta.durationLabel}{" "}
-              ·{" "}
+              {headerRunMeta.launchedAtLabel} · duration: {headerRunMeta.durationLabel} ·{" "}
               <span className={cn("font-semibold", headerRunMeta.statusPresentation.className)}>
                 {headerRunMeta.statusPresentation.label}
               </span>
@@ -489,13 +488,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const mobileHeaderSection = (
     <section className="bg-background/95 z-10 shrink-0 px-4 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:hidden">
       <div className="flex min-h-10 items-center gap-2.5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0"
-          asChild
-        >
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
           <Link href={backToCoworkersHref} aria-label="Back to coworkers">
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -650,11 +643,13 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                   outputPanel
                 ) : conversationId ? (
                   <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
-                    <ChatArea
+                    <RunnerDeclaredFailureChatArea
                       conversationId={conversationId}
                       compact
-                      hideStreamError
+                      debugInfo={run.data?.debugInfo}
                       hiddenMessageContents={hiddenErrorMessageContents}
+                      hideStreamError
+                      runnerDeclaredFailure={runnerDeclaredFailure}
                     />
                   </div>
                 ) : (

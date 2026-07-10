@@ -431,7 +431,8 @@ Production endpoints:
 
 Render uses the API key from the repository `.env` file. Load
 `RENDER_API_KEY` without printing it and pass it only through the command
-environment:
+environment; do not use interactive `render login` for agent or incident
+workflows:
 
 ```bash
 RENDER_API_KEY="$(sed -n 's/^RENDER_API_KEY=//p' .env | tail -1 | sed 's/^"//;s/"$//')" \
@@ -445,8 +446,17 @@ RENDER_API_KEY="$(sed -n 's/^RENDER_API_KEY=//p' .env | tail -1 | sed 's/^"//;s/
   render deploys list <service-id> --output json
 
 RENDER_API_KEY="$(sed -n 's/^RENDER_API_KEY=//p' .env | tail -1 | sed 's/^"//;s/"$//')" \
+  render deploys create srv-d7n6bffavr4c73feco1g --confirm --output json
+
+RENDER_API_KEY="$(sed -n 's/^RENDER_API_KEY=//p' .env | tail -1 | sed 's/^"//;s/"$//')" \
+  render deploys create srv-d7oft3egvqtc73fbpu2g --confirm --output json
+
+RENDER_API_KEY="$(sed -n 's/^RENDER_API_KEY=//p' .env | tail -1 | sed 's/^"//;s/"$//')" \
   render logs --resources <service-id> --start <iso8601> --end <iso8601> --output json
 ```
+
+The web service ids are `srv-d7n6bffavr4c73feco1g` for `bap-web-staging` and
+`srv-d7oft3egvqtc73fbpu2g` for `bap-web-prod`.
 
 Hosted S3 uses the same access key and secret for staging and production; only
 the endpoint URL changes. Load `.env.staging.observability` or

@@ -13,6 +13,7 @@ type InstanceMetadata = {
   instanceId: string;
   repoRoot: string;
   appUrl: string;
+  minioBucketName?: string;
 };
 
 const DEFAULT_PROXY_PORT = 3399;
@@ -108,6 +109,8 @@ function loadInstanceMetadata(worktreeRoot: string): InstanceMetadata | null {
       instanceId: parsed.instanceId,
       repoRoot: parsed.repoRoot,
       appUrl: parsed.appUrl,
+      minioBucketName:
+        typeof parsed.minioBucketName === "string" ? parsed.minioBucketName : undefined,
     };
   } catch {
     return null;
@@ -125,6 +128,10 @@ function resolveInstanceRoot(instanceId: string): string {
 
 function resolveMainAppUrl(): string {
   return `http://127.0.0.1:${process.env.PORT ?? "3000"}`;
+}
+
+function resolveLocalMinioUrl(): string {
+  return `http://127.0.0.1:${process.env.BAP_MINIO_API_PORT ?? process.env.APP_MINIO_API_PORT ?? "9000"}`;
 }
 
 function buildLocalTunnelHealthUrl(port: number): string {
@@ -152,9 +159,16 @@ async function isHealthyLocalTunnelRunning(port: number): Promise<boolean> {
   }
 }
 
-function buildProxyRequest(request: Request, target: URL, requestUrl: URL): Request {
+function buildProxyRequest(
+  request: Request,
+  target: URL,
+  requestUrl: URL,
+  options: { preserveHost?: boolean } = {},
+): Request {
   const headers = new Headers(request.headers);
-  headers.set("host", target.host);
+  if (!options.preserveHost) {
+    headers.set("host", target.host);
+  }
   headers.set("x-forwarded-host", requestUrl.host);
   headers.set("x-forwarded-proto", requestUrl.protocol.replace(":", ""));
   headers.set("x-bap-localcan-proxy", "1");
@@ -175,7 +189,7 @@ async function idleInWorktree(): Promise<never> {
 
 export async function runLocalTunnelProxy(): Promise<void> {
   const repoRoot = resolveRepoRoot();
-  if (!isMainCheckout(repoRoot)) {
+  if (!isMainCheckout(repoRoot) && process.env.BAP_LOCAL_TUNNEL_ALLOW_WORKTREE !== "1") {
     await idleInWorktree();
     return;
   }
@@ -203,16 +217,25 @@ export async function runLocalTunnelProxy(): Promise<void> {
         });
       }
 
+      const worktreeMetadata = listWorktreeRoots(repoRoot)
+        .map((worktreeRoot) => loadInstanceMetadata(worktreeRoot))
+        .filter((metadata): metadata is InstanceMetadata => metadata !== null);
+      const runtimeVolumeS3Target = matchRuntimeVolumeS3ProxyTarget(
+        requestUrl.pathname,
+        worktreeMetadata,
+      );
+      if (runtimeVolumeS3Target || matchesConfiguredLocalS3Bucket(requestUrl.pathname)) {
+        const target = new URL(`${requestUrl.pathname}${requestUrl.search}`, resolveLocalMinioUrl());
+        return await fetch(buildProxyRequest(request, target, requestUrl, { preserveHost: true }));
+      }
+
       const worktreeRoute = matchWorktreePublicRoute(requestUrl.pathname);
       let targetBaseUrl = resolveMainAppUrl();
       let targetPath = requestUrl.pathname;
 
       if (worktreeRoute) {
         const metadataByInstanceId = new Map(
-          listWorktreeRoots(repoRoot)
-            .map((worktreeRoot) => loadInstanceMetadata(worktreeRoot))
-            .filter((metadata): metadata is InstanceMetadata => metadata !== null)
-            .map((metadata) => [metadata.instanceId, metadata]),
+          worktreeMetadata.map((metadata) => [metadata.instanceId, metadata]),
         );
         const metadata = metadataByInstanceId.get(worktreeRoute.instanceId);
         if (!metadata) {
@@ -247,6 +270,33 @@ export async function runLocalTunnelProxy(): Promise<void> {
   });
 
   console.log(`[worktree] localcan proxy listening on http://127.0.0.1:${port}`);
+}
+
+function matchRuntimeVolumeS3ProxyTarget(
+  pathname: string,
+  metadata: readonly InstanceMetadata[],
+): InstanceMetadata | null {
+  for (const instance of metadata) {
+    const bucket = instance.minioBucketName;
+    if (!bucket) {
+      continue;
+    }
+
+    if (pathname === `/${bucket}` || pathname.startsWith(`/${bucket}/`)) {
+      return instance;
+    }
+  }
+
+  return null;
+}
+
+function matchesConfiguredLocalS3Bucket(pathname: string): boolean {
+  const bucket = process.env.AWS_S3_BUCKET_NAME?.trim();
+  if (!bucket) {
+    return false;
+  }
+
+  return pathname === `/${bucket}` || pathname.startsWith(`/${bucket}/`);
 }
 
 if (import.meta.main) {

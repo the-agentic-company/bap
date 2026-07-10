@@ -28,13 +28,15 @@ Each worktree gets:
 - its own Postgres database and Postgres role on the shared Postgres server
 - its own Redis ACL user and Redis key namespace on the shared Redis server
 - its own MinIO bucket and MinIO credentials on the shared MinIO server
-- a 2-digit stack slot used to derive worktree-only ports such as `37xx`, `47xx`, and optional Daytona ports
+- its own Zero cache container pointed at this worktree's database and app query URL
+- a 2-digit stack slot used to derive worktree-only ports such as `37xx`, `47xx`, `58xx`, and optional Daytona ports
 - shared observability endpoints, with telemetry labeled by `BAP_INSTANCE_ID`, `BAP_WORKTREE_ID`, and `BAP_WORKTREE_SLOT`
 
 Example:
 
 - slot `07` maps to app port `3707`
 - slot `07` maps to WS port `4707`
+- slot `07` maps to Zero cache port `5807`
 - all worktrees still send logs, metrics, and traces to the same shared local observability stack
 
 ## Start a worktree app
@@ -45,7 +47,7 @@ From inside the worktree:
 bun .agents/skills/worktree/cli/src/cli.ts setup
 ```
 
-This fails fast if Docker is not installed or the Docker daemon is not running. Otherwise it reuses the repo-global `bap-local` shared infrastructure (starting the missing shared services there only when needed), provisions the worktree-specific Postgres, Redis, and MinIO credentials, writes the generated `.env`, and starts the web, worker, and WS processes for that worktree.
+This fails fast if Docker is not installed or the Docker daemon is not running. Otherwise it reuses the repo-global `bap-local` shared infrastructure (starting the missing shared services there only when needed), provisions the worktree-specific Postgres, Redis, and MinIO credentials, reconciles Zero cache for the worktree database and app port, writes the generated `.env`, and starts the web, worker, and WS processes for that worktree.
 
 If ten worktree web servers are already running, `setup` fails before launching another web dev process.
 

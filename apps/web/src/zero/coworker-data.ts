@@ -5,6 +5,7 @@ type ZeroRunLike = {
   readonly id: string;
   readonly coworkerId: string;
   readonly status: string;
+  readonly failureKind?: string | null;
   readonly generationId?: string | null;
   readonly conversationId?: string | null;
   readonly startedAt: number | string | Date;
@@ -66,6 +67,7 @@ export function mapZeroCoworkerRun(run: ZeroRunLike) {
     id: run.id,
     coworkerId: run.coworkerId,
     status: run.status,
+    failureKind: run.failureKind ?? null,
     generationId: run.generationId ?? null,
     conversationId: run.conversationId ?? null,
     startedAt: asDate(run.startedAt),

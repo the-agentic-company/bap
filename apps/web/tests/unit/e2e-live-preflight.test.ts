@@ -10,6 +10,36 @@ import {
   type CliLivePreflightResult,
 } from "../../scripts/e2e-live-preflight";
 
+const stagingPreflightEnv = {
+  APP_MCP_BASE_URL: "https://mcp.staging.heybap.com",
+  APP_SERVER_SECRET: "secret",
+  APP_SERVER_URL: "https://staging.heybap.com",
+};
+
+type WorkerReadinessResponse = {
+  ready: boolean;
+  queueName: string;
+  workerCount: number;
+  counts: Record<string, number>;
+};
+
+function mockRemotePreflightFetch(readWorkerQueue: () => WorkerReadinessResponse) {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input, _init) => {
+    const url = String(input);
+    if (url === "https://staging.heybap.com/api/health") {
+      return Response.json({ ok: true, checks: { database: true, redis: true } });
+    }
+    if (url === "https://staging.heybap.com/api/internal/testing/cli-live") {
+      return Response.json(readWorkerQueue());
+    }
+    if (url === "https://mcp.staging.heybap.com/bap") {
+      return new Response("ok");
+    }
+
+    return new Response("not found", { status: 404 });
+  });
+}
+
 describe("e2e-live cli preflight", () => {
   test("resolves the web health URL from APP_SERVER_URL", () => {
     expect(resolveCliLiveWebHealthUrl({ APP_SERVER_URL: "http://127.0.0.1:3707/base" })).toBe(
@@ -34,33 +64,18 @@ describe("e2e-live cli preflight", () => {
   });
 
   test("remote preflight does not require local worker or tunnel processes", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, _init) => {
-      const url = String(input);
-      if (url === "https://staging.heybap.com/api/health") {
-        return Response.json({ ok: true, checks: { database: true, redis: true } });
-      }
-      if (url === "https://staging.heybap.com/api/internal/testing/cli-live") {
-        return Response.json({
-          ready: true,
-          queueName: "bap-staging",
-          workerCount: 1,
-          counts: {},
-        });
-      }
-      if (url === "https://mcp.staging.heybap.com/bap") {
-        return new Response("ok");
-      }
-
-      return new Response("not found", { status: 404 });
+    const fetchMock = mockRemotePreflightFetch(() => {
+      return {
+        ready: true,
+        queueName: "bap-staging",
+        workerCount: 1,
+        counts: {},
+      };
     });
 
     try {
       const result = await runCliLivePreflight({
-        env: {
-          APP_MCP_BASE_URL: "https://mcp.staging.heybap.com",
-          APP_SERVER_SECRET: "secret",
-          APP_SERVER_URL: "https://staging.heybap.com",
-        },
+        env: stagingPreflightEnv,
         repoRoot: "/does/not/exist",
       });
 
@@ -75,6 +90,41 @@ describe("e2e-live cli preflight", () => {
         "https://staging.heybap.com/api/internal/testing/cli-live",
         expect.objectContaining({ method: "POST" }),
       ]);
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  test("waits for a remote worker to register after deploy", async () => {
+    let workerChecks = 0;
+    const sleep = vi.fn<(ms: number) => Promise<void>>(async () => undefined);
+    const fetchMock = mockRemotePreflightFetch(() => {
+      workerChecks += 1;
+      return {
+        ready: workerChecks >= 3,
+        queueName: "bap-staging",
+        workerCount: workerChecks >= 3 ? 1 : 0,
+        counts: {},
+      };
+    });
+
+    try {
+      const result = await runCliLivePreflight({
+        env: stagingPreflightEnv,
+        repoRoot: "/does/not/exist",
+        remoteWorkerWait: {
+          intervalMs: 1,
+          sleep,
+          timeoutMs: 10_000,
+        },
+      });
+
+      expect(result.ok).toBe(true);
+      expect(workerChecks).toBe(3);
+      expect(sleep).toHaveBeenCalledTimes(2);
+      expect(result.checks.find((check) => check.service === "worker")?.detail).toBe(
+        'remote queue "bap-staging" has 1 registered worker(s)',
+      );
     } finally {
       fetchMock.mockRestore();
     }

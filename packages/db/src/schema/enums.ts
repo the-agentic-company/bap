@@ -5,12 +5,6 @@ export const magicLinkRequestStatusEnum = pgEnum("magic_link_request_status", [
   "consumed",
 ]);
 
-export const workspaceMembershipRoleEnum = pgEnum("workspace_membership_role", [
-  "owner",
-  "admin",
-  "member",
-]);
-
 export const billingOwnerTypeEnum = pgEnum("billing_owner_type", ["user", "workspace"]);
 export const providerAuthSourceEnum = pgEnum("provider_auth_source", ["user", "shared"]);
 export const workspaceMcpServerKindEnum = pgEnum("workspace_mcp_server_kind", ["mcp"]);
@@ -161,3 +155,9 @@ export const integrationSkillSourceEnum = pgEnum("integration_skill_source", [
 ]);
 
 export const integrationSkillVisibilityEnum = pgEnum("integration_skill_visibility", ["public"]);
+
+export const runtimeVolumeKindEnum = pgEnum("runtime_volume_kind", [
+  "owned_skills",
+  "shared_skills",
+  "coworker_documents",
+]);

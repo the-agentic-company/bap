@@ -115,11 +115,7 @@ afterEach(() => {
 describe("OutputPanel Agentic-App prompts", () => {
   it("sends inline iframe prompts through the selected run conversation", async () => {
     render(
-      <OutputPanel
-        outputFile={outputFile}
-        conversationId="conv-run-1"
-        runStatus="completed"
-      />,
+      <OutputPanel outputFile={outputFile} conversationId="conv-run-1" runStatus="completed" />,
     );
 
     const iframe = screen.getByTitle("output.html Agentic-App") as HTMLIFrameElement;
@@ -140,11 +136,7 @@ describe("OutputPanel Agentic-App prompts", () => {
 
   it("sends fullscreen iframe prompts through the selected run conversation", async () => {
     render(
-      <OutputPanel
-        outputFile={outputFile}
-        conversationId="conv-run-2"
-        runStatus="completed"
-      />,
+      <OutputPanel outputFile={outputFile} conversationId="conv-run-2" runStatus="completed" />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Open Agentic-App fullscreen" }));
@@ -198,6 +190,7 @@ describe("OutputPanel empty states", () => {
     expect(screen.getByTitle("output.html Agentic-App")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Download output" })).toBeNull();
   });
+
   it("shows a loading message while the run is generating output", () => {
     render(<OutputPanel conversationId="conv-run-3" runStatus="running" />);
 
@@ -215,24 +208,40 @@ describe("OutputPanel empty states", () => {
 
     expect(screen.getByText("Error")).toBeTruthy();
     expect(
-      screen.getByText(
-        "Error : This ChatGPT model requires the shared workspace connection.",
-      ),
+      screen.getByText("Error : This ChatGPT model requires the shared workspace connection."),
     ).toBeTruthy();
   });
 
-  it("shows a generic failure message when an error run has no stored error message", () => {
-    render(<OutputPanel conversationId="conv-run-5" runStatus="error" />);
+  it("shows runner-declared failures without the internal error prefix", () => {
+    render(
+      <OutputPanel
+        conversationId="conv-run-4"
+        runStatus="error"
+        runFailureKind="runner_declared_failure"
+        runErrorMessage="Runner failure MCP self-test intentionally marked this run as failed."
+      />,
+    );
 
-    expect(screen.getByText("Error")).toBeTruthy();
-    expect(screen.getByText("Error : Run failed.")).toBeTruthy();
+    expect(screen.getByText("Run failed")).toBeTruthy();
+    expect(
+      screen.getByText("Runner failure MCP self-test intentionally marked this run as failed."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Error")).toBeNull();
+    expect(screen.queryByText(/^Error :/)).toBeNull();
   });
 
-  it("shows a generic cancelled message when a cancelled run has no stored error message", () => {
-    render(<OutputPanel conversationId="conv-run-6" runStatus="cancelled" />);
+  it("falls back to status-based error copy when the run has no error message", () => {
+    render(<OutputPanel conversationId="conv-run-5" runStatus="cancelled" />);
 
     expect(screen.getByText("Error")).toBeTruthy();
     expect(screen.getByText("Error : Run cancelled.")).toBeTruthy();
+  });
+
+  it("shows a generic failure message when an error run has no stored error message", () => {
+    render(<OutputPanel conversationId="conv-run-6" runStatus="error" />);
+
+    expect(screen.getByText("Error")).toBeTruthy();
+    expect(screen.getByText("Error : Run failed.")).toBeTruthy();
   });
 
   it("keeps the output error visible even if the latest chat message matches it", () => {

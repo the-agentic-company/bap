@@ -53,7 +53,7 @@ export async function writeCoworkerDocumentsToSandbox(
     return [];
   }
 
-  const targetDir = `/home/user/coworker-documents/${coworkerId}`;
+  const targetDir = "/home/user/coworker-documents";
   await sandbox.exec(`mkdir -p ${JSON.stringify(targetDir)}`);
 
   const seenFilenames = new Set<string>();

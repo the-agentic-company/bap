@@ -8,10 +8,17 @@ import { buildProtectedResourceMetadataPath } from "./registry";
 type AuthenticatedMcpClaims = {
   userId: string;
   workspaceId: string;
+  allowedWorkspaceIds?: string[];
+  allowAllWorkspaces?: boolean;
   audience: HostedMcpAudience;
   issuer?: string;
   grantId?: string;
   internalKey?: string;
+  surface?: "chat" | "coworker_builder" | "coworker_runner";
+  generationId?: string;
+  conversationId?: string;
+  coworkerId?: string;
+  coworkerRunId?: string;
   remoteIntegrationSource?: {
     targetEnv: "staging" | "prod";
     remoteUserId: string;
@@ -114,6 +121,8 @@ export async function authenticateHostedMcpRequest(params: {
       extra: {
         userId: claims.userId,
         workspaceId: claims.workspaceId,
+        allowedWorkspaceIds: claims.allowedWorkspaceIds,
+        allowAllWorkspaces: claims.allowAllWorkspaces,
         audience: claims.audience,
         issuer: claims.iss,
         grantId: claims.grantId,
@@ -133,13 +142,18 @@ export async function authenticateHostedMcpRequest(params: {
     return {
       token,
       clientId: "bap-executor",
-      scopes: [params.requiredAudience],
+      scopes: managedClaims.scopes ?? [params.requiredAudience],
       expiresAt: managedClaims.exp,
       extra: {
         userId: managedClaims.userId,
         workspaceId: managedClaims.workspaceId,
         audience: params.requiredAudience,
         internalKey: managedClaims.internalKey,
+        surface: managedClaims.surface,
+        generationId: managedClaims.generationId,
+        conversationId: managedClaims.conversationId,
+        coworkerId: managedClaims.coworkerId,
+        coworkerRunId: managedClaims.coworkerRunId,
         remoteIntegrationSource: managedClaims.remoteIntegrationSource,
         authType: "managed" as const,
       },

@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Image } from "@daytonaio/sdk";
 import { OPENCODE_AGENT_DEFINITIONS_DIR } from "@bap/prompts";
-import { OPENCODE_PLUGIN_VERSION, OPENCODE_VERSION } from "../common/versions";
+import { BUN_VERSION, OPENCODE_PLUGIN_VERSION, OPENCODE_VERSION } from "../common/versions";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +18,18 @@ const runtimePackageJson = JSON.stringify({
     "@opencode-ai/plugin": OPENCODE_PLUGIN_VERSION,
   },
 });
+const installBunSteps = [
+  "set -euo pipefail",
+  'case "$(uname -m)" in x86_64|amd64) bun_target=bun-linux-x64 ;; aarch64|arm64) bun_target=bun-linux-aarch64 ;; *) echo "Unsupported Bun architecture: $(uname -m)" >&2; exit 1 ;; esac',
+  'mkdir -p "$HOME/.bun/bin"',
+  `curl --fail --show-error --location --retry 5 --retry-delay 2 --retry-all-errors --output /tmp/bun.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/$bun_target.zip"`,
+  "unzip -q /tmp/bun.zip -d /tmp",
+  'install -m 0755 "/tmp/$bun_target/bun" "$HOME/.bun/bin/bun"',
+  'ln -sf "$HOME/.bun/bin/bun" /usr/local/bin/bun',
+  'rm -rf /tmp/bun.zip "/tmp/$bun_target"',
+  "bun --revision",
+];
+const installBun = `bash -lc '${installBunSteps.join("; ")}'`;
 
 export const image = Image.debianSlim()
   .addLocalFile(`${COMMON_ROOT}/opencode.json`, "/app/opencode.json")
@@ -29,9 +41,10 @@ export const image = Image.debianSlim()
   .addLocalDir(`${COMMON_ROOT}/lib`, "/app/.claude/lib")
   .addLocalDir(MESSAGE_FORMAT_PACKAGE_ROOT, "/app/packages/message-format")
   .addLocalFile(`${COMMON_ROOT}/setup.sh`, "/app/setup.sh")
+  .addLocalFile(`${COMMON_ROOT}/prewarm-opencode.sh`, "/app/prewarm-opencode.sh")
   .addLocalFile(`${COMMON_ROOT}/daytona-start.sh`, "/app/daytona-start.sh")
   .runCommands("apt-get update")
-  .runCommands("apt-get install -y curl git ripgrep ca-certificates gnupg unzip")
+  .runCommands("apt-get install -y curl git ripgrep ca-certificates gnupg unzip s3fs mergerfs")
   .runCommands("apt-get install -y python3 python3-venv python3-pip python-is-python3")
   .runCommands("python -m pip install --break-system-packages reportlab matplotlib Pillow")
   .runCommands("curl -fsSL https://deb.nodesource.com/setup_22.x | bash -")
@@ -41,8 +54,7 @@ export const image = Image.debianSlim()
   )
   .runCommands("npm i -g agent-browser")
   .runCommands("agent-browser install")
-  .runCommands("curl -fsSL https://bun.sh/install | bash")
-  .runCommands("ln -s $HOME/.bun/bin/bun /usr/local/bin/bun")
+  .runCommands(installBun)
   .runCommands(`$HOME/.bun/bin/bun install -g opencode-ai@${OPENCODE_VERSION} tsx`)
   .runCommands("ln -s $HOME/.bun/bin/opencode /usr/local/bin/opencode")
   .runCommands("ln -s $HOME/.bun/bin/tsx /usr/local/bin/tsx")
@@ -55,13 +67,14 @@ export const image = Image.debianSlim()
   .runCommands("mkdir -p $HOME/.config/opencode /app/.opencode $HOME/.cache/opencode")
   .runCommands("cp /app/opencode.json /app/.opencode/opencode.json")
   .runCommands("chmod +x /app/setup.sh")
+  .runCommands("chmod +x /app/prewarm-opencode.sh")
   .runCommands("chmod +x /app/daytona-start.sh")
   .runCommands("/app/setup.sh")
   // Prewarm OpenCode project init for /app so fresh sandboxes skip the cold
   // first-call cost (plugin dependency install, models.dev catalog fetch, and
   // bun transpile caches all land in the snapshot).
   .runCommands(
-    `bash -lc 'cd /app && export OPENCODE_CONFIG=/app/opencode.json OPENCODE_ENABLE_EXPERIMENTAL_MODELS=true && (opencode models openai --refresh >/tmp/opencode-model-refresh.log 2>&1 || true) && opencode serve --port 4096 --hostname 127.0.0.1 >/tmp/opencode-warmup.log 2>&1 & pid=$!; for i in $(seq 1 240); do curl -fsS http://127.0.0.1:4096/health >/dev/null 2>&1 && break; sleep 0.5; done; curl -fsS --max-time 120 "http://127.0.0.1:4096/mcp?directory=%2Fapp" >/dev/null; rc=$?; kill "$pid" 2>/dev/null; rm -f /tmp/opencode-warmup.log; exit $rc'`,
+    "timeout --kill-after=5s 180s /app/prewarm-opencode.sh || echo '[daytona] OpenCode prewarm skipped: timed out or failed'",
   )
   .workdir("/app")
   .entrypoint(["/bin/bash", "/app/daytona-start.sh"]);

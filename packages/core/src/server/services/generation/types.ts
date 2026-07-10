@@ -1,5 +1,6 @@
 import type {
   ContentPart,
+  GenerationFailureKind,
   GenerationExecutionPolicy,
   MessageTiming,
   PendingApproval,
@@ -248,6 +249,7 @@ export interface GenerationContext {
   lastRuntimeProgressKind?: RuntimeProgressKind | null;
   recoveryAttempts: number;
   completionReason?: GenerationCompletionReason | null;
+  failureKind?: GenerationFailureKind | null;
   debugInfo?: GenerationDebugInfo;
   contentParts: ContentPart[];
   assistantContent: string;

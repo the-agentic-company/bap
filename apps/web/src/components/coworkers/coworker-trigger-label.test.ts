@@ -8,15 +8,15 @@ describe("getCoworkerTriggerLabel", () => {
   });
 
   it("formats interval schedules with a readable cadence", () => {
-    expect(
-      getCoworkerTriggerLabel("schedule", { type: "interval", intervalMinutes: 60 }),
-    ).toBe("Hourly");
-    expect(
-      getCoworkerTriggerLabel("schedule", { type: "interval", intervalMinutes: 180 }),
-    ).toBe("Every 3h");
-    expect(
-      getCoworkerTriggerLabel("schedule", { type: "interval", intervalMinutes: 90 }),
-    ).toBe("Every 90 min");
+    expect(getCoworkerTriggerLabel("schedule", { type: "interval", intervalMinutes: 60 })).toBe(
+      "Hourly",
+    );
+    expect(getCoworkerTriggerLabel("schedule", { type: "interval", intervalMinutes: 180 })).toBe(
+      "Every 3h",
+    );
+    expect(getCoworkerTriggerLabel("schedule", { type: "interval", intervalMinutes: 90 })).toBe(
+      "Every 90 min",
+    );
   });
 
   it("formats daily, weekly, and monthly schedules with time", () => {

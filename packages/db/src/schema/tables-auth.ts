@@ -10,7 +10,18 @@ import {
   unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { magicLinkRequestStatusEnum, workspaceMembershipRoleEnum } from "./enums";
+import { magicLinkRequestStatusEnum } from "./enums";
+
+function revocableTimestampColumns() {
+  return {
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  };
+}
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -53,6 +64,7 @@ export const session = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     impersonatedBy: text("impersonated_by"),
+    activeOrganizationId: text("active_organization_id"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -142,12 +154,9 @@ export const hostedMcpOauthGrant = pgTable(
     audience: text("audience").notNull(),
     resource: text("resource").notNull(),
     scopes: text("scopes").array().notNull(),
-    revokedAt: timestamp("revoked_at"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    allowedWorkspaceIds: text("allowed_workspace_ids").array().notNull().default([]),
+    allowAllWorkspaces: boolean("allow_all_workspaces").default(false).notNull(),
+    ...revocableTimestampColumns(),
   },
   (table) => [
     index("hosted_mcp_oauth_grant_client_idx").on(table.clientId),
@@ -192,12 +201,7 @@ export const hostedMcpOauthRefreshToken = pgTable(
       .notNull()
       .references(() => hostedMcpOauthClient.clientId, { onDelete: "cascade" }),
     expiresAt: timestamp("expires_at").notNull(),
-    revokedAt: timestamp("revoked_at"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    ...revocableTimestampColumns(),
   },
   (table) => [
     index("hosted_mcp_oauth_refresh_token_grant_idx").on(table.grantId),
@@ -222,52 +226,76 @@ export const magicLinkRequestState = pgTable(
   (table) => [index("magic_link_request_state_expires_at_idx").on(table.expiresAt)],
 );
 
-export const workspace = pgTable(
-  "workspace",
+export const organization = pgTable(
+  "organization",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
-    slug: text("slug"),
-    imageStorageKey: text("image_storage_key"),
-    imageMimeType: text("image_mime_type"),
-    createdByUserId: text("created_by_user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    metadata: text("metadata"),
     billingPlanId: text("billing_plan_id").default("free").notNull(),
     autumnCustomerId: text("autumn_customer_id"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
+    imageStorageKey: text("image_storage_key"),
+    imageMimeType: text("image_mime_type"),
     updatedAt: timestamp("updated_at")
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [uniqueIndex("workspace_slug_idx").on(table.slug)],
+  (table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
 );
 
-export const workspaceMember = pgTable(
-  "workspace_member",
+export const workspace = organization;
+
+export const member = pgTable(
+  "member",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    workspaceId: text("workspace_id")
+    organizationId: text("organization_id")
       .notNull()
-      .references(() => workspace.id, { onDelete: "cascade" }),
+      .references(() => organization.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    role: workspaceMembershipRoleEnum("role").default("member").notNull(),
+    role: text("role").default("member").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
   },
   (table) => [
-    uniqueIndex("workspace_member_workspace_user_idx").on(table.workspaceId, table.userId),
-    index("workspace_member_user_idx").on(table.userId),
+    index("member_organizationId_idx").on(table.organizationId),
+    index("member_userId_idx").on(table.userId),
+    uniqueIndex("member_organization_user_uidx").on(table.organizationId, table.userId),
+  ],
+);
+
+export const workspaceMember = member;
+
+export const invitation = pgTable(
+  "invitation",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role"),
+    status: text("status").default("pending").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    inviterId: text("inviter_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    index("invitation_organizationId_idx").on(table.organizationId),
+    index("invitation_email_idx").on(table.email),
   ],
 );
 
@@ -540,5 +568,8 @@ export const authSchema = {
   session,
   account,
   verification,
+  organization,
+  member,
+  invitation,
   deviceCode,
 };

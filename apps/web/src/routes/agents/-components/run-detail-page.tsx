@@ -2,12 +2,16 @@ import { useParams as useTanStackParams, useRouterState } from "@tanstack/react-
 import { T } from "gt-react";
 import { Loader2 } from "lucide-react";
 import { useMemo } from "react";
-import { ChatArea } from "@/components/chat/chat-area";
 import {
   extractRemoteRunSourceDetails,
   RemoteRunSourceBanner,
 } from "@/components/coworkers/remote-run-source-banner";
 import { RunDebugDetails } from "@/components/coworkers/run-debug-details";
+import {
+  isRunnerDeclaredFailure,
+  RunnerDeclaredFailureChatArea,
+  RunnerDeclaredFailureNote,
+} from "@/components/coworkers/runner-declared-failure";
 import { ImpersonationRequiredPage } from "@/components/impersonation/impersonation-required-page";
 import { useCoworkerRun, useCoworkerRunImpersonationTarget } from "@/orpc/hooks/coworkers";
 
@@ -53,6 +57,7 @@ export default function CoworkerRunPage() {
   }
 
   const remoteRunSource = extractRemoteRunSourceDetails(run);
+  const runnerDeclaredFailure = isRunnerDeclaredFailure(run.failureKind);
 
   if (!run.conversationId) {
     return (
@@ -67,10 +72,14 @@ export default function CoworkerRunPage() {
             interface.
           </T>
         </p>
-        <RunDebugDetails
-          debugInfo={run.debugInfo}
-          fallbackTimestamp={run.finishedAt ?? run.startedAt}
-        />
+        {runnerDeclaredFailure ? (
+          <RunnerDeclaredFailureNote className="rounded-md border" debugInfo={run.debugInfo} />
+        ) : (
+          <RunDebugDetails
+            debugInfo={run.debugInfo}
+            fallbackTimestamp={run.finishedAt ?? run.startedAt}
+          />
+        )}
       </div>
     );
   }
@@ -78,12 +87,13 @@ export default function CoworkerRunPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <RemoteRunSourceBanner source={remoteRunSource} />
-      {(run.status === "error" || run.status === "cancelled") && (
+      {(run.status === "error" || run.status === "cancelled") && !runnerDeclaredFailure && (
         <div className="border-b p-4">
-          <p className="text-muted-foreground text-sm">
-            {run.status === "cancelled"
-              ? (run.errorMessage ?? "Run cancelled.")
-              : (run.errorMessage ?? "Run failed.")}
+          <p className="text-sm font-medium">
+            {run.status === "cancelled" ? <T>Run cancelled</T> : <T>Run failed</T>}
+          </p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {run.status === "cancelled" ? "Run cancelled." : (run.errorMessage ?? "Run failed.")}
           </p>
           <RunDebugDetails
             debugInfo={run.debugInfo}
@@ -91,7 +101,11 @@ export default function CoworkerRunPage() {
           />
         </div>
       )}
-      <ChatArea conversationId={run.conversationId} />
+      <RunnerDeclaredFailureChatArea
+        conversationId={run.conversationId}
+        debugInfo={run.debugInfo}
+        runnerDeclaredFailure={runnerDeclaredFailure}
+      />
     </div>
   );
 }

@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AppLink as Link } from "../../-lib/app-link";
 
-const CoworkerChatPanelBackHrefContext = createContext<string | undefined>(
-  undefined,
-);
+const CoworkerChatPanelBackHrefContext = createContext<string | undefined>(undefined);
 
 export function CoworkerChatPanelBackHrefProvider({
   backHref,
@@ -28,11 +26,7 @@ export function CoworkerChatPanelBackHrefProvider({
 type CoworkerChatPanelProps = {
   conversationId: string | null;
   coworkerId: string;
-  onCoworkerSync: (payload: {
-    coworkerId: string;
-    prompt?: string;
-    updatedAt?: string;
-  }) => void;
+  onCoworkerSync: (payload: { coworkerId: string; prompt?: string; updatedAt?: string }) => void;
   skillSelectionScopeKey: string;
   isLoading: boolean;
   errorMessage: string | null;
@@ -67,21 +61,16 @@ export function CoworkerChatPanel({
 
     return (
       <div className="flex flex-1 items-center justify-center">
-        <Loader2
-          className={cn("h-5 w-5 animate-spin", !isLoading && "opacity-60")}
-        />
+        <Loader2 className={cn("h-5 w-5 animate-spin", !isLoading && "opacity-60")} />
       </div>
     );
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="bg-background/95 border-border/60 flex h-12 items-center gap-2 border-b px-4 py-2 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-4 py-2">
         <BackToRunLink />
-        <ChatCopyButton
-          conversationId={conversationId}
-          className="rounded-xl"
-        />
+        <ChatCopyButton conversationId={conversationId} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <ChatArea
@@ -102,17 +91,17 @@ function BackToRunLink() {
   const backHref = useContext(CoworkerChatPanelBackHrefContext);
 
   if (!backHref) {
-    return <div className="h-9 w-9" aria-hidden="true" />;
+    return <div className="h-8 w-8" aria-hidden="true" />;
   }
 
   return (
     <Link
       href={backHref}
-      className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium transition-colors"
+      className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors"
       title={t("Back to run")}
       aria-label={t("Back to run")}
     >
-      <ArrowLeft className="h-[18px] w-[18px]" />
+      <ArrowLeft className="h-4 w-4" />
       <T>Back to run</T>
     </Link>
   );

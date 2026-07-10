@@ -1,13 +1,6 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { T, useGT } from "gt-react";
-import {
-  AlertTriangle,
-  Loader2,
-  Play,
-  RotateCcw,
-  Trash2,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Loader2, Play, RotateCcw, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -95,9 +88,7 @@ type CoworkerSettingsPanelProps = {
   disableForwardingAlias: { isPending: boolean };
   rotateForwardingAlias: { isPending: boolean };
   onUploadDocuments: (files: FileList | File[]) => void | Promise<void>;
-  onDownloadDocument: (
-    document: CoworkerDocumentRecord,
-  ) => void | Promise<void>;
+  onDownloadDocument: (document: CoworkerDocumentRecord) => void | Promise<void>;
   onDeleteDocument: (document: CoworkerDocumentRecord) => void | Promise<void>;
   onTabChange: (tab: CoworkerTab) => void;
   onRun: (event: React.MouseEvent) => void;
@@ -111,10 +102,7 @@ type CoworkerSettingsPanelProps = {
   onUserInputPromptChange: (value: string) => void;
   onPromptChange: (value: string) => void;
   onSaveInstructions: () => void | Promise<void>;
-  onModelChange: (input: {
-    model: string;
-    authSource?: ProviderAuthSource | null;
-  }) => void;
+  onModelChange: (input: { model: string; authSource?: ProviderAuthSource | null }) => void;
   onClearSkills: () => void;
   onToggleSkillChecked: (skillKey: string) => void;
   onClearWorkspaceMcpServers: () => void;
@@ -146,7 +134,6 @@ type CoworkerSettingsPanelProps = {
 
 export function CoworkerSettingsPanel({
   coworkerId,
-  coworkerRouteSlug,
   name,
   description,
   username,
@@ -253,14 +240,10 @@ export function CoworkerSettingsPanel({
   );
   const adminContent = renderAdminContent?.();
   const backlogRunCount =
-    runs?.filter((run) => COWORKER_RUN_BACKLOG_STATUSES.has(run.status))
-      .length ?? 0;
+    runs?.filter((run) => COWORKER_RUN_BACKLOG_STATUSES.has(run.status)).length ?? 0;
   const shouldShowRunBacklogNotice =
-    disabledReason === "run_backlog_limit" ||
-    backlogRunCount >= COWORKER_RUN_BACKLOG_LIMIT;
-  const disabledAtLabel = disabledAt
-    ? new Date(disabledAt).toLocaleString()
-    : null;
+    disabledReason === "run_backlog_limit" || backlogRunCount >= COWORKER_RUN_BACKLOG_LIMIT;
+  const disabledAtLabel = disabledAt ? new Date(disabledAt).toLocaleString() : null;
   const handleStatusSwitchChange = useCallback(
     (checked: boolean) => {
       if (checked && shouldShowRunBacklogNotice) {
@@ -279,11 +262,7 @@ export function CoworkerSettingsPanel({
         <div className="bg-background/95 border-border/60 flex h-12 items-center border-b px-4 py-2 backdrop-blur-sm">
           <div className="flex w-full items-center justify-between gap-3">
             <div className="min-w-0 flex-1 overflow-x-auto">
-              <AnimatedTabs
-                activeKey={activeTab}
-                onTabChange={handleTabChange}
-                className="gap-1"
-              >
+              <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange} className="gap-1">
                 <AnimatedTab value="instruction">
                   <T>Instruction</T>
                 </AnimatedTab>
@@ -382,10 +361,7 @@ export function CoworkerSettingsPanel({
                   <T>Automated triggers are disabled</T>
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  <T>
-                    Bap stopped this coworker because 5 runs were waiting for
-                    human input.
-                  </T>
+                  <T>Bap stopped this coworker because 5 runs were waiting for human input.</T>
                 </p>
                 {disabledAtLabel ? (
                   <p className="text-muted-foreground/80 mt-0.5 text-[11px]">
@@ -495,9 +471,7 @@ export function CoworkerSettingsPanel({
             onClearSkills={onClearSkills}
             onToggleSkillChecked={onToggleSkillChecked}
             onClearWorkspaceMcpServers={onClearWorkspaceMcpServers}
-            onToggleWorkspaceMcpServerChecked={
-              onToggleWorkspaceMcpServerChecked
-            }
+            onToggleWorkspaceMcpServerChecked={onToggleWorkspaceMcpServerChecked}
           />
         ) : null}
         {activeTab === "admin" ? (

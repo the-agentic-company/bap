@@ -1,17 +1,22 @@
 import { T, useGT } from "gt-react";
 import {
+  CheckCircle2,
+  Clock,
   Download,
   FileCode2,
+  FileText,
   Loader2,
   Maximize2,
   MessageSquareText,
   RefreshCw,
+  Timer,
+  Wrench,
 } from "lucide-react";
-import { useCallback, useState } from "react";
-import type { SandboxFileData } from "@/components/chat/message-list";
-import { ChatArea } from "@/components/chat/chat-area";
+import { useCallback, useMemo, useState } from "react";
 import { MessageBubble } from "@/components/chat/message-bubble";
+import type { Message, MessagePart, SandboxFileData } from "@/components/chat/message-list";
 import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
+import { RunnerDeclaredFailureChatArea } from "@/components/coworkers/runner-declared-failure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { triggerBrowserDownload } from "@/lib/download-file";
@@ -42,7 +47,18 @@ export const MOBILE_PANEL_VARIANTS = {
 type HistoryRunItem = {
   id: string;
   status: string;
+  failureKind?: string | null;
   startedAt?: Date | string | null;
+};
+
+type RunEventSummary = {
+  type: string;
+  payload: unknown;
+};
+
+type ToolSummaryItem = {
+  name: string;
+  count: number;
 };
 
 export function getMobilePanel(value: string): MobilePanel {
@@ -66,12 +82,12 @@ export function isUuidRouteSlug(value: string | undefined): value is string {
   );
 }
 
-function formatRunDate(value?: Date | string | null) {
+function formatRunDate(value?: Date | string | number | null) {
   if (!value) {
     return "not started";
   }
 
-  const date = typeof value === "string" ? new Date(value) : value;
+  const date = value instanceof Date ? value : new Date(value);
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.max(0, Math.floor(diffMs / 60_000));
   const diffHours = Math.floor(diffMinutes / 60);
@@ -101,15 +117,18 @@ function formatRunDate(value?: Date | string | null) {
   }).format(date);
 }
 
-function toDate(value?: Date | string | null) {
+function toDate(value?: Date | string | number | null) {
   if (!value) {
     return null;
   }
-  const date = typeof value === "string" ? new Date(value) : value;
+  const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function formatDuration(startedAt?: Date | string | null, finishedAt?: Date | string | null) {
+export function formatDuration(
+  startedAt?: Date | string | number | null,
+  finishedAt?: Date | string | number | null,
+) {
   const start = toDate(startedAt);
   if (!start) {
     return "Not available";
@@ -131,9 +150,22 @@ export function formatDuration(startedAt?: Date | string | null, finishedAt?: Da
   return `${seconds}s`;
 }
 
+function formatFileSize(sizeBytes?: number | null) {
+  if (!sizeBytes) {
+    return "size unknown";
+  }
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function formatLiveDuration(
-  startedAt?: Date | string | null,
-  finishedAt?: Date | string | null,
+  startedAt?: Date | string | number | null,
+  finishedAt?: Date | string | number | null,
 ) {
   const start = toDate(startedAt);
   if (!start) {
@@ -156,7 +188,7 @@ export function formatLiveDuration(
   return `${seconds}s`;
 }
 
-export function formatHeaderTimestamp(value?: Date | string | null) {
+export function formatHeaderTimestamp(value?: Date | string | number | null) {
   const date = toDate(value);
   if (!date) {
     return "Not started";
@@ -230,8 +262,100 @@ export function getRunStatusPresentation(status?: string | null) {
   }
 }
 
+function isCompletedStatus(status?: string | null) {
+  return status === "completed" || status === "success";
+}
+
 function isInProgressStatus(status?: string | null) {
   return status === "running";
+}
+
+function isRunnerDeclaredFailure(failureKind?: string | null) {
+  return failureKind === "runner_declared_failure";
+}
+
+function getRunStatusLabel(status?: string | null, failureKind?: string | null) {
+  if (status === "completed" || status === "success") {
+    return "Completed";
+  }
+  if (status === "error" && isRunnerDeclaredFailure(failureKind)) {
+    return "Failed";
+  }
+  return status ?? "Unknown";
+}
+
+function readableToolName(part: MessagePart) {
+  if (part.type === "tool_call") {
+    if (part.integration && part.operation) {
+      return `${part.integration}.${part.operation}`;
+    }
+    return part.name;
+  }
+  if (part.type === "approval") {
+    if (part.integration && part.operation) {
+      return `${part.integration}.${part.operation}`;
+    }
+    return part.toolName;
+  }
+  return null;
+}
+
+function getPayloadRecord(payload: unknown) {
+  return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+}
+
+function getEventToolName(event: RunEventSummary) {
+  if (event.type !== "tool_use" && event.type !== "tool_result") {
+    return null;
+  }
+
+  const payload = getPayloadRecord(event.payload);
+  if (!payload) {
+    return null;
+  }
+
+  const toolName = payload.toolName ?? payload.tool_name ?? payload.name;
+  return typeof toolName === "string" && toolName.trim() ? toolName.trim() : null;
+}
+
+function collectToolSummary(messages: Message[], events?: RunEventSummary[]): ToolSummaryItem[] {
+  const counts = new Map<string, number>();
+
+  for (const message of messages) {
+    for (const part of message.parts ?? []) {
+      const name = readableToolName(part);
+      if (name) {
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+    }
+  }
+
+  if (counts.size === 0) {
+    for (const event of events ?? []) {
+      const name = getEventToolName(event);
+      if (name) {
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+    }
+  }
+
+  return Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .toSorted((left, right) => right.count - left.count || left.name.localeCompare(right.name));
+}
+
+function collectSandboxFiles(messages: Message[]) {
+  const files = new Map<string, SandboxFileData>();
+
+  for (const message of messages) {
+    for (const file of message.sandboxFiles ?? []) {
+      files.set(file.fileId, file);
+    }
+  }
+
+  return Array.from(files.values()).toSorted((left, right) =>
+    left.filename.localeCompare(right.filename),
+  );
 }
 
 export function LoadingState() {
@@ -272,26 +396,53 @@ function EmptyNoOutputState() {
 function EmptyPreview({
   latestMessage,
   runStatus,
+  failureKind,
   errorMessage,
 }: {
   latestMessage?: string;
   runStatus?: string | null;
+  failureKind?: string | null;
   errorMessage?: string | null;
 }) {
   if (runStatus === "error" || runStatus === "cancelled") {
-    const fallbackMessage = runStatus === "cancelled" ? "Run cancelled." : "Run failed.";
+    const fallback = runStatus === "cancelled" ? "Run cancelled." : "Run failed.";
+    const runnerDeclaredFailure = isRunnerDeclaredFailure(failureKind);
+
     return (
       <div className="bg-background h-full overflow-auto p-5">
-        <div className="mx-auto max-w-3xl rounded-xl border border-red-300 bg-red-50/80 p-4">
-          <div className="mb-3 flex items-center gap-2 border-b border-red-200 pb-3">
-            <MessageSquareText className="h-4 w-4 text-red-600" />
-            <p className="text-sm font-medium text-red-700">
-              <T>Error</T>
+        <div
+          className={cn(
+            "mx-auto max-w-3xl rounded-xl border p-4",
+            runnerDeclaredFailure
+              ? "border-amber-300 bg-amber-50/80"
+              : "border-red-300 bg-red-50/80",
+          )}
+        >
+          <div
+            className={cn(
+              "mb-3 flex items-center gap-2 border-b pb-3",
+              runnerDeclaredFailure ? "border-amber-200" : "border-red-200",
+            )}
+          >
+            <MessageSquareText
+              className={cn("h-4 w-4", runnerDeclaredFailure ? "text-amber-600" : "text-red-600")}
+            />
+            <p
+              className={cn(
+                "text-sm font-medium",
+                runnerDeclaredFailure ? "text-amber-800" : "text-red-700",
+              )}
+            >
+              {runnerDeclaredFailure ? <T>Run failed</T> : <T>Error</T>}
             </p>
           </div>
           <MessageBubble
             messageRole="assistant"
-            content={formatErrorMessage(errorMessage, fallbackMessage)}
+            content={
+              runnerDeclaredFailure
+                ? errorMessage?.trim() || fallback
+                : formatErrorMessage(errorMessage, fallback)
+            }
           />
         </div>
       </div>
@@ -484,7 +635,15 @@ function AgenticAppFrame({
   );
 }
 
-export function HistoryRunButton({ run, selected, onSelect }: { run: HistoryRunItem; selected: boolean; onSelect: (runId: string) => void; }) {
+export function HistoryRunButton({
+  run,
+  selected,
+  onSelect,
+}: {
+  run: HistoryRunItem;
+  selected: boolean;
+  onSelect: (runId: string) => void;
+}) {
   const handleClick = useCallback(() => {
     onSelect(run.id);
   }, [onSelect, run.id]);
@@ -500,10 +659,118 @@ export function HistoryRunButton({ run, selected, onSelect }: { run: HistoryRunI
     >
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium">{formatRunDate(run.startedAt)}</span>
-        <span className="block truncate text-xs">{run.status}</span>
+        <span className="block truncate text-xs">
+          {getRunStatusLabel(run.status, run.failureKind)}
+        </span>
       </span>
       {selected ? <span className="bg-brand h-1.5 w-1.5 shrink-0 rounded-full" /> : null}
     </button>
+  );
+}
+
+export function RunSummaryPanel({
+  status,
+  failureKind,
+  startedAt,
+  finishedAt,
+  events,
+  messages,
+}: {
+  status?: string | null;
+  failureKind?: string | null;
+  startedAt?: Date | string | number | null;
+  finishedAt?: Date | string | number | null;
+  events?: RunEventSummary[];
+  messages: Message[];
+}) {
+  const completed = isCompletedStatus(status);
+  const statusLabel = getRunStatusLabel(status, failureKind);
+  const tools = useMemo(() => collectToolSummary(messages, events), [events, messages]);
+  const files = useMemo(() => collectSandboxFiles(messages), [messages]);
+  const duration = useMemo(() => formatDuration(startedAt, finishedAt), [finishedAt, startedAt]);
+  const launched = useMemo(() => formatRunDate(startedAt), [startedAt]);
+
+  return (
+    <div className="space-y-5 p-4">
+      <div className="grid grid-cols-3 gap-2">
+        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
+          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+            <CheckCircle2 className={cn("h-3 w-3", completed && "text-emerald-600")} />
+            <T>Status</T>
+          </div>
+          <p className={cn("mt-0.5 truncate text-sm font-medium", completed && "text-emerald-700")}>
+            {statusLabel}
+          </p>
+        </div>
+        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
+          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+            <Clock className="h-3 w-3" />
+            <T>Launched</T>
+          </div>
+          <p className="mt-0.5 truncate text-sm font-medium">{launched}</p>
+        </div>
+        <div className="border-border/70 rounded-md border px-2.5 py-1.5">
+          <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+            <Timer className="h-3 w-3" />
+            <T>Time taken</T>
+          </div>
+          <p className="mt-0.5 truncate text-sm font-medium">{duration}</p>
+        </div>
+      </div>
+
+      <section className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Wrench className="text-muted-foreground h-4 w-4" />
+          <h2 className="text-sm font-medium">
+            <T>Tools used</T>
+          </h2>
+        </div>
+        {tools.length > 0 ? (
+          <div className="space-y-1.5">
+            {tools.map((tool) => (
+              <div
+                key={tool.name}
+                className="border-border/70 flex items-center justify-between gap-3 rounded-md border px-2.5 py-2"
+              >
+                <span className="min-w-0 truncate font-mono text-xs">{tool.name}</span>
+                <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[11px]">
+                  {tool.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
+            <T>No tool usage recorded for this run.</T>
+          </p>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <div className="flex items-center gap-2">
+          <FileText className="text-muted-foreground h-4 w-4" />
+          <h2 className="text-sm font-medium">
+            <T>Output files</T>
+          </h2>
+        </div>
+        {files.length > 0 ? (
+          <div className="space-y-1.5">
+            {files.map((file) => (
+              <div key={file.fileId} className="border-border/70 rounded-md border px-2.5 py-2">
+                <p className="truncate text-xs font-medium">{file.filename}</p>
+                <p className="text-muted-foreground mt-1 truncate text-[11px]">
+                  {formatFileSize(file.sizeBytes)} - {file.path}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
+            <T>No output files were created by this run.</T>
+          </p>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -513,6 +780,7 @@ export function OutputPanel({
   latestCoworkerMessage,
   runStatus,
   runErrorMessage,
+  runFailureKind,
   showOutputToolbar = true,
 }: {
   outputFile?: SandboxFileData | null;
@@ -520,6 +788,7 @@ export function OutputPanel({
   latestCoworkerMessage?: string;
   runStatus?: string | null;
   runErrorMessage?: string | null;
+  runFailureKind?: string | null;
   showOutputToolbar?: boolean;
 }) {
   const sendAgenticAppPrompt = useSendAgenticAppPrompt(conversationId);
@@ -538,6 +807,7 @@ export function OutputPanel({
           <EmptyPreview
             latestMessage={latestCoworkerMessage}
             runStatus={runStatus}
+            failureKind={runFailureKind}
             errorMessage={runErrorMessage}
           />
         )}
@@ -549,20 +819,26 @@ export function OutputPanel({
 export function RunDetailsPanel({
   conversationId,
   hiddenMessageContents,
+  runDebugInfo,
+  runFailureKind,
 }: {
   conversationId?: string;
   hiddenMessageContents?: string[];
+  runDebugInfo?: unknown;
+  runFailureKind?: string | null;
 }) {
   return (
     <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         {conversationId ? (
           <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
-            <ChatArea
+            <RunnerDeclaredFailureChatArea
               conversationId={conversationId}
               compact
-              hideStreamError
+              debugInfo={runDebugInfo}
               hiddenMessageContents={hiddenMessageContents}
+              hideStreamError
+              runnerDeclaredFailure={isRunnerDeclaredFailure(runFailureKind)}
             />
           </div>
         ) : (

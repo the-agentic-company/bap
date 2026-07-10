@@ -1,5 +1,5 @@
 import { db } from "@bap/db/client";
-import { message, type MessageTiming } from "@bap/db/schema";
+import { generation, message, type MessageTiming } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "../../../utils/observability";
 import { getSandboxSlotManager } from "../../sandbox-slot-manager";
@@ -347,8 +347,8 @@ export class GenerationTurnFinalizer {
       suspendedAt: ctx.suspendedAt ?? null,
       resumeInterruptId: ctx.resumeInterruptId ?? null,
       recoveryAttempts: ctx.recoveryAttempts,
-      completionReason: ctx.completionReason ?? null,
-      debugInfo: ctx.debugInfo ?? null,
+      completionReason: ctx.completionReason ?? undefined,
+      debugInfo: ctx.debugInfo ?? undefined,
     });
   }
 
@@ -378,6 +378,26 @@ export class GenerationTurnFinalizer {
       }
       await this.deps.releaseSandboxSlotLease(ctx);
       await getSandboxSlotManager().clearPendingRequest(ctx.id);
+
+      const durableGenerationState = await db.query.generation.findFirst({
+        where: eq(generation.id, ctx.id),
+        columns: {
+          completionReason: true,
+          failureKind: true,
+          errorMessage: true,
+          debugInfo: true,
+        },
+      });
+      if (durableGenerationState?.completionReason === "runner_declared_failure") {
+        ctx.completionReason = "runner_declared_failure";
+        ctx.failureKind = "runner_declared_failure";
+        ctx.errorMessage = durableGenerationState.errorMessage ?? ctx.errorMessage;
+        ctx.debugInfo = {
+          ...(ctx.debugInfo ?? {}),
+          ...((durableGenerationState.debugInfo as GenerationContext["debugInfo"]) ?? {}),
+        };
+      }
+      const terminalStatus: GenerationTerminalStatus = status;
 
       this.deps.markPhase(ctx, "generation_completed");
       const terminalMessageTiming = buildMessageTiming(ctx);
@@ -409,7 +429,7 @@ export class GenerationTurnFinalizer {
         runtimeId: ctx.runtimeId,
         sessionId: ctx.sessionId ?? null,
         coworkerRunId: ctx.coworkerRunId,
-        status,
+        status: terminalStatus,
         contentParts: ctx.contentParts,
         assistantContent: ctx.assistantContent,
         terminalMessageTiming,
@@ -418,6 +438,7 @@ export class GenerationTurnFinalizer {
         uploadedSandboxFileIds: Array.from(ctx.uploadedSandboxFileIds || []),
         errorMessage: ctx.errorMessage,
         debugInfo: ctx.debugInfo ?? null,
+        failureKind: ctx.failureKind ?? null,
         lastRuntimeProgressAt: ctx.lastRuntimeProgressAt,
         recoveryAttempts: ctx.recoveryAttempts,
         completionReason: ctx.completionReason ?? null,
@@ -430,7 +451,7 @@ export class GenerationTurnFinalizer {
       ctx.contentParts = finishResult.contentParts;
       const messageId = finishResult.messageId;
 
-      if (status === "completed" && messageId) {
+      if (terminalStatus === "completed" && messageId) {
         // Broadcast done as soon as the message is persisted; the session
         // snapshot save below costs ~1s of sandbox execs and must not delay
         // the client-visible completion.
@@ -445,20 +466,20 @@ export class GenerationTurnFinalizer {
         });
       }
 
-      if (status === "completed") {
-        await this.deps.saveSessionSnapshotIfPossible(ctx, `finish:${status}`);
+      if (terminalStatus === "completed" || ctx.failureKind === "runner_declared_failure") {
+        await this.deps.saveSessionSnapshotIfPossible(ctx, `finish:${terminalStatus}`);
       }
 
       await this.deps.enqueueConversationQueuedMessageProcess(ctx.conversationId);
 
-      if (status === "cancelled") {
+      if (terminalStatus === "cancelled") {
         this.deps.broadcast(ctx, {
           type: "cancelled",
           generationId: ctx.id,
           conversationId: ctx.conversationId,
           messageId,
         });
-      } else if (status === "error") {
+      } else if (terminalStatus === "error") {
         const diagnosticMessage = getGenerationDiagnosticMessage(ctx.debugInfo);
         this.deps.broadcast(ctx, {
           type: "error",
@@ -500,7 +521,7 @@ export class GenerationTurnFinalizer {
         },
       });
 
-      ctx.status = status;
+      ctx.status = terminalStatus;
       this.deps.evictActiveGenerationContext(ctx.id);
     } finally {
       ctx.isFinalizing = false;

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type VitestProcedure = Extract<
   NonNullable<Parameters<typeof vi.fn>[0]>,
@@ -18,22 +18,26 @@ const {
   consumePendingMock,
   storeProviderTokensMock,
   isOAuthProviderConfigMock,
-} = vi.hoisted(() => ({
-  authHandlerMock: vi.fn<VitestProcedure>(),
-  getSessionMock: vi.fn<VitestProcedure>(),
-  requestPasswordResetMock: vi.fn<VitestProcedure>(),
-  hasCredentialPasswordByEmailMock: vi.fn<VitestProcedure>(),
-  isApprovedLoginEmailMock: vi.fn<VitestProcedure>(),
-  normalizeApprovedLoginEmailMock: vi.fn<VitestProcedure>((email: string) =>
-    email.trim().toLowerCase(),
-  ),
-  resolveOrCreateAuthUserByEmailMock: vi.fn<VitestProcedure>(),
-  resolveMagicLinkPageStateMock: vi.fn<VitestProcedure>(),
-  markMagicLinkRequestConsumedMock: vi.fn<VitestProcedure>(),
-  consumePendingMock: vi.fn<VitestProcedure>(),
-  storeProviderTokensMock: vi.fn<VitestProcedure>(),
-  isOAuthProviderConfigMock: vi.fn<VitestProcedure>(),
-}));
+} = vi.hoisted(() => {
+  process.env.PORT = "3000";
+
+  return {
+    authHandlerMock: vi.fn<VitestProcedure>(),
+    getSessionMock: vi.fn<VitestProcedure>(),
+    requestPasswordResetMock: vi.fn<VitestProcedure>(),
+    hasCredentialPasswordByEmailMock: vi.fn<VitestProcedure>(),
+    isApprovedLoginEmailMock: vi.fn<VitestProcedure>(),
+    normalizeApprovedLoginEmailMock: vi.fn<VitestProcedure>((email: string) =>
+      email.trim().toLowerCase(),
+    ),
+    resolveOrCreateAuthUserByEmailMock: vi.fn<VitestProcedure>(),
+    resolveMagicLinkPageStateMock: vi.fn<VitestProcedure>(),
+    markMagicLinkRequestConsumedMock: vi.fn<VitestProcedure>(),
+    consumePendingMock: vi.fn<VitestProcedure>(),
+    storeProviderTokensMock: vi.fn<VitestProcedure>(),
+    isOAuthProviderConfigMock: vi.fn<VitestProcedure>(),
+  };
+});
 
 vi.mock("@/lib/auth", () => ({
   auth: {
@@ -122,6 +126,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.APP_URL;
   delete process.env.VITE_APP_URL;
+  process.env.PORT = "3000";
+});
+
+afterEach(() => {
+  delete process.env.PORT;
 });
 
 describe("handleBetterAuth (/api/auth/**)", () => {

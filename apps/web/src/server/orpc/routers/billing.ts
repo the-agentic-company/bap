@@ -6,12 +6,15 @@ import {
   adminRemoveWorkspaceMember,
   attachPlanToOwner,
   cancelPlanForOwner,
+  cancelWorkspaceInvitation,
   createManualTopUp,
+  createWorkspaceInvitations,
   createWorkspaceForUser,
   getAdminBillingOverviewForUser,
   getExistingBillingOwnerForUser,
   ensureWorkspaceForUser,
   getBillingOverviewForUser,
+  getWorkspaceInvitation,
   getWorkspaceMembershipForUser,
   listWorkspaceMembers,
   openBillingPortalForOwner,
@@ -27,7 +30,13 @@ import { user, workspace } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
+import type { ORPCContext } from "../context";
 import { protectedProcedure } from "../middleware";
+import {
+  assertHostedMcpAllWorkspaceAccess,
+  assertHostedMcpWorkspaceAccess,
+} from "../hosted-mcp-workspace-access";
 
 function assertBillingEnabled() {
   if (isSelfHostedEdition()) {
@@ -45,6 +54,10 @@ function assertCloudWorkspaceManagementEnabled() {
   }
 }
 
+function getActiveOrganizationId(session: unknown) {
+  return (session as { activeOrganizationId?: string | null } | null)?.activeOrganizationId ?? null;
+}
+
 async function getDbRole(userId: string, db: typeof import("@bap/db/client").db) {
   const dbUser = await db.query.user.findFirst({
     where: eq(user.id, userId),
@@ -53,22 +66,91 @@ async function getDbRole(userId: string, db: typeof import("@bap/db/client").db)
   return dbUser?.role ?? "user";
 }
 
+async function assertPlatformAdmin(userId: string, db: typeof import("@bap/db/client").db) {
+  const role = await getDbRole(userId, db);
+  if (role !== "admin") {
+    throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
+  }
+}
+
+async function requireWorkspaceMembership(params: { userId: string; workspaceId: string }) {
+  const membership = await getWorkspaceMembershipForUser(params.userId, params.workspaceId);
+  if (!membership) {
+    throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
+  }
+  return membership;
+}
+
+async function requireWorkspaceAdminMembership(params: { userId: string; workspaceId: string }) {
+  const membership = await requireWorkspaceMembership(params);
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ORPCError("FORBIDDEN", { message: "Workspace admin required" });
+  }
+  return membership;
+}
+
+async function requireHostedMcpWorkspaceMembership(params: {
+  context: ORPCContext;
+  workspaceId: string;
+}) {
+  assertHostedMcpWorkspaceAccess(params.context, params.workspaceId);
+  return requireWorkspaceMembership({
+    userId: params.context.user!.id,
+    workspaceId: params.workspaceId,
+  });
+}
+
+async function requireHostedMcpWorkspaceAdmin(params: {
+  context: ORPCContext;
+  workspaceId: string;
+}) {
+  assertHostedMcpWorkspaceAccess(params.context, params.workspaceId);
+  return requireWorkspaceAdminMembership({
+    userId: params.context.user!.id,
+    workspaceId: params.workspaceId,
+  });
+}
+
+function filterHostedMcpOverviewWorkspaces(
+  overview: Awaited<ReturnType<typeof getBillingOverviewForUser>>,
+  context: ORPCContext,
+) {
+  const workspaces = overview.workspaces.filter((workspace) =>
+    context.hostedMcp?.allowedWorkspaceIds.includes(workspace.id),
+  );
+  const activeWorkspaceId =
+    workspaces.find((workspace) => workspace.id === context.workspaceId)?.id ??
+    workspaces.find((workspace) => workspace.active)?.id ??
+    workspaces[0]?.id ??
+    overview.owner.ownerId;
+
+  return {
+    ...overview,
+    owner: {
+      ...overview.owner,
+      ownerId: activeWorkspaceId,
+    },
+    workspaces: workspaces.map((workspace) =>
+      Object.assign({}, workspace, {
+        active: workspace.id === activeWorkspaceId,
+      }),
+    ),
+  };
+}
+
 async function resolveRequestedOwner(params: {
   userId: string;
   db: typeof import("@bap/db/client").db;
   ownerType: "user" | "workspace";
   workspaceId?: string;
+  activeWorkspaceId?: string | null;
 }) {
   if (params.ownerType === "user") {
     throw new ORPCError("BAD_REQUEST", { message: "Personal billing is no longer supported" });
   }
 
   if (!params.workspaceId) {
-    const dbUser = await params.db.query.user.findFirst({
-      where: eq(user.id, params.userId),
-      columns: { activeWorkspaceId: true },
-    });
-    const ensuredWorkspace = await ensureWorkspaceForUser(params.userId, dbUser?.activeWorkspaceId);
+    const ensuredWorkspace = await ensureWorkspaceForUser(params.userId, params.activeWorkspaceId);
     return {
       ownerType: "workspace" as const,
       ownerId: ensuredWorkspace.id,
@@ -99,7 +181,15 @@ async function resolveRequestedOwner(params: {
 }
 
 const overview = protectedProcedure.handler(async ({ context }) => {
-  return getBillingOverviewForUser(context.user.id);
+  const overview = await getBillingOverviewForUser(
+    context.user.id,
+    getActiveOrganizationId(context.session) ?? context.workspaceId,
+  );
+  if (context.hostedMcp?.audience !== "bap" || context.hostedMcp.allowAllWorkspaces) {
+    return overview;
+  }
+
+  return filterHostedMcpOverviewWorkspaces(overview, context);
 });
 
 const adminUserOverview = protectedProcedure
@@ -110,10 +200,7 @@ const adminUserOverview = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
-    const role = await getDbRole(context.user.id, context.db);
-    if (role !== "admin") {
-      throw new ORPCError("FORBIDDEN", { message: "Admin role required for manual top-ups" });
-    }
+    await assertPlatformAdmin(context.user.id, context.db);
 
     try {
       return await getAdminBillingOverviewForUser(input.targetUserId);
@@ -133,6 +220,7 @@ const createWorkspace = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertCloudWorkspaceManagementEnabled();
+    assertHostedMcpAllWorkspaceAccess(context);
     const created = await createWorkspaceForUser(context.user.id, input.name);
     return {
       id: created.id,
@@ -149,6 +237,13 @@ const switchWorkspace = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertCloudWorkspaceManagementEnabled();
+    assertHostedMcpWorkspaceAccess(context, input.workspaceId);
+    if (context.authSource === "session") {
+      await auth.api.setActiveOrganization({
+        headers: context.headers,
+        body: { organizationId: input.workspaceId },
+      });
+    }
     await setActiveWorkspace(context.user.id, input.workspaceId);
     return { success: true };
   });
@@ -169,6 +264,7 @@ const attachPlan = protectedProcedure
       db: context.db,
       ownerType: "workspace",
       workspaceId: input.workspaceId,
+      activeWorkspaceId: getActiveOrganizationId(context.session) ?? context.workspaceId,
     });
     const plan = BILLING_PLANS[input.planId];
     if (plan.ownerType !== owner.ownerType) {
@@ -207,6 +303,7 @@ const openPortal = protectedProcedure
       db: context.db,
       ownerType: "workspace",
       workspaceId: input.workspaceId,
+      activeWorkspaceId: getActiveOrganizationId(context.session) ?? context.workspaceId,
     });
     const result = await openBillingPortalForOwner(owner, input.returnUrl);
     return { url: result.url };
@@ -227,11 +324,12 @@ const cancelPlan = protectedProcedure
       db: context.db,
       ownerType: "workspace",
       workspaceId: input.workspaceId,
+      activeWorkspaceId: getActiveOrganizationId(context.session) ?? context.workspaceId,
     });
-    const membership = await getWorkspaceMembershipForUser(context.user.id, owner.ownerId);
-    if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-      throw new ORPCError("FORBIDDEN", { message: "Workspace admin required" });
-    }
+    await requireWorkspaceAdminMembership({
+      userId: context.user.id,
+      workspaceId: owner.ownerId,
+    });
     await cancelPlanForOwner(owner, input.productId);
     return { success: true };
   });
@@ -246,16 +344,14 @@ const manualTopUp = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
-    const role = await getDbRole(context.user.id, context.db);
-    if (role !== "admin") {
-      throw new ORPCError("FORBIDDEN", { message: "Admin role required for manual top-ups" });
-    }
+    await assertPlatformAdmin(context.user.id, context.db);
 
     const owner = await resolveRequestedOwner({
       userId: context.user.id,
       db: context.db,
       ownerType: "workspace",
       workspaceId: input.workspaceId,
+      activeWorkspaceId: getActiveOrganizationId(context.session) ?? context.workspaceId,
     });
     const result = await createManualTopUp({
       owner,
@@ -278,10 +374,7 @@ const adminManualTopUp = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
-    const role = await getDbRole(context.user.id, context.db);
-    if (role !== "admin") {
-      throw new ORPCError("FORBIDDEN", { message: "Admin role required for manual top-ups" });
-    }
+    await assertPlatformAdmin(context.user.id, context.db);
 
     let target;
     try {
@@ -321,12 +414,73 @@ const inviteMembers = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertCloudWorkspaceManagementEnabled();
-    const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
-    if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-      throw new ORPCError("FORBIDDEN", { message: "Workspace admin required" });
+    await requireHostedMcpWorkspaceAdmin({
+      context,
+      workspaceId: input.workspaceId,
+    });
+
+    if (context.authSource === "session") {
+      return Promise.all(
+        input.emails.map(async (email) => {
+          const invitation = await auth.api.createInvitation({
+            headers: context.headers,
+            body: {
+              organizationId: input.workspaceId,
+              email,
+              role: input.role,
+            },
+          });
+          return invitation.email;
+        }),
+      );
     }
-    const added = await addWorkspaceMembers(input.workspaceId, input.emails, input.role);
-    return added;
+    const invited = await createWorkspaceInvitations(
+      input.workspaceId,
+      input.emails,
+      input.role,
+      context.user.id,
+    );
+    return invited;
+  });
+
+const cancelInvitation = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+      invitationId: z.string(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    assertCloudWorkspaceManagementEnabled();
+    await requireHostedMcpWorkspaceAdmin({
+      context,
+      workspaceId: input.workspaceId,
+    });
+
+    const invitation = await getWorkspaceInvitation(input.workspaceId, input.invitationId);
+    if (!invitation || invitation.status !== "pending") {
+      throw new ORPCError("NOT_FOUND", { message: "Invitation not found" });
+    }
+
+    if (context.authSource === "session") {
+      const canceled = await auth.api.cancelInvitation({
+        headers: context.headers,
+        body: { invitationId: input.invitationId },
+      });
+      return {
+        id: canceled?.id ?? input.invitationId,
+        status: canceled?.status ?? "canceled",
+      };
+    }
+
+    const canceled = await cancelWorkspaceInvitation(input.workspaceId, input.invitationId);
+    if (!canceled) {
+      throw new ORPCError("NOT_FOUND", { message: "Invitation not found" });
+    }
+    return {
+      id: canceled.id,
+      status: canceled.status,
+    };
   });
 
 const members = protectedProcedure
@@ -336,13 +490,14 @@ const members = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
-    if (!membership) {
-      throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
-    }
+    const membership = await requireHostedMcpWorkspaceMembership({
+      context,
+      workspaceId: input.workspaceId,
+    });
 
+    const result = await listWorkspaceMembers(input.workspaceId);
     return {
-      members: await listWorkspaceMembers(input.workspaceId),
+      ...result,
       membershipRole: membership.role,
     };
   });
@@ -355,10 +510,10 @@ const rename = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
-    if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-      throw new ORPCError("FORBIDDEN", { message: "Workspace admin required" });
-    }
+    await requireHostedMcpWorkspaceAdmin({
+      context,
+      workspaceId: input.workspaceId,
+    });
 
     return renameWorkspace(input.workspaceId, input.name);
   });
@@ -372,10 +527,10 @@ const updateImage = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
-    if (!membership) {
-      throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
-    }
+    await requireHostedMcpWorkspaceMembership({
+      context,
+      workspaceId: input.workspaceId,
+    });
 
     return updateWorkspaceImage(input);
   });
@@ -387,20 +542,17 @@ const removeImage = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const membership = await getWorkspaceMembershipForUser(context.user.id, input.workspaceId);
-    if (!membership) {
-      throw new ORPCError("NOT_FOUND", { message: "Workspace not found" });
-    }
+    await requireHostedMcpWorkspaceMembership({
+      context,
+      workspaceId: input.workspaceId,
+    });
 
     return removeWorkspaceImage(input.workspaceId);
   });
 
 const adminWorkspaces = protectedProcedure.handler(async ({ context }) => {
   assertBillingEnabled();
-  const role = await getDbRole(context.user.id, context.db);
-  if (role !== "admin") {
-    throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
-  }
+  await assertPlatformAdmin(context.user.id, context.db);
   return adminListAllWorkspaces();
 });
 
@@ -412,10 +564,7 @@ const adminJoinWorkspaceEndpoint = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
-    const role = await getDbRole(context.user.id, context.db);
-    if (role !== "admin") {
-      throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
-    }
+    await assertPlatformAdmin(context.user.id, context.db);
     return adminJoinWorkspace(context.user.id, input.workspaceId);
   });
 
@@ -428,10 +577,7 @@ const adminAddWorkspaceMembers = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
-    const role = await getDbRole(context.user.id, context.db);
-    if (role !== "admin") {
-      throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
-    }
+    await assertPlatformAdmin(context.user.id, context.db);
     const added = await addWorkspaceMembers(input.workspaceId, input.emails, "member");
     return added;
   });
@@ -445,10 +591,7 @@ const adminCreateWorkspace = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
-    const role = await getDbRole(context.user.id, context.db);
-    if (role !== "admin") {
-      throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
-    }
+    await assertPlatformAdmin(context.user.id, context.db);
     const owner = await context.db.query.user.findFirst({
       where: eq(user.email, input.ownerEmail),
       columns: { id: true },
@@ -469,10 +612,7 @@ const adminRenameWorkspace = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
-    const role = await getDbRole(context.user.id, context.db);
-    if (role !== "admin") {
-      throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
-    }
+    await assertPlatformAdmin(context.user.id, context.db);
     return renameWorkspace(input.workspaceId, input.name);
   });
 
@@ -485,10 +625,7 @@ const adminRemoveWorkspaceMemberEndpoint = protectedProcedure
   )
   .handler(async ({ input, context }) => {
     assertBillingEnabled();
-    const role = await getDbRole(context.user.id, context.db);
-    if (role !== "admin") {
-      throw new ORPCError("FORBIDDEN", { message: "Admin role required" });
-    }
+    await assertPlatformAdmin(context.user.id, context.db);
     return adminRemoveWorkspaceMember(input.workspaceId, input.email);
   });
 
@@ -509,6 +646,7 @@ export const billingRouter = {
   manualTopUp,
   adminManualTopUp,
   inviteMembers,
+  cancelInvitation,
   members,
   rename,
   updateImage,

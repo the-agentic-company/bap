@@ -5,6 +5,7 @@ import {
   conversation,
   coworker,
   coworkerRun,
+  invitation,
   skill,
   user,
   workspace,
@@ -37,7 +38,7 @@ async function uniqueWorkspaceSlug(name: string): Promise<string> {
 
 export async function getWorkspaceForUser(userId: string, workspaceId: string) {
   const membership = await db.query.workspaceMember.findFirst({
-    where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.workspaceId, workspaceId)),
+    where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, workspaceId)),
     with: {
       workspace: {
         columns: {
@@ -75,7 +76,6 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
         imageMimeType: true,
         billingPlanId: true,
         autumnCustomerId: true,
-        createdByUserId: true,
         updatedAt: true,
       },
       orderBy: [desc(workspace.createdAt)],
@@ -88,23 +88,18 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
     const membership = await db.query.workspaceMember.findFirst({
       where: and(
         eq(workspaceMember.userId, userId),
-        eq(workspaceMember.workspaceId, existingWorkspace.id),
+        eq(workspaceMember.organizationId, existingWorkspace.id),
       ),
       columns: { id: true },
     });
 
     if (!membership) {
       await db.insert(workspaceMember).values({
-        workspaceId: existingWorkspace.id,
+        organizationId: existingWorkspace.id,
         userId,
         role: "member",
       });
     }
-
-    await db
-      .update(user)
-      .set({ activeWorkspaceId: existingWorkspace.id })
-      .where(eq(user.id, userId));
 
     return existingWorkspace;
   }
@@ -123,8 +118,12 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
         columns: {
           id: true,
           name: true,
+          slug: true,
+          imageStorageKey: true,
+          imageMimeType: true,
           billingPlanId: true,
           autumnCustomerId: true,
+          updatedAt: true,
         },
       },
     },
@@ -132,10 +131,6 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
   });
 
   if (existingMembership?.workspace) {
-    await db
-      .update(user)
-      .set({ activeWorkspaceId: existingMembership.workspace.id })
-      .where(eq(user.id, userId));
     return existingMembership.workspace;
   }
 
@@ -184,11 +179,7 @@ async function backfillLegacyWorkspaceDataForUser(userId: string, workspaceId: s
 }
 
 export async function requireActiveWorkspaceForUser(userId: string) {
-  const dbUser = await db.query.user.findFirst({
-    where: eq(user.id, userId),
-    columns: { activeWorkspaceId: true },
-  });
-  const activeWorkspace = await ensureWorkspaceForUser(userId, dbUser?.activeWorkspaceId);
+  const activeWorkspace = await ensureWorkspaceForUser(userId);
   await backfillLegacyWorkspaceDataForUser(userId, activeWorkspace.id);
   return activeWorkspace;
 }
@@ -201,29 +192,26 @@ export async function createWorkspaceForUser(userId: string, name: string) {
     .values({
       name,
       slug: isSelfHosted ? "selfhost-workspace" : slug,
-      createdByUserId: userId,
       billingPlanId: "free",
       autumnCustomerId: null,
     })
     .returning();
 
   await db.insert(workspaceMember).values({
-    workspaceId: created.id,
+    organizationId: created.id,
     userId,
     role: "owner",
   });
 
-  await db.update(user).set({ activeWorkspaceId: created.id }).where(eq(user.id, userId));
-
   return created;
 }
 
-export async function listWorkspacesForUser(userId: string) {
+export async function listWorkspacesForUser(userId: string, activeWorkspaceId?: string | null) {
   if (isSelfHostedEdition()) {
     const ensured = await ensureWorkspaceForUser(userId);
     const [membership, ensuredImage] = await Promise.all([
       db.query.workspaceMember.findFirst({
-        where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.workspaceId, ensured.id)),
+        where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, ensured.id)),
         columns: { role: true },
       }),
       db.query.workspace.findFirst({
@@ -252,10 +240,7 @@ export async function listWorkspacesForUser(userId: string) {
     orderBy: [desc(workspaceMember.createdAt)],
   });
 
-  const dbUser = await db.query.user.findFirst({
-    where: eq(user.id, userId),
-    columns: { activeWorkspaceId: true },
-  });
+  const resolvedActiveWorkspaceId = activeWorkspaceId ?? null;
 
   return Promise.all(
     memberships.map(async (membership) => ({
@@ -265,7 +250,7 @@ export async function listWorkspacesForUser(userId: string) {
       imageUrl: await buildWorkspaceImageDataUrl(membership.workspace),
       role: membership.role,
       billingPlanId: membership.workspace.billingPlanId as BillingPlanId,
-      active: membership.workspace.id === dbUser?.activeWorkspaceId,
+      active: membership.workspace.id === resolvedActiveWorkspaceId,
     })),
   );
 }
@@ -277,13 +262,12 @@ export async function setActiveWorkspace(userId: string, workspaceId: string | n
       throw new Error("Workspace not found");
     }
 
-    await db.update(user).set({ activeWorkspaceId: ensured.id }).where(eq(user.id, userId));
     return;
   }
 
   if (workspaceId) {
     const membership = await db.query.workspaceMember.findFirst({
-      where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.workspaceId, workspaceId)),
+      where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, workspaceId)),
       columns: { id: true },
     });
 
@@ -292,35 +276,129 @@ export async function setActiveWorkspace(userId: string, workspaceId: string | n
     }
   }
 
-  await db.update(user).set({ activeWorkspaceId: workspaceId }).where(eq(user.id, userId));
 }
 
 export async function getWorkspaceMembershipForUser(userId: string, workspaceId: string) {
   return db.query.workspaceMember.findFirst({
-    where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.workspaceId, workspaceId)),
+    where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, workspaceId)),
   });
 }
 
 export async function listWorkspaceMembers(workspaceId: string) {
-  const members = await db.query.workspaceMember.findMany({
-    where: eq(workspaceMember.workspaceId, workspaceId),
-    with: {
-      user: {
-        columns: {
-          id: true,
-          name: true,
-          email: true,
+  const [members, invitations] = await Promise.all([
+    db.query.workspaceMember.findMany({
+      where: eq(workspaceMember.organizationId, workspaceId),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+          },
         },
       },
+    }),
+    db.query.invitation.findMany({
+      where: and(eq(invitation.organizationId, workspaceId), eq(invitation.status, "pending")),
+      columns: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        expiresAt: true,
+      },
+      orderBy: [desc(invitation.createdAt)],
+    }),
+  ]);
+
+  return {
+    members: members.map((member) => ({
+      userId: member.user.id,
+      name: member.user.name,
+      email: member.user.email,
+      role: member.role,
+    })),
+    invitations: invitations.map((item) => ({
+      id: item.id,
+      email: item.email,
+      role: item.role ?? "member",
+      status: item.status,
+      expiresAt: item.expiresAt,
+    })),
+  };
+}
+
+export async function createWorkspaceInvitations(
+  workspaceId: string,
+  emails: string[],
+  role: "admin" | "member" = "member",
+  inviterId: string,
+) {
+  const normalizedEmails = Array.from(
+    new Set(emails.map((email) => email.trim().toLowerCase()).filter(Boolean)),
+  );
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 48);
+
+  await Promise.all(
+    normalizedEmails.map(async (email) => {
+      await db
+        .update(invitation)
+        .set({ status: "canceled" })
+        .where(
+          and(
+            eq(invitation.organizationId, workspaceId),
+            eq(invitation.email, email),
+            eq(invitation.status, "pending"),
+          ),
+        );
+
+      await db.insert(invitation).values({
+        organizationId: workspaceId,
+        email,
+        role,
+        status: "pending",
+        expiresAt,
+        inviterId,
+      });
+    }),
+  );
+
+  return normalizedEmails;
+}
+
+export async function getWorkspaceInvitation(workspaceId: string, invitationId: string) {
+  return db.query.invitation.findFirst({
+    where: and(eq(invitation.id, invitationId), eq(invitation.organizationId, workspaceId)),
+    columns: {
+      id: true,
+      organizationId: true,
+      email: true,
+      role: true,
+      status: true,
+      expiresAt: true,
     },
   });
+}
 
-  return members.map((member) => ({
-    userId: member.user.id,
-    name: member.user.name,
-    email: member.user.email,
-    role: member.role,
-  }));
+export async function cancelWorkspaceInvitation(workspaceId: string, invitationId: string) {
+  const [canceled] = await db
+    .update(invitation)
+    .set({ status: "canceled" })
+    .where(
+      and(
+        eq(invitation.id, invitationId),
+        eq(invitation.organizationId, workspaceId),
+        eq(invitation.status, "pending"),
+      ),
+    )
+    .returning({
+      id: invitation.id,
+      email: invitation.email,
+      role: invitation.role,
+      status: invitation.status,
+    });
+
+  return canceled ?? null;
 }
 
 export async function addWorkspaceMembers(
@@ -328,25 +406,55 @@ export async function addWorkspaceMembers(
   emails: string[],
   role: "admin" | "member" = "member",
 ) {
+  const normalizedEmails = Array.from(
+    new Set(emails.map((email) => email.trim().toLowerCase()).filter((email) => email.length > 0)),
+  );
+
   const users = await db.query.user.findMany({
-    where: inArray(user.email, emails),
+    where: inArray(user.email, normalizedEmails),
     columns: { id: true, email: true },
   });
 
-  await Promise.all(
-    users.map((dbUser) =>
-      db
-        .insert(workspaceMember)
-        .values({
-          workspaceId,
-          userId: dbUser.id,
-          role,
+  const requestedUserIds = users.map((dbUser) => dbUser.id);
+  const existingMemberships =
+    requestedUserIds.length > 0
+      ? await db.query.workspaceMember.findMany({
+          where: and(
+            eq(workspaceMember.organizationId, workspaceId),
+            inArray(workspaceMember.userId, requestedUserIds),
+          ),
+          columns: { userId: true },
         })
-        .onConflictDoNothing(),
-    ),
-  );
+      : [];
 
-  return users.map((item) => item.email);
+  const existingUserIds = new Set(existingMemberships.map((membership) => membership.userId));
+  const addedUsers = users.filter((dbUser) => !existingUserIds.has(dbUser.id));
+  const alreadyMembers = users
+    .filter((dbUser) => existingUserIds.has(dbUser.id))
+    .map((dbUser) => dbUser.email);
+  const foundEmails = new Set(users.map((dbUser) => dbUser.email));
+  const notFound = normalizedEmails.filter((email) => !foundEmails.has(email));
+
+  if (addedUsers.length > 0) {
+    await Promise.all(
+      addedUsers.map((dbUser) =>
+        db
+          .insert(workspaceMember)
+          .values({
+            organizationId: workspaceId,
+            userId: dbUser.id,
+            role,
+          })
+          .onConflictDoNothing(),
+      ),
+    );
+  }
+
+  return {
+    added: addedUsers.map((item) => item.email),
+    alreadyMembers,
+    notFound,
+  };
 }
 
 export async function adminListAllWorkspaces() {
@@ -416,7 +524,7 @@ export async function adminJoinWorkspace(userId: string, workspaceId: string) {
   await db
     .insert(workspaceMember)
     .values({
-      workspaceId,
+      organizationId: workspaceId,
       userId,
       role: "admin",
     })
@@ -440,7 +548,7 @@ export async function adminRemoveWorkspaceMember(workspaceId: string, targetEmai
   await db
     .delete(workspaceMember)
     .where(
-      and(eq(workspaceMember.workspaceId, workspaceId), eq(workspaceMember.userId, targetUser.id)),
+      and(eq(workspaceMember.organizationId, workspaceId), eq(workspaceMember.userId, targetUser.id)),
     );
 
   return { email: targetUser.email };

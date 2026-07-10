@@ -45,6 +45,15 @@ export type ContentPart =
   | { type: "thinking"; id: string; content: string }
   | { type: "system"; content: string };
 
+export type GenerationFailureKind =
+  | "runner_declared_failure"
+  | "internal_error"
+  | "provider_error"
+  | "auth_error"
+  | "approval_timeout"
+  | "runtime_timeout"
+  | "sandbox_error";
+
 export type MessageTiming = {
   sandboxStartupDurationMs?: number;
   sandboxStartupMode?: "created" | "reused" | "unknown";

@@ -4,7 +4,6 @@ import {
   coworker,
   generation,
   message,
-  user,
   type GenerationExecutionPolicy,
   type SyntheticTrafficKind,
 } from "@bap/db/schema";
@@ -42,6 +41,7 @@ export type StartGenerationInput = {
   model?: string;
   authSource?: ProviderAuthSource | null;
   userId: string;
+  workspaceId?: string | null;
   autoApprove?: boolean;
   sandboxProvider?: "e2b" | "daytona" | "docker";
   resumePausedGenerationId?: string;
@@ -223,20 +223,11 @@ export class TurnIntake {
         authSource: requestedAuthSource,
       });
       const title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
-      const dbUser =
-        "user" in db.query
-          ? await db.query.user.findFirst({
-              where: eq(user.id, userId),
-              columns: {
-                activeWorkspaceId: true,
-              },
-            })
-          : null;
       const [newConv] = await db
         .insert(conversation)
         .values({
           userId,
-          workspaceId: dbUser?.activeWorkspaceId ?? null,
+          workspaceId: params.workspaceId ?? null,
           title,
           type: "chat",
           model: resolvedModel,

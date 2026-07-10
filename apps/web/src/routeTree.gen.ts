@@ -8,3231 +8,3258 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as TemplateRouteImport } from './routes/template'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as InstanceRouteImport } from './routes/instance'
-import { Route as AccountsRouteImport } from './routes/accounts'
-import { Route as PublicRouteImport } from './routes/_public'
-import { Route as AuthRouteImport } from './routes/_auth'
-import { Route as AppRouteImport } from './routes/_app'
-import { Route as ToolboxRouteRouteImport } from './routes/toolbox/route'
-import { Route as SupportRouteRouteImport } from './routes/support/route'
-import { Route as SkillsRouteRouteImport } from './routes/skills/route'
-import { Route as SettingsRouteRouteImport } from './routes/settings/route'
-import { Route as OnboardingRouteRouteImport } from './routes/onboarding/route'
-import { Route as LegalRouteRouteImport } from './routes/legal/route'
-import { Route as InternalRouteRouteImport } from './routes/internal/route'
-import { Route as IntegrationsRouteRouteImport } from './routes/integrations/route'
-import { Route as AgentsRouteRouteImport } from './routes/agents/route'
-import { Route as AdminRouteRouteImport } from './routes/admin/route'
-import { Route as ToolboxIndexRouteImport } from './routes/toolbox/index'
-import { Route as TemplateIndexRouteImport } from './routes/template/index'
-import { Route as SupportIndexRouteImport } from './routes/support/index'
-import { Route as SettingsIndexRouteImport } from './routes/settings/index'
-import { Route as InternalIndexRouteImport } from './routes/internal/index'
-import { Route as AgentsIndexRouteImport } from './routes/agents/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as PublicIndexRouteImport } from './routes/_public/index'
-import { Route as TemplateTemplateIdRouteImport } from './routes/template/$templateId'
-import { Route as SkillsIdRouteImport } from './routes/skills/$id'
-import { Route as SharedShareTokenRouteImport } from './routes/shared/$shareToken'
-import { Route as SettingsWorkspaceRouteImport } from './routes/settings/workspace'
-import { Route as SettingsUsageRouteImport } from './routes/settings/usage'
-import { Route as SettingsSubscriptionsRouteImport } from './routes/settings/subscriptions'
-import { Route as SettingsBillingRouteImport } from './routes/settings/billing'
-import { Route as SettingsAdvancedRouteImport } from './routes/settings/advanced'
-import { Route as OnboardingSubscriptionsRouteImport } from './routes/onboarding/subscriptions'
-import { Route as OnboardingIntegrationsRouteImport } from './routes/onboarding/integrations'
-import { Route as LegalTermsRouteImport } from './routes/legal/terms'
-import { Route as LegalPrivacyPolicyRouteImport } from './routes/legal/privacy-policy'
-import { Route as InternalWorkspacesRouteImport } from './routes/internal/workspaces'
-import { Route as InternalUsageRouteImport } from './routes/internal/usage'
-import { Route as InternalToolsRouteImport } from './routes/internal/tools'
-import { Route as InternalTemplatesRouteImport } from './routes/internal/templates'
-import { Route as InternalSubscriptionsRouteImport } from './routes/internal/subscriptions'
-import { Route as InternalSandboxesRouteImport } from './routes/internal/sandboxes'
-import { Route as InternalReadmePreviewRouteImport } from './routes/internal/readme-preview'
-import { Route as InternalPreviewsRouteImport } from './routes/internal/previews'
-import { Route as InternalPerformanceRouteImport } from './routes/internal/performance'
-import { Route as InternalOpsRouteImport } from './routes/internal/ops'
-import { Route as InternalMcpRouteImport } from './routes/internal/mcp'
-import { Route as InternalCreditsRouteImport } from './routes/internal/credits'
-import { Route as InternalCoworkerOverviewRouteImport } from './routes/internal/coworker-overview'
-import { Route as InternalChatOverviewRouteImport } from './routes/internal/chat-overview'
-import { Route as IntegrationsTypeRouteImport } from './routes/integrations/$type'
-import { Route as ApiReportRouteImport } from './routes/api/report'
-import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
-import { Route as ApiLiveRouteImport } from './routes/api/live'
-import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as AgentsUsageRouteImport } from './routes/agents/usage'
-import { Route as AgentsOverviewRouteImport } from './routes/agents/overview'
-import { Route as AgentsNewRouteImport } from './routes/agents/new'
-import { Route as AgentsHistoryRouteImport } from './routes/agents/history'
-import { Route as AgentsGridRouteImport } from './routes/agents/grid'
-import { Route as AdminWorkspacesRouteImport } from './routes/admin/workspaces'
-import { Route as AdminUsageRouteImport } from './routes/admin/usage'
-import { Route as AdminSubscriptionsRouteImport } from './routes/admin/subscriptions'
-import { Route as AdminOverviewRouteImport } from './routes/admin/overview'
-import { Route as AdminAuditTrailRouteImport } from './routes/admin/audit-trail'
-import { Route as PublicUploadRouteImport } from './routes/_public/upload'
-import { Route as PublicTemplatesRouteImport } from './routes/_public/templates'
-import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
-import { Route as PublicBugReportRouteImport } from './routes/_public/bug-report'
-import { Route as PublicAvatarRouteImport } from './routes/_public/avatar'
-import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
-import { Route as AuthLoginRouteImport } from './routes/_auth/login'
-import { Route as AuthInviteOnlyRouteImport } from './routes/_auth/invite-only'
-import { Route as AppInboxRouteImport } from './routes/_app/inbox'
-import { Route as AppChatRouteImport } from './routes/_app/chat'
-import { Route as AgentsRunsRouteRouteImport } from './routes/agents/runs/route'
-import { Route as ApiRpcIndexRouteImport } from './routes/api/rpc/index'
-import { Route as AgentsRunsIndexRouteImport } from './routes/agents/runs/index'
-import { Route as AppChatIndexRouteImport } from './routes/_app/chat/index'
-import { Route as ToolboxSourcesNewRouteImport } from './routes/toolbox/sources/new'
-import { Route as ToolboxSourcesIdRouteImport } from './routes/toolbox/sources/$id'
-import { Route as SkillsCommunitySkillIdRouteImport } from './routes/skills/community/$skillId'
-import { Route as ApiZeroQueryRouteImport } from './routes/api/zero/query'
-import { Route as ApiSlackLinkRouteImport } from './routes/api/slack/link'
-import { Route as ApiSlackEventsRouteImport } from './routes/api/slack/events'
-import { Route as ApiSettingsPhoneNumberRouteImport } from './routes/api/settings/phone-number'
-import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc/$'
-import { Route as ApiPromptsTemplateDeployRouteImport } from './routes/api/prompts/template-deploy'
-import { Route as ApiObservabilityClientObservationsRouteImport } from './routes/api/observability/client-observations'
-import { Route as ApiOauthCallbackRouteImport } from './routes/api/oauth/callback'
-import { Route as ApiInviteOnlyRequestAccessRouteImport } from './routes/api/invite-only/request-access'
-import { Route as ApiInternalMemoryRouteImport } from './routes/api/internal/memory'
-import { Route as ApiInstanceHealthRouteImport } from './routes/api/instance/health'
-import { Route as ApiDevWorktreeAuthRouteImport } from './routes/api/dev/worktree-auth'
-import { Route as ApiDevHealthRouteImport } from './routes/api/dev/health'
-import { Route as ApiDevAutoLoginRouteImport } from './routes/api/dev/auto-login'
-import { Route as ApiCoworkersTriggerRouteImport } from './routes/api/coworkers/trigger'
-import { Route as ApiControlPlaneRuntimeCredentialsRouteImport } from './routes/api/control-plane/runtime-credentials'
-import { Route as ApiControlPlaneHealthRouteImport } from './routes/api/control-plane/health'
-import { Route as ApiAuthNativeCallbackRouteImport } from './routes/api/auth/native-callback'
-import { Route as ApiAuthCheckEmailRouteImport } from './routes/api/auth/check-email'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AgentsInfoSlugRouteImport } from './routes/agents/info/$slug'
-import { Route as AgentsFoldersFolderIdRouteImport } from './routes/agents/folders/$folderId'
-import { Route as AgentsDeployTemplateIdRouteImport } from './routes/agents/deploy/$templateId'
-import { Route as AuthSignInTokenRouteImport } from './routes/_auth/sign-in.$token'
-import { Route as AppChatConversationIdRouteImport } from './routes/_app/chat/$conversationId'
-import { Route as AgentsRunsIdRouteRouteImport } from './routes/agents/runs/$id/route'
-import { Route as AgentsEditIdRouteRouteImport } from './routes/agents/edit/$id/route'
-import { Route as AgentsRunsIdIndexRouteImport } from './routes/agents/runs/$id/index'
-import { Route as AgentsEditIdIndexRouteImport } from './routes/agents/edit/$id/index'
-import { Route as PrototypeCoworkerInfoSlugRouteImport } from './routes/prototype/coworker/info/$slug'
-import { Route as ApiWorkspacesIdImageRouteImport } from './routes/api/workspaces/$id/image'
-import { Route as ApiSandboxFilesIdDownloadRouteImport } from './routes/api/sandbox-files/$id/download'
-import { Route as ApiOauthDynamicsPendingRouteImport } from './routes/api/oauth/dynamics/pending'
-import { Route as ApiModulrDocumentsDownloadRouteImport } from './routes/api/modulr/documents/download'
-import { Route as ApiMockCrmOpenapiDotjsonRouteImport } from './routes/api/mock/crm/openapi[.]json'
-import { Route as ApiMockCrmDealsRouteImport } from './routes/api/mock/crm/deals'
-import { Route as ApiMockCrmContactsRouteImport } from './routes/api/mock/crm/contacts'
-import { Route as ApiMcpOauthTokenRouteImport } from './routes/api/mcp/oauth/token'
-import { Route as ApiMcpOauthRegisterRouteImport } from './routes/api/mcp/oauth/register'
-import { Route as ApiMcpOauthAuthorizeRouteImport } from './routes/api/mcp/oauth/authorize'
-import { Route as ApiInternalTestingCliSessionRouteImport } from './routes/api/internal/testing/cli-session'
-import { Route as ApiInternalTestingCliLiveRouteImport } from './routes/api/internal/testing/cli-live'
-import { Route as ApiInternalSlackPostAsBotRouteImport } from './routes/api/internal/slack/post-as-bot'
-import { Route as ApiInternalMcpRuntimeCredentialsRouteImport } from './routes/api/internal/mcp/runtime-credentials'
-import { Route as ApiInternalMcpModulrCredentialsRouteImport } from './routes/api/internal/mcp/modulr-credentials'
-import { Route as ApiInternalMcpGalienCredentialsRouteImport } from './routes/api/internal/mcp/galien-credentials'
-import { Route as ApiIntegrationsResendWebhookRouteImport } from './routes/api/integrations/resend/webhook'
-import { Route as ApiIntegrationsNangoProvidersRouteImport } from './routes/api/integrations/nango/providers'
-import { Route as ApiIntegrationsLinkedinWebhookRouteImport } from './routes/api/integrations/linkedin/webhook'
-import { Route as ApiInstanceAuthStartRouteImport } from './routes/api/instance/auth/start'
-import { Route as ApiControlPlaneProviderAuthStatusRouteImport } from './routes/api/control-plane/provider-auth/status'
-import { Route as ApiControlPlaneProviderAuthDisconnectRouteImport } from './routes/api/control-plane/provider-auth/disconnect'
-import { Route as ApiControlPlaneLinkStartRouteImport } from './routes/api/control-plane/link/start'
-import { Route as ApiControlPlaneLinkExchangeRouteImport } from './routes/api/control-plane/link/exchange'
-import { Route as ApiControlPlaneLinkCallbackRouteImport } from './routes/api/control-plane/link/callback'
-import { Route as ApiControlPlaneLinkAuthorizeRouteImport } from './routes/api/control-plane/link/authorize'
-import { Route as ApiControlPlaneIntegrationsToggleRouteImport } from './routes/api/control-plane/integrations/toggle'
-import { Route as ApiControlPlaneIntegrationsStatusRouteImport } from './routes/api/control-plane/integrations/status'
-import { Route as ApiControlPlaneIntegrationsDisconnectRouteImport } from './routes/api/control-plane/integrations/disconnect'
-import { Route as ApiControlPlaneIntegrationsConnectRouteImport } from './routes/api/control-plane/integrations/connect'
-import { Route as ApiControlPlaneAuthStartRouteImport } from './routes/api/control-plane/auth/start'
-import { Route as ApiControlPlaneAuthExchangeRouteImport } from './routes/api/control-plane/auth/exchange'
-import { Route as ApiControlPlaneAuthCallbackRouteImport } from './routes/api/control-plane/auth/callback'
-import { Route as ApiControlPlaneAuthAuthorizeRouteImport } from './routes/api/control-plane/auth/authorize'
-import { Route as ApiAuthPasswordStartRouteImport } from './routes/api/auth/password/start'
-import { Route as AuthSignInTokenResendRouteImport } from './routes/_auth/sign-in.$token.resend'
-import { Route as AuthSignInTokenConfirmRouteImport } from './routes/_auth/sign-in.$token.confirm'
-import { Route as AgentsEditIdRunsIndexRouteImport } from './routes/agents/edit/$id/runs/index'
-import { Route as ApiMockCrmContactsIdRouteImport } from './routes/api/mock/crm/contacts/$id'
-import { Route as ApiInternalRuntimeInterruptsStatusRouteImport } from './routes/api/internal/runtime/interrupts/status'
-import { Route as ApiInternalRuntimeInterruptsCreateRouteImport } from './routes/api/internal/runtime/interrupts/create'
-import { Route as ApiInternalCoworkersRuntimeListRouteImport } from './routes/api/internal/coworkers/runtime/list'
-import { Route as ApiInternalCoworkersRuntimeInvokeRouteImport } from './routes/api/internal/coworkers/runtime/invoke'
-import { Route as ApiInternalCoworkersRuntimeEditRouteImport } from './routes/api/internal/coworkers/runtime/edit'
-import { Route as ApiInternalAdminRemoteIntegrationsUsersRouteImport } from './routes/api/internal/admin/remote-integrations/users'
-import { Route as ApiInternalAdminRemoteIntegrationsCredentialsRouteImport } from './routes/api/internal/admin/remote-integrations/credentials'
-import { Route as ApiCoworkersDocumentsIdDownloadRouteImport } from './routes/api/coworkers/documents/$id/download'
-import { Route as ApiAuthProviderProviderCallbackRouteImport } from './routes/api/auth/provider/$provider/callback'
-import { Route as AgentsEditIdRunsRunIdRouteImport } from './routes/agents/edit/$id/runs/$runId'
-import { Route as ApiInternalCoworkersRuntimeDocumentsUploadRouteImport } from './routes/api/internal/coworkers/runtime/documents/upload'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as TemplateRouteImport } from "./routes/template";
+import { Route as SearchRouteImport } from "./routes/search";
+import { Route as InstanceRouteImport } from "./routes/instance";
+import { Route as AuditRouteImport } from "./routes/audit";
+import { Route as AccountsRouteImport } from "./routes/accounts";
+import { Route as PublicRouteImport } from "./routes/_public";
+import { Route as AuthRouteImport } from "./routes/_auth";
+import { Route as AppRouteImport } from "./routes/_app";
+import { Route as ToolboxRouteRouteImport } from "./routes/toolbox/route";
+import { Route as SupportRouteRouteImport } from "./routes/support/route";
+import { Route as SkillsRouteRouteImport } from "./routes/skills/route";
+import { Route as SettingsRouteRouteImport } from "./routes/settings/route";
+import { Route as OnboardingRouteRouteImport } from "./routes/onboarding/route";
+import { Route as LegalRouteRouteImport } from "./routes/legal/route";
+import { Route as InternalRouteRouteImport } from "./routes/internal/route";
+import { Route as IntegrationsRouteRouteImport } from "./routes/integrations/route";
+import { Route as AgentsRouteRouteImport } from "./routes/agents/route";
+import { Route as AdminRouteRouteImport } from "./routes/admin/route";
+import { Route as ToolboxIndexRouteImport } from "./routes/toolbox/index";
+import { Route as TemplateIndexRouteImport } from "./routes/template/index";
+import { Route as SupportIndexRouteImport } from "./routes/support/index";
+import { Route as SettingsIndexRouteImport } from "./routes/settings/index";
+import { Route as InternalIndexRouteImport } from "./routes/internal/index";
+import { Route as AgentsIndexRouteImport } from "./routes/agents/index";
+import { Route as AdminIndexRouteImport } from "./routes/admin/index";
+import { Route as PublicIndexRouteImport } from "./routes/_public/index";
+import { Route as TemplateTemplateIdRouteImport } from "./routes/template/$templateId";
+import { Route as SkillsIdRouteImport } from "./routes/skills/$id";
+import { Route as SharedShareTokenRouteImport } from "./routes/shared/$shareToken";
+import { Route as SettingsWorkspaceRouteImport } from "./routes/settings/workspace";
+import { Route as SettingsUsageRouteImport } from "./routes/settings/usage";
+import { Route as SettingsSubscriptionsRouteImport } from "./routes/settings/subscriptions";
+import { Route as SettingsBillingRouteImport } from "./routes/settings/billing";
+import { Route as SettingsAdvancedRouteImport } from "./routes/settings/advanced";
+import { Route as OnboardingSubscriptionsRouteImport } from "./routes/onboarding/subscriptions";
+import { Route as OnboardingIntegrationsRouteImport } from "./routes/onboarding/integrations";
+import { Route as LegalTermsRouteImport } from "./routes/legal/terms";
+import { Route as LegalPrivacyPolicyRouteImport } from "./routes/legal/privacy-policy";
+import { Route as InternalWorkspacesRouteImport } from "./routes/internal/workspaces";
+import { Route as InternalUsageRouteImport } from "./routes/internal/usage";
+import { Route as InternalToolsRouteImport } from "./routes/internal/tools";
+import { Route as InternalTemplatesRouteImport } from "./routes/internal/templates";
+import { Route as InternalSubscriptionsRouteImport } from "./routes/internal/subscriptions";
+import { Route as InternalSandboxesRouteImport } from "./routes/internal/sandboxes";
+import { Route as InternalReadmePreviewRouteImport } from "./routes/internal/readme-preview";
+import { Route as InternalPreviewsRouteImport } from "./routes/internal/previews";
+import { Route as InternalPerformanceRouteImport } from "./routes/internal/performance";
+import { Route as InternalOpsRouteImport } from "./routes/internal/ops";
+import { Route as InternalMcpRouteImport } from "./routes/internal/mcp";
+import { Route as InternalCreditsRouteImport } from "./routes/internal/credits";
+import { Route as InternalCoworkerOverviewRouteImport } from "./routes/internal/coworker-overview";
+import { Route as InternalChatOverviewRouteImport } from "./routes/internal/chat-overview";
+import { Route as IntegrationsTypeRouteImport } from "./routes/integrations/$type";
+import { Route as ApiReportRouteImport } from "./routes/api/report";
+import { Route as ApiOpenapiRouteImport } from "./routes/api/openapi";
+import { Route as ApiLiveRouteImport } from "./routes/api/live";
+import { Route as ApiHealthRouteImport } from "./routes/api/health";
+import { Route as AgentsUsageRouteImport } from "./routes/agents/usage";
+import { Route as AgentsOverviewRouteImport } from "./routes/agents/overview";
+import { Route as AgentsNewRouteImport } from "./routes/agents/new";
+import { Route as AgentsHistoryRouteImport } from "./routes/agents/history";
+import { Route as AgentsGridRouteImport } from "./routes/agents/grid";
+import { Route as AdminWorkspacesRouteImport } from "./routes/admin/workspaces";
+import { Route as AdminUsageRouteImport } from "./routes/admin/usage";
+import { Route as AdminSubscriptionsRouteImport } from "./routes/admin/subscriptions";
+import { Route as AdminOverviewRouteImport } from "./routes/admin/overview";
+import { Route as AdminAuditTrailRouteImport } from "./routes/admin/audit-trail";
+import { Route as PublicUploadRouteImport } from "./routes/_public/upload";
+import { Route as PublicTemplatesRouteImport } from "./routes/_public/templates";
+import { Route as PublicPricingRouteImport } from "./routes/_public/pricing";
+import { Route as PublicBugReportRouteImport } from "./routes/_public/bug-report";
+import { Route as PublicAvatarRouteImport } from "./routes/_public/avatar";
+import { Route as AuthResetPasswordRouteImport } from "./routes/_auth/reset-password";
+import { Route as AuthLoginRouteImport } from "./routes/_auth/login";
+import { Route as AuthInviteOnlyRouteImport } from "./routes/_auth/invite-only";
+import { Route as AppInboxRouteImport } from "./routes/_app/inbox";
+import { Route as AppChatRouteImport } from "./routes/_app/chat";
+import { Route as AgentsRunsRouteRouteImport } from "./routes/agents/runs/route";
+import { Route as ApiRpcIndexRouteImport } from "./routes/api/rpc/index";
+import { Route as AgentsRunsIndexRouteImport } from "./routes/agents/runs/index";
+import { Route as AppChatIndexRouteImport } from "./routes/_app/chat/index";
+import { Route as ToolboxSourcesNewRouteImport } from "./routes/toolbox/sources/new";
+import { Route as ToolboxSourcesIdRouteImport } from "./routes/toolbox/sources/$id";
+import { Route as SkillsCommunitySkillIdRouteImport } from "./routes/skills/community/$skillId";
+import { Route as ShareAgentsSlugRouteImport } from "./routes/share/agents/$slug";
+import { Route as ApiZeroQueryRouteImport } from "./routes/api/zero/query";
+import { Route as ApiSlackLinkRouteImport } from "./routes/api/slack/link";
+import { Route as ApiSlackEventsRouteImport } from "./routes/api/slack/events";
+import { Route as ApiSettingsPhoneNumberRouteImport } from "./routes/api/settings/phone-number";
+import { Route as ApiRpcSplatRouteImport } from "./routes/api/rpc/$";
+import { Route as ApiPromptsTemplateDeployRouteImport } from "./routes/api/prompts/template-deploy";
+import { Route as ApiObservabilityClientObservationsRouteImport } from "./routes/api/observability/client-observations";
+import { Route as ApiOauthCallbackRouteImport } from "./routes/api/oauth/callback";
+import { Route as ApiInviteOnlyRequestAccessRouteImport } from "./routes/api/invite-only/request-access";
+import { Route as ApiInternalMemoryRouteImport } from "./routes/api/internal/memory";
+import { Route as ApiInstanceHealthRouteImport } from "./routes/api/instance/health";
+import { Route as ApiDevWorktreeAuthRouteImport } from "./routes/api/dev/worktree-auth";
+import { Route as ApiDevHealthRouteImport } from "./routes/api/dev/health";
+import { Route as ApiDevAutoLoginRouteImport } from "./routes/api/dev/auto-login";
+import { Route as ApiCoworkersTriggerRouteImport } from "./routes/api/coworkers/trigger";
+import { Route as ApiControlPlaneRuntimeCredentialsRouteImport } from "./routes/api/control-plane/runtime-credentials";
+import { Route as ApiControlPlaneHealthRouteImport } from "./routes/api/control-plane/health";
+import { Route as ApiAuthNativeCallbackRouteImport } from "./routes/api/auth/native-callback";
+import { Route as ApiAuthCheckEmailRouteImport } from "./routes/api/auth/check-email";
+import { Route as ApiAuthSplatRouteImport } from "./routes/api/auth/$";
+import { Route as AgentsInfoSlugRouteImport } from "./routes/agents/info/$slug";
+import { Route as AgentsFoldersFolderIdRouteImport } from "./routes/agents/folders/$folderId";
+import { Route as AgentsDeployTemplateIdRouteImport } from "./routes/agents/deploy/$templateId";
+import { Route as AuthWorkspaceInvitationsInvitationIdRouteImport } from "./routes/_auth/workspace-invitations.$invitationId";
+import { Route as AuthSignInTokenRouteImport } from "./routes/_auth/sign-in.$token";
+import { Route as AppChatConversationIdRouteImport } from "./routes/_app/chat/$conversationId";
+import { Route as AgentsRunsIdRouteRouteImport } from "./routes/agents/runs/$id/route";
+import { Route as AgentsEditIdRouteRouteImport } from "./routes/agents/edit/$id/route";
+import { Route as AgentsRunsIdIndexRouteImport } from "./routes/agents/runs/$id/index";
+import { Route as AgentsEditIdIndexRouteImport } from "./routes/agents/edit/$id/index";
+import { Route as PrototypeCoworkerInfoSlugRouteImport } from "./routes/prototype/coworker/info/$slug";
+import { Route as ApiWorkspacesIdImageRouteImport } from "./routes/api/workspaces/$id/image";
+import { Route as ApiSandboxFilesIdDownloadRouteImport } from "./routes/api/sandbox-files/$id/download";
+import { Route as ApiOauthDynamicsPendingRouteImport } from "./routes/api/oauth/dynamics/pending";
+import { Route as ApiModulrDocumentsDownloadRouteImport } from "./routes/api/modulr/documents/download";
+import { Route as ApiMockCrmOpenapiDotjsonRouteImport } from "./routes/api/mock/crm/openapi[.]json";
+import { Route as ApiMockCrmDealsRouteImport } from "./routes/api/mock/crm/deals";
+import { Route as ApiMockCrmContactsRouteImport } from "./routes/api/mock/crm/contacts";
+import { Route as ApiMcpOauthTokenRouteImport } from "./routes/api/mcp/oauth/token";
+import { Route as ApiMcpOauthRegisterRouteImport } from "./routes/api/mcp/oauth/register";
+import { Route as ApiMcpOauthAuthorizeRouteImport } from "./routes/api/mcp/oauth/authorize";
+import { Route as ApiInternalTestingCliSessionRouteImport } from "./routes/api/internal/testing/cli-session";
+import { Route as ApiInternalTestingCliLiveRouteImport } from "./routes/api/internal/testing/cli-live";
+import { Route as ApiInternalSlackPostAsBotRouteImport } from "./routes/api/internal/slack/post-as-bot";
+import { Route as ApiInternalMcpRuntimeCredentialsRouteImport } from "./routes/api/internal/mcp/runtime-credentials";
+import { Route as ApiInternalMcpModulrCredentialsRouteImport } from "./routes/api/internal/mcp/modulr-credentials";
+import { Route as ApiInternalMcpGalienCredentialsRouteImport } from "./routes/api/internal/mcp/galien-credentials";
+import { Route as ApiIntegrationsResendWebhookRouteImport } from "./routes/api/integrations/resend/webhook";
+import { Route as ApiIntegrationsNangoProvidersRouteImport } from "./routes/api/integrations/nango/providers";
+import { Route as ApiIntegrationsLinkedinWebhookRouteImport } from "./routes/api/integrations/linkedin/webhook";
+import { Route as ApiInstanceAuthStartRouteImport } from "./routes/api/instance/auth/start";
+import { Route as ApiControlPlaneProviderAuthStatusRouteImport } from "./routes/api/control-plane/provider-auth/status";
+import { Route as ApiControlPlaneProviderAuthDisconnectRouteImport } from "./routes/api/control-plane/provider-auth/disconnect";
+import { Route as ApiControlPlaneLinkStartRouteImport } from "./routes/api/control-plane/link/start";
+import { Route as ApiControlPlaneLinkExchangeRouteImport } from "./routes/api/control-plane/link/exchange";
+import { Route as ApiControlPlaneLinkCallbackRouteImport } from "./routes/api/control-plane/link/callback";
+import { Route as ApiControlPlaneLinkAuthorizeRouteImport } from "./routes/api/control-plane/link/authorize";
+import { Route as ApiControlPlaneIntegrationsToggleRouteImport } from "./routes/api/control-plane/integrations/toggle";
+import { Route as ApiControlPlaneIntegrationsStatusRouteImport } from "./routes/api/control-plane/integrations/status";
+import { Route as ApiControlPlaneIntegrationsDisconnectRouteImport } from "./routes/api/control-plane/integrations/disconnect";
+import { Route as ApiControlPlaneIntegrationsConnectRouteImport } from "./routes/api/control-plane/integrations/connect";
+import { Route as ApiControlPlaneAuthStartRouteImport } from "./routes/api/control-plane/auth/start";
+import { Route as ApiControlPlaneAuthExchangeRouteImport } from "./routes/api/control-plane/auth/exchange";
+import { Route as ApiControlPlaneAuthCallbackRouteImport } from "./routes/api/control-plane/auth/callback";
+import { Route as ApiControlPlaneAuthAuthorizeRouteImport } from "./routes/api/control-plane/auth/authorize";
+import { Route as ApiAuthPasswordStartRouteImport } from "./routes/api/auth/password/start";
+import { Route as AuthSignInTokenResendRouteImport } from "./routes/_auth/sign-in.$token.resend";
+import { Route as AuthSignInTokenConfirmRouteImport } from "./routes/_auth/sign-in.$token.confirm";
+import { Route as AgentsEditIdRunsIndexRouteImport } from "./routes/agents/edit/$id/runs/index";
+import { Route as ApiMockCrmContactsIdRouteImport } from "./routes/api/mock/crm/contacts/$id";
+import { Route as ApiInternalRuntimeInterruptsStatusRouteImport } from "./routes/api/internal/runtime/interrupts/status";
+import { Route as ApiInternalRuntimeInterruptsCreateRouteImport } from "./routes/api/internal/runtime/interrupts/create";
+import { Route as ApiInternalCoworkersRuntimeListRouteImport } from "./routes/api/internal/coworkers/runtime/list";
+import { Route as ApiInternalCoworkersRuntimeInvokeRouteImport } from "./routes/api/internal/coworkers/runtime/invoke";
+import { Route as ApiInternalCoworkersRuntimeEditRouteImport } from "./routes/api/internal/coworkers/runtime/edit";
+import { Route as ApiInternalAdminRemoteIntegrationsUsersRouteImport } from "./routes/api/internal/admin/remote-integrations/users";
+import { Route as ApiInternalAdminRemoteIntegrationsCredentialsRouteImport } from "./routes/api/internal/admin/remote-integrations/credentials";
+import { Route as ApiCoworkersDocumentsIdDownloadRouteImport } from "./routes/api/coworkers/documents/$id/download";
+import { Route as ApiAuthProviderProviderCallbackRouteImport } from "./routes/api/auth/provider/$provider/callback";
+import { Route as AgentsEditIdRunsRunIdRouteImport } from "./routes/agents/edit/$id/runs/$runId";
+import { Route as ApiInternalCoworkersRuntimeDocumentsUploadRouteImport } from "./routes/api/internal/coworkers/runtime/documents/upload";
 
 const TemplateRoute = TemplateRouteImport.update({
-  id: '/template',
-  path: '/template',
+  id: "/template",
+  path: "/template",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
+  id: "/search",
+  path: "/search",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const InstanceRoute = InstanceRouteImport.update({
-  id: '/instance',
-  path: '/instance',
+  id: "/instance",
+  path: "/instance",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
+const AuditRoute = AuditRouteImport.update({
+  id: "/audit",
+  path: "/audit",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const AccountsRoute = AccountsRouteImport.update({
-  id: '/accounts',
-  path: '/accounts',
+  id: "/accounts",
+  path: "/accounts",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const PublicRoute = PublicRouteImport.update({
-  id: '/_public',
+  id: "/_public",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthRoute = AuthRouteImport.update({
-  id: '/_auth',
+  id: "/_auth",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AppRoute = AppRouteImport.update({
-  id: '/_app',
+  id: "/_app",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ToolboxRouteRoute = ToolboxRouteRouteImport.update({
-  id: '/toolbox',
-  path: '/toolbox',
+  id: "/toolbox",
+  path: "/toolbox",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SupportRouteRoute = SupportRouteRouteImport.update({
-  id: '/support',
-  path: '/support',
+  id: "/support",
+  path: "/support",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SkillsRouteRoute = SkillsRouteRouteImport.update({
-  id: '/skills',
-  path: '/skills',
+  id: "/skills",
+  path: "/skills",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SettingsRouteRoute = SettingsRouteRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+  id: "/settings",
+  path: "/settings",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const OnboardingRouteRoute = OnboardingRouteRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
+  id: "/onboarding",
+  path: "/onboarding",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LegalRouteRoute = LegalRouteRouteImport.update({
-  id: '/legal',
-  path: '/legal',
+  id: "/legal",
+  path: "/legal",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const InternalRouteRoute = InternalRouteRouteImport.update({
-  id: '/internal',
-  path: '/internal',
+  id: "/internal",
+  path: "/internal",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IntegrationsRouteRoute = IntegrationsRouteRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
+  id: "/integrations",
+  path: "/integrations",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AgentsRouteRoute = AgentsRouteRouteImport.update({
-  id: '/agents',
-  path: '/agents',
+  id: "/agents",
+  path: "/agents",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AdminRouteRoute = AdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+  id: "/admin",
+  path: "/admin",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ToolboxIndexRoute = ToolboxIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => ToolboxRouteRoute,
-} as any)
+} as any);
 const TemplateIndexRoute = TemplateIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => TemplateRoute,
-} as any)
+} as any);
 const SupportIndexRoute = SupportIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => SupportRouteRoute,
-} as any)
+} as any);
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => SettingsRouteRoute,
-} as any)
+} as any);
 const InternalIndexRoute = InternalIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const AgentsIndexRoute = AgentsIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AdminRouteRoute,
-} as any)
+} as any);
 const PublicIndexRoute = PublicIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => PublicRoute,
-} as any)
+} as any);
 const TemplateTemplateIdRoute = TemplateTemplateIdRouteImport.update({
-  id: '/$templateId',
-  path: '/$templateId',
+  id: "/$templateId",
+  path: "/$templateId",
   getParentRoute: () => TemplateRoute,
-} as any)
+} as any);
 const SkillsIdRoute = SkillsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => SkillsRouteRoute,
-} as any)
+} as any);
 const SharedShareTokenRoute = SharedShareTokenRouteImport.update({
-  id: '/shared/$shareToken',
-  path: '/shared/$shareToken',
+  id: "/shared/$shareToken",
+  path: "/shared/$shareToken",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SettingsWorkspaceRoute = SettingsWorkspaceRouteImport.update({
-  id: '/workspace',
-  path: '/workspace',
+  id: "/workspace",
+  path: "/workspace",
   getParentRoute: () => SettingsRouteRoute,
-} as any)
+} as any);
 const SettingsUsageRoute = SettingsUsageRouteImport.update({
-  id: '/usage',
-  path: '/usage',
+  id: "/usage",
+  path: "/usage",
   getParentRoute: () => SettingsRouteRoute,
-} as any)
+} as any);
 const SettingsSubscriptionsRoute = SettingsSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
+  id: "/subscriptions",
+  path: "/subscriptions",
   getParentRoute: () => SettingsRouteRoute,
-} as any)
+} as any);
 const SettingsBillingRoute = SettingsBillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
+  id: "/billing",
+  path: "/billing",
   getParentRoute: () => SettingsRouteRoute,
-} as any)
+} as any);
 const SettingsAdvancedRoute = SettingsAdvancedRouteImport.update({
-  id: '/advanced',
-  path: '/advanced',
+  id: "/advanced",
+  path: "/advanced",
   getParentRoute: () => SettingsRouteRoute,
-} as any)
+} as any);
 const OnboardingSubscriptionsRoute = OnboardingSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
+  id: "/subscriptions",
+  path: "/subscriptions",
   getParentRoute: () => OnboardingRouteRoute,
-} as any)
+} as any);
 const OnboardingIntegrationsRoute = OnboardingIntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
+  id: "/integrations",
+  path: "/integrations",
   getParentRoute: () => OnboardingRouteRoute,
-} as any)
+} as any);
 const LegalTermsRoute = LegalTermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+  id: "/terms",
+  path: "/terms",
   getParentRoute: () => LegalRouteRoute,
-} as any)
+} as any);
 const LegalPrivacyPolicyRoute = LegalPrivacyPolicyRouteImport.update({
-  id: '/privacy-policy',
-  path: '/privacy-policy',
+  id: "/privacy-policy",
+  path: "/privacy-policy",
   getParentRoute: () => LegalRouteRoute,
-} as any)
+} as any);
 const InternalWorkspacesRoute = InternalWorkspacesRouteImport.update({
-  id: '/workspaces',
-  path: '/workspaces',
+  id: "/workspaces",
+  path: "/workspaces",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalUsageRoute = InternalUsageRouteImport.update({
-  id: '/usage',
-  path: '/usage',
+  id: "/usage",
+  path: "/usage",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalToolsRoute = InternalToolsRouteImport.update({
-  id: '/tools',
-  path: '/tools',
+  id: "/tools",
+  path: "/tools",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalTemplatesRoute = InternalTemplatesRouteImport.update({
-  id: '/templates',
-  path: '/templates',
+  id: "/templates",
+  path: "/templates",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalSubscriptionsRoute = InternalSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
+  id: "/subscriptions",
+  path: "/subscriptions",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalSandboxesRoute = InternalSandboxesRouteImport.update({
-  id: '/sandboxes',
-  path: '/sandboxes',
+  id: "/sandboxes",
+  path: "/sandboxes",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalReadmePreviewRoute = InternalReadmePreviewRouteImport.update({
-  id: '/readme-preview',
-  path: '/readme-preview',
+  id: "/readme-preview",
+  path: "/readme-preview",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalPreviewsRoute = InternalPreviewsRouteImport.update({
-  id: '/previews',
-  path: '/previews',
+  id: "/previews",
+  path: "/previews",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalPerformanceRoute = InternalPerformanceRouteImport.update({
-  id: '/performance',
-  path: '/performance',
+  id: "/performance",
+  path: "/performance",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalOpsRoute = InternalOpsRouteImport.update({
-  id: '/ops',
-  path: '/ops',
+  id: "/ops",
+  path: "/ops",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalMcpRoute = InternalMcpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
+  id: "/mcp",
+  path: "/mcp",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const InternalCreditsRoute = InternalCreditsRouteImport.update({
-  id: '/credits',
-  path: '/credits',
+  id: "/credits",
+  path: "/credits",
   getParentRoute: () => InternalRouteRoute,
-} as any)
-const InternalCoworkerOverviewRoute =
-  InternalCoworkerOverviewRouteImport.update({
-    id: '/coworker-overview',
-    path: '/coworker-overview',
-    getParentRoute: () => InternalRouteRoute,
-  } as any)
+} as any);
+const InternalCoworkerOverviewRoute = InternalCoworkerOverviewRouteImport.update({
+  id: "/coworker-overview",
+  path: "/coworker-overview",
+  getParentRoute: () => InternalRouteRoute,
+} as any);
 const InternalChatOverviewRoute = InternalChatOverviewRouteImport.update({
-  id: '/chat-overview',
-  path: '/chat-overview',
+  id: "/chat-overview",
+  path: "/chat-overview",
   getParentRoute: () => InternalRouteRoute,
-} as any)
+} as any);
 const IntegrationsTypeRoute = IntegrationsTypeRouteImport.update({
-  id: '/$type',
-  path: '/$type',
+  id: "/$type",
+  path: "/$type",
   getParentRoute: () => IntegrationsRouteRoute,
-} as any)
+} as any);
 const ApiReportRoute = ApiReportRouteImport.update({
-  id: '/api/report',
-  path: '/api/report',
+  id: "/api/report",
+  path: "/api/report",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
-  id: '/api/openapi',
-  path: '/api/openapi',
+  id: "/api/openapi",
+  path: "/api/openapi",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiLiveRoute = ApiLiveRouteImport.update({
-  id: '/api/live',
-  path: '/api/live',
+  id: "/api/live",
+  path: "/api/live",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiHealthRoute = ApiHealthRouteImport.update({
-  id: '/api/health',
-  path: '/api/health',
+  id: "/api/health",
+  path: "/api/health",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AgentsUsageRoute = AgentsUsageRouteImport.update({
-  id: '/usage',
-  path: '/usage',
+  id: "/usage",
+  path: "/usage",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AgentsOverviewRoute = AgentsOverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
+  id: "/overview",
+  path: "/overview",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AgentsNewRoute = AgentsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
+  id: "/new",
+  path: "/new",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AgentsHistoryRoute = AgentsHistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
+  id: "/history",
+  path: "/history",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AgentsGridRoute = AgentsGridRouteImport.update({
-  id: '/grid',
-  path: '/grid',
+  id: "/grid",
+  path: "/grid",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AdminWorkspacesRoute = AdminWorkspacesRouteImport.update({
-  id: '/workspaces',
-  path: '/workspaces',
+  id: "/workspaces",
+  path: "/workspaces",
   getParentRoute: () => AdminRouteRoute,
-} as any)
+} as any);
 const AdminUsageRoute = AdminUsageRouteImport.update({
-  id: '/usage',
-  path: '/usage',
+  id: "/usage",
+  path: "/usage",
   getParentRoute: () => AdminRouteRoute,
-} as any)
+} as any);
 const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
+  id: "/subscriptions",
+  path: "/subscriptions",
   getParentRoute: () => AdminRouteRoute,
-} as any)
+} as any);
 const AdminOverviewRoute = AdminOverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
+  id: "/overview",
+  path: "/overview",
   getParentRoute: () => AdminRouteRoute,
-} as any)
+} as any);
 const AdminAuditTrailRoute = AdminAuditTrailRouteImport.update({
-  id: '/audit-trail',
-  path: '/audit-trail',
+  id: "/audit-trail",
+  path: "/audit-trail",
   getParentRoute: () => AdminRouteRoute,
-} as any)
+} as any);
 const PublicUploadRoute = PublicUploadRouteImport.update({
-  id: '/upload',
-  path: '/upload',
+  id: "/upload",
+  path: "/upload",
   getParentRoute: () => PublicRoute,
-} as any)
+} as any);
 const PublicTemplatesRoute = PublicTemplatesRouteImport.update({
-  id: '/templates',
-  path: '/templates',
+  id: "/templates",
+  path: "/templates",
   getParentRoute: () => PublicRoute,
-} as any)
+} as any);
 const PublicPricingRoute = PublicPricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
+  id: "/pricing",
+  path: "/pricing",
   getParentRoute: () => PublicRoute,
-} as any)
+} as any);
 const PublicBugReportRoute = PublicBugReportRouteImport.update({
-  id: '/bug-report',
-  path: '/bug-report',
+  id: "/bug-report",
+  path: "/bug-report",
   getParentRoute: () => PublicRoute,
-} as any)
+} as any);
 const PublicAvatarRoute = PublicAvatarRouteImport.update({
-  id: '/avatar',
-  path: '/avatar',
+  id: "/avatar",
+  path: "/avatar",
   getParentRoute: () => PublicRoute,
-} as any)
+} as any);
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+  id: "/reset-password",
+  path: "/reset-password",
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+  id: "/login",
+  path: "/login",
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AuthInviteOnlyRoute = AuthInviteOnlyRouteImport.update({
-  id: '/invite-only',
-  path: '/invite-only',
+  id: "/invite-only",
+  path: "/invite-only",
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AppInboxRoute = AppInboxRouteImport.update({
-  id: '/inbox',
-  path: '/inbox',
+  id: "/inbox",
+  path: "/inbox",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppChatRoute = AppChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
+  id: "/chat",
+  path: "/chat",
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AgentsRunsRouteRoute = AgentsRunsRouteRouteImport.update({
-  id: '/runs',
-  path: '/runs',
+  id: "/runs",
+  path: "/runs",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const ApiRpcIndexRoute = ApiRpcIndexRouteImport.update({
-  id: '/api/rpc/',
-  path: '/api/rpc/',
+  id: "/api/rpc/",
+  path: "/api/rpc/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AgentsRunsIndexRoute = AgentsRunsIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AgentsRunsRouteRoute,
-} as any)
+} as any);
 const AppChatIndexRoute = AppChatIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AppChatRoute,
-} as any)
+} as any);
 const ToolboxSourcesNewRoute = ToolboxSourcesNewRouteImport.update({
-  id: '/sources/new',
-  path: '/sources/new',
+  id: "/sources/new",
+  path: "/sources/new",
   getParentRoute: () => ToolboxRouteRoute,
-} as any)
+} as any);
 const ToolboxSourcesIdRoute = ToolboxSourcesIdRouteImport.update({
-  id: '/sources/$id',
-  path: '/sources/$id',
+  id: "/sources/$id",
+  path: "/sources/$id",
   getParentRoute: () => ToolboxRouteRoute,
-} as any)
+} as any);
 const SkillsCommunitySkillIdRoute = SkillsCommunitySkillIdRouteImport.update({
-  id: '/community/$skillId',
-  path: '/community/$skillId',
+  id: "/community/$skillId",
+  path: "/community/$skillId",
   getParentRoute: () => SkillsRouteRoute,
-} as any)
+} as any);
+const ShareAgentsSlugRoute = ShareAgentsSlugRouteImport.update({
+  id: "/share/agents/$slug",
+  path: "/share/agents/$slug",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiZeroQueryRoute = ApiZeroQueryRouteImport.update({
-  id: '/api/zero/query',
-  path: '/api/zero/query',
+  id: "/api/zero/query",
+  path: "/api/zero/query",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiSlackLinkRoute = ApiSlackLinkRouteImport.update({
-  id: '/api/slack/link',
-  path: '/api/slack/link',
+  id: "/api/slack/link",
+  path: "/api/slack/link",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiSlackEventsRoute = ApiSlackEventsRouteImport.update({
-  id: '/api/slack/events',
-  path: '/api/slack/events',
+  id: "/api/slack/events",
+  path: "/api/slack/events",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiSettingsPhoneNumberRoute = ApiSettingsPhoneNumberRouteImport.update({
-  id: '/api/settings/phone-number',
-  path: '/api/settings/phone-number',
+  id: "/api/settings/phone-number",
+  path: "/api/settings/phone-number",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
-  id: '/api/rpc/$',
-  path: '/api/rpc/$',
+  id: "/api/rpc/$",
+  path: "/api/rpc/$",
   getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPromptsTemplateDeployRoute =
-  ApiPromptsTemplateDeployRouteImport.update({
-    id: '/api/prompts/template-deploy',
-    path: '/api/prompts/template-deploy',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+} as any);
+const ApiPromptsTemplateDeployRoute = ApiPromptsTemplateDeployRouteImport.update({
+  id: "/api/prompts/template-deploy",
+  path: "/api/prompts/template-deploy",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiObservabilityClientObservationsRoute =
   ApiObservabilityClientObservationsRouteImport.update({
-    id: '/api/observability/client-observations',
-    path: '/api/observability/client-observations',
+    id: "/api/observability/client-observations",
+    path: "/api/observability/client-observations",
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const ApiOauthCallbackRoute = ApiOauthCallbackRouteImport.update({
-  id: '/api/oauth/callback',
-  path: '/api/oauth/callback',
+  id: "/api/oauth/callback",
+  path: "/api/oauth/callback",
   getParentRoute: () => rootRouteImport,
-} as any)
-const ApiInviteOnlyRequestAccessRoute =
-  ApiInviteOnlyRequestAccessRouteImport.update({
-    id: '/api/invite-only/request-access',
-    path: '/api/invite-only/request-access',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+} as any);
+const ApiInviteOnlyRequestAccessRoute = ApiInviteOnlyRequestAccessRouteImport.update({
+  id: "/api/invite-only/request-access",
+  path: "/api/invite-only/request-access",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiInternalMemoryRoute = ApiInternalMemoryRouteImport.update({
-  id: '/api/internal/memory',
-  path: '/api/internal/memory',
+  id: "/api/internal/memory",
+  path: "/api/internal/memory",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiInstanceHealthRoute = ApiInstanceHealthRouteImport.update({
-  id: '/api/instance/health',
-  path: '/api/instance/health',
+  id: "/api/instance/health",
+  path: "/api/instance/health",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiDevWorktreeAuthRoute = ApiDevWorktreeAuthRouteImport.update({
-  id: '/api/dev/worktree-auth',
-  path: '/api/dev/worktree-auth',
+  id: "/api/dev/worktree-auth",
+  path: "/api/dev/worktree-auth",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiDevHealthRoute = ApiDevHealthRouteImport.update({
-  id: '/api/dev/health',
-  path: '/api/dev/health',
+  id: "/api/dev/health",
+  path: "/api/dev/health",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiDevAutoLoginRoute = ApiDevAutoLoginRouteImport.update({
-  id: '/api/dev/auto-login',
-  path: '/api/dev/auto-login',
+  id: "/api/dev/auto-login",
+  path: "/api/dev/auto-login",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiCoworkersTriggerRoute = ApiCoworkersTriggerRouteImport.update({
-  id: '/api/coworkers/trigger',
-  path: '/api/coworkers/trigger',
+  id: "/api/coworkers/trigger",
+  path: "/api/coworkers/trigger",
   getParentRoute: () => rootRouteImport,
-} as any)
-const ApiControlPlaneRuntimeCredentialsRoute =
-  ApiControlPlaneRuntimeCredentialsRouteImport.update({
-    id: '/api/control-plane/runtime-credentials',
-    path: '/api/control-plane/runtime-credentials',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+} as any);
+const ApiControlPlaneRuntimeCredentialsRoute = ApiControlPlaneRuntimeCredentialsRouteImport.update({
+  id: "/api/control-plane/runtime-credentials",
+  path: "/api/control-plane/runtime-credentials",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiControlPlaneHealthRoute = ApiControlPlaneHealthRouteImport.update({
-  id: '/api/control-plane/health',
-  path: '/api/control-plane/health',
+  id: "/api/control-plane/health",
+  path: "/api/control-plane/health",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiAuthNativeCallbackRoute = ApiAuthNativeCallbackRouteImport.update({
-  id: '/api/auth/native-callback',
-  path: '/api/auth/native-callback',
+  id: "/api/auth/native-callback",
+  path: "/api/auth/native-callback",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiAuthCheckEmailRoute = ApiAuthCheckEmailRouteImport.update({
-  id: '/api/auth/check-email',
-  path: '/api/auth/check-email',
+  id: "/api/auth/check-email",
+  path: "/api/auth/check-email",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
+  id: "/api/auth/$",
+  path: "/api/auth/$",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AgentsInfoSlugRoute = AgentsInfoSlugRouteImport.update({
-  id: '/info/$slug',
-  path: '/info/$slug',
+  id: "/info/$slug",
+  path: "/info/$slug",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AgentsFoldersFolderIdRoute = AgentsFoldersFolderIdRouteImport.update({
-  id: '/folders/$folderId',
-  path: '/folders/$folderId',
+  id: "/folders/$folderId",
+  path: "/folders/$folderId",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AgentsDeployTemplateIdRoute = AgentsDeployTemplateIdRouteImport.update({
-  id: '/deploy/$templateId',
-  path: '/deploy/$templateId',
+  id: "/deploy/$templateId",
+  path: "/deploy/$templateId",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
+const AuthWorkspaceInvitationsInvitationIdRoute =
+  AuthWorkspaceInvitationsInvitationIdRouteImport.update({
+    id: "/workspace-invitations/$invitationId",
+    path: "/workspace-invitations/$invitationId",
+    getParentRoute: () => AuthRoute,
+  } as any);
 const AuthSignInTokenRoute = AuthSignInTokenRouteImport.update({
-  id: '/sign-in/$token',
-  path: '/sign-in/$token',
+  id: "/sign-in/$token",
+  path: "/sign-in/$token",
   getParentRoute: () => AuthRoute,
-} as any)
+} as any);
 const AppChatConversationIdRoute = AppChatConversationIdRouteImport.update({
-  id: '/$conversationId',
-  path: '/$conversationId',
+  id: "/$conversationId",
+  path: "/$conversationId",
   getParentRoute: () => AppChatRoute,
-} as any)
+} as any);
 const AgentsRunsIdRouteRoute = AgentsRunsIdRouteRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => AgentsRunsRouteRoute,
-} as any)
+} as any);
 const AgentsEditIdRouteRoute = AgentsEditIdRouteRouteImport.update({
-  id: '/edit/$id',
-  path: '/edit/$id',
+  id: "/edit/$id",
+  path: "/edit/$id",
   getParentRoute: () => AgentsRouteRoute,
-} as any)
+} as any);
 const AgentsRunsIdIndexRoute = AgentsRunsIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AgentsRunsIdRouteRoute,
-} as any)
+} as any);
 const AgentsEditIdIndexRoute = AgentsEditIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AgentsEditIdRouteRoute,
-} as any)
-const PrototypeCoworkerInfoSlugRoute =
-  PrototypeCoworkerInfoSlugRouteImport.update({
-    id: '/prototype/coworker/info/$slug',
-    path: '/prototype/coworker/info/$slug',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+} as any);
+const PrototypeCoworkerInfoSlugRoute = PrototypeCoworkerInfoSlugRouteImport.update({
+  id: "/prototype/coworker/info/$slug",
+  path: "/prototype/coworker/info/$slug",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiWorkspacesIdImageRoute = ApiWorkspacesIdImageRouteImport.update({
-  id: '/api/workspaces/$id/image',
-  path: '/api/workspaces/$id/image',
+  id: "/api/workspaces/$id/image",
+  path: "/api/workspaces/$id/image",
   getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSandboxFilesIdDownloadRoute =
-  ApiSandboxFilesIdDownloadRouteImport.update({
-    id: '/api/sandbox-files/$id/download',
-    path: '/api/sandbox-files/$id/download',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+} as any);
+const ApiSandboxFilesIdDownloadRoute = ApiSandboxFilesIdDownloadRouteImport.update({
+  id: "/api/sandbox-files/$id/download",
+  path: "/api/sandbox-files/$id/download",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiOauthDynamicsPendingRoute = ApiOauthDynamicsPendingRouteImport.update({
-  id: '/api/oauth/dynamics/pending',
-  path: '/api/oauth/dynamics/pending',
+  id: "/api/oauth/dynamics/pending",
+  path: "/api/oauth/dynamics/pending",
   getParentRoute: () => rootRouteImport,
-} as any)
-const ApiModulrDocumentsDownloadRoute =
-  ApiModulrDocumentsDownloadRouteImport.update({
-    id: '/api/modulr/documents/download',
-    path: '/api/modulr/documents/download',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiMockCrmOpenapiDotjsonRoute =
-  ApiMockCrmOpenapiDotjsonRouteImport.update({
-    id: '/api/mock/crm/openapi.json',
-    path: '/api/mock/crm/openapi.json',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+} as any);
+const ApiModulrDocumentsDownloadRoute = ApiModulrDocumentsDownloadRouteImport.update({
+  id: "/api/modulr/documents/download",
+  path: "/api/modulr/documents/download",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiMockCrmOpenapiDotjsonRoute = ApiMockCrmOpenapiDotjsonRouteImport.update({
+  id: "/api/mock/crm/openapi.json",
+  path: "/api/mock/crm/openapi.json",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiMockCrmDealsRoute = ApiMockCrmDealsRouteImport.update({
-  id: '/api/mock/crm/deals',
-  path: '/api/mock/crm/deals',
+  id: "/api/mock/crm/deals",
+  path: "/api/mock/crm/deals",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiMockCrmContactsRoute = ApiMockCrmContactsRouteImport.update({
-  id: '/api/mock/crm/contacts',
-  path: '/api/mock/crm/contacts',
+  id: "/api/mock/crm/contacts",
+  path: "/api/mock/crm/contacts",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiMcpOauthTokenRoute = ApiMcpOauthTokenRouteImport.update({
-  id: '/api/mcp/oauth/token',
-  path: '/api/mcp/oauth/token',
+  id: "/api/mcp/oauth/token",
+  path: "/api/mcp/oauth/token",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiMcpOauthRegisterRoute = ApiMcpOauthRegisterRouteImport.update({
-  id: '/api/mcp/oauth/register',
-  path: '/api/mcp/oauth/register',
+  id: "/api/mcp/oauth/register",
+  path: "/api/mcp/oauth/register",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiMcpOauthAuthorizeRoute = ApiMcpOauthAuthorizeRouteImport.update({
-  id: '/api/mcp/oauth/authorize',
-  path: '/api/mcp/oauth/authorize',
+  id: "/api/mcp/oauth/authorize",
+  path: "/api/mcp/oauth/authorize",
   getParentRoute: () => rootRouteImport,
-} as any)
-const ApiInternalTestingCliSessionRoute =
-  ApiInternalTestingCliSessionRouteImport.update({
-    id: '/api/internal/testing/cli-session',
-    path: '/api/internal/testing/cli-session',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalTestingCliLiveRoute =
-  ApiInternalTestingCliLiveRouteImport.update({
-    id: '/api/internal/testing/cli-live',
-    path: '/api/internal/testing/cli-live',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalSlackPostAsBotRoute =
-  ApiInternalSlackPostAsBotRouteImport.update({
-    id: '/api/internal/slack/post-as-bot',
-    path: '/api/internal/slack/post-as-bot',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalMcpRuntimeCredentialsRoute =
-  ApiInternalMcpRuntimeCredentialsRouteImport.update({
-    id: '/api/internal/mcp/runtime-credentials',
-    path: '/api/internal/mcp/runtime-credentials',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalMcpModulrCredentialsRoute =
-  ApiInternalMcpModulrCredentialsRouteImport.update({
-    id: '/api/internal/mcp/modulr-credentials',
-    path: '/api/internal/mcp/modulr-credentials',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalMcpGalienCredentialsRoute =
-  ApiInternalMcpGalienCredentialsRouteImport.update({
-    id: '/api/internal/mcp/galien-credentials',
-    path: '/api/internal/mcp/galien-credentials',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiIntegrationsResendWebhookRoute =
-  ApiIntegrationsResendWebhookRouteImport.update({
-    id: '/api/integrations/resend/webhook',
-    path: '/api/integrations/resend/webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiIntegrationsNangoProvidersRoute =
-  ApiIntegrationsNangoProvidersRouteImport.update({
-    id: '/api/integrations/nango/providers',
-    path: '/api/integrations/nango/providers',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiIntegrationsLinkedinWebhookRoute =
-  ApiIntegrationsLinkedinWebhookRouteImport.update({
-    id: '/api/integrations/linkedin/webhook',
-    path: '/api/integrations/linkedin/webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+} as any);
+const ApiInternalTestingCliSessionRoute = ApiInternalTestingCliSessionRouteImport.update({
+  id: "/api/internal/testing/cli-session",
+  path: "/api/internal/testing/cli-session",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiInternalTestingCliLiveRoute = ApiInternalTestingCliLiveRouteImport.update({
+  id: "/api/internal/testing/cli-live",
+  path: "/api/internal/testing/cli-live",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiInternalSlackPostAsBotRoute = ApiInternalSlackPostAsBotRouteImport.update({
+  id: "/api/internal/slack/post-as-bot",
+  path: "/api/internal/slack/post-as-bot",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiInternalMcpRuntimeCredentialsRoute = ApiInternalMcpRuntimeCredentialsRouteImport.update({
+  id: "/api/internal/mcp/runtime-credentials",
+  path: "/api/internal/mcp/runtime-credentials",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiInternalMcpModulrCredentialsRoute = ApiInternalMcpModulrCredentialsRouteImport.update({
+  id: "/api/internal/mcp/modulr-credentials",
+  path: "/api/internal/mcp/modulr-credentials",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiInternalMcpGalienCredentialsRoute = ApiInternalMcpGalienCredentialsRouteImport.update({
+  id: "/api/internal/mcp/galien-credentials",
+  path: "/api/internal/mcp/galien-credentials",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiIntegrationsResendWebhookRoute = ApiIntegrationsResendWebhookRouteImport.update({
+  id: "/api/integrations/resend/webhook",
+  path: "/api/integrations/resend/webhook",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiIntegrationsNangoProvidersRoute = ApiIntegrationsNangoProvidersRouteImport.update({
+  id: "/api/integrations/nango/providers",
+  path: "/api/integrations/nango/providers",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiIntegrationsLinkedinWebhookRoute = ApiIntegrationsLinkedinWebhookRouteImport.update({
+  id: "/api/integrations/linkedin/webhook",
+  path: "/api/integrations/linkedin/webhook",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiInstanceAuthStartRoute = ApiInstanceAuthStartRouteImport.update({
-  id: '/api/instance/auth/start',
-  path: '/api/instance/auth/start',
+  id: "/api/instance/auth/start",
+  path: "/api/instance/auth/start",
   getParentRoute: () => rootRouteImport,
-} as any)
-const ApiControlPlaneProviderAuthStatusRoute =
-  ApiControlPlaneProviderAuthStatusRouteImport.update({
-    id: '/api/control-plane/provider-auth/status',
-    path: '/api/control-plane/provider-auth/status',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+} as any);
+const ApiControlPlaneProviderAuthStatusRoute = ApiControlPlaneProviderAuthStatusRouteImport.update({
+  id: "/api/control-plane/provider-auth/status",
+  path: "/api/control-plane/provider-auth/status",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiControlPlaneProviderAuthDisconnectRoute =
   ApiControlPlaneProviderAuthDisconnectRouteImport.update({
-    id: '/api/control-plane/provider-auth/disconnect',
-    path: '/api/control-plane/provider-auth/disconnect',
+    id: "/api/control-plane/provider-auth/disconnect",
+    path: "/api/control-plane/provider-auth/disconnect",
     getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneLinkStartRoute =
-  ApiControlPlaneLinkStartRouteImport.update({
-    id: '/api/control-plane/link/start',
-    path: '/api/control-plane/link/start',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneLinkExchangeRoute =
-  ApiControlPlaneLinkExchangeRouteImport.update({
-    id: '/api/control-plane/link/exchange',
-    path: '/api/control-plane/link/exchange',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneLinkCallbackRoute =
-  ApiControlPlaneLinkCallbackRouteImport.update({
-    id: '/api/control-plane/link/callback',
-    path: '/api/control-plane/link/callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneLinkAuthorizeRoute =
-  ApiControlPlaneLinkAuthorizeRouteImport.update({
-    id: '/api/control-plane/link/authorize',
-    path: '/api/control-plane/link/authorize',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneIntegrationsToggleRoute =
-  ApiControlPlaneIntegrationsToggleRouteImport.update({
-    id: '/api/control-plane/integrations/toggle',
-    path: '/api/control-plane/integrations/toggle',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneIntegrationsStatusRoute =
-  ApiControlPlaneIntegrationsStatusRouteImport.update({
-    id: '/api/control-plane/integrations/status',
-    path: '/api/control-plane/integrations/status',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
+const ApiControlPlaneLinkStartRoute = ApiControlPlaneLinkStartRouteImport.update({
+  id: "/api/control-plane/link/start",
+  path: "/api/control-plane/link/start",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiControlPlaneLinkExchangeRoute = ApiControlPlaneLinkExchangeRouteImport.update({
+  id: "/api/control-plane/link/exchange",
+  path: "/api/control-plane/link/exchange",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiControlPlaneLinkCallbackRoute = ApiControlPlaneLinkCallbackRouteImport.update({
+  id: "/api/control-plane/link/callback",
+  path: "/api/control-plane/link/callback",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiControlPlaneLinkAuthorizeRoute = ApiControlPlaneLinkAuthorizeRouteImport.update({
+  id: "/api/control-plane/link/authorize",
+  path: "/api/control-plane/link/authorize",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiControlPlaneIntegrationsToggleRoute = ApiControlPlaneIntegrationsToggleRouteImport.update({
+  id: "/api/control-plane/integrations/toggle",
+  path: "/api/control-plane/integrations/toggle",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiControlPlaneIntegrationsStatusRoute = ApiControlPlaneIntegrationsStatusRouteImport.update({
+  id: "/api/control-plane/integrations/status",
+  path: "/api/control-plane/integrations/status",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiControlPlaneIntegrationsDisconnectRoute =
   ApiControlPlaneIntegrationsDisconnectRouteImport.update({
-    id: '/api/control-plane/integrations/disconnect',
-    path: '/api/control-plane/integrations/disconnect',
+    id: "/api/control-plane/integrations/disconnect",
+    path: "/api/control-plane/integrations/disconnect",
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const ApiControlPlaneIntegrationsConnectRoute =
   ApiControlPlaneIntegrationsConnectRouteImport.update({
-    id: '/api/control-plane/integrations/connect',
-    path: '/api/control-plane/integrations/connect',
+    id: "/api/control-plane/integrations/connect",
+    path: "/api/control-plane/integrations/connect",
     getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneAuthStartRoute =
-  ApiControlPlaneAuthStartRouteImport.update({
-    id: '/api/control-plane/auth/start',
-    path: '/api/control-plane/auth/start',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneAuthExchangeRoute =
-  ApiControlPlaneAuthExchangeRouteImport.update({
-    id: '/api/control-plane/auth/exchange',
-    path: '/api/control-plane/auth/exchange',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneAuthCallbackRoute =
-  ApiControlPlaneAuthCallbackRouteImport.update({
-    id: '/api/control-plane/auth/callback',
-    path: '/api/control-plane/auth/callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiControlPlaneAuthAuthorizeRoute =
-  ApiControlPlaneAuthAuthorizeRouteImport.update({
-    id: '/api/control-plane/auth/authorize',
-    path: '/api/control-plane/auth/authorize',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAuthPasswordStartRoute = ApiAuthPasswordStartRouteImport.update({
-  id: '/api/auth/password/start',
-  path: '/api/auth/password/start',
+  } as any);
+const ApiControlPlaneAuthStartRoute = ApiControlPlaneAuthStartRouteImport.update({
+  id: "/api/control-plane/auth/start",
+  path: "/api/control-plane/auth/start",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
+const ApiControlPlaneAuthExchangeRoute = ApiControlPlaneAuthExchangeRouteImport.update({
+  id: "/api/control-plane/auth/exchange",
+  path: "/api/control-plane/auth/exchange",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiControlPlaneAuthCallbackRoute = ApiControlPlaneAuthCallbackRouteImport.update({
+  id: "/api/control-plane/auth/callback",
+  path: "/api/control-plane/auth/callback",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiControlPlaneAuthAuthorizeRoute = ApiControlPlaneAuthAuthorizeRouteImport.update({
+  id: "/api/control-plane/auth/authorize",
+  path: "/api/control-plane/auth/authorize",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiAuthPasswordStartRoute = ApiAuthPasswordStartRouteImport.update({
+  id: "/api/auth/password/start",
+  path: "/api/auth/password/start",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const AuthSignInTokenResendRoute = AuthSignInTokenResendRouteImport.update({
-  id: '/resend',
-  path: '/resend',
+  id: "/resend",
+  path: "/resend",
   getParentRoute: () => AuthSignInTokenRoute,
-} as any)
+} as any);
 const AuthSignInTokenConfirmRoute = AuthSignInTokenConfirmRouteImport.update({
-  id: '/confirm',
-  path: '/confirm',
+  id: "/confirm",
+  path: "/confirm",
   getParentRoute: () => AuthSignInTokenRoute,
-} as any)
+} as any);
 const AgentsEditIdRunsIndexRoute = AgentsEditIdRunsIndexRouteImport.update({
-  id: '/runs/',
-  path: '/runs/',
+  id: "/runs/",
+  path: "/runs/",
   getParentRoute: () => AgentsEditIdRouteRoute,
-} as any)
+} as any);
 const ApiMockCrmContactsIdRoute = ApiMockCrmContactsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
+  id: "/$id",
+  path: "/$id",
   getParentRoute: () => ApiMockCrmContactsRoute,
-} as any)
+} as any);
 const ApiInternalRuntimeInterruptsStatusRoute =
   ApiInternalRuntimeInterruptsStatusRouteImport.update({
-    id: '/api/internal/runtime/interrupts/status',
-    path: '/api/internal/runtime/interrupts/status',
+    id: "/api/internal/runtime/interrupts/status",
+    path: "/api/internal/runtime/interrupts/status",
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const ApiInternalRuntimeInterruptsCreateRoute =
   ApiInternalRuntimeInterruptsCreateRouteImport.update({
-    id: '/api/internal/runtime/interrupts/create',
-    path: '/api/internal/runtime/interrupts/create',
+    id: "/api/internal/runtime/interrupts/create",
+    path: "/api/internal/runtime/interrupts/create",
     getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalCoworkersRuntimeListRoute =
-  ApiInternalCoworkersRuntimeListRouteImport.update({
-    id: '/api/internal/coworkers/runtime/list',
-    path: '/api/internal/coworkers/runtime/list',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalCoworkersRuntimeInvokeRoute =
-  ApiInternalCoworkersRuntimeInvokeRouteImport.update({
-    id: '/api/internal/coworkers/runtime/invoke',
-    path: '/api/internal/coworkers/runtime/invoke',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiInternalCoworkersRuntimeEditRoute =
-  ApiInternalCoworkersRuntimeEditRouteImport.update({
-    id: '/api/internal/coworkers/runtime/edit',
-    path: '/api/internal/coworkers/runtime/edit',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
+const ApiInternalCoworkersRuntimeListRoute = ApiInternalCoworkersRuntimeListRouteImport.update({
+  id: "/api/internal/coworkers/runtime/list",
+  path: "/api/internal/coworkers/runtime/list",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiInternalCoworkersRuntimeInvokeRoute = ApiInternalCoworkersRuntimeInvokeRouteImport.update({
+  id: "/api/internal/coworkers/runtime/invoke",
+  path: "/api/internal/coworkers/runtime/invoke",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiInternalCoworkersRuntimeEditRoute = ApiInternalCoworkersRuntimeEditRouteImport.update({
+  id: "/api/internal/coworkers/runtime/edit",
+  path: "/api/internal/coworkers/runtime/edit",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const ApiInternalAdminRemoteIntegrationsUsersRoute =
   ApiInternalAdminRemoteIntegrationsUsersRouteImport.update({
-    id: '/api/internal/admin/remote-integrations/users',
-    path: '/api/internal/admin/remote-integrations/users',
+    id: "/api/internal/admin/remote-integrations/users",
+    path: "/api/internal/admin/remote-integrations/users",
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 const ApiInternalAdminRemoteIntegrationsCredentialsRoute =
   ApiInternalAdminRemoteIntegrationsCredentialsRouteImport.update({
-    id: '/api/internal/admin/remote-integrations/credentials',
-    path: '/api/internal/admin/remote-integrations/credentials',
+    id: "/api/internal/admin/remote-integrations/credentials",
+    path: "/api/internal/admin/remote-integrations/credentials",
     getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiCoworkersDocumentsIdDownloadRoute =
-  ApiCoworkersDocumentsIdDownloadRouteImport.update({
-    id: '/api/coworkers/documents/$id/download',
-    path: '/api/coworkers/documents/$id/download',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAuthProviderProviderCallbackRoute =
-  ApiAuthProviderProviderCallbackRouteImport.update({
-    id: '/api/auth/provider/$provider/callback',
-    path: '/api/auth/provider/$provider/callback',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
+const ApiCoworkersDocumentsIdDownloadRoute = ApiCoworkersDocumentsIdDownloadRouteImport.update({
+  id: "/api/coworkers/documents/$id/download",
+  path: "/api/coworkers/documents/$id/download",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ApiAuthProviderProviderCallbackRoute = ApiAuthProviderProviderCallbackRouteImport.update({
+  id: "/api/auth/provider/$provider/callback",
+  path: "/api/auth/provider/$provider/callback",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const AgentsEditIdRunsRunIdRoute = AgentsEditIdRunsRunIdRouteImport.update({
-  id: '/runs/$runId',
-  path: '/runs/$runId',
+  id: "/runs/$runId",
+  path: "/runs/$runId",
   getParentRoute: () => AgentsEditIdRouteRoute,
-} as any)
+} as any);
 const ApiInternalCoworkersRuntimeDocumentsUploadRoute =
   ApiInternalCoworkersRuntimeDocumentsUploadRouteImport.update({
-    id: '/api/internal/coworkers/runtime/documents/upload',
-    path: '/api/internal/coworkers/runtime/documents/upload',
+    id: "/api/internal/coworkers/runtime/documents/upload",
+    path: "/api/internal/coworkers/runtime/documents/upload",
     getParentRoute: () => rootRouteImport,
-  } as any)
+  } as any);
 
 export interface FileRoutesByFullPath {
-  '/admin': typeof AdminRouteRouteWithChildren
-  '/agents': typeof AgentsRouteRouteWithChildren
-  '/integrations': typeof IntegrationsRouteRouteWithChildren
-  '/internal': typeof InternalRouteRouteWithChildren
-  '/legal': typeof LegalRouteRouteWithChildren
-  '/onboarding': typeof OnboardingRouteRouteWithChildren
-  '/settings': typeof SettingsRouteRouteWithChildren
-  '/skills': typeof SkillsRouteRouteWithChildren
-  '/support': typeof SupportRouteRouteWithChildren
-  '/toolbox': typeof ToolboxRouteRouteWithChildren
-  '/': typeof PublicIndexRoute
-  '/accounts': typeof AccountsRoute
-  '/instance': typeof InstanceRoute
-  '/search': typeof SearchRoute
-  '/template': typeof TemplateRouteWithChildren
-  '/agents/runs': typeof AgentsRunsRouteRouteWithChildren
-  '/chat': typeof AppChatRouteWithChildren
-  '/inbox': typeof AppInboxRoute
-  '/invite-only': typeof AuthInviteOnlyRoute
-  '/login': typeof AuthLoginRoute
-  '/reset-password': typeof AuthResetPasswordRoute
-  '/avatar': typeof PublicAvatarRoute
-  '/bug-report': typeof PublicBugReportRoute
-  '/pricing': typeof PublicPricingRoute
-  '/templates': typeof PublicTemplatesRoute
-  '/upload': typeof PublicUploadRoute
-  '/admin/audit-trail': typeof AdminAuditTrailRoute
-  '/admin/overview': typeof AdminOverviewRoute
-  '/admin/subscriptions': typeof AdminSubscriptionsRoute
-  '/admin/usage': typeof AdminUsageRoute
-  '/admin/workspaces': typeof AdminWorkspacesRoute
-  '/agents/grid': typeof AgentsGridRoute
-  '/agents/history': typeof AgentsHistoryRoute
-  '/agents/new': typeof AgentsNewRoute
-  '/agents/overview': typeof AgentsOverviewRoute
-  '/agents/usage': typeof AgentsUsageRoute
-  '/api/health': typeof ApiHealthRoute
-  '/api/live': typeof ApiLiveRoute
-  '/api/openapi': typeof ApiOpenapiRoute
-  '/api/report': typeof ApiReportRoute
-  '/integrations/$type': typeof IntegrationsTypeRoute
-  '/internal/chat-overview': typeof InternalChatOverviewRoute
-  '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
-  '/internal/credits': typeof InternalCreditsRoute
-  '/internal/mcp': typeof InternalMcpRoute
-  '/internal/ops': typeof InternalOpsRoute
-  '/internal/performance': typeof InternalPerformanceRoute
-  '/internal/previews': typeof InternalPreviewsRoute
-  '/internal/readme-preview': typeof InternalReadmePreviewRoute
-  '/internal/sandboxes': typeof InternalSandboxesRoute
-  '/internal/subscriptions': typeof InternalSubscriptionsRoute
-  '/internal/templates': typeof InternalTemplatesRoute
-  '/internal/tools': typeof InternalToolsRoute
-  '/internal/usage': typeof InternalUsageRoute
-  '/internal/workspaces': typeof InternalWorkspacesRoute
-  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
-  '/legal/terms': typeof LegalTermsRoute
-  '/onboarding/integrations': typeof OnboardingIntegrationsRoute
-  '/onboarding/subscriptions': typeof OnboardingSubscriptionsRoute
-  '/settings/advanced': typeof SettingsAdvancedRoute
-  '/settings/billing': typeof SettingsBillingRoute
-  '/settings/subscriptions': typeof SettingsSubscriptionsRoute
-  '/settings/usage': typeof SettingsUsageRoute
-  '/settings/workspace': typeof SettingsWorkspaceRoute
-  '/shared/$shareToken': typeof SharedShareTokenRoute
-  '/skills/$id': typeof SkillsIdRoute
-  '/template/$templateId': typeof TemplateTemplateIdRoute
-  '/admin/': typeof AdminIndexRoute
-  '/agents/': typeof AgentsIndexRoute
-  '/internal/': typeof InternalIndexRoute
-  '/settings/': typeof SettingsIndexRoute
-  '/support/': typeof SupportIndexRoute
-  '/template/': typeof TemplateIndexRoute
-  '/toolbox/': typeof ToolboxIndexRoute
-  '/agents/edit/$id': typeof AgentsEditIdRouteRouteWithChildren
-  '/agents/runs/$id': typeof AgentsRunsIdRouteRouteWithChildren
-  '/chat/$conversationId': typeof AppChatConversationIdRoute
-  '/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
-  '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
-  '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
-  '/agents/info/$slug': typeof AgentsInfoSlugRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/auth/check-email': typeof ApiAuthCheckEmailRoute
-  '/api/auth/native-callback': typeof ApiAuthNativeCallbackRoute
-  '/api/control-plane/health': typeof ApiControlPlaneHealthRoute
-  '/api/control-plane/runtime-credentials': typeof ApiControlPlaneRuntimeCredentialsRoute
-  '/api/coworkers/trigger': typeof ApiCoworkersTriggerRoute
-  '/api/dev/auto-login': typeof ApiDevAutoLoginRoute
-  '/api/dev/health': typeof ApiDevHealthRoute
-  '/api/dev/worktree-auth': typeof ApiDevWorktreeAuthRoute
-  '/api/instance/health': typeof ApiInstanceHealthRoute
-  '/api/internal/memory': typeof ApiInternalMemoryRoute
-  '/api/invite-only/request-access': typeof ApiInviteOnlyRequestAccessRoute
-  '/api/oauth/callback': typeof ApiOauthCallbackRoute
-  '/api/observability/client-observations': typeof ApiObservabilityClientObservationsRoute
-  '/api/prompts/template-deploy': typeof ApiPromptsTemplateDeployRoute
-  '/api/rpc/$': typeof ApiRpcSplatRoute
-  '/api/settings/phone-number': typeof ApiSettingsPhoneNumberRoute
-  '/api/slack/events': typeof ApiSlackEventsRoute
-  '/api/slack/link': typeof ApiSlackLinkRoute
-  '/api/zero/query': typeof ApiZeroQueryRoute
-  '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
-  '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
-  '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
-  '/chat/': typeof AppChatIndexRoute
-  '/agents/runs/': typeof AgentsRunsIndexRoute
-  '/api/rpc/': typeof ApiRpcIndexRoute
-  '/sign-in/$token/confirm': typeof AuthSignInTokenConfirmRoute
-  '/sign-in/$token/resend': typeof AuthSignInTokenResendRoute
-  '/api/auth/password/start': typeof ApiAuthPasswordStartRoute
-  '/api/control-plane/auth/authorize': typeof ApiControlPlaneAuthAuthorizeRoute
-  '/api/control-plane/auth/callback': typeof ApiControlPlaneAuthCallbackRoute
-  '/api/control-plane/auth/exchange': typeof ApiControlPlaneAuthExchangeRoute
-  '/api/control-plane/auth/start': typeof ApiControlPlaneAuthStartRoute
-  '/api/control-plane/integrations/connect': typeof ApiControlPlaneIntegrationsConnectRoute
-  '/api/control-plane/integrations/disconnect': typeof ApiControlPlaneIntegrationsDisconnectRoute
-  '/api/control-plane/integrations/status': typeof ApiControlPlaneIntegrationsStatusRoute
-  '/api/control-plane/integrations/toggle': typeof ApiControlPlaneIntegrationsToggleRoute
-  '/api/control-plane/link/authorize': typeof ApiControlPlaneLinkAuthorizeRoute
-  '/api/control-plane/link/callback': typeof ApiControlPlaneLinkCallbackRoute
-  '/api/control-plane/link/exchange': typeof ApiControlPlaneLinkExchangeRoute
-  '/api/control-plane/link/start': typeof ApiControlPlaneLinkStartRoute
-  '/api/control-plane/provider-auth/disconnect': typeof ApiControlPlaneProviderAuthDisconnectRoute
-  '/api/control-plane/provider-auth/status': typeof ApiControlPlaneProviderAuthStatusRoute
-  '/api/instance/auth/start': typeof ApiInstanceAuthStartRoute
-  '/api/integrations/linkedin/webhook': typeof ApiIntegrationsLinkedinWebhookRoute
-  '/api/integrations/nango/providers': typeof ApiIntegrationsNangoProvidersRoute
-  '/api/integrations/resend/webhook': typeof ApiIntegrationsResendWebhookRoute
-  '/api/internal/mcp/galien-credentials': typeof ApiInternalMcpGalienCredentialsRoute
-  '/api/internal/mcp/modulr-credentials': typeof ApiInternalMcpModulrCredentialsRoute
-  '/api/internal/mcp/runtime-credentials': typeof ApiInternalMcpRuntimeCredentialsRoute
-  '/api/internal/slack/post-as-bot': typeof ApiInternalSlackPostAsBotRoute
-  '/api/internal/testing/cli-live': typeof ApiInternalTestingCliLiveRoute
-  '/api/internal/testing/cli-session': typeof ApiInternalTestingCliSessionRoute
-  '/api/mcp/oauth/authorize': typeof ApiMcpOauthAuthorizeRoute
-  '/api/mcp/oauth/register': typeof ApiMcpOauthRegisterRoute
-  '/api/mcp/oauth/token': typeof ApiMcpOauthTokenRoute
-  '/api/mock/crm/contacts': typeof ApiMockCrmContactsRouteWithChildren
-  '/api/mock/crm/deals': typeof ApiMockCrmDealsRoute
-  '/api/mock/crm/openapi.json': typeof ApiMockCrmOpenapiDotjsonRoute
-  '/api/modulr/documents/download': typeof ApiModulrDocumentsDownloadRoute
-  '/api/oauth/dynamics/pending': typeof ApiOauthDynamicsPendingRoute
-  '/api/sandbox-files/$id/download': typeof ApiSandboxFilesIdDownloadRoute
-  '/api/workspaces/$id/image': typeof ApiWorkspacesIdImageRoute
-  '/prototype/coworker/info/$slug': typeof PrototypeCoworkerInfoSlugRoute
-  '/agents/edit/$id/': typeof AgentsEditIdIndexRoute
-  '/agents/runs/$id/': typeof AgentsRunsIdIndexRoute
-  '/agents/edit/$id/runs/$runId': typeof AgentsEditIdRunsRunIdRoute
-  '/api/auth/provider/$provider/callback': typeof ApiAuthProviderProviderCallbackRoute
-  '/api/coworkers/documents/$id/download': typeof ApiCoworkersDocumentsIdDownloadRoute
-  '/api/internal/admin/remote-integrations/credentials': typeof ApiInternalAdminRemoteIntegrationsCredentialsRoute
-  '/api/internal/admin/remote-integrations/users': typeof ApiInternalAdminRemoteIntegrationsUsersRoute
-  '/api/internal/coworkers/runtime/edit': typeof ApiInternalCoworkersRuntimeEditRoute
-  '/api/internal/coworkers/runtime/invoke': typeof ApiInternalCoworkersRuntimeInvokeRoute
-  '/api/internal/coworkers/runtime/list': typeof ApiInternalCoworkersRuntimeListRoute
-  '/api/internal/runtime/interrupts/create': typeof ApiInternalRuntimeInterruptsCreateRoute
-  '/api/internal/runtime/interrupts/status': typeof ApiInternalRuntimeInterruptsStatusRoute
-  '/api/mock/crm/contacts/$id': typeof ApiMockCrmContactsIdRoute
-  '/agents/edit/$id/runs/': typeof AgentsEditIdRunsIndexRoute
-  '/api/internal/coworkers/runtime/documents/upload': typeof ApiInternalCoworkersRuntimeDocumentsUploadRoute
+  "/admin": typeof AdminRouteRouteWithChildren;
+  "/agents": typeof AgentsRouteRouteWithChildren;
+  "/integrations": typeof IntegrationsRouteRouteWithChildren;
+  "/internal": typeof InternalRouteRouteWithChildren;
+  "/legal": typeof LegalRouteRouteWithChildren;
+  "/onboarding": typeof OnboardingRouteRouteWithChildren;
+  "/settings": typeof SettingsRouteRouteWithChildren;
+  "/skills": typeof SkillsRouteRouteWithChildren;
+  "/support": typeof SupportRouteRouteWithChildren;
+  "/toolbox": typeof ToolboxRouteRouteWithChildren;
+  "/": typeof PublicIndexRoute;
+  "/accounts": typeof AccountsRoute;
+  "/audit": typeof AuditRoute;
+  "/instance": typeof InstanceRoute;
+  "/search": typeof SearchRoute;
+  "/template": typeof TemplateRouteWithChildren;
+  "/agents/runs": typeof AgentsRunsRouteRouteWithChildren;
+  "/chat": typeof AppChatRouteWithChildren;
+  "/inbox": typeof AppInboxRoute;
+  "/invite-only": typeof AuthInviteOnlyRoute;
+  "/login": typeof AuthLoginRoute;
+  "/reset-password": typeof AuthResetPasswordRoute;
+  "/avatar": typeof PublicAvatarRoute;
+  "/bug-report": typeof PublicBugReportRoute;
+  "/pricing": typeof PublicPricingRoute;
+  "/templates": typeof PublicTemplatesRoute;
+  "/upload": typeof PublicUploadRoute;
+  "/admin/audit-trail": typeof AdminAuditTrailRoute;
+  "/admin/overview": typeof AdminOverviewRoute;
+  "/admin/subscriptions": typeof AdminSubscriptionsRoute;
+  "/admin/usage": typeof AdminUsageRoute;
+  "/admin/workspaces": typeof AdminWorkspacesRoute;
+  "/agents/grid": typeof AgentsGridRoute;
+  "/agents/history": typeof AgentsHistoryRoute;
+  "/agents/new": typeof AgentsNewRoute;
+  "/agents/overview": typeof AgentsOverviewRoute;
+  "/agents/usage": typeof AgentsUsageRoute;
+  "/api/health": typeof ApiHealthRoute;
+  "/api/live": typeof ApiLiveRoute;
+  "/api/openapi": typeof ApiOpenapiRoute;
+  "/api/report": typeof ApiReportRoute;
+  "/integrations/$type": typeof IntegrationsTypeRoute;
+  "/internal/chat-overview": typeof InternalChatOverviewRoute;
+  "/internal/coworker-overview": typeof InternalCoworkerOverviewRoute;
+  "/internal/credits": typeof InternalCreditsRoute;
+  "/internal/mcp": typeof InternalMcpRoute;
+  "/internal/ops": typeof InternalOpsRoute;
+  "/internal/performance": typeof InternalPerformanceRoute;
+  "/internal/previews": typeof InternalPreviewsRoute;
+  "/internal/readme-preview": typeof InternalReadmePreviewRoute;
+  "/internal/sandboxes": typeof InternalSandboxesRoute;
+  "/internal/subscriptions": typeof InternalSubscriptionsRoute;
+  "/internal/templates": typeof InternalTemplatesRoute;
+  "/internal/tools": typeof InternalToolsRoute;
+  "/internal/usage": typeof InternalUsageRoute;
+  "/internal/workspaces": typeof InternalWorkspacesRoute;
+  "/legal/privacy-policy": typeof LegalPrivacyPolicyRoute;
+  "/legal/terms": typeof LegalTermsRoute;
+  "/onboarding/integrations": typeof OnboardingIntegrationsRoute;
+  "/onboarding/subscriptions": typeof OnboardingSubscriptionsRoute;
+  "/settings/advanced": typeof SettingsAdvancedRoute;
+  "/settings/billing": typeof SettingsBillingRoute;
+  "/settings/subscriptions": typeof SettingsSubscriptionsRoute;
+  "/settings/usage": typeof SettingsUsageRoute;
+  "/settings/workspace": typeof SettingsWorkspaceRoute;
+  "/shared/$shareToken": typeof SharedShareTokenRoute;
+  "/skills/$id": typeof SkillsIdRoute;
+  "/template/$templateId": typeof TemplateTemplateIdRoute;
+  "/admin/": typeof AdminIndexRoute;
+  "/agents/": typeof AgentsIndexRoute;
+  "/internal/": typeof InternalIndexRoute;
+  "/settings/": typeof SettingsIndexRoute;
+  "/support/": typeof SupportIndexRoute;
+  "/template/": typeof TemplateIndexRoute;
+  "/toolbox/": typeof ToolboxIndexRoute;
+  "/agents/edit/$id": typeof AgentsEditIdRouteRouteWithChildren;
+  "/agents/runs/$id": typeof AgentsRunsIdRouteRouteWithChildren;
+  "/chat/$conversationId": typeof AppChatConversationIdRoute;
+  "/sign-in/$token": typeof AuthSignInTokenRouteWithChildren;
+  "/workspace-invitations/$invitationId": typeof AuthWorkspaceInvitationsInvitationIdRoute;
+  "/agents/deploy/$templateId": typeof AgentsDeployTemplateIdRoute;
+  "/agents/folders/$folderId": typeof AgentsFoldersFolderIdRoute;
+  "/agents/info/$slug": typeof AgentsInfoSlugRoute;
+  "/api/auth/$": typeof ApiAuthSplatRoute;
+  "/api/auth/check-email": typeof ApiAuthCheckEmailRoute;
+  "/api/auth/native-callback": typeof ApiAuthNativeCallbackRoute;
+  "/api/control-plane/health": typeof ApiControlPlaneHealthRoute;
+  "/api/control-plane/runtime-credentials": typeof ApiControlPlaneRuntimeCredentialsRoute;
+  "/api/coworkers/trigger": typeof ApiCoworkersTriggerRoute;
+  "/api/dev/auto-login": typeof ApiDevAutoLoginRoute;
+  "/api/dev/health": typeof ApiDevHealthRoute;
+  "/api/dev/worktree-auth": typeof ApiDevWorktreeAuthRoute;
+  "/api/instance/health": typeof ApiInstanceHealthRoute;
+  "/api/internal/memory": typeof ApiInternalMemoryRoute;
+  "/api/invite-only/request-access": typeof ApiInviteOnlyRequestAccessRoute;
+  "/api/oauth/callback": typeof ApiOauthCallbackRoute;
+  "/api/observability/client-observations": typeof ApiObservabilityClientObservationsRoute;
+  "/api/prompts/template-deploy": typeof ApiPromptsTemplateDeployRoute;
+  "/api/rpc/$": typeof ApiRpcSplatRoute;
+  "/api/settings/phone-number": typeof ApiSettingsPhoneNumberRoute;
+  "/api/slack/events": typeof ApiSlackEventsRoute;
+  "/api/slack/link": typeof ApiSlackLinkRoute;
+  "/api/zero/query": typeof ApiZeroQueryRoute;
+  "/share/agents/$slug": typeof ShareAgentsSlugRoute;
+  "/skills/community/$skillId": typeof SkillsCommunitySkillIdRoute;
+  "/toolbox/sources/$id": typeof ToolboxSourcesIdRoute;
+  "/toolbox/sources/new": typeof ToolboxSourcesNewRoute;
+  "/chat/": typeof AppChatIndexRoute;
+  "/agents/runs/": typeof AgentsRunsIndexRoute;
+  "/api/rpc/": typeof ApiRpcIndexRoute;
+  "/sign-in/$token/confirm": typeof AuthSignInTokenConfirmRoute;
+  "/sign-in/$token/resend": typeof AuthSignInTokenResendRoute;
+  "/api/auth/password/start": typeof ApiAuthPasswordStartRoute;
+  "/api/control-plane/auth/authorize": typeof ApiControlPlaneAuthAuthorizeRoute;
+  "/api/control-plane/auth/callback": typeof ApiControlPlaneAuthCallbackRoute;
+  "/api/control-plane/auth/exchange": typeof ApiControlPlaneAuthExchangeRoute;
+  "/api/control-plane/auth/start": typeof ApiControlPlaneAuthStartRoute;
+  "/api/control-plane/integrations/connect": typeof ApiControlPlaneIntegrationsConnectRoute;
+  "/api/control-plane/integrations/disconnect": typeof ApiControlPlaneIntegrationsDisconnectRoute;
+  "/api/control-plane/integrations/status": typeof ApiControlPlaneIntegrationsStatusRoute;
+  "/api/control-plane/integrations/toggle": typeof ApiControlPlaneIntegrationsToggleRoute;
+  "/api/control-plane/link/authorize": typeof ApiControlPlaneLinkAuthorizeRoute;
+  "/api/control-plane/link/callback": typeof ApiControlPlaneLinkCallbackRoute;
+  "/api/control-plane/link/exchange": typeof ApiControlPlaneLinkExchangeRoute;
+  "/api/control-plane/link/start": typeof ApiControlPlaneLinkStartRoute;
+  "/api/control-plane/provider-auth/disconnect": typeof ApiControlPlaneProviderAuthDisconnectRoute;
+  "/api/control-plane/provider-auth/status": typeof ApiControlPlaneProviderAuthStatusRoute;
+  "/api/instance/auth/start": typeof ApiInstanceAuthStartRoute;
+  "/api/integrations/linkedin/webhook": typeof ApiIntegrationsLinkedinWebhookRoute;
+  "/api/integrations/nango/providers": typeof ApiIntegrationsNangoProvidersRoute;
+  "/api/integrations/resend/webhook": typeof ApiIntegrationsResendWebhookRoute;
+  "/api/internal/mcp/galien-credentials": typeof ApiInternalMcpGalienCredentialsRoute;
+  "/api/internal/mcp/modulr-credentials": typeof ApiInternalMcpModulrCredentialsRoute;
+  "/api/internal/mcp/runtime-credentials": typeof ApiInternalMcpRuntimeCredentialsRoute;
+  "/api/internal/slack/post-as-bot": typeof ApiInternalSlackPostAsBotRoute;
+  "/api/internal/testing/cli-live": typeof ApiInternalTestingCliLiveRoute;
+  "/api/internal/testing/cli-session": typeof ApiInternalTestingCliSessionRoute;
+  "/api/mcp/oauth/authorize": typeof ApiMcpOauthAuthorizeRoute;
+  "/api/mcp/oauth/register": typeof ApiMcpOauthRegisterRoute;
+  "/api/mcp/oauth/token": typeof ApiMcpOauthTokenRoute;
+  "/api/mock/crm/contacts": typeof ApiMockCrmContactsRouteWithChildren;
+  "/api/mock/crm/deals": typeof ApiMockCrmDealsRoute;
+  "/api/mock/crm/openapi.json": typeof ApiMockCrmOpenapiDotjsonRoute;
+  "/api/modulr/documents/download": typeof ApiModulrDocumentsDownloadRoute;
+  "/api/oauth/dynamics/pending": typeof ApiOauthDynamicsPendingRoute;
+  "/api/sandbox-files/$id/download": typeof ApiSandboxFilesIdDownloadRoute;
+  "/api/workspaces/$id/image": typeof ApiWorkspacesIdImageRoute;
+  "/prototype/coworker/info/$slug": typeof PrototypeCoworkerInfoSlugRoute;
+  "/agents/edit/$id/": typeof AgentsEditIdIndexRoute;
+  "/agents/runs/$id/": typeof AgentsRunsIdIndexRoute;
+  "/agents/edit/$id/runs/$runId": typeof AgentsEditIdRunsRunIdRoute;
+  "/api/auth/provider/$provider/callback": typeof ApiAuthProviderProviderCallbackRoute;
+  "/api/coworkers/documents/$id/download": typeof ApiCoworkersDocumentsIdDownloadRoute;
+  "/api/internal/admin/remote-integrations/credentials": typeof ApiInternalAdminRemoteIntegrationsCredentialsRoute;
+  "/api/internal/admin/remote-integrations/users": typeof ApiInternalAdminRemoteIntegrationsUsersRoute;
+  "/api/internal/coworkers/runtime/edit": typeof ApiInternalCoworkersRuntimeEditRoute;
+  "/api/internal/coworkers/runtime/invoke": typeof ApiInternalCoworkersRuntimeInvokeRoute;
+  "/api/internal/coworkers/runtime/list": typeof ApiInternalCoworkersRuntimeListRoute;
+  "/api/internal/runtime/interrupts/create": typeof ApiInternalRuntimeInterruptsCreateRoute;
+  "/api/internal/runtime/interrupts/status": typeof ApiInternalRuntimeInterruptsStatusRoute;
+  "/api/mock/crm/contacts/$id": typeof ApiMockCrmContactsIdRoute;
+  "/agents/edit/$id/runs/": typeof AgentsEditIdRunsIndexRoute;
+  "/api/internal/coworkers/runtime/documents/upload": typeof ApiInternalCoworkersRuntimeDocumentsUploadRoute;
 }
 export interface FileRoutesByTo {
-  '/integrations': typeof IntegrationsRouteRouteWithChildren
-  '/legal': typeof LegalRouteRouteWithChildren
-  '/onboarding': typeof OnboardingRouteRouteWithChildren
-  '/skills': typeof SkillsRouteRouteWithChildren
-  '/': typeof PublicIndexRoute
-  '/accounts': typeof AccountsRoute
-  '/instance': typeof InstanceRoute
-  '/search': typeof SearchRoute
-  '/inbox': typeof AppInboxRoute
-  '/invite-only': typeof AuthInviteOnlyRoute
-  '/login': typeof AuthLoginRoute
-  '/reset-password': typeof AuthResetPasswordRoute
-  '/avatar': typeof PublicAvatarRoute
-  '/bug-report': typeof PublicBugReportRoute
-  '/pricing': typeof PublicPricingRoute
-  '/templates': typeof PublicTemplatesRoute
-  '/upload': typeof PublicUploadRoute
-  '/admin/audit-trail': typeof AdminAuditTrailRoute
-  '/admin/overview': typeof AdminOverviewRoute
-  '/admin/subscriptions': typeof AdminSubscriptionsRoute
-  '/admin/usage': typeof AdminUsageRoute
-  '/admin/workspaces': typeof AdminWorkspacesRoute
-  '/agents/grid': typeof AgentsGridRoute
-  '/agents/history': typeof AgentsHistoryRoute
-  '/agents/new': typeof AgentsNewRoute
-  '/agents/overview': typeof AgentsOverviewRoute
-  '/agents/usage': typeof AgentsUsageRoute
-  '/api/health': typeof ApiHealthRoute
-  '/api/live': typeof ApiLiveRoute
-  '/api/openapi': typeof ApiOpenapiRoute
-  '/api/report': typeof ApiReportRoute
-  '/integrations/$type': typeof IntegrationsTypeRoute
-  '/internal/chat-overview': typeof InternalChatOverviewRoute
-  '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
-  '/internal/credits': typeof InternalCreditsRoute
-  '/internal/mcp': typeof InternalMcpRoute
-  '/internal/ops': typeof InternalOpsRoute
-  '/internal/performance': typeof InternalPerformanceRoute
-  '/internal/previews': typeof InternalPreviewsRoute
-  '/internal/readme-preview': typeof InternalReadmePreviewRoute
-  '/internal/sandboxes': typeof InternalSandboxesRoute
-  '/internal/subscriptions': typeof InternalSubscriptionsRoute
-  '/internal/templates': typeof InternalTemplatesRoute
-  '/internal/tools': typeof InternalToolsRoute
-  '/internal/usage': typeof InternalUsageRoute
-  '/internal/workspaces': typeof InternalWorkspacesRoute
-  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
-  '/legal/terms': typeof LegalTermsRoute
-  '/onboarding/integrations': typeof OnboardingIntegrationsRoute
-  '/onboarding/subscriptions': typeof OnboardingSubscriptionsRoute
-  '/settings/advanced': typeof SettingsAdvancedRoute
-  '/settings/billing': typeof SettingsBillingRoute
-  '/settings/subscriptions': typeof SettingsSubscriptionsRoute
-  '/settings/usage': typeof SettingsUsageRoute
-  '/settings/workspace': typeof SettingsWorkspaceRoute
-  '/shared/$shareToken': typeof SharedShareTokenRoute
-  '/skills/$id': typeof SkillsIdRoute
-  '/template/$templateId': typeof TemplateTemplateIdRoute
-  '/admin': typeof AdminIndexRoute
-  '/agents': typeof AgentsIndexRoute
-  '/internal': typeof InternalIndexRoute
-  '/settings': typeof SettingsIndexRoute
-  '/support': typeof SupportIndexRoute
-  '/template': typeof TemplateIndexRoute
-  '/toolbox': typeof ToolboxIndexRoute
-  '/chat/$conversationId': typeof AppChatConversationIdRoute
-  '/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
-  '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
-  '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
-  '/agents/info/$slug': typeof AgentsInfoSlugRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/auth/check-email': typeof ApiAuthCheckEmailRoute
-  '/api/auth/native-callback': typeof ApiAuthNativeCallbackRoute
-  '/api/control-plane/health': typeof ApiControlPlaneHealthRoute
-  '/api/control-plane/runtime-credentials': typeof ApiControlPlaneRuntimeCredentialsRoute
-  '/api/coworkers/trigger': typeof ApiCoworkersTriggerRoute
-  '/api/dev/auto-login': typeof ApiDevAutoLoginRoute
-  '/api/dev/health': typeof ApiDevHealthRoute
-  '/api/dev/worktree-auth': typeof ApiDevWorktreeAuthRoute
-  '/api/instance/health': typeof ApiInstanceHealthRoute
-  '/api/internal/memory': typeof ApiInternalMemoryRoute
-  '/api/invite-only/request-access': typeof ApiInviteOnlyRequestAccessRoute
-  '/api/oauth/callback': typeof ApiOauthCallbackRoute
-  '/api/observability/client-observations': typeof ApiObservabilityClientObservationsRoute
-  '/api/prompts/template-deploy': typeof ApiPromptsTemplateDeployRoute
-  '/api/rpc/$': typeof ApiRpcSplatRoute
-  '/api/settings/phone-number': typeof ApiSettingsPhoneNumberRoute
-  '/api/slack/events': typeof ApiSlackEventsRoute
-  '/api/slack/link': typeof ApiSlackLinkRoute
-  '/api/zero/query': typeof ApiZeroQueryRoute
-  '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
-  '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
-  '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
-  '/chat': typeof AppChatIndexRoute
-  '/agents/runs': typeof AgentsRunsIndexRoute
-  '/api/rpc': typeof ApiRpcIndexRoute
-  '/sign-in/$token/confirm': typeof AuthSignInTokenConfirmRoute
-  '/sign-in/$token/resend': typeof AuthSignInTokenResendRoute
-  '/api/auth/password/start': typeof ApiAuthPasswordStartRoute
-  '/api/control-plane/auth/authorize': typeof ApiControlPlaneAuthAuthorizeRoute
-  '/api/control-plane/auth/callback': typeof ApiControlPlaneAuthCallbackRoute
-  '/api/control-plane/auth/exchange': typeof ApiControlPlaneAuthExchangeRoute
-  '/api/control-plane/auth/start': typeof ApiControlPlaneAuthStartRoute
-  '/api/control-plane/integrations/connect': typeof ApiControlPlaneIntegrationsConnectRoute
-  '/api/control-plane/integrations/disconnect': typeof ApiControlPlaneIntegrationsDisconnectRoute
-  '/api/control-plane/integrations/status': typeof ApiControlPlaneIntegrationsStatusRoute
-  '/api/control-plane/integrations/toggle': typeof ApiControlPlaneIntegrationsToggleRoute
-  '/api/control-plane/link/authorize': typeof ApiControlPlaneLinkAuthorizeRoute
-  '/api/control-plane/link/callback': typeof ApiControlPlaneLinkCallbackRoute
-  '/api/control-plane/link/exchange': typeof ApiControlPlaneLinkExchangeRoute
-  '/api/control-plane/link/start': typeof ApiControlPlaneLinkStartRoute
-  '/api/control-plane/provider-auth/disconnect': typeof ApiControlPlaneProviderAuthDisconnectRoute
-  '/api/control-plane/provider-auth/status': typeof ApiControlPlaneProviderAuthStatusRoute
-  '/api/instance/auth/start': typeof ApiInstanceAuthStartRoute
-  '/api/integrations/linkedin/webhook': typeof ApiIntegrationsLinkedinWebhookRoute
-  '/api/integrations/nango/providers': typeof ApiIntegrationsNangoProvidersRoute
-  '/api/integrations/resend/webhook': typeof ApiIntegrationsResendWebhookRoute
-  '/api/internal/mcp/galien-credentials': typeof ApiInternalMcpGalienCredentialsRoute
-  '/api/internal/mcp/modulr-credentials': typeof ApiInternalMcpModulrCredentialsRoute
-  '/api/internal/mcp/runtime-credentials': typeof ApiInternalMcpRuntimeCredentialsRoute
-  '/api/internal/slack/post-as-bot': typeof ApiInternalSlackPostAsBotRoute
-  '/api/internal/testing/cli-live': typeof ApiInternalTestingCliLiveRoute
-  '/api/internal/testing/cli-session': typeof ApiInternalTestingCliSessionRoute
-  '/api/mcp/oauth/authorize': typeof ApiMcpOauthAuthorizeRoute
-  '/api/mcp/oauth/register': typeof ApiMcpOauthRegisterRoute
-  '/api/mcp/oauth/token': typeof ApiMcpOauthTokenRoute
-  '/api/mock/crm/contacts': typeof ApiMockCrmContactsRouteWithChildren
-  '/api/mock/crm/deals': typeof ApiMockCrmDealsRoute
-  '/api/mock/crm/openapi.json': typeof ApiMockCrmOpenapiDotjsonRoute
-  '/api/modulr/documents/download': typeof ApiModulrDocumentsDownloadRoute
-  '/api/oauth/dynamics/pending': typeof ApiOauthDynamicsPendingRoute
-  '/api/sandbox-files/$id/download': typeof ApiSandboxFilesIdDownloadRoute
-  '/api/workspaces/$id/image': typeof ApiWorkspacesIdImageRoute
-  '/prototype/coworker/info/$slug': typeof PrototypeCoworkerInfoSlugRoute
-  '/agents/edit/$id': typeof AgentsEditIdIndexRoute
-  '/agents/runs/$id': typeof AgentsRunsIdIndexRoute
-  '/agents/edit/$id/runs/$runId': typeof AgentsEditIdRunsRunIdRoute
-  '/api/auth/provider/$provider/callback': typeof ApiAuthProviderProviderCallbackRoute
-  '/api/coworkers/documents/$id/download': typeof ApiCoworkersDocumentsIdDownloadRoute
-  '/api/internal/admin/remote-integrations/credentials': typeof ApiInternalAdminRemoteIntegrationsCredentialsRoute
-  '/api/internal/admin/remote-integrations/users': typeof ApiInternalAdminRemoteIntegrationsUsersRoute
-  '/api/internal/coworkers/runtime/edit': typeof ApiInternalCoworkersRuntimeEditRoute
-  '/api/internal/coworkers/runtime/invoke': typeof ApiInternalCoworkersRuntimeInvokeRoute
-  '/api/internal/coworkers/runtime/list': typeof ApiInternalCoworkersRuntimeListRoute
-  '/api/internal/runtime/interrupts/create': typeof ApiInternalRuntimeInterruptsCreateRoute
-  '/api/internal/runtime/interrupts/status': typeof ApiInternalRuntimeInterruptsStatusRoute
-  '/api/mock/crm/contacts/$id': typeof ApiMockCrmContactsIdRoute
-  '/agents/edit/$id/runs': typeof AgentsEditIdRunsIndexRoute
-  '/api/internal/coworkers/runtime/documents/upload': typeof ApiInternalCoworkersRuntimeDocumentsUploadRoute
+  "/integrations": typeof IntegrationsRouteRouteWithChildren;
+  "/legal": typeof LegalRouteRouteWithChildren;
+  "/onboarding": typeof OnboardingRouteRouteWithChildren;
+  "/skills": typeof SkillsRouteRouteWithChildren;
+  "/": typeof PublicIndexRoute;
+  "/accounts": typeof AccountsRoute;
+  "/audit": typeof AuditRoute;
+  "/instance": typeof InstanceRoute;
+  "/search": typeof SearchRoute;
+  "/inbox": typeof AppInboxRoute;
+  "/invite-only": typeof AuthInviteOnlyRoute;
+  "/login": typeof AuthLoginRoute;
+  "/reset-password": typeof AuthResetPasswordRoute;
+  "/avatar": typeof PublicAvatarRoute;
+  "/bug-report": typeof PublicBugReportRoute;
+  "/pricing": typeof PublicPricingRoute;
+  "/templates": typeof PublicTemplatesRoute;
+  "/upload": typeof PublicUploadRoute;
+  "/admin/audit-trail": typeof AdminAuditTrailRoute;
+  "/admin/overview": typeof AdminOverviewRoute;
+  "/admin/subscriptions": typeof AdminSubscriptionsRoute;
+  "/admin/usage": typeof AdminUsageRoute;
+  "/admin/workspaces": typeof AdminWorkspacesRoute;
+  "/agents/grid": typeof AgentsGridRoute;
+  "/agents/history": typeof AgentsHistoryRoute;
+  "/agents/new": typeof AgentsNewRoute;
+  "/agents/overview": typeof AgentsOverviewRoute;
+  "/agents/usage": typeof AgentsUsageRoute;
+  "/api/health": typeof ApiHealthRoute;
+  "/api/live": typeof ApiLiveRoute;
+  "/api/openapi": typeof ApiOpenapiRoute;
+  "/api/report": typeof ApiReportRoute;
+  "/integrations/$type": typeof IntegrationsTypeRoute;
+  "/internal/chat-overview": typeof InternalChatOverviewRoute;
+  "/internal/coworker-overview": typeof InternalCoworkerOverviewRoute;
+  "/internal/credits": typeof InternalCreditsRoute;
+  "/internal/mcp": typeof InternalMcpRoute;
+  "/internal/ops": typeof InternalOpsRoute;
+  "/internal/performance": typeof InternalPerformanceRoute;
+  "/internal/previews": typeof InternalPreviewsRoute;
+  "/internal/readme-preview": typeof InternalReadmePreviewRoute;
+  "/internal/sandboxes": typeof InternalSandboxesRoute;
+  "/internal/subscriptions": typeof InternalSubscriptionsRoute;
+  "/internal/templates": typeof InternalTemplatesRoute;
+  "/internal/tools": typeof InternalToolsRoute;
+  "/internal/usage": typeof InternalUsageRoute;
+  "/internal/workspaces": typeof InternalWorkspacesRoute;
+  "/legal/privacy-policy": typeof LegalPrivacyPolicyRoute;
+  "/legal/terms": typeof LegalTermsRoute;
+  "/onboarding/integrations": typeof OnboardingIntegrationsRoute;
+  "/onboarding/subscriptions": typeof OnboardingSubscriptionsRoute;
+  "/settings/advanced": typeof SettingsAdvancedRoute;
+  "/settings/billing": typeof SettingsBillingRoute;
+  "/settings/subscriptions": typeof SettingsSubscriptionsRoute;
+  "/settings/usage": typeof SettingsUsageRoute;
+  "/settings/workspace": typeof SettingsWorkspaceRoute;
+  "/shared/$shareToken": typeof SharedShareTokenRoute;
+  "/skills/$id": typeof SkillsIdRoute;
+  "/template/$templateId": typeof TemplateTemplateIdRoute;
+  "/admin": typeof AdminIndexRoute;
+  "/agents": typeof AgentsIndexRoute;
+  "/internal": typeof InternalIndexRoute;
+  "/settings": typeof SettingsIndexRoute;
+  "/support": typeof SupportIndexRoute;
+  "/template": typeof TemplateIndexRoute;
+  "/toolbox": typeof ToolboxIndexRoute;
+  "/chat/$conversationId": typeof AppChatConversationIdRoute;
+  "/sign-in/$token": typeof AuthSignInTokenRouteWithChildren;
+  "/workspace-invitations/$invitationId": typeof AuthWorkspaceInvitationsInvitationIdRoute;
+  "/agents/deploy/$templateId": typeof AgentsDeployTemplateIdRoute;
+  "/agents/folders/$folderId": typeof AgentsFoldersFolderIdRoute;
+  "/agents/info/$slug": typeof AgentsInfoSlugRoute;
+  "/api/auth/$": typeof ApiAuthSplatRoute;
+  "/api/auth/check-email": typeof ApiAuthCheckEmailRoute;
+  "/api/auth/native-callback": typeof ApiAuthNativeCallbackRoute;
+  "/api/control-plane/health": typeof ApiControlPlaneHealthRoute;
+  "/api/control-plane/runtime-credentials": typeof ApiControlPlaneRuntimeCredentialsRoute;
+  "/api/coworkers/trigger": typeof ApiCoworkersTriggerRoute;
+  "/api/dev/auto-login": typeof ApiDevAutoLoginRoute;
+  "/api/dev/health": typeof ApiDevHealthRoute;
+  "/api/dev/worktree-auth": typeof ApiDevWorktreeAuthRoute;
+  "/api/instance/health": typeof ApiInstanceHealthRoute;
+  "/api/internal/memory": typeof ApiInternalMemoryRoute;
+  "/api/invite-only/request-access": typeof ApiInviteOnlyRequestAccessRoute;
+  "/api/oauth/callback": typeof ApiOauthCallbackRoute;
+  "/api/observability/client-observations": typeof ApiObservabilityClientObservationsRoute;
+  "/api/prompts/template-deploy": typeof ApiPromptsTemplateDeployRoute;
+  "/api/rpc/$": typeof ApiRpcSplatRoute;
+  "/api/settings/phone-number": typeof ApiSettingsPhoneNumberRoute;
+  "/api/slack/events": typeof ApiSlackEventsRoute;
+  "/api/slack/link": typeof ApiSlackLinkRoute;
+  "/api/zero/query": typeof ApiZeroQueryRoute;
+  "/share/agents/$slug": typeof ShareAgentsSlugRoute;
+  "/skills/community/$skillId": typeof SkillsCommunitySkillIdRoute;
+  "/toolbox/sources/$id": typeof ToolboxSourcesIdRoute;
+  "/toolbox/sources/new": typeof ToolboxSourcesNewRoute;
+  "/chat": typeof AppChatIndexRoute;
+  "/agents/runs": typeof AgentsRunsIndexRoute;
+  "/api/rpc": typeof ApiRpcIndexRoute;
+  "/sign-in/$token/confirm": typeof AuthSignInTokenConfirmRoute;
+  "/sign-in/$token/resend": typeof AuthSignInTokenResendRoute;
+  "/api/auth/password/start": typeof ApiAuthPasswordStartRoute;
+  "/api/control-plane/auth/authorize": typeof ApiControlPlaneAuthAuthorizeRoute;
+  "/api/control-plane/auth/callback": typeof ApiControlPlaneAuthCallbackRoute;
+  "/api/control-plane/auth/exchange": typeof ApiControlPlaneAuthExchangeRoute;
+  "/api/control-plane/auth/start": typeof ApiControlPlaneAuthStartRoute;
+  "/api/control-plane/integrations/connect": typeof ApiControlPlaneIntegrationsConnectRoute;
+  "/api/control-plane/integrations/disconnect": typeof ApiControlPlaneIntegrationsDisconnectRoute;
+  "/api/control-plane/integrations/status": typeof ApiControlPlaneIntegrationsStatusRoute;
+  "/api/control-plane/integrations/toggle": typeof ApiControlPlaneIntegrationsToggleRoute;
+  "/api/control-plane/link/authorize": typeof ApiControlPlaneLinkAuthorizeRoute;
+  "/api/control-plane/link/callback": typeof ApiControlPlaneLinkCallbackRoute;
+  "/api/control-plane/link/exchange": typeof ApiControlPlaneLinkExchangeRoute;
+  "/api/control-plane/link/start": typeof ApiControlPlaneLinkStartRoute;
+  "/api/control-plane/provider-auth/disconnect": typeof ApiControlPlaneProviderAuthDisconnectRoute;
+  "/api/control-plane/provider-auth/status": typeof ApiControlPlaneProviderAuthStatusRoute;
+  "/api/instance/auth/start": typeof ApiInstanceAuthStartRoute;
+  "/api/integrations/linkedin/webhook": typeof ApiIntegrationsLinkedinWebhookRoute;
+  "/api/integrations/nango/providers": typeof ApiIntegrationsNangoProvidersRoute;
+  "/api/integrations/resend/webhook": typeof ApiIntegrationsResendWebhookRoute;
+  "/api/internal/mcp/galien-credentials": typeof ApiInternalMcpGalienCredentialsRoute;
+  "/api/internal/mcp/modulr-credentials": typeof ApiInternalMcpModulrCredentialsRoute;
+  "/api/internal/mcp/runtime-credentials": typeof ApiInternalMcpRuntimeCredentialsRoute;
+  "/api/internal/slack/post-as-bot": typeof ApiInternalSlackPostAsBotRoute;
+  "/api/internal/testing/cli-live": typeof ApiInternalTestingCliLiveRoute;
+  "/api/internal/testing/cli-session": typeof ApiInternalTestingCliSessionRoute;
+  "/api/mcp/oauth/authorize": typeof ApiMcpOauthAuthorizeRoute;
+  "/api/mcp/oauth/register": typeof ApiMcpOauthRegisterRoute;
+  "/api/mcp/oauth/token": typeof ApiMcpOauthTokenRoute;
+  "/api/mock/crm/contacts": typeof ApiMockCrmContactsRouteWithChildren;
+  "/api/mock/crm/deals": typeof ApiMockCrmDealsRoute;
+  "/api/mock/crm/openapi.json": typeof ApiMockCrmOpenapiDotjsonRoute;
+  "/api/modulr/documents/download": typeof ApiModulrDocumentsDownloadRoute;
+  "/api/oauth/dynamics/pending": typeof ApiOauthDynamicsPendingRoute;
+  "/api/sandbox-files/$id/download": typeof ApiSandboxFilesIdDownloadRoute;
+  "/api/workspaces/$id/image": typeof ApiWorkspacesIdImageRoute;
+  "/prototype/coworker/info/$slug": typeof PrototypeCoworkerInfoSlugRoute;
+  "/agents/edit/$id": typeof AgentsEditIdIndexRoute;
+  "/agents/runs/$id": typeof AgentsRunsIdIndexRoute;
+  "/agents/edit/$id/runs/$runId": typeof AgentsEditIdRunsRunIdRoute;
+  "/api/auth/provider/$provider/callback": typeof ApiAuthProviderProviderCallbackRoute;
+  "/api/coworkers/documents/$id/download": typeof ApiCoworkersDocumentsIdDownloadRoute;
+  "/api/internal/admin/remote-integrations/credentials": typeof ApiInternalAdminRemoteIntegrationsCredentialsRoute;
+  "/api/internal/admin/remote-integrations/users": typeof ApiInternalAdminRemoteIntegrationsUsersRoute;
+  "/api/internal/coworkers/runtime/edit": typeof ApiInternalCoworkersRuntimeEditRoute;
+  "/api/internal/coworkers/runtime/invoke": typeof ApiInternalCoworkersRuntimeInvokeRoute;
+  "/api/internal/coworkers/runtime/list": typeof ApiInternalCoworkersRuntimeListRoute;
+  "/api/internal/runtime/interrupts/create": typeof ApiInternalRuntimeInterruptsCreateRoute;
+  "/api/internal/runtime/interrupts/status": typeof ApiInternalRuntimeInterruptsStatusRoute;
+  "/api/mock/crm/contacts/$id": typeof ApiMockCrmContactsIdRoute;
+  "/agents/edit/$id/runs": typeof AgentsEditIdRunsIndexRoute;
+  "/api/internal/coworkers/runtime/documents/upload": typeof ApiInternalCoworkersRuntimeDocumentsUploadRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/admin': typeof AdminRouteRouteWithChildren
-  '/agents': typeof AgentsRouteRouteWithChildren
-  '/integrations': typeof IntegrationsRouteRouteWithChildren
-  '/internal': typeof InternalRouteRouteWithChildren
-  '/legal': typeof LegalRouteRouteWithChildren
-  '/onboarding': typeof OnboardingRouteRouteWithChildren
-  '/settings': typeof SettingsRouteRouteWithChildren
-  '/skills': typeof SkillsRouteRouteWithChildren
-  '/support': typeof SupportRouteRouteWithChildren
-  '/toolbox': typeof ToolboxRouteRouteWithChildren
-  '/_app': typeof AppRouteWithChildren
-  '/_auth': typeof AuthRouteWithChildren
-  '/_public': typeof PublicRouteWithChildren
-  '/accounts': typeof AccountsRoute
-  '/instance': typeof InstanceRoute
-  '/search': typeof SearchRoute
-  '/template': typeof TemplateRouteWithChildren
-  '/agents/runs': typeof AgentsRunsRouteRouteWithChildren
-  '/_app/chat': typeof AppChatRouteWithChildren
-  '/_app/inbox': typeof AppInboxRoute
-  '/_auth/invite-only': typeof AuthInviteOnlyRoute
-  '/_auth/login': typeof AuthLoginRoute
-  '/_auth/reset-password': typeof AuthResetPasswordRoute
-  '/_public/avatar': typeof PublicAvatarRoute
-  '/_public/bug-report': typeof PublicBugReportRoute
-  '/_public/pricing': typeof PublicPricingRoute
-  '/_public/templates': typeof PublicTemplatesRoute
-  '/_public/upload': typeof PublicUploadRoute
-  '/admin/audit-trail': typeof AdminAuditTrailRoute
-  '/admin/overview': typeof AdminOverviewRoute
-  '/admin/subscriptions': typeof AdminSubscriptionsRoute
-  '/admin/usage': typeof AdminUsageRoute
-  '/admin/workspaces': typeof AdminWorkspacesRoute
-  '/agents/grid': typeof AgentsGridRoute
-  '/agents/history': typeof AgentsHistoryRoute
-  '/agents/new': typeof AgentsNewRoute
-  '/agents/overview': typeof AgentsOverviewRoute
-  '/agents/usage': typeof AgentsUsageRoute
-  '/api/health': typeof ApiHealthRoute
-  '/api/live': typeof ApiLiveRoute
-  '/api/openapi': typeof ApiOpenapiRoute
-  '/api/report': typeof ApiReportRoute
-  '/integrations/$type': typeof IntegrationsTypeRoute
-  '/internal/chat-overview': typeof InternalChatOverviewRoute
-  '/internal/coworker-overview': typeof InternalCoworkerOverviewRoute
-  '/internal/credits': typeof InternalCreditsRoute
-  '/internal/mcp': typeof InternalMcpRoute
-  '/internal/ops': typeof InternalOpsRoute
-  '/internal/performance': typeof InternalPerformanceRoute
-  '/internal/previews': typeof InternalPreviewsRoute
-  '/internal/readme-preview': typeof InternalReadmePreviewRoute
-  '/internal/sandboxes': typeof InternalSandboxesRoute
-  '/internal/subscriptions': typeof InternalSubscriptionsRoute
-  '/internal/templates': typeof InternalTemplatesRoute
-  '/internal/tools': typeof InternalToolsRoute
-  '/internal/usage': typeof InternalUsageRoute
-  '/internal/workspaces': typeof InternalWorkspacesRoute
-  '/legal/privacy-policy': typeof LegalPrivacyPolicyRoute
-  '/legal/terms': typeof LegalTermsRoute
-  '/onboarding/integrations': typeof OnboardingIntegrationsRoute
-  '/onboarding/subscriptions': typeof OnboardingSubscriptionsRoute
-  '/settings/advanced': typeof SettingsAdvancedRoute
-  '/settings/billing': typeof SettingsBillingRoute
-  '/settings/subscriptions': typeof SettingsSubscriptionsRoute
-  '/settings/usage': typeof SettingsUsageRoute
-  '/settings/workspace': typeof SettingsWorkspaceRoute
-  '/shared/$shareToken': typeof SharedShareTokenRoute
-  '/skills/$id': typeof SkillsIdRoute
-  '/template/$templateId': typeof TemplateTemplateIdRoute
-  '/_public/': typeof PublicIndexRoute
-  '/admin/': typeof AdminIndexRoute
-  '/agents/': typeof AgentsIndexRoute
-  '/internal/': typeof InternalIndexRoute
-  '/settings/': typeof SettingsIndexRoute
-  '/support/': typeof SupportIndexRoute
-  '/template/': typeof TemplateIndexRoute
-  '/toolbox/': typeof ToolboxIndexRoute
-  '/agents/edit/$id': typeof AgentsEditIdRouteRouteWithChildren
-  '/agents/runs/$id': typeof AgentsRunsIdRouteRouteWithChildren
-  '/_app/chat/$conversationId': typeof AppChatConversationIdRoute
-  '/_auth/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
-  '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
-  '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
-  '/agents/info/$slug': typeof AgentsInfoSlugRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/auth/check-email': typeof ApiAuthCheckEmailRoute
-  '/api/auth/native-callback': typeof ApiAuthNativeCallbackRoute
-  '/api/control-plane/health': typeof ApiControlPlaneHealthRoute
-  '/api/control-plane/runtime-credentials': typeof ApiControlPlaneRuntimeCredentialsRoute
-  '/api/coworkers/trigger': typeof ApiCoworkersTriggerRoute
-  '/api/dev/auto-login': typeof ApiDevAutoLoginRoute
-  '/api/dev/health': typeof ApiDevHealthRoute
-  '/api/dev/worktree-auth': typeof ApiDevWorktreeAuthRoute
-  '/api/instance/health': typeof ApiInstanceHealthRoute
-  '/api/internal/memory': typeof ApiInternalMemoryRoute
-  '/api/invite-only/request-access': typeof ApiInviteOnlyRequestAccessRoute
-  '/api/oauth/callback': typeof ApiOauthCallbackRoute
-  '/api/observability/client-observations': typeof ApiObservabilityClientObservationsRoute
-  '/api/prompts/template-deploy': typeof ApiPromptsTemplateDeployRoute
-  '/api/rpc/$': typeof ApiRpcSplatRoute
-  '/api/settings/phone-number': typeof ApiSettingsPhoneNumberRoute
-  '/api/slack/events': typeof ApiSlackEventsRoute
-  '/api/slack/link': typeof ApiSlackLinkRoute
-  '/api/zero/query': typeof ApiZeroQueryRoute
-  '/skills/community/$skillId': typeof SkillsCommunitySkillIdRoute
-  '/toolbox/sources/$id': typeof ToolboxSourcesIdRoute
-  '/toolbox/sources/new': typeof ToolboxSourcesNewRoute
-  '/_app/chat/': typeof AppChatIndexRoute
-  '/agents/runs/': typeof AgentsRunsIndexRoute
-  '/api/rpc/': typeof ApiRpcIndexRoute
-  '/_auth/sign-in/$token/confirm': typeof AuthSignInTokenConfirmRoute
-  '/_auth/sign-in/$token/resend': typeof AuthSignInTokenResendRoute
-  '/api/auth/password/start': typeof ApiAuthPasswordStartRoute
-  '/api/control-plane/auth/authorize': typeof ApiControlPlaneAuthAuthorizeRoute
-  '/api/control-plane/auth/callback': typeof ApiControlPlaneAuthCallbackRoute
-  '/api/control-plane/auth/exchange': typeof ApiControlPlaneAuthExchangeRoute
-  '/api/control-plane/auth/start': typeof ApiControlPlaneAuthStartRoute
-  '/api/control-plane/integrations/connect': typeof ApiControlPlaneIntegrationsConnectRoute
-  '/api/control-plane/integrations/disconnect': typeof ApiControlPlaneIntegrationsDisconnectRoute
-  '/api/control-plane/integrations/status': typeof ApiControlPlaneIntegrationsStatusRoute
-  '/api/control-plane/integrations/toggle': typeof ApiControlPlaneIntegrationsToggleRoute
-  '/api/control-plane/link/authorize': typeof ApiControlPlaneLinkAuthorizeRoute
-  '/api/control-plane/link/callback': typeof ApiControlPlaneLinkCallbackRoute
-  '/api/control-plane/link/exchange': typeof ApiControlPlaneLinkExchangeRoute
-  '/api/control-plane/link/start': typeof ApiControlPlaneLinkStartRoute
-  '/api/control-plane/provider-auth/disconnect': typeof ApiControlPlaneProviderAuthDisconnectRoute
-  '/api/control-plane/provider-auth/status': typeof ApiControlPlaneProviderAuthStatusRoute
-  '/api/instance/auth/start': typeof ApiInstanceAuthStartRoute
-  '/api/integrations/linkedin/webhook': typeof ApiIntegrationsLinkedinWebhookRoute
-  '/api/integrations/nango/providers': typeof ApiIntegrationsNangoProvidersRoute
-  '/api/integrations/resend/webhook': typeof ApiIntegrationsResendWebhookRoute
-  '/api/internal/mcp/galien-credentials': typeof ApiInternalMcpGalienCredentialsRoute
-  '/api/internal/mcp/modulr-credentials': typeof ApiInternalMcpModulrCredentialsRoute
-  '/api/internal/mcp/runtime-credentials': typeof ApiInternalMcpRuntimeCredentialsRoute
-  '/api/internal/slack/post-as-bot': typeof ApiInternalSlackPostAsBotRoute
-  '/api/internal/testing/cli-live': typeof ApiInternalTestingCliLiveRoute
-  '/api/internal/testing/cli-session': typeof ApiInternalTestingCliSessionRoute
-  '/api/mcp/oauth/authorize': typeof ApiMcpOauthAuthorizeRoute
-  '/api/mcp/oauth/register': typeof ApiMcpOauthRegisterRoute
-  '/api/mcp/oauth/token': typeof ApiMcpOauthTokenRoute
-  '/api/mock/crm/contacts': typeof ApiMockCrmContactsRouteWithChildren
-  '/api/mock/crm/deals': typeof ApiMockCrmDealsRoute
-  '/api/mock/crm/openapi.json': typeof ApiMockCrmOpenapiDotjsonRoute
-  '/api/modulr/documents/download': typeof ApiModulrDocumentsDownloadRoute
-  '/api/oauth/dynamics/pending': typeof ApiOauthDynamicsPendingRoute
-  '/api/sandbox-files/$id/download': typeof ApiSandboxFilesIdDownloadRoute
-  '/api/workspaces/$id/image': typeof ApiWorkspacesIdImageRoute
-  '/prototype/coworker/info/$slug': typeof PrototypeCoworkerInfoSlugRoute
-  '/agents/edit/$id/': typeof AgentsEditIdIndexRoute
-  '/agents/runs/$id/': typeof AgentsRunsIdIndexRoute
-  '/agents/edit/$id/runs/$runId': typeof AgentsEditIdRunsRunIdRoute
-  '/api/auth/provider/$provider/callback': typeof ApiAuthProviderProviderCallbackRoute
-  '/api/coworkers/documents/$id/download': typeof ApiCoworkersDocumentsIdDownloadRoute
-  '/api/internal/admin/remote-integrations/credentials': typeof ApiInternalAdminRemoteIntegrationsCredentialsRoute
-  '/api/internal/admin/remote-integrations/users': typeof ApiInternalAdminRemoteIntegrationsUsersRoute
-  '/api/internal/coworkers/runtime/edit': typeof ApiInternalCoworkersRuntimeEditRoute
-  '/api/internal/coworkers/runtime/invoke': typeof ApiInternalCoworkersRuntimeInvokeRoute
-  '/api/internal/coworkers/runtime/list': typeof ApiInternalCoworkersRuntimeListRoute
-  '/api/internal/runtime/interrupts/create': typeof ApiInternalRuntimeInterruptsCreateRoute
-  '/api/internal/runtime/interrupts/status': typeof ApiInternalRuntimeInterruptsStatusRoute
-  '/api/mock/crm/contacts/$id': typeof ApiMockCrmContactsIdRoute
-  '/agents/edit/$id/runs/': typeof AgentsEditIdRunsIndexRoute
-  '/api/internal/coworkers/runtime/documents/upload': typeof ApiInternalCoworkersRuntimeDocumentsUploadRoute
+  __root__: typeof rootRouteImport;
+  "/admin": typeof AdminRouteRouteWithChildren;
+  "/agents": typeof AgentsRouteRouteWithChildren;
+  "/integrations": typeof IntegrationsRouteRouteWithChildren;
+  "/internal": typeof InternalRouteRouteWithChildren;
+  "/legal": typeof LegalRouteRouteWithChildren;
+  "/onboarding": typeof OnboardingRouteRouteWithChildren;
+  "/settings": typeof SettingsRouteRouteWithChildren;
+  "/skills": typeof SkillsRouteRouteWithChildren;
+  "/support": typeof SupportRouteRouteWithChildren;
+  "/toolbox": typeof ToolboxRouteRouteWithChildren;
+  "/_app": typeof AppRouteWithChildren;
+  "/_auth": typeof AuthRouteWithChildren;
+  "/_public": typeof PublicRouteWithChildren;
+  "/accounts": typeof AccountsRoute;
+  "/audit": typeof AuditRoute;
+  "/instance": typeof InstanceRoute;
+  "/search": typeof SearchRoute;
+  "/template": typeof TemplateRouteWithChildren;
+  "/agents/runs": typeof AgentsRunsRouteRouteWithChildren;
+  "/_app/chat": typeof AppChatRouteWithChildren;
+  "/_app/inbox": typeof AppInboxRoute;
+  "/_auth/invite-only": typeof AuthInviteOnlyRoute;
+  "/_auth/login": typeof AuthLoginRoute;
+  "/_auth/reset-password": typeof AuthResetPasswordRoute;
+  "/_public/avatar": typeof PublicAvatarRoute;
+  "/_public/bug-report": typeof PublicBugReportRoute;
+  "/_public/pricing": typeof PublicPricingRoute;
+  "/_public/templates": typeof PublicTemplatesRoute;
+  "/_public/upload": typeof PublicUploadRoute;
+  "/admin/audit-trail": typeof AdminAuditTrailRoute;
+  "/admin/overview": typeof AdminOverviewRoute;
+  "/admin/subscriptions": typeof AdminSubscriptionsRoute;
+  "/admin/usage": typeof AdminUsageRoute;
+  "/admin/workspaces": typeof AdminWorkspacesRoute;
+  "/agents/grid": typeof AgentsGridRoute;
+  "/agents/history": typeof AgentsHistoryRoute;
+  "/agents/new": typeof AgentsNewRoute;
+  "/agents/overview": typeof AgentsOverviewRoute;
+  "/agents/usage": typeof AgentsUsageRoute;
+  "/api/health": typeof ApiHealthRoute;
+  "/api/live": typeof ApiLiveRoute;
+  "/api/openapi": typeof ApiOpenapiRoute;
+  "/api/report": typeof ApiReportRoute;
+  "/integrations/$type": typeof IntegrationsTypeRoute;
+  "/internal/chat-overview": typeof InternalChatOverviewRoute;
+  "/internal/coworker-overview": typeof InternalCoworkerOverviewRoute;
+  "/internal/credits": typeof InternalCreditsRoute;
+  "/internal/mcp": typeof InternalMcpRoute;
+  "/internal/ops": typeof InternalOpsRoute;
+  "/internal/performance": typeof InternalPerformanceRoute;
+  "/internal/previews": typeof InternalPreviewsRoute;
+  "/internal/readme-preview": typeof InternalReadmePreviewRoute;
+  "/internal/sandboxes": typeof InternalSandboxesRoute;
+  "/internal/subscriptions": typeof InternalSubscriptionsRoute;
+  "/internal/templates": typeof InternalTemplatesRoute;
+  "/internal/tools": typeof InternalToolsRoute;
+  "/internal/usage": typeof InternalUsageRoute;
+  "/internal/workspaces": typeof InternalWorkspacesRoute;
+  "/legal/privacy-policy": typeof LegalPrivacyPolicyRoute;
+  "/legal/terms": typeof LegalTermsRoute;
+  "/onboarding/integrations": typeof OnboardingIntegrationsRoute;
+  "/onboarding/subscriptions": typeof OnboardingSubscriptionsRoute;
+  "/settings/advanced": typeof SettingsAdvancedRoute;
+  "/settings/billing": typeof SettingsBillingRoute;
+  "/settings/subscriptions": typeof SettingsSubscriptionsRoute;
+  "/settings/usage": typeof SettingsUsageRoute;
+  "/settings/workspace": typeof SettingsWorkspaceRoute;
+  "/shared/$shareToken": typeof SharedShareTokenRoute;
+  "/skills/$id": typeof SkillsIdRoute;
+  "/template/$templateId": typeof TemplateTemplateIdRoute;
+  "/_public/": typeof PublicIndexRoute;
+  "/admin/": typeof AdminIndexRoute;
+  "/agents/": typeof AgentsIndexRoute;
+  "/internal/": typeof InternalIndexRoute;
+  "/settings/": typeof SettingsIndexRoute;
+  "/support/": typeof SupportIndexRoute;
+  "/template/": typeof TemplateIndexRoute;
+  "/toolbox/": typeof ToolboxIndexRoute;
+  "/agents/edit/$id": typeof AgentsEditIdRouteRouteWithChildren;
+  "/agents/runs/$id": typeof AgentsRunsIdRouteRouteWithChildren;
+  "/_app/chat/$conversationId": typeof AppChatConversationIdRoute;
+  "/_auth/sign-in/$token": typeof AuthSignInTokenRouteWithChildren;
+  "/_auth/workspace-invitations/$invitationId": typeof AuthWorkspaceInvitationsInvitationIdRoute;
+  "/agents/deploy/$templateId": typeof AgentsDeployTemplateIdRoute;
+  "/agents/folders/$folderId": typeof AgentsFoldersFolderIdRoute;
+  "/agents/info/$slug": typeof AgentsInfoSlugRoute;
+  "/api/auth/$": typeof ApiAuthSplatRoute;
+  "/api/auth/check-email": typeof ApiAuthCheckEmailRoute;
+  "/api/auth/native-callback": typeof ApiAuthNativeCallbackRoute;
+  "/api/control-plane/health": typeof ApiControlPlaneHealthRoute;
+  "/api/control-plane/runtime-credentials": typeof ApiControlPlaneRuntimeCredentialsRoute;
+  "/api/coworkers/trigger": typeof ApiCoworkersTriggerRoute;
+  "/api/dev/auto-login": typeof ApiDevAutoLoginRoute;
+  "/api/dev/health": typeof ApiDevHealthRoute;
+  "/api/dev/worktree-auth": typeof ApiDevWorktreeAuthRoute;
+  "/api/instance/health": typeof ApiInstanceHealthRoute;
+  "/api/internal/memory": typeof ApiInternalMemoryRoute;
+  "/api/invite-only/request-access": typeof ApiInviteOnlyRequestAccessRoute;
+  "/api/oauth/callback": typeof ApiOauthCallbackRoute;
+  "/api/observability/client-observations": typeof ApiObservabilityClientObservationsRoute;
+  "/api/prompts/template-deploy": typeof ApiPromptsTemplateDeployRoute;
+  "/api/rpc/$": typeof ApiRpcSplatRoute;
+  "/api/settings/phone-number": typeof ApiSettingsPhoneNumberRoute;
+  "/api/slack/events": typeof ApiSlackEventsRoute;
+  "/api/slack/link": typeof ApiSlackLinkRoute;
+  "/api/zero/query": typeof ApiZeroQueryRoute;
+  "/share/agents/$slug": typeof ShareAgentsSlugRoute;
+  "/skills/community/$skillId": typeof SkillsCommunitySkillIdRoute;
+  "/toolbox/sources/$id": typeof ToolboxSourcesIdRoute;
+  "/toolbox/sources/new": typeof ToolboxSourcesNewRoute;
+  "/_app/chat/": typeof AppChatIndexRoute;
+  "/agents/runs/": typeof AgentsRunsIndexRoute;
+  "/api/rpc/": typeof ApiRpcIndexRoute;
+  "/_auth/sign-in/$token/confirm": typeof AuthSignInTokenConfirmRoute;
+  "/_auth/sign-in/$token/resend": typeof AuthSignInTokenResendRoute;
+  "/api/auth/password/start": typeof ApiAuthPasswordStartRoute;
+  "/api/control-plane/auth/authorize": typeof ApiControlPlaneAuthAuthorizeRoute;
+  "/api/control-plane/auth/callback": typeof ApiControlPlaneAuthCallbackRoute;
+  "/api/control-plane/auth/exchange": typeof ApiControlPlaneAuthExchangeRoute;
+  "/api/control-plane/auth/start": typeof ApiControlPlaneAuthStartRoute;
+  "/api/control-plane/integrations/connect": typeof ApiControlPlaneIntegrationsConnectRoute;
+  "/api/control-plane/integrations/disconnect": typeof ApiControlPlaneIntegrationsDisconnectRoute;
+  "/api/control-plane/integrations/status": typeof ApiControlPlaneIntegrationsStatusRoute;
+  "/api/control-plane/integrations/toggle": typeof ApiControlPlaneIntegrationsToggleRoute;
+  "/api/control-plane/link/authorize": typeof ApiControlPlaneLinkAuthorizeRoute;
+  "/api/control-plane/link/callback": typeof ApiControlPlaneLinkCallbackRoute;
+  "/api/control-plane/link/exchange": typeof ApiControlPlaneLinkExchangeRoute;
+  "/api/control-plane/link/start": typeof ApiControlPlaneLinkStartRoute;
+  "/api/control-plane/provider-auth/disconnect": typeof ApiControlPlaneProviderAuthDisconnectRoute;
+  "/api/control-plane/provider-auth/status": typeof ApiControlPlaneProviderAuthStatusRoute;
+  "/api/instance/auth/start": typeof ApiInstanceAuthStartRoute;
+  "/api/integrations/linkedin/webhook": typeof ApiIntegrationsLinkedinWebhookRoute;
+  "/api/integrations/nango/providers": typeof ApiIntegrationsNangoProvidersRoute;
+  "/api/integrations/resend/webhook": typeof ApiIntegrationsResendWebhookRoute;
+  "/api/internal/mcp/galien-credentials": typeof ApiInternalMcpGalienCredentialsRoute;
+  "/api/internal/mcp/modulr-credentials": typeof ApiInternalMcpModulrCredentialsRoute;
+  "/api/internal/mcp/runtime-credentials": typeof ApiInternalMcpRuntimeCredentialsRoute;
+  "/api/internal/slack/post-as-bot": typeof ApiInternalSlackPostAsBotRoute;
+  "/api/internal/testing/cli-live": typeof ApiInternalTestingCliLiveRoute;
+  "/api/internal/testing/cli-session": typeof ApiInternalTestingCliSessionRoute;
+  "/api/mcp/oauth/authorize": typeof ApiMcpOauthAuthorizeRoute;
+  "/api/mcp/oauth/register": typeof ApiMcpOauthRegisterRoute;
+  "/api/mcp/oauth/token": typeof ApiMcpOauthTokenRoute;
+  "/api/mock/crm/contacts": typeof ApiMockCrmContactsRouteWithChildren;
+  "/api/mock/crm/deals": typeof ApiMockCrmDealsRoute;
+  "/api/mock/crm/openapi.json": typeof ApiMockCrmOpenapiDotjsonRoute;
+  "/api/modulr/documents/download": typeof ApiModulrDocumentsDownloadRoute;
+  "/api/oauth/dynamics/pending": typeof ApiOauthDynamicsPendingRoute;
+  "/api/sandbox-files/$id/download": typeof ApiSandboxFilesIdDownloadRoute;
+  "/api/workspaces/$id/image": typeof ApiWorkspacesIdImageRoute;
+  "/prototype/coworker/info/$slug": typeof PrototypeCoworkerInfoSlugRoute;
+  "/agents/edit/$id/": typeof AgentsEditIdIndexRoute;
+  "/agents/runs/$id/": typeof AgentsRunsIdIndexRoute;
+  "/agents/edit/$id/runs/$runId": typeof AgentsEditIdRunsRunIdRoute;
+  "/api/auth/provider/$provider/callback": typeof ApiAuthProviderProviderCallbackRoute;
+  "/api/coworkers/documents/$id/download": typeof ApiCoworkersDocumentsIdDownloadRoute;
+  "/api/internal/admin/remote-integrations/credentials": typeof ApiInternalAdminRemoteIntegrationsCredentialsRoute;
+  "/api/internal/admin/remote-integrations/users": typeof ApiInternalAdminRemoteIntegrationsUsersRoute;
+  "/api/internal/coworkers/runtime/edit": typeof ApiInternalCoworkersRuntimeEditRoute;
+  "/api/internal/coworkers/runtime/invoke": typeof ApiInternalCoworkersRuntimeInvokeRoute;
+  "/api/internal/coworkers/runtime/list": typeof ApiInternalCoworkersRuntimeListRoute;
+  "/api/internal/runtime/interrupts/create": typeof ApiInternalRuntimeInterruptsCreateRoute;
+  "/api/internal/runtime/interrupts/status": typeof ApiInternalRuntimeInterruptsStatusRoute;
+  "/api/mock/crm/contacts/$id": typeof ApiMockCrmContactsIdRoute;
+  "/agents/edit/$id/runs/": typeof AgentsEditIdRunsIndexRoute;
+  "/api/internal/coworkers/runtime/documents/upload": typeof ApiInternalCoworkersRuntimeDocumentsUploadRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
-    | '/admin'
-    | '/agents'
-    | '/integrations'
-    | '/internal'
-    | '/legal'
-    | '/onboarding'
-    | '/settings'
-    | '/skills'
-    | '/support'
-    | '/toolbox'
-    | '/'
-    | '/accounts'
-    | '/instance'
-    | '/search'
-    | '/template'
-    | '/agents/runs'
-    | '/chat'
-    | '/inbox'
-    | '/invite-only'
-    | '/login'
-    | '/reset-password'
-    | '/avatar'
-    | '/bug-report'
-    | '/pricing'
-    | '/templates'
-    | '/upload'
-    | '/admin/audit-trail'
-    | '/admin/overview'
-    | '/admin/subscriptions'
-    | '/admin/usage'
-    | '/admin/workspaces'
-    | '/agents/grid'
-    | '/agents/history'
-    | '/agents/new'
-    | '/agents/overview'
-    | '/agents/usage'
-    | '/api/health'
-    | '/api/live'
-    | '/api/openapi'
-    | '/api/report'
-    | '/integrations/$type'
-    | '/internal/chat-overview'
-    | '/internal/coworker-overview'
-    | '/internal/credits'
-    | '/internal/mcp'
-    | '/internal/ops'
-    | '/internal/performance'
-    | '/internal/previews'
-    | '/internal/readme-preview'
-    | '/internal/sandboxes'
-    | '/internal/subscriptions'
-    | '/internal/templates'
-    | '/internal/tools'
-    | '/internal/usage'
-    | '/internal/workspaces'
-    | '/legal/privacy-policy'
-    | '/legal/terms'
-    | '/onboarding/integrations'
-    | '/onboarding/subscriptions'
-    | '/settings/advanced'
-    | '/settings/billing'
-    | '/settings/subscriptions'
-    | '/settings/usage'
-    | '/settings/workspace'
-    | '/shared/$shareToken'
-    | '/skills/$id'
-    | '/template/$templateId'
-    | '/admin/'
-    | '/agents/'
-    | '/internal/'
-    | '/settings/'
-    | '/support/'
-    | '/template/'
-    | '/toolbox/'
-    | '/agents/edit/$id'
-    | '/agents/runs/$id'
-    | '/chat/$conversationId'
-    | '/sign-in/$token'
-    | '/agents/deploy/$templateId'
-    | '/agents/folders/$folderId'
-    | '/agents/info/$slug'
-    | '/api/auth/$'
-    | '/api/auth/check-email'
-    | '/api/auth/native-callback'
-    | '/api/control-plane/health'
-    | '/api/control-plane/runtime-credentials'
-    | '/api/coworkers/trigger'
-    | '/api/dev/auto-login'
-    | '/api/dev/health'
-    | '/api/dev/worktree-auth'
-    | '/api/instance/health'
-    | '/api/internal/memory'
-    | '/api/invite-only/request-access'
-    | '/api/oauth/callback'
-    | '/api/observability/client-observations'
-    | '/api/prompts/template-deploy'
-    | '/api/rpc/$'
-    | '/api/settings/phone-number'
-    | '/api/slack/events'
-    | '/api/slack/link'
-    | '/api/zero/query'
-    | '/skills/community/$skillId'
-    | '/toolbox/sources/$id'
-    | '/toolbox/sources/new'
-    | '/chat/'
-    | '/agents/runs/'
-    | '/api/rpc/'
-    | '/sign-in/$token/confirm'
-    | '/sign-in/$token/resend'
-    | '/api/auth/password/start'
-    | '/api/control-plane/auth/authorize'
-    | '/api/control-plane/auth/callback'
-    | '/api/control-plane/auth/exchange'
-    | '/api/control-plane/auth/start'
-    | '/api/control-plane/integrations/connect'
-    | '/api/control-plane/integrations/disconnect'
-    | '/api/control-plane/integrations/status'
-    | '/api/control-plane/integrations/toggle'
-    | '/api/control-plane/link/authorize'
-    | '/api/control-plane/link/callback'
-    | '/api/control-plane/link/exchange'
-    | '/api/control-plane/link/start'
-    | '/api/control-plane/provider-auth/disconnect'
-    | '/api/control-plane/provider-auth/status'
-    | '/api/instance/auth/start'
-    | '/api/integrations/linkedin/webhook'
-    | '/api/integrations/nango/providers'
-    | '/api/integrations/resend/webhook'
-    | '/api/internal/mcp/galien-credentials'
-    | '/api/internal/mcp/modulr-credentials'
-    | '/api/internal/mcp/runtime-credentials'
-    | '/api/internal/slack/post-as-bot'
-    | '/api/internal/testing/cli-live'
-    | '/api/internal/testing/cli-session'
-    | '/api/mcp/oauth/authorize'
-    | '/api/mcp/oauth/register'
-    | '/api/mcp/oauth/token'
-    | '/api/mock/crm/contacts'
-    | '/api/mock/crm/deals'
-    | '/api/mock/crm/openapi.json'
-    | '/api/modulr/documents/download'
-    | '/api/oauth/dynamics/pending'
-    | '/api/sandbox-files/$id/download'
-    | '/api/workspaces/$id/image'
-    | '/prototype/coworker/info/$slug'
-    | '/agents/edit/$id/'
-    | '/agents/runs/$id/'
-    | '/agents/edit/$id/runs/$runId'
-    | '/api/auth/provider/$provider/callback'
-    | '/api/coworkers/documents/$id/download'
-    | '/api/internal/admin/remote-integrations/credentials'
-    | '/api/internal/admin/remote-integrations/users'
-    | '/api/internal/coworkers/runtime/edit'
-    | '/api/internal/coworkers/runtime/invoke'
-    | '/api/internal/coworkers/runtime/list'
-    | '/api/internal/runtime/interrupts/create'
-    | '/api/internal/runtime/interrupts/status'
-    | '/api/mock/crm/contacts/$id'
-    | '/agents/edit/$id/runs/'
-    | '/api/internal/coworkers/runtime/documents/upload'
-  fileRoutesByTo: FileRoutesByTo
+    | "/admin"
+    | "/agents"
+    | "/integrations"
+    | "/internal"
+    | "/legal"
+    | "/onboarding"
+    | "/settings"
+    | "/skills"
+    | "/support"
+    | "/toolbox"
+    | "/"
+    | "/accounts"
+    | "/audit"
+    | "/instance"
+    | "/search"
+    | "/template"
+    | "/agents/runs"
+    | "/chat"
+    | "/inbox"
+    | "/invite-only"
+    | "/login"
+    | "/reset-password"
+    | "/avatar"
+    | "/bug-report"
+    | "/pricing"
+    | "/templates"
+    | "/upload"
+    | "/admin/audit-trail"
+    | "/admin/overview"
+    | "/admin/subscriptions"
+    | "/admin/usage"
+    | "/admin/workspaces"
+    | "/agents/grid"
+    | "/agents/history"
+    | "/agents/new"
+    | "/agents/overview"
+    | "/agents/usage"
+    | "/api/health"
+    | "/api/live"
+    | "/api/openapi"
+    | "/api/report"
+    | "/integrations/$type"
+    | "/internal/chat-overview"
+    | "/internal/coworker-overview"
+    | "/internal/credits"
+    | "/internal/mcp"
+    | "/internal/ops"
+    | "/internal/performance"
+    | "/internal/previews"
+    | "/internal/readme-preview"
+    | "/internal/sandboxes"
+    | "/internal/subscriptions"
+    | "/internal/templates"
+    | "/internal/tools"
+    | "/internal/usage"
+    | "/internal/workspaces"
+    | "/legal/privacy-policy"
+    | "/legal/terms"
+    | "/onboarding/integrations"
+    | "/onboarding/subscriptions"
+    | "/settings/advanced"
+    | "/settings/billing"
+    | "/settings/subscriptions"
+    | "/settings/usage"
+    | "/settings/workspace"
+    | "/shared/$shareToken"
+    | "/skills/$id"
+    | "/template/$templateId"
+    | "/admin/"
+    | "/agents/"
+    | "/internal/"
+    | "/settings/"
+    | "/support/"
+    | "/template/"
+    | "/toolbox/"
+    | "/agents/edit/$id"
+    | "/agents/runs/$id"
+    | "/chat/$conversationId"
+    | "/sign-in/$token"
+    | "/workspace-invitations/$invitationId"
+    | "/agents/deploy/$templateId"
+    | "/agents/folders/$folderId"
+    | "/agents/info/$slug"
+    | "/api/auth/$"
+    | "/api/auth/check-email"
+    | "/api/auth/native-callback"
+    | "/api/control-plane/health"
+    | "/api/control-plane/runtime-credentials"
+    | "/api/coworkers/trigger"
+    | "/api/dev/auto-login"
+    | "/api/dev/health"
+    | "/api/dev/worktree-auth"
+    | "/api/instance/health"
+    | "/api/internal/memory"
+    | "/api/invite-only/request-access"
+    | "/api/oauth/callback"
+    | "/api/observability/client-observations"
+    | "/api/prompts/template-deploy"
+    | "/api/rpc/$"
+    | "/api/settings/phone-number"
+    | "/api/slack/events"
+    | "/api/slack/link"
+    | "/api/zero/query"
+    | "/share/agents/$slug"
+    | "/skills/community/$skillId"
+    | "/toolbox/sources/$id"
+    | "/toolbox/sources/new"
+    | "/chat/"
+    | "/agents/runs/"
+    | "/api/rpc/"
+    | "/sign-in/$token/confirm"
+    | "/sign-in/$token/resend"
+    | "/api/auth/password/start"
+    | "/api/control-plane/auth/authorize"
+    | "/api/control-plane/auth/callback"
+    | "/api/control-plane/auth/exchange"
+    | "/api/control-plane/auth/start"
+    | "/api/control-plane/integrations/connect"
+    | "/api/control-plane/integrations/disconnect"
+    | "/api/control-plane/integrations/status"
+    | "/api/control-plane/integrations/toggle"
+    | "/api/control-plane/link/authorize"
+    | "/api/control-plane/link/callback"
+    | "/api/control-plane/link/exchange"
+    | "/api/control-plane/link/start"
+    | "/api/control-plane/provider-auth/disconnect"
+    | "/api/control-plane/provider-auth/status"
+    | "/api/instance/auth/start"
+    | "/api/integrations/linkedin/webhook"
+    | "/api/integrations/nango/providers"
+    | "/api/integrations/resend/webhook"
+    | "/api/internal/mcp/galien-credentials"
+    | "/api/internal/mcp/modulr-credentials"
+    | "/api/internal/mcp/runtime-credentials"
+    | "/api/internal/slack/post-as-bot"
+    | "/api/internal/testing/cli-live"
+    | "/api/internal/testing/cli-session"
+    | "/api/mcp/oauth/authorize"
+    | "/api/mcp/oauth/register"
+    | "/api/mcp/oauth/token"
+    | "/api/mock/crm/contacts"
+    | "/api/mock/crm/deals"
+    | "/api/mock/crm/openapi.json"
+    | "/api/modulr/documents/download"
+    | "/api/oauth/dynamics/pending"
+    | "/api/sandbox-files/$id/download"
+    | "/api/workspaces/$id/image"
+    | "/prototype/coworker/info/$slug"
+    | "/agents/edit/$id/"
+    | "/agents/runs/$id/"
+    | "/agents/edit/$id/runs/$runId"
+    | "/api/auth/provider/$provider/callback"
+    | "/api/coworkers/documents/$id/download"
+    | "/api/internal/admin/remote-integrations/credentials"
+    | "/api/internal/admin/remote-integrations/users"
+    | "/api/internal/coworkers/runtime/edit"
+    | "/api/internal/coworkers/runtime/invoke"
+    | "/api/internal/coworkers/runtime/list"
+    | "/api/internal/runtime/interrupts/create"
+    | "/api/internal/runtime/interrupts/status"
+    | "/api/mock/crm/contacts/$id"
+    | "/agents/edit/$id/runs/"
+    | "/api/internal/coworkers/runtime/documents/upload";
+  fileRoutesByTo: FileRoutesByTo;
   to:
-    | '/integrations'
-    | '/legal'
-    | '/onboarding'
-    | '/skills'
-    | '/'
-    | '/accounts'
-    | '/instance'
-    | '/search'
-    | '/inbox'
-    | '/invite-only'
-    | '/login'
-    | '/reset-password'
-    | '/avatar'
-    | '/bug-report'
-    | '/pricing'
-    | '/templates'
-    | '/upload'
-    | '/admin/audit-trail'
-    | '/admin/overview'
-    | '/admin/subscriptions'
-    | '/admin/usage'
-    | '/admin/workspaces'
-    | '/agents/grid'
-    | '/agents/history'
-    | '/agents/new'
-    | '/agents/overview'
-    | '/agents/usage'
-    | '/api/health'
-    | '/api/live'
-    | '/api/openapi'
-    | '/api/report'
-    | '/integrations/$type'
-    | '/internal/chat-overview'
-    | '/internal/coworker-overview'
-    | '/internal/credits'
-    | '/internal/mcp'
-    | '/internal/ops'
-    | '/internal/performance'
-    | '/internal/previews'
-    | '/internal/readme-preview'
-    | '/internal/sandboxes'
-    | '/internal/subscriptions'
-    | '/internal/templates'
-    | '/internal/tools'
-    | '/internal/usage'
-    | '/internal/workspaces'
-    | '/legal/privacy-policy'
-    | '/legal/terms'
-    | '/onboarding/integrations'
-    | '/onboarding/subscriptions'
-    | '/settings/advanced'
-    | '/settings/billing'
-    | '/settings/subscriptions'
-    | '/settings/usage'
-    | '/settings/workspace'
-    | '/shared/$shareToken'
-    | '/skills/$id'
-    | '/template/$templateId'
-    | '/admin'
-    | '/agents'
-    | '/internal'
-    | '/settings'
-    | '/support'
-    | '/template'
-    | '/toolbox'
-    | '/chat/$conversationId'
-    | '/sign-in/$token'
-    | '/agents/deploy/$templateId'
-    | '/agents/folders/$folderId'
-    | '/agents/info/$slug'
-    | '/api/auth/$'
-    | '/api/auth/check-email'
-    | '/api/auth/native-callback'
-    | '/api/control-plane/health'
-    | '/api/control-plane/runtime-credentials'
-    | '/api/coworkers/trigger'
-    | '/api/dev/auto-login'
-    | '/api/dev/health'
-    | '/api/dev/worktree-auth'
-    | '/api/instance/health'
-    | '/api/internal/memory'
-    | '/api/invite-only/request-access'
-    | '/api/oauth/callback'
-    | '/api/observability/client-observations'
-    | '/api/prompts/template-deploy'
-    | '/api/rpc/$'
-    | '/api/settings/phone-number'
-    | '/api/slack/events'
-    | '/api/slack/link'
-    | '/api/zero/query'
-    | '/skills/community/$skillId'
-    | '/toolbox/sources/$id'
-    | '/toolbox/sources/new'
-    | '/chat'
-    | '/agents/runs'
-    | '/api/rpc'
-    | '/sign-in/$token/confirm'
-    | '/sign-in/$token/resend'
-    | '/api/auth/password/start'
-    | '/api/control-plane/auth/authorize'
-    | '/api/control-plane/auth/callback'
-    | '/api/control-plane/auth/exchange'
-    | '/api/control-plane/auth/start'
-    | '/api/control-plane/integrations/connect'
-    | '/api/control-plane/integrations/disconnect'
-    | '/api/control-plane/integrations/status'
-    | '/api/control-plane/integrations/toggle'
-    | '/api/control-plane/link/authorize'
-    | '/api/control-plane/link/callback'
-    | '/api/control-plane/link/exchange'
-    | '/api/control-plane/link/start'
-    | '/api/control-plane/provider-auth/disconnect'
-    | '/api/control-plane/provider-auth/status'
-    | '/api/instance/auth/start'
-    | '/api/integrations/linkedin/webhook'
-    | '/api/integrations/nango/providers'
-    | '/api/integrations/resend/webhook'
-    | '/api/internal/mcp/galien-credentials'
-    | '/api/internal/mcp/modulr-credentials'
-    | '/api/internal/mcp/runtime-credentials'
-    | '/api/internal/slack/post-as-bot'
-    | '/api/internal/testing/cli-live'
-    | '/api/internal/testing/cli-session'
-    | '/api/mcp/oauth/authorize'
-    | '/api/mcp/oauth/register'
-    | '/api/mcp/oauth/token'
-    | '/api/mock/crm/contacts'
-    | '/api/mock/crm/deals'
-    | '/api/mock/crm/openapi.json'
-    | '/api/modulr/documents/download'
-    | '/api/oauth/dynamics/pending'
-    | '/api/sandbox-files/$id/download'
-    | '/api/workspaces/$id/image'
-    | '/prototype/coworker/info/$slug'
-    | '/agents/edit/$id'
-    | '/agents/runs/$id'
-    | '/agents/edit/$id/runs/$runId'
-    | '/api/auth/provider/$provider/callback'
-    | '/api/coworkers/documents/$id/download'
-    | '/api/internal/admin/remote-integrations/credentials'
-    | '/api/internal/admin/remote-integrations/users'
-    | '/api/internal/coworkers/runtime/edit'
-    | '/api/internal/coworkers/runtime/invoke'
-    | '/api/internal/coworkers/runtime/list'
-    | '/api/internal/runtime/interrupts/create'
-    | '/api/internal/runtime/interrupts/status'
-    | '/api/mock/crm/contacts/$id'
-    | '/agents/edit/$id/runs'
-    | '/api/internal/coworkers/runtime/documents/upload'
+    | "/integrations"
+    | "/legal"
+    | "/onboarding"
+    | "/skills"
+    | "/"
+    | "/accounts"
+    | "/audit"
+    | "/instance"
+    | "/search"
+    | "/inbox"
+    | "/invite-only"
+    | "/login"
+    | "/reset-password"
+    | "/avatar"
+    | "/bug-report"
+    | "/pricing"
+    | "/templates"
+    | "/upload"
+    | "/admin/audit-trail"
+    | "/admin/overview"
+    | "/admin/subscriptions"
+    | "/admin/usage"
+    | "/admin/workspaces"
+    | "/agents/grid"
+    | "/agents/history"
+    | "/agents/new"
+    | "/agents/overview"
+    | "/agents/usage"
+    | "/api/health"
+    | "/api/live"
+    | "/api/openapi"
+    | "/api/report"
+    | "/integrations/$type"
+    | "/internal/chat-overview"
+    | "/internal/coworker-overview"
+    | "/internal/credits"
+    | "/internal/mcp"
+    | "/internal/ops"
+    | "/internal/performance"
+    | "/internal/previews"
+    | "/internal/readme-preview"
+    | "/internal/sandboxes"
+    | "/internal/subscriptions"
+    | "/internal/templates"
+    | "/internal/tools"
+    | "/internal/usage"
+    | "/internal/workspaces"
+    | "/legal/privacy-policy"
+    | "/legal/terms"
+    | "/onboarding/integrations"
+    | "/onboarding/subscriptions"
+    | "/settings/advanced"
+    | "/settings/billing"
+    | "/settings/subscriptions"
+    | "/settings/usage"
+    | "/settings/workspace"
+    | "/shared/$shareToken"
+    | "/skills/$id"
+    | "/template/$templateId"
+    | "/admin"
+    | "/agents"
+    | "/internal"
+    | "/settings"
+    | "/support"
+    | "/template"
+    | "/toolbox"
+    | "/chat/$conversationId"
+    | "/sign-in/$token"
+    | "/workspace-invitations/$invitationId"
+    | "/agents/deploy/$templateId"
+    | "/agents/folders/$folderId"
+    | "/agents/info/$slug"
+    | "/api/auth/$"
+    | "/api/auth/check-email"
+    | "/api/auth/native-callback"
+    | "/api/control-plane/health"
+    | "/api/control-plane/runtime-credentials"
+    | "/api/coworkers/trigger"
+    | "/api/dev/auto-login"
+    | "/api/dev/health"
+    | "/api/dev/worktree-auth"
+    | "/api/instance/health"
+    | "/api/internal/memory"
+    | "/api/invite-only/request-access"
+    | "/api/oauth/callback"
+    | "/api/observability/client-observations"
+    | "/api/prompts/template-deploy"
+    | "/api/rpc/$"
+    | "/api/settings/phone-number"
+    | "/api/slack/events"
+    | "/api/slack/link"
+    | "/api/zero/query"
+    | "/share/agents/$slug"
+    | "/skills/community/$skillId"
+    | "/toolbox/sources/$id"
+    | "/toolbox/sources/new"
+    | "/chat"
+    | "/agents/runs"
+    | "/api/rpc"
+    | "/sign-in/$token/confirm"
+    | "/sign-in/$token/resend"
+    | "/api/auth/password/start"
+    | "/api/control-plane/auth/authorize"
+    | "/api/control-plane/auth/callback"
+    | "/api/control-plane/auth/exchange"
+    | "/api/control-plane/auth/start"
+    | "/api/control-plane/integrations/connect"
+    | "/api/control-plane/integrations/disconnect"
+    | "/api/control-plane/integrations/status"
+    | "/api/control-plane/integrations/toggle"
+    | "/api/control-plane/link/authorize"
+    | "/api/control-plane/link/callback"
+    | "/api/control-plane/link/exchange"
+    | "/api/control-plane/link/start"
+    | "/api/control-plane/provider-auth/disconnect"
+    | "/api/control-plane/provider-auth/status"
+    | "/api/instance/auth/start"
+    | "/api/integrations/linkedin/webhook"
+    | "/api/integrations/nango/providers"
+    | "/api/integrations/resend/webhook"
+    | "/api/internal/mcp/galien-credentials"
+    | "/api/internal/mcp/modulr-credentials"
+    | "/api/internal/mcp/runtime-credentials"
+    | "/api/internal/slack/post-as-bot"
+    | "/api/internal/testing/cli-live"
+    | "/api/internal/testing/cli-session"
+    | "/api/mcp/oauth/authorize"
+    | "/api/mcp/oauth/register"
+    | "/api/mcp/oauth/token"
+    | "/api/mock/crm/contacts"
+    | "/api/mock/crm/deals"
+    | "/api/mock/crm/openapi.json"
+    | "/api/modulr/documents/download"
+    | "/api/oauth/dynamics/pending"
+    | "/api/sandbox-files/$id/download"
+    | "/api/workspaces/$id/image"
+    | "/prototype/coworker/info/$slug"
+    | "/agents/edit/$id"
+    | "/agents/runs/$id"
+    | "/agents/edit/$id/runs/$runId"
+    | "/api/auth/provider/$provider/callback"
+    | "/api/coworkers/documents/$id/download"
+    | "/api/internal/admin/remote-integrations/credentials"
+    | "/api/internal/admin/remote-integrations/users"
+    | "/api/internal/coworkers/runtime/edit"
+    | "/api/internal/coworkers/runtime/invoke"
+    | "/api/internal/coworkers/runtime/list"
+    | "/api/internal/runtime/interrupts/create"
+    | "/api/internal/runtime/interrupts/status"
+    | "/api/mock/crm/contacts/$id"
+    | "/agents/edit/$id/runs"
+    | "/api/internal/coworkers/runtime/documents/upload";
   id:
-    | '__root__'
-    | '/admin'
-    | '/agents'
-    | '/integrations'
-    | '/internal'
-    | '/legal'
-    | '/onboarding'
-    | '/settings'
-    | '/skills'
-    | '/support'
-    | '/toolbox'
-    | '/_app'
-    | '/_auth'
-    | '/_public'
-    | '/accounts'
-    | '/instance'
-    | '/search'
-    | '/template'
-    | '/agents/runs'
-    | '/_app/chat'
-    | '/_app/inbox'
-    | '/_auth/invite-only'
-    | '/_auth/login'
-    | '/_auth/reset-password'
-    | '/_public/avatar'
-    | '/_public/bug-report'
-    | '/_public/pricing'
-    | '/_public/templates'
-    | '/_public/upload'
-    | '/admin/audit-trail'
-    | '/admin/overview'
-    | '/admin/subscriptions'
-    | '/admin/usage'
-    | '/admin/workspaces'
-    | '/agents/grid'
-    | '/agents/history'
-    | '/agents/new'
-    | '/agents/overview'
-    | '/agents/usage'
-    | '/api/health'
-    | '/api/live'
-    | '/api/openapi'
-    | '/api/report'
-    | '/integrations/$type'
-    | '/internal/chat-overview'
-    | '/internal/coworker-overview'
-    | '/internal/credits'
-    | '/internal/mcp'
-    | '/internal/ops'
-    | '/internal/performance'
-    | '/internal/previews'
-    | '/internal/readme-preview'
-    | '/internal/sandboxes'
-    | '/internal/subscriptions'
-    | '/internal/templates'
-    | '/internal/tools'
-    | '/internal/usage'
-    | '/internal/workspaces'
-    | '/legal/privacy-policy'
-    | '/legal/terms'
-    | '/onboarding/integrations'
-    | '/onboarding/subscriptions'
-    | '/settings/advanced'
-    | '/settings/billing'
-    | '/settings/subscriptions'
-    | '/settings/usage'
-    | '/settings/workspace'
-    | '/shared/$shareToken'
-    | '/skills/$id'
-    | '/template/$templateId'
-    | '/_public/'
-    | '/admin/'
-    | '/agents/'
-    | '/internal/'
-    | '/settings/'
-    | '/support/'
-    | '/template/'
-    | '/toolbox/'
-    | '/agents/edit/$id'
-    | '/agents/runs/$id'
-    | '/_app/chat/$conversationId'
-    | '/_auth/sign-in/$token'
-    | '/agents/deploy/$templateId'
-    | '/agents/folders/$folderId'
-    | '/agents/info/$slug'
-    | '/api/auth/$'
-    | '/api/auth/check-email'
-    | '/api/auth/native-callback'
-    | '/api/control-plane/health'
-    | '/api/control-plane/runtime-credentials'
-    | '/api/coworkers/trigger'
-    | '/api/dev/auto-login'
-    | '/api/dev/health'
-    | '/api/dev/worktree-auth'
-    | '/api/instance/health'
-    | '/api/internal/memory'
-    | '/api/invite-only/request-access'
-    | '/api/oauth/callback'
-    | '/api/observability/client-observations'
-    | '/api/prompts/template-deploy'
-    | '/api/rpc/$'
-    | '/api/settings/phone-number'
-    | '/api/slack/events'
-    | '/api/slack/link'
-    | '/api/zero/query'
-    | '/skills/community/$skillId'
-    | '/toolbox/sources/$id'
-    | '/toolbox/sources/new'
-    | '/_app/chat/'
-    | '/agents/runs/'
-    | '/api/rpc/'
-    | '/_auth/sign-in/$token/confirm'
-    | '/_auth/sign-in/$token/resend'
-    | '/api/auth/password/start'
-    | '/api/control-plane/auth/authorize'
-    | '/api/control-plane/auth/callback'
-    | '/api/control-plane/auth/exchange'
-    | '/api/control-plane/auth/start'
-    | '/api/control-plane/integrations/connect'
-    | '/api/control-plane/integrations/disconnect'
-    | '/api/control-plane/integrations/status'
-    | '/api/control-plane/integrations/toggle'
-    | '/api/control-plane/link/authorize'
-    | '/api/control-plane/link/callback'
-    | '/api/control-plane/link/exchange'
-    | '/api/control-plane/link/start'
-    | '/api/control-plane/provider-auth/disconnect'
-    | '/api/control-plane/provider-auth/status'
-    | '/api/instance/auth/start'
-    | '/api/integrations/linkedin/webhook'
-    | '/api/integrations/nango/providers'
-    | '/api/integrations/resend/webhook'
-    | '/api/internal/mcp/galien-credentials'
-    | '/api/internal/mcp/modulr-credentials'
-    | '/api/internal/mcp/runtime-credentials'
-    | '/api/internal/slack/post-as-bot'
-    | '/api/internal/testing/cli-live'
-    | '/api/internal/testing/cli-session'
-    | '/api/mcp/oauth/authorize'
-    | '/api/mcp/oauth/register'
-    | '/api/mcp/oauth/token'
-    | '/api/mock/crm/contacts'
-    | '/api/mock/crm/deals'
-    | '/api/mock/crm/openapi.json'
-    | '/api/modulr/documents/download'
-    | '/api/oauth/dynamics/pending'
-    | '/api/sandbox-files/$id/download'
-    | '/api/workspaces/$id/image'
-    | '/prototype/coworker/info/$slug'
-    | '/agents/edit/$id/'
-    | '/agents/runs/$id/'
-    | '/agents/edit/$id/runs/$runId'
-    | '/api/auth/provider/$provider/callback'
-    | '/api/coworkers/documents/$id/download'
-    | '/api/internal/admin/remote-integrations/credentials'
-    | '/api/internal/admin/remote-integrations/users'
-    | '/api/internal/coworkers/runtime/edit'
-    | '/api/internal/coworkers/runtime/invoke'
-    | '/api/internal/coworkers/runtime/list'
-    | '/api/internal/runtime/interrupts/create'
-    | '/api/internal/runtime/interrupts/status'
-    | '/api/mock/crm/contacts/$id'
-    | '/agents/edit/$id/runs/'
-    | '/api/internal/coworkers/runtime/documents/upload'
-  fileRoutesById: FileRoutesById
+    | "__root__"
+    | "/admin"
+    | "/agents"
+    | "/integrations"
+    | "/internal"
+    | "/legal"
+    | "/onboarding"
+    | "/settings"
+    | "/skills"
+    | "/support"
+    | "/toolbox"
+    | "/_app"
+    | "/_auth"
+    | "/_public"
+    | "/accounts"
+    | "/audit"
+    | "/instance"
+    | "/search"
+    | "/template"
+    | "/agents/runs"
+    | "/_app/chat"
+    | "/_app/inbox"
+    | "/_auth/invite-only"
+    | "/_auth/login"
+    | "/_auth/reset-password"
+    | "/_public/avatar"
+    | "/_public/bug-report"
+    | "/_public/pricing"
+    | "/_public/templates"
+    | "/_public/upload"
+    | "/admin/audit-trail"
+    | "/admin/overview"
+    | "/admin/subscriptions"
+    | "/admin/usage"
+    | "/admin/workspaces"
+    | "/agents/grid"
+    | "/agents/history"
+    | "/agents/new"
+    | "/agents/overview"
+    | "/agents/usage"
+    | "/api/health"
+    | "/api/live"
+    | "/api/openapi"
+    | "/api/report"
+    | "/integrations/$type"
+    | "/internal/chat-overview"
+    | "/internal/coworker-overview"
+    | "/internal/credits"
+    | "/internal/mcp"
+    | "/internal/ops"
+    | "/internal/performance"
+    | "/internal/previews"
+    | "/internal/readme-preview"
+    | "/internal/sandboxes"
+    | "/internal/subscriptions"
+    | "/internal/templates"
+    | "/internal/tools"
+    | "/internal/usage"
+    | "/internal/workspaces"
+    | "/legal/privacy-policy"
+    | "/legal/terms"
+    | "/onboarding/integrations"
+    | "/onboarding/subscriptions"
+    | "/settings/advanced"
+    | "/settings/billing"
+    | "/settings/subscriptions"
+    | "/settings/usage"
+    | "/settings/workspace"
+    | "/shared/$shareToken"
+    | "/skills/$id"
+    | "/template/$templateId"
+    | "/_public/"
+    | "/admin/"
+    | "/agents/"
+    | "/internal/"
+    | "/settings/"
+    | "/support/"
+    | "/template/"
+    | "/toolbox/"
+    | "/agents/edit/$id"
+    | "/agents/runs/$id"
+    | "/_app/chat/$conversationId"
+    | "/_auth/sign-in/$token"
+    | "/_auth/workspace-invitations/$invitationId"
+    | "/agents/deploy/$templateId"
+    | "/agents/folders/$folderId"
+    | "/agents/info/$slug"
+    | "/api/auth/$"
+    | "/api/auth/check-email"
+    | "/api/auth/native-callback"
+    | "/api/control-plane/health"
+    | "/api/control-plane/runtime-credentials"
+    | "/api/coworkers/trigger"
+    | "/api/dev/auto-login"
+    | "/api/dev/health"
+    | "/api/dev/worktree-auth"
+    | "/api/instance/health"
+    | "/api/internal/memory"
+    | "/api/invite-only/request-access"
+    | "/api/oauth/callback"
+    | "/api/observability/client-observations"
+    | "/api/prompts/template-deploy"
+    | "/api/rpc/$"
+    | "/api/settings/phone-number"
+    | "/api/slack/events"
+    | "/api/slack/link"
+    | "/api/zero/query"
+    | "/share/agents/$slug"
+    | "/skills/community/$skillId"
+    | "/toolbox/sources/$id"
+    | "/toolbox/sources/new"
+    | "/_app/chat/"
+    | "/agents/runs/"
+    | "/api/rpc/"
+    | "/_auth/sign-in/$token/confirm"
+    | "/_auth/sign-in/$token/resend"
+    | "/api/auth/password/start"
+    | "/api/control-plane/auth/authorize"
+    | "/api/control-plane/auth/callback"
+    | "/api/control-plane/auth/exchange"
+    | "/api/control-plane/auth/start"
+    | "/api/control-plane/integrations/connect"
+    | "/api/control-plane/integrations/disconnect"
+    | "/api/control-plane/integrations/status"
+    | "/api/control-plane/integrations/toggle"
+    | "/api/control-plane/link/authorize"
+    | "/api/control-plane/link/callback"
+    | "/api/control-plane/link/exchange"
+    | "/api/control-plane/link/start"
+    | "/api/control-plane/provider-auth/disconnect"
+    | "/api/control-plane/provider-auth/status"
+    | "/api/instance/auth/start"
+    | "/api/integrations/linkedin/webhook"
+    | "/api/integrations/nango/providers"
+    | "/api/integrations/resend/webhook"
+    | "/api/internal/mcp/galien-credentials"
+    | "/api/internal/mcp/modulr-credentials"
+    | "/api/internal/mcp/runtime-credentials"
+    | "/api/internal/slack/post-as-bot"
+    | "/api/internal/testing/cli-live"
+    | "/api/internal/testing/cli-session"
+    | "/api/mcp/oauth/authorize"
+    | "/api/mcp/oauth/register"
+    | "/api/mcp/oauth/token"
+    | "/api/mock/crm/contacts"
+    | "/api/mock/crm/deals"
+    | "/api/mock/crm/openapi.json"
+    | "/api/modulr/documents/download"
+    | "/api/oauth/dynamics/pending"
+    | "/api/sandbox-files/$id/download"
+    | "/api/workspaces/$id/image"
+    | "/prototype/coworker/info/$slug"
+    | "/agents/edit/$id/"
+    | "/agents/runs/$id/"
+    | "/agents/edit/$id/runs/$runId"
+    | "/api/auth/provider/$provider/callback"
+    | "/api/coworkers/documents/$id/download"
+    | "/api/internal/admin/remote-integrations/credentials"
+    | "/api/internal/admin/remote-integrations/users"
+    | "/api/internal/coworkers/runtime/edit"
+    | "/api/internal/coworkers/runtime/invoke"
+    | "/api/internal/coworkers/runtime/list"
+    | "/api/internal/runtime/interrupts/create"
+    | "/api/internal/runtime/interrupts/status"
+    | "/api/mock/crm/contacts/$id"
+    | "/agents/edit/$id/runs/"
+    | "/api/internal/coworkers/runtime/documents/upload";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  AdminRouteRoute: typeof AdminRouteRouteWithChildren
-  AgentsRouteRoute: typeof AgentsRouteRouteWithChildren
-  IntegrationsRouteRoute: typeof IntegrationsRouteRouteWithChildren
-  InternalRouteRoute: typeof InternalRouteRouteWithChildren
-  LegalRouteRoute: typeof LegalRouteRouteWithChildren
-  OnboardingRouteRoute: typeof OnboardingRouteRouteWithChildren
-  SettingsRouteRoute: typeof SettingsRouteRouteWithChildren
-  SkillsRouteRoute: typeof SkillsRouteRouteWithChildren
-  SupportRouteRoute: typeof SupportRouteRouteWithChildren
-  ToolboxRouteRoute: typeof ToolboxRouteRouteWithChildren
-  AppRoute: typeof AppRouteWithChildren
-  AuthRoute: typeof AuthRouteWithChildren
-  PublicRoute: typeof PublicRouteWithChildren
-  AccountsRoute: typeof AccountsRoute
-  InstanceRoute: typeof InstanceRoute
-  SearchRoute: typeof SearchRoute
-  TemplateRoute: typeof TemplateRouteWithChildren
-  ApiHealthRoute: typeof ApiHealthRoute
-  ApiLiveRoute: typeof ApiLiveRoute
-  ApiOpenapiRoute: typeof ApiOpenapiRoute
-  ApiReportRoute: typeof ApiReportRoute
-  SharedShareTokenRoute: typeof SharedShareTokenRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiAuthCheckEmailRoute: typeof ApiAuthCheckEmailRoute
-  ApiAuthNativeCallbackRoute: typeof ApiAuthNativeCallbackRoute
-  ApiControlPlaneHealthRoute: typeof ApiControlPlaneHealthRoute
-  ApiControlPlaneRuntimeCredentialsRoute: typeof ApiControlPlaneRuntimeCredentialsRoute
-  ApiCoworkersTriggerRoute: typeof ApiCoworkersTriggerRoute
-  ApiDevAutoLoginRoute: typeof ApiDevAutoLoginRoute
-  ApiDevHealthRoute: typeof ApiDevHealthRoute
-  ApiDevWorktreeAuthRoute: typeof ApiDevWorktreeAuthRoute
-  ApiInstanceHealthRoute: typeof ApiInstanceHealthRoute
-  ApiInternalMemoryRoute: typeof ApiInternalMemoryRoute
-  ApiInviteOnlyRequestAccessRoute: typeof ApiInviteOnlyRequestAccessRoute
-  ApiOauthCallbackRoute: typeof ApiOauthCallbackRoute
-  ApiObservabilityClientObservationsRoute: typeof ApiObservabilityClientObservationsRoute
-  ApiPromptsTemplateDeployRoute: typeof ApiPromptsTemplateDeployRoute
-  ApiRpcSplatRoute: typeof ApiRpcSplatRoute
-  ApiSettingsPhoneNumberRoute: typeof ApiSettingsPhoneNumberRoute
-  ApiSlackEventsRoute: typeof ApiSlackEventsRoute
-  ApiSlackLinkRoute: typeof ApiSlackLinkRoute
-  ApiZeroQueryRoute: typeof ApiZeroQueryRoute
-  ApiRpcIndexRoute: typeof ApiRpcIndexRoute
-  ApiAuthPasswordStartRoute: typeof ApiAuthPasswordStartRoute
-  ApiControlPlaneAuthAuthorizeRoute: typeof ApiControlPlaneAuthAuthorizeRoute
-  ApiControlPlaneAuthCallbackRoute: typeof ApiControlPlaneAuthCallbackRoute
-  ApiControlPlaneAuthExchangeRoute: typeof ApiControlPlaneAuthExchangeRoute
-  ApiControlPlaneAuthStartRoute: typeof ApiControlPlaneAuthStartRoute
-  ApiControlPlaneIntegrationsConnectRoute: typeof ApiControlPlaneIntegrationsConnectRoute
-  ApiControlPlaneIntegrationsDisconnectRoute: typeof ApiControlPlaneIntegrationsDisconnectRoute
-  ApiControlPlaneIntegrationsStatusRoute: typeof ApiControlPlaneIntegrationsStatusRoute
-  ApiControlPlaneIntegrationsToggleRoute: typeof ApiControlPlaneIntegrationsToggleRoute
-  ApiControlPlaneLinkAuthorizeRoute: typeof ApiControlPlaneLinkAuthorizeRoute
-  ApiControlPlaneLinkCallbackRoute: typeof ApiControlPlaneLinkCallbackRoute
-  ApiControlPlaneLinkExchangeRoute: typeof ApiControlPlaneLinkExchangeRoute
-  ApiControlPlaneLinkStartRoute: typeof ApiControlPlaneLinkStartRoute
-  ApiControlPlaneProviderAuthDisconnectRoute: typeof ApiControlPlaneProviderAuthDisconnectRoute
-  ApiControlPlaneProviderAuthStatusRoute: typeof ApiControlPlaneProviderAuthStatusRoute
-  ApiInstanceAuthStartRoute: typeof ApiInstanceAuthStartRoute
-  ApiIntegrationsLinkedinWebhookRoute: typeof ApiIntegrationsLinkedinWebhookRoute
-  ApiIntegrationsNangoProvidersRoute: typeof ApiIntegrationsNangoProvidersRoute
-  ApiIntegrationsResendWebhookRoute: typeof ApiIntegrationsResendWebhookRoute
-  ApiInternalMcpGalienCredentialsRoute: typeof ApiInternalMcpGalienCredentialsRoute
-  ApiInternalMcpModulrCredentialsRoute: typeof ApiInternalMcpModulrCredentialsRoute
-  ApiInternalMcpRuntimeCredentialsRoute: typeof ApiInternalMcpRuntimeCredentialsRoute
-  ApiInternalSlackPostAsBotRoute: typeof ApiInternalSlackPostAsBotRoute
-  ApiInternalTestingCliLiveRoute: typeof ApiInternalTestingCliLiveRoute
-  ApiInternalTestingCliSessionRoute: typeof ApiInternalTestingCliSessionRoute
-  ApiMcpOauthAuthorizeRoute: typeof ApiMcpOauthAuthorizeRoute
-  ApiMcpOauthRegisterRoute: typeof ApiMcpOauthRegisterRoute
-  ApiMcpOauthTokenRoute: typeof ApiMcpOauthTokenRoute
-  ApiMockCrmContactsRoute: typeof ApiMockCrmContactsRouteWithChildren
-  ApiMockCrmDealsRoute: typeof ApiMockCrmDealsRoute
-  ApiMockCrmOpenapiDotjsonRoute: typeof ApiMockCrmOpenapiDotjsonRoute
-  ApiModulrDocumentsDownloadRoute: typeof ApiModulrDocumentsDownloadRoute
-  ApiOauthDynamicsPendingRoute: typeof ApiOauthDynamicsPendingRoute
-  ApiSandboxFilesIdDownloadRoute: typeof ApiSandboxFilesIdDownloadRoute
-  ApiWorkspacesIdImageRoute: typeof ApiWorkspacesIdImageRoute
-  PrototypeCoworkerInfoSlugRoute: typeof PrototypeCoworkerInfoSlugRoute
-  ApiAuthProviderProviderCallbackRoute: typeof ApiAuthProviderProviderCallbackRoute
-  ApiCoworkersDocumentsIdDownloadRoute: typeof ApiCoworkersDocumentsIdDownloadRoute
-  ApiInternalAdminRemoteIntegrationsCredentialsRoute: typeof ApiInternalAdminRemoteIntegrationsCredentialsRoute
-  ApiInternalAdminRemoteIntegrationsUsersRoute: typeof ApiInternalAdminRemoteIntegrationsUsersRoute
-  ApiInternalCoworkersRuntimeEditRoute: typeof ApiInternalCoworkersRuntimeEditRoute
-  ApiInternalCoworkersRuntimeInvokeRoute: typeof ApiInternalCoworkersRuntimeInvokeRoute
-  ApiInternalCoworkersRuntimeListRoute: typeof ApiInternalCoworkersRuntimeListRoute
-  ApiInternalRuntimeInterruptsCreateRoute: typeof ApiInternalRuntimeInterruptsCreateRoute
-  ApiInternalRuntimeInterruptsStatusRoute: typeof ApiInternalRuntimeInterruptsStatusRoute
-  ApiInternalCoworkersRuntimeDocumentsUploadRoute: typeof ApiInternalCoworkersRuntimeDocumentsUploadRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren;
+  AgentsRouteRoute: typeof AgentsRouteRouteWithChildren;
+  IntegrationsRouteRoute: typeof IntegrationsRouteRouteWithChildren;
+  InternalRouteRoute: typeof InternalRouteRouteWithChildren;
+  LegalRouteRoute: typeof LegalRouteRouteWithChildren;
+  OnboardingRouteRoute: typeof OnboardingRouteRouteWithChildren;
+  SettingsRouteRoute: typeof SettingsRouteRouteWithChildren;
+  SkillsRouteRoute: typeof SkillsRouteRouteWithChildren;
+  SupportRouteRoute: typeof SupportRouteRouteWithChildren;
+  ToolboxRouteRoute: typeof ToolboxRouteRouteWithChildren;
+  AppRoute: typeof AppRouteWithChildren;
+  AuthRoute: typeof AuthRouteWithChildren;
+  PublicRoute: typeof PublicRouteWithChildren;
+  AccountsRoute: typeof AccountsRoute;
+  AuditRoute: typeof AuditRoute;
+  InstanceRoute: typeof InstanceRoute;
+  SearchRoute: typeof SearchRoute;
+  TemplateRoute: typeof TemplateRouteWithChildren;
+  ApiHealthRoute: typeof ApiHealthRoute;
+  ApiLiveRoute: typeof ApiLiveRoute;
+  ApiOpenapiRoute: typeof ApiOpenapiRoute;
+  ApiReportRoute: typeof ApiReportRoute;
+  SharedShareTokenRoute: typeof SharedShareTokenRoute;
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute;
+  ApiAuthCheckEmailRoute: typeof ApiAuthCheckEmailRoute;
+  ApiAuthNativeCallbackRoute: typeof ApiAuthNativeCallbackRoute;
+  ApiControlPlaneHealthRoute: typeof ApiControlPlaneHealthRoute;
+  ApiControlPlaneRuntimeCredentialsRoute: typeof ApiControlPlaneRuntimeCredentialsRoute;
+  ApiCoworkersTriggerRoute: typeof ApiCoworkersTriggerRoute;
+  ApiDevAutoLoginRoute: typeof ApiDevAutoLoginRoute;
+  ApiDevHealthRoute: typeof ApiDevHealthRoute;
+  ApiDevWorktreeAuthRoute: typeof ApiDevWorktreeAuthRoute;
+  ApiInstanceHealthRoute: typeof ApiInstanceHealthRoute;
+  ApiInternalMemoryRoute: typeof ApiInternalMemoryRoute;
+  ApiInviteOnlyRequestAccessRoute: typeof ApiInviteOnlyRequestAccessRoute;
+  ApiOauthCallbackRoute: typeof ApiOauthCallbackRoute;
+  ApiObservabilityClientObservationsRoute: typeof ApiObservabilityClientObservationsRoute;
+  ApiPromptsTemplateDeployRoute: typeof ApiPromptsTemplateDeployRoute;
+  ApiRpcSplatRoute: typeof ApiRpcSplatRoute;
+  ApiSettingsPhoneNumberRoute: typeof ApiSettingsPhoneNumberRoute;
+  ApiSlackEventsRoute: typeof ApiSlackEventsRoute;
+  ApiSlackLinkRoute: typeof ApiSlackLinkRoute;
+  ApiZeroQueryRoute: typeof ApiZeroQueryRoute;
+  ShareAgentsSlugRoute: typeof ShareAgentsSlugRoute;
+  ApiRpcIndexRoute: typeof ApiRpcIndexRoute;
+  ApiAuthPasswordStartRoute: typeof ApiAuthPasswordStartRoute;
+  ApiControlPlaneAuthAuthorizeRoute: typeof ApiControlPlaneAuthAuthorizeRoute;
+  ApiControlPlaneAuthCallbackRoute: typeof ApiControlPlaneAuthCallbackRoute;
+  ApiControlPlaneAuthExchangeRoute: typeof ApiControlPlaneAuthExchangeRoute;
+  ApiControlPlaneAuthStartRoute: typeof ApiControlPlaneAuthStartRoute;
+  ApiControlPlaneIntegrationsConnectRoute: typeof ApiControlPlaneIntegrationsConnectRoute;
+  ApiControlPlaneIntegrationsDisconnectRoute: typeof ApiControlPlaneIntegrationsDisconnectRoute;
+  ApiControlPlaneIntegrationsStatusRoute: typeof ApiControlPlaneIntegrationsStatusRoute;
+  ApiControlPlaneIntegrationsToggleRoute: typeof ApiControlPlaneIntegrationsToggleRoute;
+  ApiControlPlaneLinkAuthorizeRoute: typeof ApiControlPlaneLinkAuthorizeRoute;
+  ApiControlPlaneLinkCallbackRoute: typeof ApiControlPlaneLinkCallbackRoute;
+  ApiControlPlaneLinkExchangeRoute: typeof ApiControlPlaneLinkExchangeRoute;
+  ApiControlPlaneLinkStartRoute: typeof ApiControlPlaneLinkStartRoute;
+  ApiControlPlaneProviderAuthDisconnectRoute: typeof ApiControlPlaneProviderAuthDisconnectRoute;
+  ApiControlPlaneProviderAuthStatusRoute: typeof ApiControlPlaneProviderAuthStatusRoute;
+  ApiInstanceAuthStartRoute: typeof ApiInstanceAuthStartRoute;
+  ApiIntegrationsLinkedinWebhookRoute: typeof ApiIntegrationsLinkedinWebhookRoute;
+  ApiIntegrationsNangoProvidersRoute: typeof ApiIntegrationsNangoProvidersRoute;
+  ApiIntegrationsResendWebhookRoute: typeof ApiIntegrationsResendWebhookRoute;
+  ApiInternalMcpGalienCredentialsRoute: typeof ApiInternalMcpGalienCredentialsRoute;
+  ApiInternalMcpModulrCredentialsRoute: typeof ApiInternalMcpModulrCredentialsRoute;
+  ApiInternalMcpRuntimeCredentialsRoute: typeof ApiInternalMcpRuntimeCredentialsRoute;
+  ApiInternalSlackPostAsBotRoute: typeof ApiInternalSlackPostAsBotRoute;
+  ApiInternalTestingCliLiveRoute: typeof ApiInternalTestingCliLiveRoute;
+  ApiInternalTestingCliSessionRoute: typeof ApiInternalTestingCliSessionRoute;
+  ApiMcpOauthAuthorizeRoute: typeof ApiMcpOauthAuthorizeRoute;
+  ApiMcpOauthRegisterRoute: typeof ApiMcpOauthRegisterRoute;
+  ApiMcpOauthTokenRoute: typeof ApiMcpOauthTokenRoute;
+  ApiMockCrmContactsRoute: typeof ApiMockCrmContactsRouteWithChildren;
+  ApiMockCrmDealsRoute: typeof ApiMockCrmDealsRoute;
+  ApiMockCrmOpenapiDotjsonRoute: typeof ApiMockCrmOpenapiDotjsonRoute;
+  ApiModulrDocumentsDownloadRoute: typeof ApiModulrDocumentsDownloadRoute;
+  ApiOauthDynamicsPendingRoute: typeof ApiOauthDynamicsPendingRoute;
+  ApiSandboxFilesIdDownloadRoute: typeof ApiSandboxFilesIdDownloadRoute;
+  ApiWorkspacesIdImageRoute: typeof ApiWorkspacesIdImageRoute;
+  PrototypeCoworkerInfoSlugRoute: typeof PrototypeCoworkerInfoSlugRoute;
+  ApiAuthProviderProviderCallbackRoute: typeof ApiAuthProviderProviderCallbackRoute;
+  ApiCoworkersDocumentsIdDownloadRoute: typeof ApiCoworkersDocumentsIdDownloadRoute;
+  ApiInternalAdminRemoteIntegrationsCredentialsRoute: typeof ApiInternalAdminRemoteIntegrationsCredentialsRoute;
+  ApiInternalAdminRemoteIntegrationsUsersRoute: typeof ApiInternalAdminRemoteIntegrationsUsersRoute;
+  ApiInternalCoworkersRuntimeEditRoute: typeof ApiInternalCoworkersRuntimeEditRoute;
+  ApiInternalCoworkersRuntimeInvokeRoute: typeof ApiInternalCoworkersRuntimeInvokeRoute;
+  ApiInternalCoworkersRuntimeListRoute: typeof ApiInternalCoworkersRuntimeListRoute;
+  ApiInternalRuntimeInterruptsCreateRoute: typeof ApiInternalRuntimeInterruptsCreateRoute;
+  ApiInternalRuntimeInterruptsStatusRoute: typeof ApiInternalRuntimeInterruptsStatusRoute;
+  ApiInternalCoworkersRuntimeDocumentsUploadRoute: typeof ApiInternalCoworkersRuntimeDocumentsUploadRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/template': {
-      id: '/template'
-      path: '/template'
-      fullPath: '/template'
-      preLoaderRoute: typeof TemplateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/instance': {
-      id: '/instance'
-      path: '/instance'
-      fullPath: '/instance'
-      preLoaderRoute: typeof InstanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accounts': {
-      id: '/accounts'
-      path: '/accounts'
-      fullPath: '/accounts'
-      preLoaderRoute: typeof AccountsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_public': {
-      id: '/_public'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof PublicRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/toolbox': {
-      id: '/toolbox'
-      path: '/toolbox'
-      fullPath: '/toolbox'
-      preLoaderRoute: typeof ToolboxRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/support': {
-      id: '/support'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof SupportRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/skills': {
-      id: '/skills'
-      path: '/skills'
-      fullPath: '/skills'
-      preLoaderRoute: typeof SkillsRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/legal': {
-      id: '/legal'
-      path: '/legal'
-      fullPath: '/legal'
-      preLoaderRoute: typeof LegalRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/internal': {
-      id: '/internal'
-      path: '/internal'
-      fullPath: '/internal'
-      preLoaderRoute: typeof InternalRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/integrations': {
-      id: '/integrations'
-      path: '/integrations'
-      fullPath: '/integrations'
-      preLoaderRoute: typeof IntegrationsRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents': {
-      id: '/agents'
-      path: '/agents'
-      fullPath: '/agents'
-      preLoaderRoute: typeof AgentsRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/toolbox/': {
-      id: '/toolbox/'
-      path: '/'
-      fullPath: '/toolbox/'
-      preLoaderRoute: typeof ToolboxIndexRouteImport
-      parentRoute: typeof ToolboxRouteRoute
-    }
-    '/template/': {
-      id: '/template/'
-      path: '/'
-      fullPath: '/template/'
-      preLoaderRoute: typeof TemplateIndexRouteImport
-      parentRoute: typeof TemplateRoute
-    }
-    '/support/': {
-      id: '/support/'
-      path: '/'
-      fullPath: '/support/'
-      preLoaderRoute: typeof SupportIndexRouteImport
-      parentRoute: typeof SupportRouteRoute
-    }
-    '/settings/': {
-      id: '/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof SettingsRouteRoute
-    }
-    '/internal/': {
-      id: '/internal/'
-      path: '/'
-      fullPath: '/internal/'
-      preLoaderRoute: typeof InternalIndexRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/agents/': {
-      id: '/agents/'
-      path: '/'
-      fullPath: '/agents/'
-      preLoaderRoute: typeof AgentsIndexRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/_public/': {
-      id: '/_public/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof PublicIndexRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/template/$templateId': {
-      id: '/template/$templateId'
-      path: '/$templateId'
-      fullPath: '/template/$templateId'
-      preLoaderRoute: typeof TemplateTemplateIdRouteImport
-      parentRoute: typeof TemplateRoute
-    }
-    '/skills/$id': {
-      id: '/skills/$id'
-      path: '/$id'
-      fullPath: '/skills/$id'
-      preLoaderRoute: typeof SkillsIdRouteImport
-      parentRoute: typeof SkillsRouteRoute
-    }
-    '/shared/$shareToken': {
-      id: '/shared/$shareToken'
-      path: '/shared/$shareToken'
-      fullPath: '/shared/$shareToken'
-      preLoaderRoute: typeof SharedShareTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/workspace': {
-      id: '/settings/workspace'
-      path: '/workspace'
-      fullPath: '/settings/workspace'
-      preLoaderRoute: typeof SettingsWorkspaceRouteImport
-      parentRoute: typeof SettingsRouteRoute
-    }
-    '/settings/usage': {
-      id: '/settings/usage'
-      path: '/usage'
-      fullPath: '/settings/usage'
-      preLoaderRoute: typeof SettingsUsageRouteImport
-      parentRoute: typeof SettingsRouteRoute
-    }
-    '/settings/subscriptions': {
-      id: '/settings/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/settings/subscriptions'
-      preLoaderRoute: typeof SettingsSubscriptionsRouteImport
-      parentRoute: typeof SettingsRouteRoute
-    }
-    '/settings/billing': {
-      id: '/settings/billing'
-      path: '/billing'
-      fullPath: '/settings/billing'
-      preLoaderRoute: typeof SettingsBillingRouteImport
-      parentRoute: typeof SettingsRouteRoute
-    }
-    '/settings/advanced': {
-      id: '/settings/advanced'
-      path: '/advanced'
-      fullPath: '/settings/advanced'
-      preLoaderRoute: typeof SettingsAdvancedRouteImport
-      parentRoute: typeof SettingsRouteRoute
-    }
-    '/onboarding/subscriptions': {
-      id: '/onboarding/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/onboarding/subscriptions'
-      preLoaderRoute: typeof OnboardingSubscriptionsRouteImport
-      parentRoute: typeof OnboardingRouteRoute
-    }
-    '/onboarding/integrations': {
-      id: '/onboarding/integrations'
-      path: '/integrations'
-      fullPath: '/onboarding/integrations'
-      preLoaderRoute: typeof OnboardingIntegrationsRouteImport
-      parentRoute: typeof OnboardingRouteRoute
-    }
-    '/legal/terms': {
-      id: '/legal/terms'
-      path: '/terms'
-      fullPath: '/legal/terms'
-      preLoaderRoute: typeof LegalTermsRouteImport
-      parentRoute: typeof LegalRouteRoute
-    }
-    '/legal/privacy-policy': {
-      id: '/legal/privacy-policy'
-      path: '/privacy-policy'
-      fullPath: '/legal/privacy-policy'
-      preLoaderRoute: typeof LegalPrivacyPolicyRouteImport
-      parentRoute: typeof LegalRouteRoute
-    }
-    '/internal/workspaces': {
-      id: '/internal/workspaces'
-      path: '/workspaces'
-      fullPath: '/internal/workspaces'
-      preLoaderRoute: typeof InternalWorkspacesRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/usage': {
-      id: '/internal/usage'
-      path: '/usage'
-      fullPath: '/internal/usage'
-      preLoaderRoute: typeof InternalUsageRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/tools': {
-      id: '/internal/tools'
-      path: '/tools'
-      fullPath: '/internal/tools'
-      preLoaderRoute: typeof InternalToolsRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/templates': {
-      id: '/internal/templates'
-      path: '/templates'
-      fullPath: '/internal/templates'
-      preLoaderRoute: typeof InternalTemplatesRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/subscriptions': {
-      id: '/internal/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/internal/subscriptions'
-      preLoaderRoute: typeof InternalSubscriptionsRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/sandboxes': {
-      id: '/internal/sandboxes'
-      path: '/sandboxes'
-      fullPath: '/internal/sandboxes'
-      preLoaderRoute: typeof InternalSandboxesRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/readme-preview': {
-      id: '/internal/readme-preview'
-      path: '/readme-preview'
-      fullPath: '/internal/readme-preview'
-      preLoaderRoute: typeof InternalReadmePreviewRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/previews': {
-      id: '/internal/previews'
-      path: '/previews'
-      fullPath: '/internal/previews'
-      preLoaderRoute: typeof InternalPreviewsRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/performance': {
-      id: '/internal/performance'
-      path: '/performance'
-      fullPath: '/internal/performance'
-      preLoaderRoute: typeof InternalPerformanceRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/ops': {
-      id: '/internal/ops'
-      path: '/ops'
-      fullPath: '/internal/ops'
-      preLoaderRoute: typeof InternalOpsRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/mcp': {
-      id: '/internal/mcp'
-      path: '/mcp'
-      fullPath: '/internal/mcp'
-      preLoaderRoute: typeof InternalMcpRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/credits': {
-      id: '/internal/credits'
-      path: '/credits'
-      fullPath: '/internal/credits'
-      preLoaderRoute: typeof InternalCreditsRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/coworker-overview': {
-      id: '/internal/coworker-overview'
-      path: '/coworker-overview'
-      fullPath: '/internal/coworker-overview'
-      preLoaderRoute: typeof InternalCoworkerOverviewRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/internal/chat-overview': {
-      id: '/internal/chat-overview'
-      path: '/chat-overview'
-      fullPath: '/internal/chat-overview'
-      preLoaderRoute: typeof InternalChatOverviewRouteImport
-      parentRoute: typeof InternalRouteRoute
-    }
-    '/integrations/$type': {
-      id: '/integrations/$type'
-      path: '/$type'
-      fullPath: '/integrations/$type'
-      preLoaderRoute: typeof IntegrationsTypeRouteImport
-      parentRoute: typeof IntegrationsRouteRoute
-    }
-    '/api/report': {
-      id: '/api/report'
-      path: '/api/report'
-      fullPath: '/api/report'
-      preLoaderRoute: typeof ApiReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/openapi': {
-      id: '/api/openapi'
-      path: '/api/openapi'
-      fullPath: '/api/openapi'
-      preLoaderRoute: typeof ApiOpenapiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/live': {
-      id: '/api/live'
-      path: '/api/live'
-      fullPath: '/api/live'
-      preLoaderRoute: typeof ApiLiveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents/usage': {
-      id: '/agents/usage'
-      path: '/usage'
-      fullPath: '/agents/usage'
-      preLoaderRoute: typeof AgentsUsageRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/agents/overview': {
-      id: '/agents/overview'
-      path: '/overview'
-      fullPath: '/agents/overview'
-      preLoaderRoute: typeof AgentsOverviewRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/agents/new': {
-      id: '/agents/new'
-      path: '/new'
-      fullPath: '/agents/new'
-      preLoaderRoute: typeof AgentsNewRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/agents/history': {
-      id: '/agents/history'
-      path: '/history'
-      fullPath: '/agents/history'
-      preLoaderRoute: typeof AgentsHistoryRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/agents/grid': {
-      id: '/agents/grid'
-      path: '/grid'
-      fullPath: '/agents/grid'
-      preLoaderRoute: typeof AgentsGridRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/admin/workspaces': {
-      id: '/admin/workspaces'
-      path: '/workspaces'
-      fullPath: '/admin/workspaces'
-      preLoaderRoute: typeof AdminWorkspacesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/usage': {
-      id: '/admin/usage'
-      path: '/usage'
-      fullPath: '/admin/usage'
-      preLoaderRoute: typeof AdminUsageRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/subscriptions': {
-      id: '/admin/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/admin/subscriptions'
-      preLoaderRoute: typeof AdminSubscriptionsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/overview': {
-      id: '/admin/overview'
-      path: '/overview'
-      fullPath: '/admin/overview'
-      preLoaderRoute: typeof AdminOverviewRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/audit-trail': {
-      id: '/admin/audit-trail'
-      path: '/audit-trail'
-      fullPath: '/admin/audit-trail'
-      preLoaderRoute: typeof AdminAuditTrailRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/_public/upload': {
-      id: '/_public/upload'
-      path: '/upload'
-      fullPath: '/upload'
-      preLoaderRoute: typeof PublicUploadRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/templates': {
-      id: '/_public/templates'
-      path: '/templates'
-      fullPath: '/templates'
-      preLoaderRoute: typeof PublicTemplatesRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/pricing': {
-      id: '/_public/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof PublicPricingRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/bug-report': {
-      id: '/_public/bug-report'
-      path: '/bug-report'
-      fullPath: '/bug-report'
-      preLoaderRoute: typeof PublicBugReportRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/avatar': {
-      id: '/_public/avatar'
-      path: '/avatar'
-      fullPath: '/avatar'
-      preLoaderRoute: typeof PublicAvatarRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_auth/reset-password': {
-      id: '/_auth/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/login': {
-      id: '/_auth/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/invite-only': {
-      id: '/_auth/invite-only'
-      path: '/invite-only'
-      fullPath: '/invite-only'
-      preLoaderRoute: typeof AuthInviteOnlyRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_app/inbox': {
-      id: '/_app/inbox'
-      path: '/inbox'
-      fullPath: '/inbox'
-      preLoaderRoute: typeof AppInboxRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/chat': {
-      id: '/_app/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof AppChatRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/agents/runs': {
-      id: '/agents/runs'
-      path: '/runs'
-      fullPath: '/agents/runs'
-      preLoaderRoute: typeof AgentsRunsRouteRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/api/rpc/': {
-      id: '/api/rpc/'
-      path: '/api/rpc'
-      fullPath: '/api/rpc/'
-      preLoaderRoute: typeof ApiRpcIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents/runs/': {
-      id: '/agents/runs/'
-      path: '/'
-      fullPath: '/agents/runs/'
-      preLoaderRoute: typeof AgentsRunsIndexRouteImport
-      parentRoute: typeof AgentsRunsRouteRoute
-    }
-    '/_app/chat/': {
-      id: '/_app/chat/'
-      path: '/'
-      fullPath: '/chat/'
-      preLoaderRoute: typeof AppChatIndexRouteImport
-      parentRoute: typeof AppChatRoute
-    }
-    '/toolbox/sources/new': {
-      id: '/toolbox/sources/new'
-      path: '/sources/new'
-      fullPath: '/toolbox/sources/new'
-      preLoaderRoute: typeof ToolboxSourcesNewRouteImport
-      parentRoute: typeof ToolboxRouteRoute
-    }
-    '/toolbox/sources/$id': {
-      id: '/toolbox/sources/$id'
-      path: '/sources/$id'
-      fullPath: '/toolbox/sources/$id'
-      preLoaderRoute: typeof ToolboxSourcesIdRouteImport
-      parentRoute: typeof ToolboxRouteRoute
-    }
-    '/skills/community/$skillId': {
-      id: '/skills/community/$skillId'
-      path: '/community/$skillId'
-      fullPath: '/skills/community/$skillId'
-      preLoaderRoute: typeof SkillsCommunitySkillIdRouteImport
-      parentRoute: typeof SkillsRouteRoute
-    }
-    '/api/zero/query': {
-      id: '/api/zero/query'
-      path: '/api/zero/query'
-      fullPath: '/api/zero/query'
-      preLoaderRoute: typeof ApiZeroQueryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/slack/link': {
-      id: '/api/slack/link'
-      path: '/api/slack/link'
-      fullPath: '/api/slack/link'
-      preLoaderRoute: typeof ApiSlackLinkRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/slack/events': {
-      id: '/api/slack/events'
-      path: '/api/slack/events'
-      fullPath: '/api/slack/events'
-      preLoaderRoute: typeof ApiSlackEventsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/settings/phone-number': {
-      id: '/api/settings/phone-number'
-      path: '/api/settings/phone-number'
-      fullPath: '/api/settings/phone-number'
-      preLoaderRoute: typeof ApiSettingsPhoneNumberRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/rpc/$': {
-      id: '/api/rpc/$'
-      path: '/api/rpc/$'
-      fullPath: '/api/rpc/$'
-      preLoaderRoute: typeof ApiRpcSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/prompts/template-deploy': {
-      id: '/api/prompts/template-deploy'
-      path: '/api/prompts/template-deploy'
-      fullPath: '/api/prompts/template-deploy'
-      preLoaderRoute: typeof ApiPromptsTemplateDeployRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/observability/client-observations': {
-      id: '/api/observability/client-observations'
-      path: '/api/observability/client-observations'
-      fullPath: '/api/observability/client-observations'
-      preLoaderRoute: typeof ApiObservabilityClientObservationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/oauth/callback': {
-      id: '/api/oauth/callback'
-      path: '/api/oauth/callback'
-      fullPath: '/api/oauth/callback'
-      preLoaderRoute: typeof ApiOauthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/invite-only/request-access': {
-      id: '/api/invite-only/request-access'
-      path: '/api/invite-only/request-access'
-      fullPath: '/api/invite-only/request-access'
-      preLoaderRoute: typeof ApiInviteOnlyRequestAccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/memory': {
-      id: '/api/internal/memory'
-      path: '/api/internal/memory'
-      fullPath: '/api/internal/memory'
-      preLoaderRoute: typeof ApiInternalMemoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/instance/health': {
-      id: '/api/instance/health'
-      path: '/api/instance/health'
-      fullPath: '/api/instance/health'
-      preLoaderRoute: typeof ApiInstanceHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/dev/worktree-auth': {
-      id: '/api/dev/worktree-auth'
-      path: '/api/dev/worktree-auth'
-      fullPath: '/api/dev/worktree-auth'
-      preLoaderRoute: typeof ApiDevWorktreeAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/dev/health': {
-      id: '/api/dev/health'
-      path: '/api/dev/health'
-      fullPath: '/api/dev/health'
-      preLoaderRoute: typeof ApiDevHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/dev/auto-login': {
-      id: '/api/dev/auto-login'
-      path: '/api/dev/auto-login'
-      fullPath: '/api/dev/auto-login'
-      preLoaderRoute: typeof ApiDevAutoLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/coworkers/trigger': {
-      id: '/api/coworkers/trigger'
-      path: '/api/coworkers/trigger'
-      fullPath: '/api/coworkers/trigger'
-      preLoaderRoute: typeof ApiCoworkersTriggerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/runtime-credentials': {
-      id: '/api/control-plane/runtime-credentials'
-      path: '/api/control-plane/runtime-credentials'
-      fullPath: '/api/control-plane/runtime-credentials'
-      preLoaderRoute: typeof ApiControlPlaneRuntimeCredentialsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/health': {
-      id: '/api/control-plane/health'
-      path: '/api/control-plane/health'
-      fullPath: '/api/control-plane/health'
-      preLoaderRoute: typeof ApiControlPlaneHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/native-callback': {
-      id: '/api/auth/native-callback'
-      path: '/api/auth/native-callback'
-      fullPath: '/api/auth/native-callback'
-      preLoaderRoute: typeof ApiAuthNativeCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/check-email': {
-      id: '/api/auth/check-email'
-      path: '/api/auth/check-email'
-      fullPath: '/api/auth/check-email'
-      preLoaderRoute: typeof ApiAuthCheckEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents/info/$slug': {
-      id: '/agents/info/$slug'
-      path: '/info/$slug'
-      fullPath: '/agents/info/$slug'
-      preLoaderRoute: typeof AgentsInfoSlugRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/agents/folders/$folderId': {
-      id: '/agents/folders/$folderId'
-      path: '/folders/$folderId'
-      fullPath: '/agents/folders/$folderId'
-      preLoaderRoute: typeof AgentsFoldersFolderIdRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/agents/deploy/$templateId': {
-      id: '/agents/deploy/$templateId'
-      path: '/deploy/$templateId'
-      fullPath: '/agents/deploy/$templateId'
-      preLoaderRoute: typeof AgentsDeployTemplateIdRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/_auth/sign-in/$token': {
-      id: '/_auth/sign-in/$token'
-      path: '/sign-in/$token'
-      fullPath: '/sign-in/$token'
-      preLoaderRoute: typeof AuthSignInTokenRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_app/chat/$conversationId': {
-      id: '/_app/chat/$conversationId'
-      path: '/$conversationId'
-      fullPath: '/chat/$conversationId'
-      preLoaderRoute: typeof AppChatConversationIdRouteImport
-      parentRoute: typeof AppChatRoute
-    }
-    '/agents/runs/$id': {
-      id: '/agents/runs/$id'
-      path: '/$id'
-      fullPath: '/agents/runs/$id'
-      preLoaderRoute: typeof AgentsRunsIdRouteRouteImport
-      parentRoute: typeof AgentsRunsRouteRoute
-    }
-    '/agents/edit/$id': {
-      id: '/agents/edit/$id'
-      path: '/edit/$id'
-      fullPath: '/agents/edit/$id'
-      preLoaderRoute: typeof AgentsEditIdRouteRouteImport
-      parentRoute: typeof AgentsRouteRoute
-    }
-    '/agents/runs/$id/': {
-      id: '/agents/runs/$id/'
-      path: '/'
-      fullPath: '/agents/runs/$id/'
-      preLoaderRoute: typeof AgentsRunsIdIndexRouteImport
-      parentRoute: typeof AgentsRunsIdRouteRoute
-    }
-    '/agents/edit/$id/': {
-      id: '/agents/edit/$id/'
-      path: '/'
-      fullPath: '/agents/edit/$id/'
-      preLoaderRoute: typeof AgentsEditIdIndexRouteImport
-      parentRoute: typeof AgentsEditIdRouteRoute
-    }
-    '/prototype/coworker/info/$slug': {
-      id: '/prototype/coworker/info/$slug'
-      path: '/prototype/coworker/info/$slug'
-      fullPath: '/prototype/coworker/info/$slug'
-      preLoaderRoute: typeof PrototypeCoworkerInfoSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/workspaces/$id/image': {
-      id: '/api/workspaces/$id/image'
-      path: '/api/workspaces/$id/image'
-      fullPath: '/api/workspaces/$id/image'
-      preLoaderRoute: typeof ApiWorkspacesIdImageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sandbox-files/$id/download': {
-      id: '/api/sandbox-files/$id/download'
-      path: '/api/sandbox-files/$id/download'
-      fullPath: '/api/sandbox-files/$id/download'
-      preLoaderRoute: typeof ApiSandboxFilesIdDownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/oauth/dynamics/pending': {
-      id: '/api/oauth/dynamics/pending'
-      path: '/api/oauth/dynamics/pending'
-      fullPath: '/api/oauth/dynamics/pending'
-      preLoaderRoute: typeof ApiOauthDynamicsPendingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/modulr/documents/download': {
-      id: '/api/modulr/documents/download'
-      path: '/api/modulr/documents/download'
-      fullPath: '/api/modulr/documents/download'
-      preLoaderRoute: typeof ApiModulrDocumentsDownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mock/crm/openapi.json': {
-      id: '/api/mock/crm/openapi.json'
-      path: '/api/mock/crm/openapi.json'
-      fullPath: '/api/mock/crm/openapi.json'
-      preLoaderRoute: typeof ApiMockCrmOpenapiDotjsonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mock/crm/deals': {
-      id: '/api/mock/crm/deals'
-      path: '/api/mock/crm/deals'
-      fullPath: '/api/mock/crm/deals'
-      preLoaderRoute: typeof ApiMockCrmDealsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mock/crm/contacts': {
-      id: '/api/mock/crm/contacts'
-      path: '/api/mock/crm/contacts'
-      fullPath: '/api/mock/crm/contacts'
-      preLoaderRoute: typeof ApiMockCrmContactsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mcp/oauth/token': {
-      id: '/api/mcp/oauth/token'
-      path: '/api/mcp/oauth/token'
-      fullPath: '/api/mcp/oauth/token'
-      preLoaderRoute: typeof ApiMcpOauthTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mcp/oauth/register': {
-      id: '/api/mcp/oauth/register'
-      path: '/api/mcp/oauth/register'
-      fullPath: '/api/mcp/oauth/register'
-      preLoaderRoute: typeof ApiMcpOauthRegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/mcp/oauth/authorize': {
-      id: '/api/mcp/oauth/authorize'
-      path: '/api/mcp/oauth/authorize'
-      fullPath: '/api/mcp/oauth/authorize'
-      preLoaderRoute: typeof ApiMcpOauthAuthorizeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/testing/cli-session': {
-      id: '/api/internal/testing/cli-session'
-      path: '/api/internal/testing/cli-session'
-      fullPath: '/api/internal/testing/cli-session'
-      preLoaderRoute: typeof ApiInternalTestingCliSessionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/testing/cli-live': {
-      id: '/api/internal/testing/cli-live'
-      path: '/api/internal/testing/cli-live'
-      fullPath: '/api/internal/testing/cli-live'
-      preLoaderRoute: typeof ApiInternalTestingCliLiveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/slack/post-as-bot': {
-      id: '/api/internal/slack/post-as-bot'
-      path: '/api/internal/slack/post-as-bot'
-      fullPath: '/api/internal/slack/post-as-bot'
-      preLoaderRoute: typeof ApiInternalSlackPostAsBotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/mcp/runtime-credentials': {
-      id: '/api/internal/mcp/runtime-credentials'
-      path: '/api/internal/mcp/runtime-credentials'
-      fullPath: '/api/internal/mcp/runtime-credentials'
-      preLoaderRoute: typeof ApiInternalMcpRuntimeCredentialsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/mcp/modulr-credentials': {
-      id: '/api/internal/mcp/modulr-credentials'
-      path: '/api/internal/mcp/modulr-credentials'
-      fullPath: '/api/internal/mcp/modulr-credentials'
-      preLoaderRoute: typeof ApiInternalMcpModulrCredentialsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/mcp/galien-credentials': {
-      id: '/api/internal/mcp/galien-credentials'
-      path: '/api/internal/mcp/galien-credentials'
-      fullPath: '/api/internal/mcp/galien-credentials'
-      preLoaderRoute: typeof ApiInternalMcpGalienCredentialsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/integrations/resend/webhook': {
-      id: '/api/integrations/resend/webhook'
-      path: '/api/integrations/resend/webhook'
-      fullPath: '/api/integrations/resend/webhook'
-      preLoaderRoute: typeof ApiIntegrationsResendWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/integrations/nango/providers': {
-      id: '/api/integrations/nango/providers'
-      path: '/api/integrations/nango/providers'
-      fullPath: '/api/integrations/nango/providers'
-      preLoaderRoute: typeof ApiIntegrationsNangoProvidersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/integrations/linkedin/webhook': {
-      id: '/api/integrations/linkedin/webhook'
-      path: '/api/integrations/linkedin/webhook'
-      fullPath: '/api/integrations/linkedin/webhook'
-      preLoaderRoute: typeof ApiIntegrationsLinkedinWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/instance/auth/start': {
-      id: '/api/instance/auth/start'
-      path: '/api/instance/auth/start'
-      fullPath: '/api/instance/auth/start'
-      preLoaderRoute: typeof ApiInstanceAuthStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/provider-auth/status': {
-      id: '/api/control-plane/provider-auth/status'
-      path: '/api/control-plane/provider-auth/status'
-      fullPath: '/api/control-plane/provider-auth/status'
-      preLoaderRoute: typeof ApiControlPlaneProviderAuthStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/provider-auth/disconnect': {
-      id: '/api/control-plane/provider-auth/disconnect'
-      path: '/api/control-plane/provider-auth/disconnect'
-      fullPath: '/api/control-plane/provider-auth/disconnect'
-      preLoaderRoute: typeof ApiControlPlaneProviderAuthDisconnectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/link/start': {
-      id: '/api/control-plane/link/start'
-      path: '/api/control-plane/link/start'
-      fullPath: '/api/control-plane/link/start'
-      preLoaderRoute: typeof ApiControlPlaneLinkStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/link/exchange': {
-      id: '/api/control-plane/link/exchange'
-      path: '/api/control-plane/link/exchange'
-      fullPath: '/api/control-plane/link/exchange'
-      preLoaderRoute: typeof ApiControlPlaneLinkExchangeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/link/callback': {
-      id: '/api/control-plane/link/callback'
-      path: '/api/control-plane/link/callback'
-      fullPath: '/api/control-plane/link/callback'
-      preLoaderRoute: typeof ApiControlPlaneLinkCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/link/authorize': {
-      id: '/api/control-plane/link/authorize'
-      path: '/api/control-plane/link/authorize'
-      fullPath: '/api/control-plane/link/authorize'
-      preLoaderRoute: typeof ApiControlPlaneLinkAuthorizeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/integrations/toggle': {
-      id: '/api/control-plane/integrations/toggle'
-      path: '/api/control-plane/integrations/toggle'
-      fullPath: '/api/control-plane/integrations/toggle'
-      preLoaderRoute: typeof ApiControlPlaneIntegrationsToggleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/integrations/status': {
-      id: '/api/control-plane/integrations/status'
-      path: '/api/control-plane/integrations/status'
-      fullPath: '/api/control-plane/integrations/status'
-      preLoaderRoute: typeof ApiControlPlaneIntegrationsStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/integrations/disconnect': {
-      id: '/api/control-plane/integrations/disconnect'
-      path: '/api/control-plane/integrations/disconnect'
-      fullPath: '/api/control-plane/integrations/disconnect'
-      preLoaderRoute: typeof ApiControlPlaneIntegrationsDisconnectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/integrations/connect': {
-      id: '/api/control-plane/integrations/connect'
-      path: '/api/control-plane/integrations/connect'
-      fullPath: '/api/control-plane/integrations/connect'
-      preLoaderRoute: typeof ApiControlPlaneIntegrationsConnectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/auth/start': {
-      id: '/api/control-plane/auth/start'
-      path: '/api/control-plane/auth/start'
-      fullPath: '/api/control-plane/auth/start'
-      preLoaderRoute: typeof ApiControlPlaneAuthStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/auth/exchange': {
-      id: '/api/control-plane/auth/exchange'
-      path: '/api/control-plane/auth/exchange'
-      fullPath: '/api/control-plane/auth/exchange'
-      preLoaderRoute: typeof ApiControlPlaneAuthExchangeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/auth/callback': {
-      id: '/api/control-plane/auth/callback'
-      path: '/api/control-plane/auth/callback'
-      fullPath: '/api/control-plane/auth/callback'
-      preLoaderRoute: typeof ApiControlPlaneAuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/control-plane/auth/authorize': {
-      id: '/api/control-plane/auth/authorize'
-      path: '/api/control-plane/auth/authorize'
-      fullPath: '/api/control-plane/auth/authorize'
-      preLoaderRoute: typeof ApiControlPlaneAuthAuthorizeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/password/start': {
-      id: '/api/auth/password/start'
-      path: '/api/auth/password/start'
-      fullPath: '/api/auth/password/start'
-      preLoaderRoute: typeof ApiAuthPasswordStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_auth/sign-in/$token/resend': {
-      id: '/_auth/sign-in/$token/resend'
-      path: '/resend'
-      fullPath: '/sign-in/$token/resend'
-      preLoaderRoute: typeof AuthSignInTokenResendRouteImport
-      parentRoute: typeof AuthSignInTokenRoute
-    }
-    '/_auth/sign-in/$token/confirm': {
-      id: '/_auth/sign-in/$token/confirm'
-      path: '/confirm'
-      fullPath: '/sign-in/$token/confirm'
-      preLoaderRoute: typeof AuthSignInTokenConfirmRouteImport
-      parentRoute: typeof AuthSignInTokenRoute
-    }
-    '/agents/edit/$id/runs/': {
-      id: '/agents/edit/$id/runs/'
-      path: '/runs'
-      fullPath: '/agents/edit/$id/runs/'
-      preLoaderRoute: typeof AgentsEditIdRunsIndexRouteImport
-      parentRoute: typeof AgentsEditIdRouteRoute
-    }
-    '/api/mock/crm/contacts/$id': {
-      id: '/api/mock/crm/contacts/$id'
-      path: '/$id'
-      fullPath: '/api/mock/crm/contacts/$id'
-      preLoaderRoute: typeof ApiMockCrmContactsIdRouteImport
-      parentRoute: typeof ApiMockCrmContactsRoute
-    }
-    '/api/internal/runtime/interrupts/status': {
-      id: '/api/internal/runtime/interrupts/status'
-      path: '/api/internal/runtime/interrupts/status'
-      fullPath: '/api/internal/runtime/interrupts/status'
-      preLoaderRoute: typeof ApiInternalRuntimeInterruptsStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/runtime/interrupts/create': {
-      id: '/api/internal/runtime/interrupts/create'
-      path: '/api/internal/runtime/interrupts/create'
-      fullPath: '/api/internal/runtime/interrupts/create'
-      preLoaderRoute: typeof ApiInternalRuntimeInterruptsCreateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/coworkers/runtime/list': {
-      id: '/api/internal/coworkers/runtime/list'
-      path: '/api/internal/coworkers/runtime/list'
-      fullPath: '/api/internal/coworkers/runtime/list'
-      preLoaderRoute: typeof ApiInternalCoworkersRuntimeListRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/coworkers/runtime/invoke': {
-      id: '/api/internal/coworkers/runtime/invoke'
-      path: '/api/internal/coworkers/runtime/invoke'
-      fullPath: '/api/internal/coworkers/runtime/invoke'
-      preLoaderRoute: typeof ApiInternalCoworkersRuntimeInvokeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/coworkers/runtime/edit': {
-      id: '/api/internal/coworkers/runtime/edit'
-      path: '/api/internal/coworkers/runtime/edit'
-      fullPath: '/api/internal/coworkers/runtime/edit'
-      preLoaderRoute: typeof ApiInternalCoworkersRuntimeEditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/admin/remote-integrations/users': {
-      id: '/api/internal/admin/remote-integrations/users'
-      path: '/api/internal/admin/remote-integrations/users'
-      fullPath: '/api/internal/admin/remote-integrations/users'
-      preLoaderRoute: typeof ApiInternalAdminRemoteIntegrationsUsersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/internal/admin/remote-integrations/credentials': {
-      id: '/api/internal/admin/remote-integrations/credentials'
-      path: '/api/internal/admin/remote-integrations/credentials'
-      fullPath: '/api/internal/admin/remote-integrations/credentials'
-      preLoaderRoute: typeof ApiInternalAdminRemoteIntegrationsCredentialsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/coworkers/documents/$id/download': {
-      id: '/api/coworkers/documents/$id/download'
-      path: '/api/coworkers/documents/$id/download'
-      fullPath: '/api/coworkers/documents/$id/download'
-      preLoaderRoute: typeof ApiCoworkersDocumentsIdDownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/auth/provider/$provider/callback': {
-      id: '/api/auth/provider/$provider/callback'
-      path: '/api/auth/provider/$provider/callback'
-      fullPath: '/api/auth/provider/$provider/callback'
-      preLoaderRoute: typeof ApiAuthProviderProviderCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents/edit/$id/runs/$runId': {
-      id: '/agents/edit/$id/runs/$runId'
-      path: '/runs/$runId'
-      fullPath: '/agents/edit/$id/runs/$runId'
-      preLoaderRoute: typeof AgentsEditIdRunsRunIdRouteImport
-      parentRoute: typeof AgentsEditIdRouteRoute
-    }
-    '/api/internal/coworkers/runtime/documents/upload': {
-      id: '/api/internal/coworkers/runtime/documents/upload'
-      path: '/api/internal/coworkers/runtime/documents/upload'
-      fullPath: '/api/internal/coworkers/runtime/documents/upload'
-      preLoaderRoute: typeof ApiInternalCoworkersRuntimeDocumentsUploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    "/template": {
+      id: "/template";
+      path: "/template";
+      fullPath: "/template";
+      preLoaderRoute: typeof TemplateRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/search": {
+      id: "/search";
+      path: "/search";
+      fullPath: "/search";
+      preLoaderRoute: typeof SearchRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/instance": {
+      id: "/instance";
+      path: "/instance";
+      fullPath: "/instance";
+      preLoaderRoute: typeof InstanceRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/audit": {
+      id: "/audit";
+      path: "/audit";
+      fullPath: "/audit";
+      preLoaderRoute: typeof AuditRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/accounts": {
+      id: "/accounts";
+      path: "/accounts";
+      fullPath: "/accounts";
+      preLoaderRoute: typeof AccountsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/_public": {
+      id: "/_public";
+      path: "";
+      fullPath: "/";
+      preLoaderRoute: typeof PublicRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/_auth": {
+      id: "/_auth";
+      path: "";
+      fullPath: "/";
+      preLoaderRoute: typeof AuthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/_app": {
+      id: "/_app";
+      path: "";
+      fullPath: "/";
+      preLoaderRoute: typeof AppRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/toolbox": {
+      id: "/toolbox";
+      path: "/toolbox";
+      fullPath: "/toolbox";
+      preLoaderRoute: typeof ToolboxRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/support": {
+      id: "/support";
+      path: "/support";
+      fullPath: "/support";
+      preLoaderRoute: typeof SupportRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/skills": {
+      id: "/skills";
+      path: "/skills";
+      fullPath: "/skills";
+      preLoaderRoute: typeof SkillsRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/settings": {
+      id: "/settings";
+      path: "/settings";
+      fullPath: "/settings";
+      preLoaderRoute: typeof SettingsRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/onboarding": {
+      id: "/onboarding";
+      path: "/onboarding";
+      fullPath: "/onboarding";
+      preLoaderRoute: typeof OnboardingRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/legal": {
+      id: "/legal";
+      path: "/legal";
+      fullPath: "/legal";
+      preLoaderRoute: typeof LegalRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/internal": {
+      id: "/internal";
+      path: "/internal";
+      fullPath: "/internal";
+      preLoaderRoute: typeof InternalRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/integrations": {
+      id: "/integrations";
+      path: "/integrations";
+      fullPath: "/integrations";
+      preLoaderRoute: typeof IntegrationsRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/agents": {
+      id: "/agents";
+      path: "/agents";
+      fullPath: "/agents";
+      preLoaderRoute: typeof AgentsRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/admin": {
+      id: "/admin";
+      path: "/admin";
+      fullPath: "/admin";
+      preLoaderRoute: typeof AdminRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/toolbox/": {
+      id: "/toolbox/";
+      path: "/";
+      fullPath: "/toolbox/";
+      preLoaderRoute: typeof ToolboxIndexRouteImport;
+      parentRoute: typeof ToolboxRouteRoute;
+    };
+    "/template/": {
+      id: "/template/";
+      path: "/";
+      fullPath: "/template/";
+      preLoaderRoute: typeof TemplateIndexRouteImport;
+      parentRoute: typeof TemplateRoute;
+    };
+    "/support/": {
+      id: "/support/";
+      path: "/";
+      fullPath: "/support/";
+      preLoaderRoute: typeof SupportIndexRouteImport;
+      parentRoute: typeof SupportRouteRoute;
+    };
+    "/settings/": {
+      id: "/settings/";
+      path: "/";
+      fullPath: "/settings/";
+      preLoaderRoute: typeof SettingsIndexRouteImport;
+      parentRoute: typeof SettingsRouteRoute;
+    };
+    "/internal/": {
+      id: "/internal/";
+      path: "/";
+      fullPath: "/internal/";
+      preLoaderRoute: typeof InternalIndexRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/agents/": {
+      id: "/agents/";
+      path: "/";
+      fullPath: "/agents/";
+      preLoaderRoute: typeof AgentsIndexRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/admin/": {
+      id: "/admin/";
+      path: "/";
+      fullPath: "/admin/";
+      preLoaderRoute: typeof AdminIndexRouteImport;
+      parentRoute: typeof AdminRouteRoute;
+    };
+    "/_public/": {
+      id: "/_public/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof PublicIndexRouteImport;
+      parentRoute: typeof PublicRoute;
+    };
+    "/template/$templateId": {
+      id: "/template/$templateId";
+      path: "/$templateId";
+      fullPath: "/template/$templateId";
+      preLoaderRoute: typeof TemplateTemplateIdRouteImport;
+      parentRoute: typeof TemplateRoute;
+    };
+    "/skills/$id": {
+      id: "/skills/$id";
+      path: "/$id";
+      fullPath: "/skills/$id";
+      preLoaderRoute: typeof SkillsIdRouteImport;
+      parentRoute: typeof SkillsRouteRoute;
+    };
+    "/shared/$shareToken": {
+      id: "/shared/$shareToken";
+      path: "/shared/$shareToken";
+      fullPath: "/shared/$shareToken";
+      preLoaderRoute: typeof SharedShareTokenRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/settings/workspace": {
+      id: "/settings/workspace";
+      path: "/workspace";
+      fullPath: "/settings/workspace";
+      preLoaderRoute: typeof SettingsWorkspaceRouteImport;
+      parentRoute: typeof SettingsRouteRoute;
+    };
+    "/settings/usage": {
+      id: "/settings/usage";
+      path: "/usage";
+      fullPath: "/settings/usage";
+      preLoaderRoute: typeof SettingsUsageRouteImport;
+      parentRoute: typeof SettingsRouteRoute;
+    };
+    "/settings/subscriptions": {
+      id: "/settings/subscriptions";
+      path: "/subscriptions";
+      fullPath: "/settings/subscriptions";
+      preLoaderRoute: typeof SettingsSubscriptionsRouteImport;
+      parentRoute: typeof SettingsRouteRoute;
+    };
+    "/settings/billing": {
+      id: "/settings/billing";
+      path: "/billing";
+      fullPath: "/settings/billing";
+      preLoaderRoute: typeof SettingsBillingRouteImport;
+      parentRoute: typeof SettingsRouteRoute;
+    };
+    "/settings/advanced": {
+      id: "/settings/advanced";
+      path: "/advanced";
+      fullPath: "/settings/advanced";
+      preLoaderRoute: typeof SettingsAdvancedRouteImport;
+      parentRoute: typeof SettingsRouteRoute;
+    };
+    "/onboarding/subscriptions": {
+      id: "/onboarding/subscriptions";
+      path: "/subscriptions";
+      fullPath: "/onboarding/subscriptions";
+      preLoaderRoute: typeof OnboardingSubscriptionsRouteImport;
+      parentRoute: typeof OnboardingRouteRoute;
+    };
+    "/onboarding/integrations": {
+      id: "/onboarding/integrations";
+      path: "/integrations";
+      fullPath: "/onboarding/integrations";
+      preLoaderRoute: typeof OnboardingIntegrationsRouteImport;
+      parentRoute: typeof OnboardingRouteRoute;
+    };
+    "/legal/terms": {
+      id: "/legal/terms";
+      path: "/terms";
+      fullPath: "/legal/terms";
+      preLoaderRoute: typeof LegalTermsRouteImport;
+      parentRoute: typeof LegalRouteRoute;
+    };
+    "/legal/privacy-policy": {
+      id: "/legal/privacy-policy";
+      path: "/privacy-policy";
+      fullPath: "/legal/privacy-policy";
+      preLoaderRoute: typeof LegalPrivacyPolicyRouteImport;
+      parentRoute: typeof LegalRouteRoute;
+    };
+    "/internal/workspaces": {
+      id: "/internal/workspaces";
+      path: "/workspaces";
+      fullPath: "/internal/workspaces";
+      preLoaderRoute: typeof InternalWorkspacesRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/usage": {
+      id: "/internal/usage";
+      path: "/usage";
+      fullPath: "/internal/usage";
+      preLoaderRoute: typeof InternalUsageRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/tools": {
+      id: "/internal/tools";
+      path: "/tools";
+      fullPath: "/internal/tools";
+      preLoaderRoute: typeof InternalToolsRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/templates": {
+      id: "/internal/templates";
+      path: "/templates";
+      fullPath: "/internal/templates";
+      preLoaderRoute: typeof InternalTemplatesRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/subscriptions": {
+      id: "/internal/subscriptions";
+      path: "/subscriptions";
+      fullPath: "/internal/subscriptions";
+      preLoaderRoute: typeof InternalSubscriptionsRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/sandboxes": {
+      id: "/internal/sandboxes";
+      path: "/sandboxes";
+      fullPath: "/internal/sandboxes";
+      preLoaderRoute: typeof InternalSandboxesRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/readme-preview": {
+      id: "/internal/readme-preview";
+      path: "/readme-preview";
+      fullPath: "/internal/readme-preview";
+      preLoaderRoute: typeof InternalReadmePreviewRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/previews": {
+      id: "/internal/previews";
+      path: "/previews";
+      fullPath: "/internal/previews";
+      preLoaderRoute: typeof InternalPreviewsRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/performance": {
+      id: "/internal/performance";
+      path: "/performance";
+      fullPath: "/internal/performance";
+      preLoaderRoute: typeof InternalPerformanceRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/ops": {
+      id: "/internal/ops";
+      path: "/ops";
+      fullPath: "/internal/ops";
+      preLoaderRoute: typeof InternalOpsRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/mcp": {
+      id: "/internal/mcp";
+      path: "/mcp";
+      fullPath: "/internal/mcp";
+      preLoaderRoute: typeof InternalMcpRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/credits": {
+      id: "/internal/credits";
+      path: "/credits";
+      fullPath: "/internal/credits";
+      preLoaderRoute: typeof InternalCreditsRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/coworker-overview": {
+      id: "/internal/coworker-overview";
+      path: "/coworker-overview";
+      fullPath: "/internal/coworker-overview";
+      preLoaderRoute: typeof InternalCoworkerOverviewRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/internal/chat-overview": {
+      id: "/internal/chat-overview";
+      path: "/chat-overview";
+      fullPath: "/internal/chat-overview";
+      preLoaderRoute: typeof InternalChatOverviewRouteImport;
+      parentRoute: typeof InternalRouteRoute;
+    };
+    "/integrations/$type": {
+      id: "/integrations/$type";
+      path: "/$type";
+      fullPath: "/integrations/$type";
+      preLoaderRoute: typeof IntegrationsTypeRouteImport;
+      parentRoute: typeof IntegrationsRouteRoute;
+    };
+    "/api/report": {
+      id: "/api/report";
+      path: "/api/report";
+      fullPath: "/api/report";
+      preLoaderRoute: typeof ApiReportRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/openapi": {
+      id: "/api/openapi";
+      path: "/api/openapi";
+      fullPath: "/api/openapi";
+      preLoaderRoute: typeof ApiOpenapiRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/live": {
+      id: "/api/live";
+      path: "/api/live";
+      fullPath: "/api/live";
+      preLoaderRoute: typeof ApiLiveRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/health": {
+      id: "/api/health";
+      path: "/api/health";
+      fullPath: "/api/health";
+      preLoaderRoute: typeof ApiHealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/agents/usage": {
+      id: "/agents/usage";
+      path: "/usage";
+      fullPath: "/agents/usage";
+      preLoaderRoute: typeof AgentsUsageRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/agents/overview": {
+      id: "/agents/overview";
+      path: "/overview";
+      fullPath: "/agents/overview";
+      preLoaderRoute: typeof AgentsOverviewRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/agents/new": {
+      id: "/agents/new";
+      path: "/new";
+      fullPath: "/agents/new";
+      preLoaderRoute: typeof AgentsNewRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/agents/history": {
+      id: "/agents/history";
+      path: "/history";
+      fullPath: "/agents/history";
+      preLoaderRoute: typeof AgentsHistoryRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/agents/grid": {
+      id: "/agents/grid";
+      path: "/grid";
+      fullPath: "/agents/grid";
+      preLoaderRoute: typeof AgentsGridRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/admin/workspaces": {
+      id: "/admin/workspaces";
+      path: "/workspaces";
+      fullPath: "/admin/workspaces";
+      preLoaderRoute: typeof AdminWorkspacesRouteImport;
+      parentRoute: typeof AdminRouteRoute;
+    };
+    "/admin/usage": {
+      id: "/admin/usage";
+      path: "/usage";
+      fullPath: "/admin/usage";
+      preLoaderRoute: typeof AdminUsageRouteImport;
+      parentRoute: typeof AdminRouteRoute;
+    };
+    "/admin/subscriptions": {
+      id: "/admin/subscriptions";
+      path: "/subscriptions";
+      fullPath: "/admin/subscriptions";
+      preLoaderRoute: typeof AdminSubscriptionsRouteImport;
+      parentRoute: typeof AdminRouteRoute;
+    };
+    "/admin/overview": {
+      id: "/admin/overview";
+      path: "/overview";
+      fullPath: "/admin/overview";
+      preLoaderRoute: typeof AdminOverviewRouteImport;
+      parentRoute: typeof AdminRouteRoute;
+    };
+    "/admin/audit-trail": {
+      id: "/admin/audit-trail";
+      path: "/audit-trail";
+      fullPath: "/admin/audit-trail";
+      preLoaderRoute: typeof AdminAuditTrailRouteImport;
+      parentRoute: typeof AdminRouteRoute;
+    };
+    "/_public/upload": {
+      id: "/_public/upload";
+      path: "/upload";
+      fullPath: "/upload";
+      preLoaderRoute: typeof PublicUploadRouteImport;
+      parentRoute: typeof PublicRoute;
+    };
+    "/_public/templates": {
+      id: "/_public/templates";
+      path: "/templates";
+      fullPath: "/templates";
+      preLoaderRoute: typeof PublicTemplatesRouteImport;
+      parentRoute: typeof PublicRoute;
+    };
+    "/_public/pricing": {
+      id: "/_public/pricing";
+      path: "/pricing";
+      fullPath: "/pricing";
+      preLoaderRoute: typeof PublicPricingRouteImport;
+      parentRoute: typeof PublicRoute;
+    };
+    "/_public/bug-report": {
+      id: "/_public/bug-report";
+      path: "/bug-report";
+      fullPath: "/bug-report";
+      preLoaderRoute: typeof PublicBugReportRouteImport;
+      parentRoute: typeof PublicRoute;
+    };
+    "/_public/avatar": {
+      id: "/_public/avatar";
+      path: "/avatar";
+      fullPath: "/avatar";
+      preLoaderRoute: typeof PublicAvatarRouteImport;
+      parentRoute: typeof PublicRoute;
+    };
+    "/_auth/reset-password": {
+      id: "/_auth/reset-password";
+      path: "/reset-password";
+      fullPath: "/reset-password";
+      preLoaderRoute: typeof AuthResetPasswordRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    "/_auth/login": {
+      id: "/_auth/login";
+      path: "/login";
+      fullPath: "/login";
+      preLoaderRoute: typeof AuthLoginRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    "/_auth/invite-only": {
+      id: "/_auth/invite-only";
+      path: "/invite-only";
+      fullPath: "/invite-only";
+      preLoaderRoute: typeof AuthInviteOnlyRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    "/_app/inbox": {
+      id: "/_app/inbox";
+      path: "/inbox";
+      fullPath: "/inbox";
+      preLoaderRoute: typeof AppInboxRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/_app/chat": {
+      id: "/_app/chat";
+      path: "/chat";
+      fullPath: "/chat";
+      preLoaderRoute: typeof AppChatRouteImport;
+      parentRoute: typeof AppRoute;
+    };
+    "/agents/runs": {
+      id: "/agents/runs";
+      path: "/runs";
+      fullPath: "/agents/runs";
+      preLoaderRoute: typeof AgentsRunsRouteRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/api/rpc/": {
+      id: "/api/rpc/";
+      path: "/api/rpc";
+      fullPath: "/api/rpc/";
+      preLoaderRoute: typeof ApiRpcIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/agents/runs/": {
+      id: "/agents/runs/";
+      path: "/";
+      fullPath: "/agents/runs/";
+      preLoaderRoute: typeof AgentsRunsIndexRouteImport;
+      parentRoute: typeof AgentsRunsRouteRoute;
+    };
+    "/_app/chat/": {
+      id: "/_app/chat/";
+      path: "/";
+      fullPath: "/chat/";
+      preLoaderRoute: typeof AppChatIndexRouteImport;
+      parentRoute: typeof AppChatRoute;
+    };
+    "/toolbox/sources/new": {
+      id: "/toolbox/sources/new";
+      path: "/sources/new";
+      fullPath: "/toolbox/sources/new";
+      preLoaderRoute: typeof ToolboxSourcesNewRouteImport;
+      parentRoute: typeof ToolboxRouteRoute;
+    };
+    "/toolbox/sources/$id": {
+      id: "/toolbox/sources/$id";
+      path: "/sources/$id";
+      fullPath: "/toolbox/sources/$id";
+      preLoaderRoute: typeof ToolboxSourcesIdRouteImport;
+      parentRoute: typeof ToolboxRouteRoute;
+    };
+    "/skills/community/$skillId": {
+      id: "/skills/community/$skillId";
+      path: "/community/$skillId";
+      fullPath: "/skills/community/$skillId";
+      preLoaderRoute: typeof SkillsCommunitySkillIdRouteImport;
+      parentRoute: typeof SkillsRouteRoute;
+    };
+    "/share/agents/$slug": {
+      id: "/share/agents/$slug";
+      path: "/share/agents/$slug";
+      fullPath: "/share/agents/$slug";
+      preLoaderRoute: typeof ShareAgentsSlugRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/zero/query": {
+      id: "/api/zero/query";
+      path: "/api/zero/query";
+      fullPath: "/api/zero/query";
+      preLoaderRoute: typeof ApiZeroQueryRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/slack/link": {
+      id: "/api/slack/link";
+      path: "/api/slack/link";
+      fullPath: "/api/slack/link";
+      preLoaderRoute: typeof ApiSlackLinkRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/slack/events": {
+      id: "/api/slack/events";
+      path: "/api/slack/events";
+      fullPath: "/api/slack/events";
+      preLoaderRoute: typeof ApiSlackEventsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/settings/phone-number": {
+      id: "/api/settings/phone-number";
+      path: "/api/settings/phone-number";
+      fullPath: "/api/settings/phone-number";
+      preLoaderRoute: typeof ApiSettingsPhoneNumberRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/rpc/$": {
+      id: "/api/rpc/$";
+      path: "/api/rpc/$";
+      fullPath: "/api/rpc/$";
+      preLoaderRoute: typeof ApiRpcSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/prompts/template-deploy": {
+      id: "/api/prompts/template-deploy";
+      path: "/api/prompts/template-deploy";
+      fullPath: "/api/prompts/template-deploy";
+      preLoaderRoute: typeof ApiPromptsTemplateDeployRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/observability/client-observations": {
+      id: "/api/observability/client-observations";
+      path: "/api/observability/client-observations";
+      fullPath: "/api/observability/client-observations";
+      preLoaderRoute: typeof ApiObservabilityClientObservationsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/oauth/callback": {
+      id: "/api/oauth/callback";
+      path: "/api/oauth/callback";
+      fullPath: "/api/oauth/callback";
+      preLoaderRoute: typeof ApiOauthCallbackRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/invite-only/request-access": {
+      id: "/api/invite-only/request-access";
+      path: "/api/invite-only/request-access";
+      fullPath: "/api/invite-only/request-access";
+      preLoaderRoute: typeof ApiInviteOnlyRequestAccessRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/memory": {
+      id: "/api/internal/memory";
+      path: "/api/internal/memory";
+      fullPath: "/api/internal/memory";
+      preLoaderRoute: typeof ApiInternalMemoryRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/instance/health": {
+      id: "/api/instance/health";
+      path: "/api/instance/health";
+      fullPath: "/api/instance/health";
+      preLoaderRoute: typeof ApiInstanceHealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/dev/worktree-auth": {
+      id: "/api/dev/worktree-auth";
+      path: "/api/dev/worktree-auth";
+      fullPath: "/api/dev/worktree-auth";
+      preLoaderRoute: typeof ApiDevWorktreeAuthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/dev/health": {
+      id: "/api/dev/health";
+      path: "/api/dev/health";
+      fullPath: "/api/dev/health";
+      preLoaderRoute: typeof ApiDevHealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/dev/auto-login": {
+      id: "/api/dev/auto-login";
+      path: "/api/dev/auto-login";
+      fullPath: "/api/dev/auto-login";
+      preLoaderRoute: typeof ApiDevAutoLoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/coworkers/trigger": {
+      id: "/api/coworkers/trigger";
+      path: "/api/coworkers/trigger";
+      fullPath: "/api/coworkers/trigger";
+      preLoaderRoute: typeof ApiCoworkersTriggerRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/runtime-credentials": {
+      id: "/api/control-plane/runtime-credentials";
+      path: "/api/control-plane/runtime-credentials";
+      fullPath: "/api/control-plane/runtime-credentials";
+      preLoaderRoute: typeof ApiControlPlaneRuntimeCredentialsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/health": {
+      id: "/api/control-plane/health";
+      path: "/api/control-plane/health";
+      fullPath: "/api/control-plane/health";
+      preLoaderRoute: typeof ApiControlPlaneHealthRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/auth/native-callback": {
+      id: "/api/auth/native-callback";
+      path: "/api/auth/native-callback";
+      fullPath: "/api/auth/native-callback";
+      preLoaderRoute: typeof ApiAuthNativeCallbackRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/auth/check-email": {
+      id: "/api/auth/check-email";
+      path: "/api/auth/check-email";
+      fullPath: "/api/auth/check-email";
+      preLoaderRoute: typeof ApiAuthCheckEmailRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/auth/$": {
+      id: "/api/auth/$";
+      path: "/api/auth/$";
+      fullPath: "/api/auth/$";
+      preLoaderRoute: typeof ApiAuthSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/agents/info/$slug": {
+      id: "/agents/info/$slug";
+      path: "/info/$slug";
+      fullPath: "/agents/info/$slug";
+      preLoaderRoute: typeof AgentsInfoSlugRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/agents/folders/$folderId": {
+      id: "/agents/folders/$folderId";
+      path: "/folders/$folderId";
+      fullPath: "/agents/folders/$folderId";
+      preLoaderRoute: typeof AgentsFoldersFolderIdRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/agents/deploy/$templateId": {
+      id: "/agents/deploy/$templateId";
+      path: "/deploy/$templateId";
+      fullPath: "/agents/deploy/$templateId";
+      preLoaderRoute: typeof AgentsDeployTemplateIdRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/_auth/workspace-invitations/$invitationId": {
+      id: "/_auth/workspace-invitations/$invitationId";
+      path: "/workspace-invitations/$invitationId";
+      fullPath: "/workspace-invitations/$invitationId";
+      preLoaderRoute: typeof AuthWorkspaceInvitationsInvitationIdRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    "/_auth/sign-in/$token": {
+      id: "/_auth/sign-in/$token";
+      path: "/sign-in/$token";
+      fullPath: "/sign-in/$token";
+      preLoaderRoute: typeof AuthSignInTokenRouteImport;
+      parentRoute: typeof AuthRoute;
+    };
+    "/_app/chat/$conversationId": {
+      id: "/_app/chat/$conversationId";
+      path: "/$conversationId";
+      fullPath: "/chat/$conversationId";
+      preLoaderRoute: typeof AppChatConversationIdRouteImport;
+      parentRoute: typeof AppChatRoute;
+    };
+    "/agents/runs/$id": {
+      id: "/agents/runs/$id";
+      path: "/$id";
+      fullPath: "/agents/runs/$id";
+      preLoaderRoute: typeof AgentsRunsIdRouteRouteImport;
+      parentRoute: typeof AgentsRunsRouteRoute;
+    };
+    "/agents/edit/$id": {
+      id: "/agents/edit/$id";
+      path: "/edit/$id";
+      fullPath: "/agents/edit/$id";
+      preLoaderRoute: typeof AgentsEditIdRouteRouteImport;
+      parentRoute: typeof AgentsRouteRoute;
+    };
+    "/agents/runs/$id/": {
+      id: "/agents/runs/$id/";
+      path: "/";
+      fullPath: "/agents/runs/$id/";
+      preLoaderRoute: typeof AgentsRunsIdIndexRouteImport;
+      parentRoute: typeof AgentsRunsIdRouteRoute;
+    };
+    "/agents/edit/$id/": {
+      id: "/agents/edit/$id/";
+      path: "/";
+      fullPath: "/agents/edit/$id/";
+      preLoaderRoute: typeof AgentsEditIdIndexRouteImport;
+      parentRoute: typeof AgentsEditIdRouteRoute;
+    };
+    "/prototype/coworker/info/$slug": {
+      id: "/prototype/coworker/info/$slug";
+      path: "/prototype/coworker/info/$slug";
+      fullPath: "/prototype/coworker/info/$slug";
+      preLoaderRoute: typeof PrototypeCoworkerInfoSlugRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/workspaces/$id/image": {
+      id: "/api/workspaces/$id/image";
+      path: "/api/workspaces/$id/image";
+      fullPath: "/api/workspaces/$id/image";
+      preLoaderRoute: typeof ApiWorkspacesIdImageRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/sandbox-files/$id/download": {
+      id: "/api/sandbox-files/$id/download";
+      path: "/api/sandbox-files/$id/download";
+      fullPath: "/api/sandbox-files/$id/download";
+      preLoaderRoute: typeof ApiSandboxFilesIdDownloadRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/oauth/dynamics/pending": {
+      id: "/api/oauth/dynamics/pending";
+      path: "/api/oauth/dynamics/pending";
+      fullPath: "/api/oauth/dynamics/pending";
+      preLoaderRoute: typeof ApiOauthDynamicsPendingRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/modulr/documents/download": {
+      id: "/api/modulr/documents/download";
+      path: "/api/modulr/documents/download";
+      fullPath: "/api/modulr/documents/download";
+      preLoaderRoute: typeof ApiModulrDocumentsDownloadRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/mock/crm/openapi.json": {
+      id: "/api/mock/crm/openapi.json";
+      path: "/api/mock/crm/openapi.json";
+      fullPath: "/api/mock/crm/openapi.json";
+      preLoaderRoute: typeof ApiMockCrmOpenapiDotjsonRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/mock/crm/deals": {
+      id: "/api/mock/crm/deals";
+      path: "/api/mock/crm/deals";
+      fullPath: "/api/mock/crm/deals";
+      preLoaderRoute: typeof ApiMockCrmDealsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/mock/crm/contacts": {
+      id: "/api/mock/crm/contacts";
+      path: "/api/mock/crm/contacts";
+      fullPath: "/api/mock/crm/contacts";
+      preLoaderRoute: typeof ApiMockCrmContactsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/mcp/oauth/token": {
+      id: "/api/mcp/oauth/token";
+      path: "/api/mcp/oauth/token";
+      fullPath: "/api/mcp/oauth/token";
+      preLoaderRoute: typeof ApiMcpOauthTokenRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/mcp/oauth/register": {
+      id: "/api/mcp/oauth/register";
+      path: "/api/mcp/oauth/register";
+      fullPath: "/api/mcp/oauth/register";
+      preLoaderRoute: typeof ApiMcpOauthRegisterRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/mcp/oauth/authorize": {
+      id: "/api/mcp/oauth/authorize";
+      path: "/api/mcp/oauth/authorize";
+      fullPath: "/api/mcp/oauth/authorize";
+      preLoaderRoute: typeof ApiMcpOauthAuthorizeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/testing/cli-session": {
+      id: "/api/internal/testing/cli-session";
+      path: "/api/internal/testing/cli-session";
+      fullPath: "/api/internal/testing/cli-session";
+      preLoaderRoute: typeof ApiInternalTestingCliSessionRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/testing/cli-live": {
+      id: "/api/internal/testing/cli-live";
+      path: "/api/internal/testing/cli-live";
+      fullPath: "/api/internal/testing/cli-live";
+      preLoaderRoute: typeof ApiInternalTestingCliLiveRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/slack/post-as-bot": {
+      id: "/api/internal/slack/post-as-bot";
+      path: "/api/internal/slack/post-as-bot";
+      fullPath: "/api/internal/slack/post-as-bot";
+      preLoaderRoute: typeof ApiInternalSlackPostAsBotRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/mcp/runtime-credentials": {
+      id: "/api/internal/mcp/runtime-credentials";
+      path: "/api/internal/mcp/runtime-credentials";
+      fullPath: "/api/internal/mcp/runtime-credentials";
+      preLoaderRoute: typeof ApiInternalMcpRuntimeCredentialsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/mcp/modulr-credentials": {
+      id: "/api/internal/mcp/modulr-credentials";
+      path: "/api/internal/mcp/modulr-credentials";
+      fullPath: "/api/internal/mcp/modulr-credentials";
+      preLoaderRoute: typeof ApiInternalMcpModulrCredentialsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/mcp/galien-credentials": {
+      id: "/api/internal/mcp/galien-credentials";
+      path: "/api/internal/mcp/galien-credentials";
+      fullPath: "/api/internal/mcp/galien-credentials";
+      preLoaderRoute: typeof ApiInternalMcpGalienCredentialsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/integrations/resend/webhook": {
+      id: "/api/integrations/resend/webhook";
+      path: "/api/integrations/resend/webhook";
+      fullPath: "/api/integrations/resend/webhook";
+      preLoaderRoute: typeof ApiIntegrationsResendWebhookRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/integrations/nango/providers": {
+      id: "/api/integrations/nango/providers";
+      path: "/api/integrations/nango/providers";
+      fullPath: "/api/integrations/nango/providers";
+      preLoaderRoute: typeof ApiIntegrationsNangoProvidersRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/integrations/linkedin/webhook": {
+      id: "/api/integrations/linkedin/webhook";
+      path: "/api/integrations/linkedin/webhook";
+      fullPath: "/api/integrations/linkedin/webhook";
+      preLoaderRoute: typeof ApiIntegrationsLinkedinWebhookRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/instance/auth/start": {
+      id: "/api/instance/auth/start";
+      path: "/api/instance/auth/start";
+      fullPath: "/api/instance/auth/start";
+      preLoaderRoute: typeof ApiInstanceAuthStartRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/provider-auth/status": {
+      id: "/api/control-plane/provider-auth/status";
+      path: "/api/control-plane/provider-auth/status";
+      fullPath: "/api/control-plane/provider-auth/status";
+      preLoaderRoute: typeof ApiControlPlaneProviderAuthStatusRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/provider-auth/disconnect": {
+      id: "/api/control-plane/provider-auth/disconnect";
+      path: "/api/control-plane/provider-auth/disconnect";
+      fullPath: "/api/control-plane/provider-auth/disconnect";
+      preLoaderRoute: typeof ApiControlPlaneProviderAuthDisconnectRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/link/start": {
+      id: "/api/control-plane/link/start";
+      path: "/api/control-plane/link/start";
+      fullPath: "/api/control-plane/link/start";
+      preLoaderRoute: typeof ApiControlPlaneLinkStartRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/link/exchange": {
+      id: "/api/control-plane/link/exchange";
+      path: "/api/control-plane/link/exchange";
+      fullPath: "/api/control-plane/link/exchange";
+      preLoaderRoute: typeof ApiControlPlaneLinkExchangeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/link/callback": {
+      id: "/api/control-plane/link/callback";
+      path: "/api/control-plane/link/callback";
+      fullPath: "/api/control-plane/link/callback";
+      preLoaderRoute: typeof ApiControlPlaneLinkCallbackRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/link/authorize": {
+      id: "/api/control-plane/link/authorize";
+      path: "/api/control-plane/link/authorize";
+      fullPath: "/api/control-plane/link/authorize";
+      preLoaderRoute: typeof ApiControlPlaneLinkAuthorizeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/integrations/toggle": {
+      id: "/api/control-plane/integrations/toggle";
+      path: "/api/control-plane/integrations/toggle";
+      fullPath: "/api/control-plane/integrations/toggle";
+      preLoaderRoute: typeof ApiControlPlaneIntegrationsToggleRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/integrations/status": {
+      id: "/api/control-plane/integrations/status";
+      path: "/api/control-plane/integrations/status";
+      fullPath: "/api/control-plane/integrations/status";
+      preLoaderRoute: typeof ApiControlPlaneIntegrationsStatusRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/integrations/disconnect": {
+      id: "/api/control-plane/integrations/disconnect";
+      path: "/api/control-plane/integrations/disconnect";
+      fullPath: "/api/control-plane/integrations/disconnect";
+      preLoaderRoute: typeof ApiControlPlaneIntegrationsDisconnectRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/integrations/connect": {
+      id: "/api/control-plane/integrations/connect";
+      path: "/api/control-plane/integrations/connect";
+      fullPath: "/api/control-plane/integrations/connect";
+      preLoaderRoute: typeof ApiControlPlaneIntegrationsConnectRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/auth/start": {
+      id: "/api/control-plane/auth/start";
+      path: "/api/control-plane/auth/start";
+      fullPath: "/api/control-plane/auth/start";
+      preLoaderRoute: typeof ApiControlPlaneAuthStartRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/auth/exchange": {
+      id: "/api/control-plane/auth/exchange";
+      path: "/api/control-plane/auth/exchange";
+      fullPath: "/api/control-plane/auth/exchange";
+      preLoaderRoute: typeof ApiControlPlaneAuthExchangeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/auth/callback": {
+      id: "/api/control-plane/auth/callback";
+      path: "/api/control-plane/auth/callback";
+      fullPath: "/api/control-plane/auth/callback";
+      preLoaderRoute: typeof ApiControlPlaneAuthCallbackRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/control-plane/auth/authorize": {
+      id: "/api/control-plane/auth/authorize";
+      path: "/api/control-plane/auth/authorize";
+      fullPath: "/api/control-plane/auth/authorize";
+      preLoaderRoute: typeof ApiControlPlaneAuthAuthorizeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/auth/password/start": {
+      id: "/api/auth/password/start";
+      path: "/api/auth/password/start";
+      fullPath: "/api/auth/password/start";
+      preLoaderRoute: typeof ApiAuthPasswordStartRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/_auth/sign-in/$token/resend": {
+      id: "/_auth/sign-in/$token/resend";
+      path: "/resend";
+      fullPath: "/sign-in/$token/resend";
+      preLoaderRoute: typeof AuthSignInTokenResendRouteImport;
+      parentRoute: typeof AuthSignInTokenRoute;
+    };
+    "/_auth/sign-in/$token/confirm": {
+      id: "/_auth/sign-in/$token/confirm";
+      path: "/confirm";
+      fullPath: "/sign-in/$token/confirm";
+      preLoaderRoute: typeof AuthSignInTokenConfirmRouteImport;
+      parentRoute: typeof AuthSignInTokenRoute;
+    };
+    "/agents/edit/$id/runs/": {
+      id: "/agents/edit/$id/runs/";
+      path: "/runs";
+      fullPath: "/agents/edit/$id/runs/";
+      preLoaderRoute: typeof AgentsEditIdRunsIndexRouteImport;
+      parentRoute: typeof AgentsEditIdRouteRoute;
+    };
+    "/api/mock/crm/contacts/$id": {
+      id: "/api/mock/crm/contacts/$id";
+      path: "/$id";
+      fullPath: "/api/mock/crm/contacts/$id";
+      preLoaderRoute: typeof ApiMockCrmContactsIdRouteImport;
+      parentRoute: typeof ApiMockCrmContactsRoute;
+    };
+    "/api/internal/runtime/interrupts/status": {
+      id: "/api/internal/runtime/interrupts/status";
+      path: "/api/internal/runtime/interrupts/status";
+      fullPath: "/api/internal/runtime/interrupts/status";
+      preLoaderRoute: typeof ApiInternalRuntimeInterruptsStatusRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/runtime/interrupts/create": {
+      id: "/api/internal/runtime/interrupts/create";
+      path: "/api/internal/runtime/interrupts/create";
+      fullPath: "/api/internal/runtime/interrupts/create";
+      preLoaderRoute: typeof ApiInternalRuntimeInterruptsCreateRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/coworkers/runtime/list": {
+      id: "/api/internal/coworkers/runtime/list";
+      path: "/api/internal/coworkers/runtime/list";
+      fullPath: "/api/internal/coworkers/runtime/list";
+      preLoaderRoute: typeof ApiInternalCoworkersRuntimeListRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/coworkers/runtime/invoke": {
+      id: "/api/internal/coworkers/runtime/invoke";
+      path: "/api/internal/coworkers/runtime/invoke";
+      fullPath: "/api/internal/coworkers/runtime/invoke";
+      preLoaderRoute: typeof ApiInternalCoworkersRuntimeInvokeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/coworkers/runtime/edit": {
+      id: "/api/internal/coworkers/runtime/edit";
+      path: "/api/internal/coworkers/runtime/edit";
+      fullPath: "/api/internal/coworkers/runtime/edit";
+      preLoaderRoute: typeof ApiInternalCoworkersRuntimeEditRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/admin/remote-integrations/users": {
+      id: "/api/internal/admin/remote-integrations/users";
+      path: "/api/internal/admin/remote-integrations/users";
+      fullPath: "/api/internal/admin/remote-integrations/users";
+      preLoaderRoute: typeof ApiInternalAdminRemoteIntegrationsUsersRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/internal/admin/remote-integrations/credentials": {
+      id: "/api/internal/admin/remote-integrations/credentials";
+      path: "/api/internal/admin/remote-integrations/credentials";
+      fullPath: "/api/internal/admin/remote-integrations/credentials";
+      preLoaderRoute: typeof ApiInternalAdminRemoteIntegrationsCredentialsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/coworkers/documents/$id/download": {
+      id: "/api/coworkers/documents/$id/download";
+      path: "/api/coworkers/documents/$id/download";
+      fullPath: "/api/coworkers/documents/$id/download";
+      preLoaderRoute: typeof ApiCoworkersDocumentsIdDownloadRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/auth/provider/$provider/callback": {
+      id: "/api/auth/provider/$provider/callback";
+      path: "/api/auth/provider/$provider/callback";
+      fullPath: "/api/auth/provider/$provider/callback";
+      preLoaderRoute: typeof ApiAuthProviderProviderCallbackRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/agents/edit/$id/runs/$runId": {
+      id: "/agents/edit/$id/runs/$runId";
+      path: "/runs/$runId";
+      fullPath: "/agents/edit/$id/runs/$runId";
+      preLoaderRoute: typeof AgentsEditIdRunsRunIdRouteImport;
+      parentRoute: typeof AgentsEditIdRouteRoute;
+    };
+    "/api/internal/coworkers/runtime/documents/upload": {
+      id: "/api/internal/coworkers/runtime/documents/upload";
+      path: "/api/internal/coworkers/runtime/documents/upload";
+      fullPath: "/api/internal/coworkers/runtime/documents/upload";
+      preLoaderRoute: typeof ApiInternalCoworkersRuntimeDocumentsUploadRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
 interface AdminRouteRouteChildren {
-  AdminAuditTrailRoute: typeof AdminAuditTrailRoute
-  AdminOverviewRoute: typeof AdminOverviewRoute
-  AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
-  AdminUsageRoute: typeof AdminUsageRoute
-  AdminWorkspacesRoute: typeof AdminWorkspacesRoute
-  AdminIndexRoute: typeof AdminIndexRoute
+  AdminAuditTrailRoute: typeof AdminAuditTrailRoute;
+  AdminOverviewRoute: typeof AdminOverviewRoute;
+  AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute;
+  AdminUsageRoute: typeof AdminUsageRoute;
+  AdminWorkspacesRoute: typeof AdminWorkspacesRoute;
+  AdminIndexRoute: typeof AdminIndexRoute;
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -3242,64 +3269,64 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminUsageRoute: AdminUsageRoute,
   AdminWorkspacesRoute: AdminWorkspacesRoute,
   AdminIndexRoute: AdminIndexRoute,
-}
+};
 
-const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
-  AdminRouteRouteChildren,
-)
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(AdminRouteRouteChildren);
 
 interface AgentsRunsIdRouteRouteChildren {
-  AgentsRunsIdIndexRoute: typeof AgentsRunsIdIndexRoute
+  AgentsRunsIdIndexRoute: typeof AgentsRunsIdIndexRoute;
 }
 
 const AgentsRunsIdRouteRouteChildren: AgentsRunsIdRouteRouteChildren = {
   AgentsRunsIdIndexRoute: AgentsRunsIdIndexRoute,
-}
+};
 
-const AgentsRunsIdRouteRouteWithChildren =
-  AgentsRunsIdRouteRoute._addFileChildren(AgentsRunsIdRouteRouteChildren)
+const AgentsRunsIdRouteRouteWithChildren = AgentsRunsIdRouteRoute._addFileChildren(
+  AgentsRunsIdRouteRouteChildren,
+);
 
 interface AgentsRunsRouteRouteChildren {
-  AgentsRunsIdRouteRoute: typeof AgentsRunsIdRouteRouteWithChildren
-  AgentsRunsIndexRoute: typeof AgentsRunsIndexRoute
+  AgentsRunsIdRouteRoute: typeof AgentsRunsIdRouteRouteWithChildren;
+  AgentsRunsIndexRoute: typeof AgentsRunsIndexRoute;
 }
 
 const AgentsRunsRouteRouteChildren: AgentsRunsRouteRouteChildren = {
   AgentsRunsIdRouteRoute: AgentsRunsIdRouteRouteWithChildren,
   AgentsRunsIndexRoute: AgentsRunsIndexRoute,
-}
+};
 
 const AgentsRunsRouteRouteWithChildren = AgentsRunsRouteRoute._addFileChildren(
   AgentsRunsRouteRouteChildren,
-)
+);
 
 interface AgentsEditIdRouteRouteChildren {
-  AgentsEditIdIndexRoute: typeof AgentsEditIdIndexRoute
-  AgentsEditIdRunsRunIdRoute: typeof AgentsEditIdRunsRunIdRoute
-  AgentsEditIdRunsIndexRoute: typeof AgentsEditIdRunsIndexRoute
+  AgentsEditIdIndexRoute: typeof AgentsEditIdIndexRoute;
+  AgentsEditIdRunsRunIdRoute: typeof AgentsEditIdRunsRunIdRoute;
+  AgentsEditIdRunsIndexRoute: typeof AgentsEditIdRunsIndexRoute;
 }
 
 const AgentsEditIdRouteRouteChildren: AgentsEditIdRouteRouteChildren = {
   AgentsEditIdIndexRoute: AgentsEditIdIndexRoute,
   AgentsEditIdRunsRunIdRoute: AgentsEditIdRunsRunIdRoute,
   AgentsEditIdRunsIndexRoute: AgentsEditIdRunsIndexRoute,
-}
+};
 
-const AgentsEditIdRouteRouteWithChildren =
-  AgentsEditIdRouteRoute._addFileChildren(AgentsEditIdRouteRouteChildren)
+const AgentsEditIdRouteRouteWithChildren = AgentsEditIdRouteRoute._addFileChildren(
+  AgentsEditIdRouteRouteChildren,
+);
 
 interface AgentsRouteRouteChildren {
-  AgentsRunsRouteRoute: typeof AgentsRunsRouteRouteWithChildren
-  AgentsGridRoute: typeof AgentsGridRoute
-  AgentsHistoryRoute: typeof AgentsHistoryRoute
-  AgentsNewRoute: typeof AgentsNewRoute
-  AgentsOverviewRoute: typeof AgentsOverviewRoute
-  AgentsUsageRoute: typeof AgentsUsageRoute
-  AgentsIndexRoute: typeof AgentsIndexRoute
-  AgentsEditIdRouteRoute: typeof AgentsEditIdRouteRouteWithChildren
-  AgentsDeployTemplateIdRoute: typeof AgentsDeployTemplateIdRoute
-  AgentsFoldersFolderIdRoute: typeof AgentsFoldersFolderIdRoute
-  AgentsInfoSlugRoute: typeof AgentsInfoSlugRoute
+  AgentsRunsRouteRoute: typeof AgentsRunsRouteRouteWithChildren;
+  AgentsGridRoute: typeof AgentsGridRoute;
+  AgentsHistoryRoute: typeof AgentsHistoryRoute;
+  AgentsNewRoute: typeof AgentsNewRoute;
+  AgentsOverviewRoute: typeof AgentsOverviewRoute;
+  AgentsUsageRoute: typeof AgentsUsageRoute;
+  AgentsIndexRoute: typeof AgentsIndexRoute;
+  AgentsEditIdRouteRoute: typeof AgentsEditIdRouteRouteWithChildren;
+  AgentsDeployTemplateIdRoute: typeof AgentsDeployTemplateIdRoute;
+  AgentsFoldersFolderIdRoute: typeof AgentsFoldersFolderIdRoute;
+  AgentsInfoSlugRoute: typeof AgentsInfoSlugRoute;
 }
 
 const AgentsRouteRouteChildren: AgentsRouteRouteChildren = {
@@ -3314,39 +3341,38 @@ const AgentsRouteRouteChildren: AgentsRouteRouteChildren = {
   AgentsDeployTemplateIdRoute: AgentsDeployTemplateIdRoute,
   AgentsFoldersFolderIdRoute: AgentsFoldersFolderIdRoute,
   AgentsInfoSlugRoute: AgentsInfoSlugRoute,
-}
+};
 
-const AgentsRouteRouteWithChildren = AgentsRouteRoute._addFileChildren(
-  AgentsRouteRouteChildren,
-)
+const AgentsRouteRouteWithChildren = AgentsRouteRoute._addFileChildren(AgentsRouteRouteChildren);
 
 interface IntegrationsRouteRouteChildren {
-  IntegrationsTypeRoute: typeof IntegrationsTypeRoute
+  IntegrationsTypeRoute: typeof IntegrationsTypeRoute;
 }
 
 const IntegrationsRouteRouteChildren: IntegrationsRouteRouteChildren = {
   IntegrationsTypeRoute: IntegrationsTypeRoute,
-}
+};
 
-const IntegrationsRouteRouteWithChildren =
-  IntegrationsRouteRoute._addFileChildren(IntegrationsRouteRouteChildren)
+const IntegrationsRouteRouteWithChildren = IntegrationsRouteRoute._addFileChildren(
+  IntegrationsRouteRouteChildren,
+);
 
 interface InternalRouteRouteChildren {
-  InternalChatOverviewRoute: typeof InternalChatOverviewRoute
-  InternalCoworkerOverviewRoute: typeof InternalCoworkerOverviewRoute
-  InternalCreditsRoute: typeof InternalCreditsRoute
-  InternalMcpRoute: typeof InternalMcpRoute
-  InternalOpsRoute: typeof InternalOpsRoute
-  InternalPerformanceRoute: typeof InternalPerformanceRoute
-  InternalPreviewsRoute: typeof InternalPreviewsRoute
-  InternalReadmePreviewRoute: typeof InternalReadmePreviewRoute
-  InternalSandboxesRoute: typeof InternalSandboxesRoute
-  InternalSubscriptionsRoute: typeof InternalSubscriptionsRoute
-  InternalTemplatesRoute: typeof InternalTemplatesRoute
-  InternalToolsRoute: typeof InternalToolsRoute
-  InternalUsageRoute: typeof InternalUsageRoute
-  InternalWorkspacesRoute: typeof InternalWorkspacesRoute
-  InternalIndexRoute: typeof InternalIndexRoute
+  InternalChatOverviewRoute: typeof InternalChatOverviewRoute;
+  InternalCoworkerOverviewRoute: typeof InternalCoworkerOverviewRoute;
+  InternalCreditsRoute: typeof InternalCreditsRoute;
+  InternalMcpRoute: typeof InternalMcpRoute;
+  InternalOpsRoute: typeof InternalOpsRoute;
+  InternalPerformanceRoute: typeof InternalPerformanceRoute;
+  InternalPreviewsRoute: typeof InternalPreviewsRoute;
+  InternalReadmePreviewRoute: typeof InternalReadmePreviewRoute;
+  InternalSandboxesRoute: typeof InternalSandboxesRoute;
+  InternalSubscriptionsRoute: typeof InternalSubscriptionsRoute;
+  InternalTemplatesRoute: typeof InternalTemplatesRoute;
+  InternalToolsRoute: typeof InternalToolsRoute;
+  InternalUsageRoute: typeof InternalUsageRoute;
+  InternalWorkspacesRoute: typeof InternalWorkspacesRoute;
+  InternalIndexRoute: typeof InternalIndexRoute;
 }
 
 const InternalRouteRouteChildren: InternalRouteRouteChildren = {
@@ -3365,47 +3391,45 @@ const InternalRouteRouteChildren: InternalRouteRouteChildren = {
   InternalUsageRoute: InternalUsageRoute,
   InternalWorkspacesRoute: InternalWorkspacesRoute,
   InternalIndexRoute: InternalIndexRoute,
-}
+};
 
 const InternalRouteRouteWithChildren = InternalRouteRoute._addFileChildren(
   InternalRouteRouteChildren,
-)
+);
 
 interface LegalRouteRouteChildren {
-  LegalPrivacyPolicyRoute: typeof LegalPrivacyPolicyRoute
-  LegalTermsRoute: typeof LegalTermsRoute
+  LegalPrivacyPolicyRoute: typeof LegalPrivacyPolicyRoute;
+  LegalTermsRoute: typeof LegalTermsRoute;
 }
 
 const LegalRouteRouteChildren: LegalRouteRouteChildren = {
   LegalPrivacyPolicyRoute: LegalPrivacyPolicyRoute,
   LegalTermsRoute: LegalTermsRoute,
-}
+};
 
-const LegalRouteRouteWithChildren = LegalRouteRoute._addFileChildren(
-  LegalRouteRouteChildren,
-)
+const LegalRouteRouteWithChildren = LegalRouteRoute._addFileChildren(LegalRouteRouteChildren);
 
 interface OnboardingRouteRouteChildren {
-  OnboardingIntegrationsRoute: typeof OnboardingIntegrationsRoute
-  OnboardingSubscriptionsRoute: typeof OnboardingSubscriptionsRoute
+  OnboardingIntegrationsRoute: typeof OnboardingIntegrationsRoute;
+  OnboardingSubscriptionsRoute: typeof OnboardingSubscriptionsRoute;
 }
 
 const OnboardingRouteRouteChildren: OnboardingRouteRouteChildren = {
   OnboardingIntegrationsRoute: OnboardingIntegrationsRoute,
   OnboardingSubscriptionsRoute: OnboardingSubscriptionsRoute,
-}
+};
 
 const OnboardingRouteRouteWithChildren = OnboardingRouteRoute._addFileChildren(
   OnboardingRouteRouteChildren,
-)
+);
 
 interface SettingsRouteRouteChildren {
-  SettingsAdvancedRoute: typeof SettingsAdvancedRoute
-  SettingsBillingRoute: typeof SettingsBillingRoute
-  SettingsSubscriptionsRoute: typeof SettingsSubscriptionsRoute
-  SettingsUsageRoute: typeof SettingsUsageRoute
-  SettingsWorkspaceRoute: typeof SettingsWorkspaceRoute
-  SettingsIndexRoute: typeof SettingsIndexRoute
+  SettingsAdvancedRoute: typeof SettingsAdvancedRoute;
+  SettingsBillingRoute: typeof SettingsBillingRoute;
+  SettingsSubscriptionsRoute: typeof SettingsSubscriptionsRoute;
+  SettingsUsageRoute: typeof SettingsUsageRoute;
+  SettingsWorkspaceRoute: typeof SettingsWorkspaceRoute;
+  SettingsIndexRoute: typeof SettingsIndexRoute;
 }
 
 const SettingsRouteRouteChildren: SettingsRouteRouteChildren = {
@@ -3415,98 +3439,92 @@ const SettingsRouteRouteChildren: SettingsRouteRouteChildren = {
   SettingsUsageRoute: SettingsUsageRoute,
   SettingsWorkspaceRoute: SettingsWorkspaceRoute,
   SettingsIndexRoute: SettingsIndexRoute,
-}
+};
 
 const SettingsRouteRouteWithChildren = SettingsRouteRoute._addFileChildren(
   SettingsRouteRouteChildren,
-)
+);
 
 interface SkillsRouteRouteChildren {
-  SkillsIdRoute: typeof SkillsIdRoute
-  SkillsCommunitySkillIdRoute: typeof SkillsCommunitySkillIdRoute
+  SkillsIdRoute: typeof SkillsIdRoute;
+  SkillsCommunitySkillIdRoute: typeof SkillsCommunitySkillIdRoute;
 }
 
 const SkillsRouteRouteChildren: SkillsRouteRouteChildren = {
   SkillsIdRoute: SkillsIdRoute,
   SkillsCommunitySkillIdRoute: SkillsCommunitySkillIdRoute,
-}
+};
 
-const SkillsRouteRouteWithChildren = SkillsRouteRoute._addFileChildren(
-  SkillsRouteRouteChildren,
-)
+const SkillsRouteRouteWithChildren = SkillsRouteRoute._addFileChildren(SkillsRouteRouteChildren);
 
 interface SupportRouteRouteChildren {
-  SupportIndexRoute: typeof SupportIndexRoute
+  SupportIndexRoute: typeof SupportIndexRoute;
 }
 
 const SupportRouteRouteChildren: SupportRouteRouteChildren = {
   SupportIndexRoute: SupportIndexRoute,
-}
+};
 
-const SupportRouteRouteWithChildren = SupportRouteRoute._addFileChildren(
-  SupportRouteRouteChildren,
-)
+const SupportRouteRouteWithChildren = SupportRouteRoute._addFileChildren(SupportRouteRouteChildren);
 
 interface ToolboxRouteRouteChildren {
-  ToolboxIndexRoute: typeof ToolboxIndexRoute
-  ToolboxSourcesIdRoute: typeof ToolboxSourcesIdRoute
-  ToolboxSourcesNewRoute: typeof ToolboxSourcesNewRoute
+  ToolboxIndexRoute: typeof ToolboxIndexRoute;
+  ToolboxSourcesIdRoute: typeof ToolboxSourcesIdRoute;
+  ToolboxSourcesNewRoute: typeof ToolboxSourcesNewRoute;
 }
 
 const ToolboxRouteRouteChildren: ToolboxRouteRouteChildren = {
   ToolboxIndexRoute: ToolboxIndexRoute,
   ToolboxSourcesIdRoute: ToolboxSourcesIdRoute,
   ToolboxSourcesNewRoute: ToolboxSourcesNewRoute,
-}
+};
 
-const ToolboxRouteRouteWithChildren = ToolboxRouteRoute._addFileChildren(
-  ToolboxRouteRouteChildren,
-)
+const ToolboxRouteRouteWithChildren = ToolboxRouteRoute._addFileChildren(ToolboxRouteRouteChildren);
 
 interface AppChatRouteChildren {
-  AppChatConversationIdRoute: typeof AppChatConversationIdRoute
-  AppChatIndexRoute: typeof AppChatIndexRoute
+  AppChatConversationIdRoute: typeof AppChatConversationIdRoute;
+  AppChatIndexRoute: typeof AppChatIndexRoute;
 }
 
 const AppChatRouteChildren: AppChatRouteChildren = {
   AppChatConversationIdRoute: AppChatConversationIdRoute,
   AppChatIndexRoute: AppChatIndexRoute,
-}
+};
 
-const AppChatRouteWithChildren =
-  AppChatRoute._addFileChildren(AppChatRouteChildren)
+const AppChatRouteWithChildren = AppChatRoute._addFileChildren(AppChatRouteChildren);
 
 interface AppRouteChildren {
-  AppChatRoute: typeof AppChatRouteWithChildren
-  AppInboxRoute: typeof AppInboxRoute
+  AppChatRoute: typeof AppChatRouteWithChildren;
+  AppInboxRoute: typeof AppInboxRoute;
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppChatRoute: AppChatRouteWithChildren,
   AppInboxRoute: AppInboxRoute,
-}
+};
 
-const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren);
 
 interface AuthSignInTokenRouteChildren {
-  AuthSignInTokenConfirmRoute: typeof AuthSignInTokenConfirmRoute
-  AuthSignInTokenResendRoute: typeof AuthSignInTokenResendRoute
+  AuthSignInTokenConfirmRoute: typeof AuthSignInTokenConfirmRoute;
+  AuthSignInTokenResendRoute: typeof AuthSignInTokenResendRoute;
 }
 
 const AuthSignInTokenRouteChildren: AuthSignInTokenRouteChildren = {
   AuthSignInTokenConfirmRoute: AuthSignInTokenConfirmRoute,
   AuthSignInTokenResendRoute: AuthSignInTokenResendRoute,
-}
+};
 
 const AuthSignInTokenRouteWithChildren = AuthSignInTokenRoute._addFileChildren(
   AuthSignInTokenRouteChildren,
-)
+);
 
 interface AuthRouteChildren {
-  AuthInviteOnlyRoute: typeof AuthInviteOnlyRoute
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
-  AuthSignInTokenRoute: typeof AuthSignInTokenRouteWithChildren
+  AuthInviteOnlyRoute: typeof AuthInviteOnlyRoute;
+  AuthLoginRoute: typeof AuthLoginRoute;
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute;
+  AuthSignInTokenRoute: typeof AuthSignInTokenRouteWithChildren;
+  AuthWorkspaceInvitationsInvitationIdRoute: typeof AuthWorkspaceInvitationsInvitationIdRoute;
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -3514,17 +3532,18 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignInTokenRoute: AuthSignInTokenRouteWithChildren,
-}
+  AuthWorkspaceInvitationsInvitationIdRoute: AuthWorkspaceInvitationsInvitationIdRoute,
+};
 
-const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren);
 
 interface PublicRouteChildren {
-  PublicAvatarRoute: typeof PublicAvatarRoute
-  PublicBugReportRoute: typeof PublicBugReportRoute
-  PublicPricingRoute: typeof PublicPricingRoute
-  PublicTemplatesRoute: typeof PublicTemplatesRoute
-  PublicUploadRoute: typeof PublicUploadRoute
-  PublicIndexRoute: typeof PublicIndexRoute
+  PublicAvatarRoute: typeof PublicAvatarRoute;
+  PublicBugReportRoute: typeof PublicBugReportRoute;
+  PublicPricingRoute: typeof PublicPricingRoute;
+  PublicTemplatesRoute: typeof PublicTemplatesRoute;
+  PublicUploadRoute: typeof PublicUploadRoute;
+  PublicIndexRoute: typeof PublicIndexRoute;
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
@@ -3534,35 +3553,33 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicTemplatesRoute: PublicTemplatesRoute,
   PublicUploadRoute: PublicUploadRoute,
   PublicIndexRoute: PublicIndexRoute,
-}
+};
 
-const PublicRouteWithChildren =
-  PublicRoute._addFileChildren(PublicRouteChildren)
+const PublicRouteWithChildren = PublicRoute._addFileChildren(PublicRouteChildren);
 
 interface TemplateRouteChildren {
-  TemplateTemplateIdRoute: typeof TemplateTemplateIdRoute
-  TemplateIndexRoute: typeof TemplateIndexRoute
+  TemplateTemplateIdRoute: typeof TemplateTemplateIdRoute;
+  TemplateIndexRoute: typeof TemplateIndexRoute;
 }
 
 const TemplateRouteChildren: TemplateRouteChildren = {
   TemplateTemplateIdRoute: TemplateTemplateIdRoute,
   TemplateIndexRoute: TemplateIndexRoute,
-}
+};
 
-const TemplateRouteWithChildren = TemplateRoute._addFileChildren(
-  TemplateRouteChildren,
-)
+const TemplateRouteWithChildren = TemplateRoute._addFileChildren(TemplateRouteChildren);
 
 interface ApiMockCrmContactsRouteChildren {
-  ApiMockCrmContactsIdRoute: typeof ApiMockCrmContactsIdRoute
+  ApiMockCrmContactsIdRoute: typeof ApiMockCrmContactsIdRoute;
 }
 
 const ApiMockCrmContactsRouteChildren: ApiMockCrmContactsRouteChildren = {
   ApiMockCrmContactsIdRoute: ApiMockCrmContactsIdRoute,
-}
+};
 
-const ApiMockCrmContactsRouteWithChildren =
-  ApiMockCrmContactsRoute._addFileChildren(ApiMockCrmContactsRouteChildren)
+const ApiMockCrmContactsRouteWithChildren = ApiMockCrmContactsRoute._addFileChildren(
+  ApiMockCrmContactsRouteChildren,
+);
 
 const rootRouteChildren: RootRouteChildren = {
   AdminRouteRoute: AdminRouteRouteWithChildren,
@@ -3579,6 +3596,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
   AccountsRoute: AccountsRoute,
+  AuditRoute: AuditRoute,
   InstanceRoute: InstanceRoute,
   SearchRoute: SearchRoute,
   TemplateRoute: TemplateRouteWithChildren,
@@ -3591,8 +3609,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthCheckEmailRoute: ApiAuthCheckEmailRoute,
   ApiAuthNativeCallbackRoute: ApiAuthNativeCallbackRoute,
   ApiControlPlaneHealthRoute: ApiControlPlaneHealthRoute,
-  ApiControlPlaneRuntimeCredentialsRoute:
-    ApiControlPlaneRuntimeCredentialsRoute,
+  ApiControlPlaneRuntimeCredentialsRoute: ApiControlPlaneRuntimeCredentialsRoute,
   ApiCoworkersTriggerRoute: ApiCoworkersTriggerRoute,
   ApiDevAutoLoginRoute: ApiDevAutoLoginRoute,
   ApiDevHealthRoute: ApiDevHealthRoute,
@@ -3601,36 +3618,30 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInternalMemoryRoute: ApiInternalMemoryRoute,
   ApiInviteOnlyRequestAccessRoute: ApiInviteOnlyRequestAccessRoute,
   ApiOauthCallbackRoute: ApiOauthCallbackRoute,
-  ApiObservabilityClientObservationsRoute:
-    ApiObservabilityClientObservationsRoute,
+  ApiObservabilityClientObservationsRoute: ApiObservabilityClientObservationsRoute,
   ApiPromptsTemplateDeployRoute: ApiPromptsTemplateDeployRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
   ApiSettingsPhoneNumberRoute: ApiSettingsPhoneNumberRoute,
   ApiSlackEventsRoute: ApiSlackEventsRoute,
   ApiSlackLinkRoute: ApiSlackLinkRoute,
   ApiZeroQueryRoute: ApiZeroQueryRoute,
+  ShareAgentsSlugRoute: ShareAgentsSlugRoute,
   ApiRpcIndexRoute: ApiRpcIndexRoute,
   ApiAuthPasswordStartRoute: ApiAuthPasswordStartRoute,
   ApiControlPlaneAuthAuthorizeRoute: ApiControlPlaneAuthAuthorizeRoute,
   ApiControlPlaneAuthCallbackRoute: ApiControlPlaneAuthCallbackRoute,
   ApiControlPlaneAuthExchangeRoute: ApiControlPlaneAuthExchangeRoute,
   ApiControlPlaneAuthStartRoute: ApiControlPlaneAuthStartRoute,
-  ApiControlPlaneIntegrationsConnectRoute:
-    ApiControlPlaneIntegrationsConnectRoute,
-  ApiControlPlaneIntegrationsDisconnectRoute:
-    ApiControlPlaneIntegrationsDisconnectRoute,
-  ApiControlPlaneIntegrationsStatusRoute:
-    ApiControlPlaneIntegrationsStatusRoute,
-  ApiControlPlaneIntegrationsToggleRoute:
-    ApiControlPlaneIntegrationsToggleRoute,
+  ApiControlPlaneIntegrationsConnectRoute: ApiControlPlaneIntegrationsConnectRoute,
+  ApiControlPlaneIntegrationsDisconnectRoute: ApiControlPlaneIntegrationsDisconnectRoute,
+  ApiControlPlaneIntegrationsStatusRoute: ApiControlPlaneIntegrationsStatusRoute,
+  ApiControlPlaneIntegrationsToggleRoute: ApiControlPlaneIntegrationsToggleRoute,
   ApiControlPlaneLinkAuthorizeRoute: ApiControlPlaneLinkAuthorizeRoute,
   ApiControlPlaneLinkCallbackRoute: ApiControlPlaneLinkCallbackRoute,
   ApiControlPlaneLinkExchangeRoute: ApiControlPlaneLinkExchangeRoute,
   ApiControlPlaneLinkStartRoute: ApiControlPlaneLinkStartRoute,
-  ApiControlPlaneProviderAuthDisconnectRoute:
-    ApiControlPlaneProviderAuthDisconnectRoute,
-  ApiControlPlaneProviderAuthStatusRoute:
-    ApiControlPlaneProviderAuthStatusRoute,
+  ApiControlPlaneProviderAuthDisconnectRoute: ApiControlPlaneProviderAuthDisconnectRoute,
+  ApiControlPlaneProviderAuthStatusRoute: ApiControlPlaneProviderAuthStatusRoute,
   ApiInstanceAuthStartRoute: ApiInstanceAuthStartRoute,
   ApiIntegrationsLinkedinWebhookRoute: ApiIntegrationsLinkedinWebhookRoute,
   ApiIntegrationsNangoProvidersRoute: ApiIntegrationsNangoProvidersRoute,
@@ -3656,29 +3667,24 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCoworkersDocumentsIdDownloadRoute: ApiCoworkersDocumentsIdDownloadRoute,
   ApiInternalAdminRemoteIntegrationsCredentialsRoute:
     ApiInternalAdminRemoteIntegrationsCredentialsRoute,
-  ApiInternalAdminRemoteIntegrationsUsersRoute:
-    ApiInternalAdminRemoteIntegrationsUsersRoute,
+  ApiInternalAdminRemoteIntegrationsUsersRoute: ApiInternalAdminRemoteIntegrationsUsersRoute,
   ApiInternalCoworkersRuntimeEditRoute: ApiInternalCoworkersRuntimeEditRoute,
-  ApiInternalCoworkersRuntimeInvokeRoute:
-    ApiInternalCoworkersRuntimeInvokeRoute,
+  ApiInternalCoworkersRuntimeInvokeRoute: ApiInternalCoworkersRuntimeInvokeRoute,
   ApiInternalCoworkersRuntimeListRoute: ApiInternalCoworkersRuntimeListRoute,
-  ApiInternalRuntimeInterruptsCreateRoute:
-    ApiInternalRuntimeInterruptsCreateRoute,
-  ApiInternalRuntimeInterruptsStatusRoute:
-    ApiInternalRuntimeInterruptsStatusRoute,
-  ApiInternalCoworkersRuntimeDocumentsUploadRoute:
-    ApiInternalCoworkersRuntimeDocumentsUploadRoute,
-}
+  ApiInternalRuntimeInterruptsCreateRoute: ApiInternalRuntimeInterruptsCreateRoute,
+  ApiInternalRuntimeInterruptsStatusRoute: ApiInternalRuntimeInterruptsStatusRoute,
+  ApiInternalCoworkersRuntimeDocumentsUploadRoute: ApiInternalCoworkersRuntimeDocumentsUploadRoute,
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx";
+import type { startInstance } from "./start.ts";
+declare module "@tanstack/react-start" {
   interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+    ssr: true;
+    router: Awaited<ReturnType<typeof getRouter>>;
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>;
   }
 }

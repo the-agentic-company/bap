@@ -44,6 +44,7 @@ describe("worktree stack config", () => {
     expect(buildWorktreeStackConfig("bap-a1b2c3d4", 7)).toEqual({
       slot: 7,
       slotLabel: "07",
+      zeroCachePort: 5807,
       daytonaApiPort: 3307,
       daytonaProxyPort: 4007,
       daytonaSshGatewayPort: 2207,
@@ -58,6 +59,7 @@ describe("worktree stack config", () => {
     expect(buildWorktreeHostPorts(7)).toEqual([
       { name: "app", port: 3707 },
       { name: "ws", port: 4707 },
+      { name: "zero-cache", port: 5807 },
       { name: "daytona-api", port: 3307 },
       { name: "daytona-proxy", port: 4007 },
       { name: "daytona-ssh", port: 2207 },

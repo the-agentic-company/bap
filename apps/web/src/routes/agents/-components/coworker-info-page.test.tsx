@@ -13,7 +13,31 @@ type VitestProcedure = Extract<
   (...args: never[]) => unknown
 >;
 
-const mocks = vi.hoisted(() => ({
+type MockCoworkerListItem = {
+  id: string;
+  name: string;
+  description: string;
+  username: string;
+  folderId: string | null;
+  recentRuns: unknown[];
+  status: "on" | "off";
+  updatedAt: Date;
+};
+
+type MockCoworkerData = {
+  id: string;
+  name: string;
+  description: string;
+  username: string;
+  folderId: string | null;
+};
+
+const mocks = vi.hoisted<{
+  searchStr: string;
+  navigate: ReturnType<typeof vi.fn<VitestProcedure>>;
+  coworkerListData: MockCoworkerListItem[];
+  coworkerData: MockCoworkerData;
+}>(() => ({
   searchStr: "",
   navigate: vi.fn<VitestProcedure>(),
   coworkerListData: [

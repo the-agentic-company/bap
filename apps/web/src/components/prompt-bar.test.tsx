@@ -15,9 +15,15 @@ import { PromptBar } from "./prompt-bar";
 
 void jestDomVitest;
 
-const uploadFileAssetMock = vi.fn<
-  (file: File, options?: { onProgress?: (progress: { percent: number }) => void }) => Promise<unknown>
->();
+const uploadFileAssetMock =
+  vi.fn<
+    (
+      file: File,
+      options?: {
+        onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
+      },
+    ) => Promise<unknown>
+  >();
 
 const heroRichAnimatedPlaceholders: PromptSegment[][] = [
   [
@@ -55,7 +61,12 @@ vi.mock("@/components/ui/popover", () => ({
 }));
 
 vi.mock("@/orpc/hooks/file-assets", () => ({
-  uploadFileAsset: (...args: unknown[]) => uploadFileAssetMock(...args),
+  uploadFileAsset: (
+    file: File,
+    options?: {
+      onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
+    },
+  ) => uploadFileAssetMock(file, options),
 }));
 
 describe("PromptBar", () => {
@@ -193,8 +204,13 @@ describe("PromptBar", () => {
 
   it("keeps upload progress visible even when the file name is truncated", async () => {
     uploadFileAssetMock.mockImplementation(
-      async (_file: File, options?: { onProgress?: (progress: { percent: number }) => void }) => {
-        options?.onProgress?.({ percent: 42 });
+      async (
+        _file: File,
+        options?: {
+          onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
+        },
+      ) => {
+        options?.onProgress?.({ loaded: 42, total: 100, percent: 42 });
         return new Promise(() => {});
       },
     );

@@ -6,6 +6,7 @@ import {
   message,
   sandboxFile,
   type ContentPart,
+  type GenerationFailureKind,
   type MessageTiming,
 } from "@bap/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -44,6 +45,7 @@ export type FinishTurnPersistenceInput = {
   uploadedSandboxFileIds?: string[];
   errorMessage?: string;
   debugInfo?: Record<string, unknown> | null;
+  failureKind?: GenerationFailureKind | null;
   lastRuntimeProgressAt: Date;
   recoveryAttempts: number;
   completionReason?: GenerationCompletionReason | null;
@@ -73,6 +75,33 @@ export type FinishTurnPersistenceResult = {
   assistantContent?: string;
   contentParts: ContentPart[];
 };
+
+function resolveFailureKind(
+  status: "completed" | "cancelled" | "error",
+  completionReason: GenerationCompletionReason | null | undefined,
+): GenerationFailureKind | null {
+  if (status !== "error") {
+    return null;
+  }
+  switch (completionReason) {
+    case "runner_declared_failure":
+      return "runner_declared_failure";
+    case "auth_timeout":
+      return "auth_error";
+    case "approval_timeout":
+      return "approval_timeout";
+    case "run_deadline":
+    case "bootstrap_timeout":
+    case "runtime_no_progress_after_prompt":
+    case "runtime_progress_stalled":
+      return "runtime_timeout";
+    case "sandbox_missing":
+    case "broken_runtime_state":
+      return "sandbox_error";
+    default:
+      return "internal_error";
+  }
+}
 
 export type FinalizeStaleGenerationsInput = {
   completedAt: Date;
@@ -222,7 +251,8 @@ export class GenerationLifecycleStore {
 
   async appendProgress(input: AppendProgressInput): Promise<void> {
     const contentParts = sanitizeJsonForPostgres(input.contentParts);
-    const debugInfo = sanitizeJsonForPostgres(input.debugInfo ?? null);
+    const debugInfo =
+      input.debugInfo === undefined ? undefined : sanitizeJsonForPostgres(input.debugInfo);
 
     await db
       .update(generation)
@@ -244,8 +274,10 @@ export class GenerationLifecycleStore {
         ...(input.recoveryAttempts !== undefined
           ? { recoveryAttempts: input.recoveryAttempts }
           : {}),
-        completionReason: input.completionReason ?? null,
-        debugInfo: debugInfo as Record<string, unknown> | null,
+        ...(input.completionReason !== undefined
+          ? { completionReason: input.completionReason }
+          : {}),
+        ...(debugInfo !== undefined ? { debugInfo: debugInfo as Record<string, unknown> | null } : {}),
       })
       .where(eq(generation.id, input.generationId));
   }
@@ -669,6 +701,32 @@ export class GenerationLifecycleStore {
 
   async finishTurn(input: FinishTurnPersistenceInput): Promise<FinishTurnPersistenceResult> {
     await generationInterruptService.cancelInterruptsForGeneration(input.generationId);
+    const latestGeneration = await db.query.generation.findFirst({
+      where: eq(generation.id, input.generationId),
+      columns: {
+        status: true,
+        completionReason: true,
+        failureKind: true,
+        contentParts: true,
+      },
+    });
+    const shouldFinishRunnerDeclaredFailure =
+      input.status === "completed" &&
+      latestGeneration?.status === "error" &&
+      (latestGeneration.completionReason === "runner_declared_failure" ||
+        latestGeneration.failureKind === "runner_declared_failure");
+    if (
+      latestGeneration?.status === "completed" ||
+      latestGeneration?.status === "cancelled" ||
+      (latestGeneration?.status === "error" && !shouldFinishRunnerDeclaredFailure)
+    ) {
+      return {
+        contentParts: Array.isArray(latestGeneration.contentParts)
+          ? latestGeneration.contentParts
+          : input.contentParts,
+      };
+    }
+
     const sanitizedInput: FinishTurnPersistenceInput = {
       ...input,
       assistantContent: sanitizePostgresText(input.assistantContent),
@@ -681,6 +739,15 @@ export class GenerationLifecycleStore {
       contentParts: sanitizeJsonForPostgres(input.contentParts),
       debugInfo: sanitizeJsonForPostgres(input.debugInfo ?? null),
     };
+    const completionReason =
+      sanitizedInput.completionReason ??
+      (sanitizedInput.status === "completed"
+        ? "completed"
+        : sanitizedInput.status === "cancelled"
+          ? "user_cancel"
+          : "runtime_error");
+    const failureKind =
+      sanitizedInput.failureKind ?? resolveFailureKind(sanitizedInput.status, completionReason);
     const terminalMessage = await this.persistTerminalAssistantMessage(sanitizedInput);
     const contentParts = terminalMessage.contentParts;
     await db
@@ -699,13 +766,8 @@ export class GenerationLifecycleStore {
         debugInfo: sanitizedInput.debugInfo ?? null,
         lastRuntimeProgressAt: sanitizedInput.lastRuntimeProgressAt,
         recoveryAttempts: sanitizedInput.recoveryAttempts,
-        completionReason:
-          sanitizedInput.completionReason ??
-          (sanitizedInput.status === "completed"
-            ? "completed"
-            : sanitizedInput.status === "cancelled"
-              ? "user_cancel"
-              : "runtime_error"),
+        completionReason,
+        failureKind,
         inputTokens: sanitizedInput.usage.inputTokens,
         outputTokens: sanitizedInput.usage.outputTokens,
         completedAt: new Date(),
@@ -784,6 +846,7 @@ export class GenerationLifecycleStore {
                 : "error",
           finishedAt: new Date(),
           errorMessage: sanitizedInput.errorMessage,
+          failureKind,
           debugInfo: sanitizedInput.debugInfo ?? null,
         })
         .where(eq(coworkerRun.id, input.coworkerRunId));
@@ -954,6 +1017,49 @@ export class GenerationLifecycleStore {
 
   async finalizeCancelledGenerations(input: FinalizeCancelledGenerationsInput): Promise<void> {
     await finalizeCancelledGenerationRows(input, emitPersistedTerminalGenerationEvent);
+  }
+
+  async failCoworkerRunFromRuntime(input: {
+    generationId: string;
+    conversationId: string;
+    coworkerRunId: string;
+    userId: string;
+    workspaceId: string;
+    errorMessage: string;
+    failureKind?: GenerationFailureKind | null;
+    debugInfo?: Record<string, unknown> | null;
+  }): Promise<boolean> {
+    const debugInfo = sanitizeJsonForPostgres(input.debugInfo ?? null);
+    const [updatedGeneration] = await db
+      .update(generation)
+      .set({
+        errorMessage: sanitizePostgresText(input.errorMessage),
+        debugInfo,
+        completionReason:
+          input.failureKind === "runner_declared_failure"
+            ? "runner_declared_failure"
+            : "runtime_error",
+        failureKind: input.failureKind ?? "internal_error",
+      })
+      .where(
+        and(
+          eq(generation.id, input.generationId),
+          eq(generation.conversationId, input.conversationId),
+          inArray(generation.status, ["running", "awaiting_approval", "awaiting_auth", "paused"]),
+          sql`exists (
+            select 1 from ${conversation}
+            where ${conversation.id} = ${generation.conversationId}
+            and ${conversation.userId} = ${input.userId}
+          )`,
+        ),
+      )
+      .returning({ id: generation.id });
+
+    if (!updatedGeneration) {
+      return false;
+    }
+
+    return true;
   }
 
   private async finalizeStaleProductRows(

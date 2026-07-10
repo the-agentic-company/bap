@@ -2,11 +2,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import type { Client as PgClient } from "pg";
 
-import {
-  buildSharedStackConfig,
-  buildWorktreeStackConfig,
-  formatWorktreeStackSlot,
-} from "./stack";
+import { buildSharedStackConfig, buildWorktreeStackConfig, formatWorktreeStackSlot } from "./stack";
 import { buildWorktreePublicCallbackBaseUrl } from "../../../../../packages/core/src/lib/worktree-routing";
 import {
   agentBrowserSessionName,
@@ -17,6 +13,8 @@ import {
   fail,
   isDatabaseConnectionError,
   quoteIdentifier,
+  resolveDockerComposeServiceEnv,
+  resolvePostgresPassword,
   readSharedEnvValues,
   redactConnectionString,
   resolveRuntimeSharedStackConfig,
@@ -37,14 +35,33 @@ export function resolveSharedRedisAdminPassword(): string {
   return process.env.BAP_SHARED_REDIS_ADMIN_PASSWORD?.trim() || "bap-redis-admin";
 }
 
-export function resolveSharedMinioRootCredentials(): { accessKeyId: string; secretAccessKey: string } {
+export function resolveSharedMinioRootCredentialsFromEnv(
+  containerEnv: Record<string, string | undefined>,
+  env: NodeJS.ProcessEnv,
+): { accessKeyId: string; secretAccessKey: string } {
+  const containerAccessKeyId = containerEnv.MINIO_ROOT_USER?.trim();
+  const containerSecretAccessKey = containerEnv.MINIO_ROOT_PASSWORD?.trim();
+  if (containerAccessKeyId && containerSecretAccessKey) {
+    return {
+      accessKeyId: containerAccessKeyId,
+      secretAccessKey: containerSecretAccessKey,
+    };
+  }
+
   return {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID?.trim() || process.env.S3_ACCESS_KEY_ID?.trim() || "minioadmin",
+    accessKeyId: env.MINIO_ROOT_USER?.trim() || env.BAP_MINIO_ROOT_USER?.trim() || "minioadmin",
     secretAccessKey:
-      process.env.AWS_SECRET_ACCESS_KEY?.trim() ||
-      process.env.S3_SECRET_ACCESS_KEY?.trim() ||
-      "minioadmin",
+      env.MINIO_ROOT_PASSWORD?.trim() || env.BAP_MINIO_ROOT_PASSWORD?.trim() || "minioadmin",
   };
+}
+
+export function resolveSharedMinioRootCredentials(): {
+  accessKeyId: string;
+  secretAccessKey: string;
+} {
+  const sharedStack = buildSharedStackConfig();
+  const containerEnv = resolveDockerComposeServiceEnv(sharedStack.composeProjectName, "minio");
+  return resolveSharedMinioRootCredentialsFromEnv(containerEnv, process.env);
 }
 
 export function buildPostgresAdminUrl(metadata: InstanceMetadata): string {
@@ -73,7 +90,10 @@ export async function withAdminClient<T>(
   }
 }
 
-export async function withClient<T>(connectionString: string, fn: (client: PgClient) => Promise<T>): Promise<T> {
+export async function withClient<T>(
+  connectionString: string,
+  fn: (client: PgClient) => Promise<T>,
+): Promise<T> {
   const client = new Client({ connectionString });
   await client.connect();
   try {
@@ -115,7 +135,9 @@ export async function ensureDatabaseRole(metadata: InstanceMetadata): Promise<vo
       );
     }
 
-    await client.query(`revoke all on database ${quoteIdentifier(metadata.databaseName)} from public`);
+    await client.query(
+      `revoke all on database ${quoteIdentifier(metadata.databaseName)} from public`,
+    );
     await client.query(
       `grant all privileges on database ${quoteIdentifier(metadata.databaseName)} to ${quoteIdentifier(metadata.databaseUser)}`,
     );
@@ -128,12 +150,8 @@ export async function ensureDatabaseRole(metadata: InstanceMetadata): Promise<vo
     buildPostgresBaseUrl(resolveRuntimeSharedStackConfig().postgresPort, metadata.databaseName),
     async (client) => {
       await client.query(`revoke all on schema public from public`);
-      await client.query(
-        `grant all on schema public to ${quoteIdentifier(metadata.databaseUser)}`,
-      );
-      await client.query(
-        `alter schema public owner to ${quoteIdentifier(metadata.databaseUser)}`,
-      );
+      await client.query(`grant all on schema public to ${quoteIdentifier(metadata.databaseUser)}`);
+      await client.query(`alter schema public owner to ${quoteIdentifier(metadata.databaseUser)}`);
     },
   );
 }
@@ -143,6 +161,40 @@ export async function ensureDatabaseExtensions(metadata: InstanceMetadata): Prom
     buildPostgresBaseUrl(resolveRuntimeSharedStackConfig().postgresPort, metadata.databaseName),
     async (client) => {
       await client.query("create extension if not exists vector");
+    },
+  );
+}
+
+export async function ensureZeroDatabaseMetadataAccess(metadata: InstanceMetadata): Promise<void> {
+  await withAdminClient(
+    buildPostgresBaseUrl(resolveRuntimeSharedStackConfig().postgresPort, metadata.databaseName),
+    async (client) => {
+      const existing = await client.query<{ schema_name: string }>(
+        `
+          select schema_name
+          from information_schema.schemata
+          where schema_name in ('zero', 'zero_0', 'zero_0/cvr', 'zero_0/cdc')
+        `,
+      );
+      if (existing.rowCount === 0) {
+        return;
+      }
+
+      for (const row of existing.rows) {
+        const schemaName = quoteIdentifier(row.schema_name);
+        const databaseUser = quoteIdentifier(metadata.databaseUser);
+        await client.query(`grant usage on schema ${schemaName} to ${databaseUser}`);
+        await client.query(
+          `grant all privileges on all tables in schema ${schemaName} to ${databaseUser}`,
+        );
+        await client.query(
+          `grant all privileges on all sequences in schema ${schemaName} to ${databaseUser}`,
+        );
+        await client.query(
+          `grant execute on all functions in schema ${schemaName} to ${databaseUser}`,
+        );
+      }
+      console.log(`[worktree] ensured zero metadata access for ${metadata.databaseName}`);
     },
   );
 }
@@ -258,7 +310,9 @@ export async function dropMinioTenant(metadata: InstanceMetadata): Promise<void>
     `mc admin policy remove local ${policyName} >/dev/null 2>&1 || true`,
   ].join("\n");
 
-  runSharedServiceCommand(metadata.repoRoot, "minio", ["sh", "-lc", script], { allowFailure: true });
+  runSharedServiceCommand(metadata.repoRoot, "minio", ["sh", "-lc", script], {
+    allowFailure: true,
+  });
   console.log(`[worktree] removed minio bucket ${metadata.minioBucketName}`);
 }
 
@@ -273,6 +327,8 @@ export function buildDerivedEnv(metadata: InstanceMetadata): DerivedEnv {
     WS_PORT: String(metadata.wsPort),
     APP_URL: instanceAppUrl,
     VITE_APP_URL: instanceAppUrl,
+    VITE_ZERO_CACHE_URL: `http://127.0.0.1:${metadata.zeroCachePort}`,
+    VITE_ZERO_QUERY_URL: `http://host.docker.internal:${metadata.appPort}/api/zero/query`,
     E2B_CALLBACK_BASE_URL: buildWorktreePublicCallbackBaseUrl({
       instanceId: metadata.instanceId,
       callbackBaseUrl: process.env.E2B_CALLBACK_BASE_URL,
@@ -341,7 +397,9 @@ export function buildDerivedEnv(metadata: InstanceMetadata): DerivedEnv {
   };
 }
 
-export function buildCommentedWorktreeEnv(metadata: InstanceMetadata): Record<(typeof COMMENTED_WORKTREE_ENV_KEYS)[number], string> {
+export function buildCommentedWorktreeEnv(
+  metadata: InstanceMetadata,
+): Record<(typeof COMMENTED_WORKTREE_ENV_KEYS)[number], string> {
   const stack = buildWorktreeStackConfig(metadata.instanceId, metadata.stackSlot);
 
   return {
@@ -363,11 +421,27 @@ export function buildWorktreeRuntimeEnv(metadata: InstanceMetadata): DerivedEnv 
   };
 }
 
-export function buildSharedComposeEnv(repoRoot: string): NodeJS.ProcessEnv {
+export function buildSharedComposeEnv(
+  repoRoot: string,
+  options: { postgresPassword?: string } = {},
+): NodeJS.ProcessEnv {
   const shared = buildSharedStackConfig();
-  return {
+  const postgresPassword = options.postgresPassword ?? resolvePostgresPassword();
+  const minioRoot = resolveSharedMinioRootCredentials();
+  const env = {
     ...process.env,
     ...readSharedEnvValues(repoRoot),
+  };
+  delete env.AWS_ACCESS_KEY_ID;
+  delete env.AWS_SECRET_ACCESS_KEY;
+  delete env.S3_ACCESS_KEY_ID;
+  delete env.S3_SECRET_ACCESS_KEY;
+  return {
+    ...env,
+    DATABASE_PASSWORD: postgresPassword,
+    DB_PASSWORD: postgresPassword,
+    MINIO_ROOT_USER: minioRoot.accessKeyId,
+    MINIO_ROOT_PASSWORD: minioRoot.secretAccessKey,
     BAP_COMPOSE_PROJECT: shared.composeProjectName,
     COMPOSE_PROJECT_NAME: shared.composeProjectName,
     BAP_POSTGRES_PORT: String(shared.postgresPort),

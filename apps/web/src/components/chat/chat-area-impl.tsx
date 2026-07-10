@@ -36,6 +36,7 @@ export type ChatAreaProps = {
   compact?: boolean;
   hideStreamError?: boolean;
   hiddenMessageContents?: string[];
+  transcriptFooter?: React.ReactNode;
 };
 
 export const CHAT_EXTERNAL_SEND_EVENT = "chat:external-send";
@@ -52,6 +53,7 @@ export function ChatAreaImpl({
   compact = false,
   hideStreamError = false,
   hiddenMessageContents,
+  transcriptFooter,
 }: ChatAreaProps) {
   const { setHeaderActions } = useChatHeaderActions();
   const { data: platformSkills, isLoading: isPlatformSkillsLoading } = usePlatformSkillList();
@@ -242,8 +244,13 @@ export function ChatAreaImpl({
     }
   }, [messages, streamingParts]);
 
-  const { autoApprovalNode, compactSkillsMenuSectionNode, modelSelectorNode, selectedSkillCount, skillsMenuNode } =
-    useChatAreaControls({
+  const {
+    autoApprovalNode,
+    compactSkillsMenuSectionNode,
+    modelSelectorNode,
+    selectedSkillCount,
+    skillsMenuNode,
+  } = useChatAreaControls({
     accessibleSkills,
     armedDebugPreset,
     autoApproveEnabled,
@@ -270,7 +277,7 @@ export function ChatAreaImpl({
     setSelection,
     skillSelectionScopeKey,
     toggleSelectedSkillSlug,
-    });
+  });
 
   const transcriptNodes = useChatAreaTranscriptNodes({
     historicalActivityBlocks,
@@ -371,6 +378,7 @@ export function ChatAreaImpl({
     stopRecordingAndTranscribe,
     streamElapsedMs,
     streamError: hideStreamError ? null : streamError,
+    transcriptFooter,
     transcriptNodes,
     visibleActivityItemsBySegmentId,
     voiceError,

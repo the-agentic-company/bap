@@ -7,9 +7,11 @@ type VitestProcedure = Extract<
 
 const {
   clientFindFirstMock,
+  getWorkspaceMembershipForUserMock,
   refreshTokenFindFirstMock,
   grantFindFirstMock,
   insertMock,
+  listWorkspacesForUserMock,
   updateMock,
   updateSetMock,
   updateWhereMock,
@@ -17,9 +19,11 @@ const {
   signHostedMcpAccessTokenMock,
 } = vi.hoisted(() => {
   const clientFindFirstMock = vi.fn<VitestProcedure>();
+  const getWorkspaceMembershipForUserMock = vi.fn<VitestProcedure>();
   const refreshTokenFindFirstMock = vi.fn<VitestProcedure>();
   const grantFindFirstMock = vi.fn<VitestProcedure>();
   const insertMock = vi.fn<VitestProcedure>();
+  const listWorkspacesForUserMock = vi.fn<VitestProcedure>();
   const updateWhereMock = vi.fn<VitestProcedure>();
   const updatePayloads: Array<Record<string, unknown>> = [];
   const updateSetMock = vi.fn<VitestProcedure>((payload: Record<string, unknown>) => {
@@ -31,9 +35,11 @@ const {
 
   return {
     clientFindFirstMock,
+    getWorkspaceMembershipForUserMock,
     refreshTokenFindFirstMock,
     grantFindFirstMock,
     insertMock,
+    listWorkspacesForUserMock,
     updateMock,
     updateSetMock,
     updateWhereMock,
@@ -67,8 +73,8 @@ vi.mock("@bap/db/client", () => ({
 }));
 
 vi.mock("@bap/core/server/billing/service", () => ({
-  getWorkspaceMembershipForUser: vi.fn<VitestProcedure>(),
-  listWorkspacesForUser: vi.fn<VitestProcedure>(),
+  getWorkspaceMembershipForUser: getWorkspaceMembershipForUserMock,
+  listWorkspacesForUser: listWorkspacesForUserMock,
 }));
 
 vi.mock("@bap/core/server/galien/service", () => ({
@@ -90,7 +96,33 @@ vi.mock("@bap/core/server/hosted-mcp-oauth", () => ({
 import {
   exchangeHostedMcpRefreshToken,
   parseHostedMcpAuthorizationRequest,
+  renderHostedMcpConsentHtml,
+  resolveHostedMcpWorkspaceConsent,
 } from "./hosted-mcp-oauth";
+
+function createConsentHtmlParams(params?: {
+  selectedWorkspaceIds?: string[];
+  allowAllWorkspaces?: boolean;
+}) {
+  return {
+    clientId: "client-1",
+    clientName: "Codex",
+    redirectUri: "http://localhost:34567/callback",
+    audience: "bap" as const,
+    resource: "http://127.0.0.1:3010/bap",
+    resourceName: "Bap MCP",
+    scopes: ["bap"],
+    state: "state-1",
+    codeChallenge: "challenge-1",
+    currentWorkspaceId: "ws-2",
+    workspaces: [
+      { id: "ws-1", name: "Workspace One", active: false },
+      { id: "ws-2", name: "Workspace Two", active: true },
+    ],
+    selectedWorkspaceIds: params?.selectedWorkspaceIds ?? ["ws-1", "ws-2"],
+    allowAllWorkspaces: params?.allowAllWorkspaces ?? true,
+  };
+}
 
 describe("hosted MCP OAuth refresh tokens", () => {
   beforeEach(() => {
@@ -109,6 +141,8 @@ describe("hosted MCP OAuth refresh tokens", () => {
       clientId: "client-1",
       userId: "user-1",
       workspaceId: "workspace-1",
+      allowedWorkspaceIds: ["workspace-1", "workspace-2"],
+      allowAllWorkspaces: false,
       audience: "galien",
       resource: "https://mcp.example.com/galien/mcp",
       scopes: ["galien"],
@@ -162,6 +196,8 @@ describe("hosted MCP OAuth refresh tokens", () => {
       clientId: "client-1",
       userId: "user-1",
       workspaceId: "workspace-1",
+      allowedWorkspaceIds: ["workspace-1"],
+      allowAllWorkspaces: false,
       audience: "bap",
       resource: "http://127.0.0.1:3010/bap",
       scopes: ["bap"],
@@ -177,6 +213,8 @@ describe("hosted MCP OAuth refresh tokens", () => {
 
     expect(signHostedMcpAccessTokenMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        allowedWorkspaceIds: ["workspace-1"],
+        allowAllWorkspaces: false,
         audience: "bap",
         issuer: "http://127.0.0.1:3010/bap",
       }),
@@ -222,6 +260,56 @@ describe("hosted MCP OAuth authorization requests", () => {
       resource: "http://127.0.0.1:3010/bap",
       resourceName: "Bap MCP",
       scopes: ["bap"],
+    });
+  });
+
+  it("renders only all current and future workspace access for Bap", () => {
+    const html = renderHostedMcpConsentHtml(createConsentHtmlParams());
+
+    expect(html).toContain(
+      "This Bap MCP authorization will cover all your current and future member workspaces.",
+    );
+    expect(html).toContain('name="workspace_access_mode" value="all"');
+    expect(html).not.toContain('value="selected"');
+    expect(html).not.toContain('name="workspace_ids"');
+  });
+
+  it("rejects new Bap selected-workspace consent requests", async () => {
+    await expect(
+      resolveHostedMcpWorkspaceConsent({
+        audience: "bap",
+        userId: "user-1",
+        workspaces: [
+          { id: "ws-1", active: false },
+          { id: "ws-2", active: true },
+        ],
+        workspaceAccessMode: "selected",
+        selectedWorkspaceIds: ["ws-1"],
+        workspaceId: null,
+      }),
+    ).rejects.toThrow(
+      "Bap MCP authorization now requires access to all current and future workspaces.",
+    );
+  });
+
+  it("resolves Bap all-workspace consent to every current membership", async () => {
+    await expect(
+      resolveHostedMcpWorkspaceConsent({
+        audience: "bap",
+        userId: "user-1",
+        workspaces: [
+          { id: "ws-1", active: false },
+          { id: "ws-2", active: true },
+        ],
+        workspaceAccessMode: "all",
+        selectedWorkspaceIds: [],
+        workspaceId: null,
+      }),
+    ).resolves.toEqual({
+      workspaceId: "ws-2",
+      allowedWorkspaceIds: ["ws-1", "ws-2"],
+      allowAllWorkspaces: true,
+      selectedWorkspaceIds: ["ws-1", "ws-2"],
     });
   });
 });

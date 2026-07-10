@@ -1,8 +1,10 @@
 import type { db as database } from "@bap/db/client";
 import {
-  createFileAssetFromBuffer,
-  markFileAssetReference,
-} from "@bap/core/server/services/file-asset-service";
+  appendRuntimeVolumeSkillSlug,
+  buildOwnedSkillsRuntimeVolumePrefix,
+  buildRuntimeVolumeObjectKey,
+  writeRuntimeVolumeFile,
+} from "@bap/core/server/services/runtime-volume-service";
 import { resolveUniqueSkillNameInWorkspace } from "@bap/core/server/services/workspace-skill-service";
 import { skill, skillDocument, skillFile } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
@@ -481,6 +483,27 @@ export async function importSkill(
     parsedMetadata.slug,
     resolvedSlug,
   );
+  const storagePrefix = appendRuntimeVolumeSkillSlug(
+    buildOwnedSkillsRuntimeVolumePrefix({ workspaceId, userId }),
+    resolvedSlug,
+  );
+  const textEntries = normalizedEntries.filter(
+    (entry): entry is NormalizedTextEntry => entry.type === "text",
+  );
+  const binaryEntries = normalizedEntries.filter(
+    (entry): entry is NormalizedBinaryEntry => entry.type === "binary",
+  );
+
+  await Promise.all(
+    normalizedEntries.map((entry) =>
+      writeRuntimeVolumeFile({
+        storagePrefix,
+        relativePath: entry.path,
+        body: entry.type === "text" ? Buffer.from(entry.content, "utf8") : entry.content,
+        contentType: entry.type === "text" ? "text/plain; charset=utf-8" : entry.mimeType,
+      }),
+    ),
+  );
 
   return await database.transaction(async (tx) => {
     const [createdSkill] = await tx
@@ -502,57 +525,28 @@ export async function importSkill(
         description: skill.description,
       });
 
-    const textEntries = normalizedEntries.filter(
-      (entry): entry is NormalizedTextEntry => entry.type === "text",
-    );
-    const binaryEntries = normalizedEntries.filter(
-      (entry): entry is NormalizedBinaryEntry => entry.type === "binary",
-    );
-
     if (textEntries.length > 0) {
       await tx.insert(skillFile).values(
         textEntries.map((entry) => ({
           skillId: createdSkill.id,
           path: entry.path,
-          content: entry.content,
+          content: null,
         })),
       );
     }
 
     if (binaryEntries.length > 0) {
-      await Promise.all(
-        binaryEntries.map(async (entry) => {
-          const asset = await createFileAssetFromBuffer({
-            database: tx as unknown as typeof database,
-            userId,
-            workspaceId,
-            filename: entry.filename,
-            mimeType: entry.mimeType,
-            content: entry.content,
-          });
-          const [document] = await tx
-            .insert(skillDocument)
-            .values({
-              skillId: createdSkill.id,
-              fileAssetId: asset.id,
-              filename: asset.filename,
-              path: entry.path,
-              mimeType: asset.mimeType,
-              sizeBytes: asset.sizeBytes,
-              storageKey: asset.storageKey,
-              description: null,
-            })
-            .returning({ id: skillDocument.id });
-
-          if (document) {
-            await markFileAssetReference({
-              database: tx as unknown as typeof database,
-              fileAssetId: asset.id,
-              kind: "skill_document",
-              referenceId: document.id,
-            });
-          }
-        }),
+      await tx.insert(skillDocument).values(
+        binaryEntries.map((entry) => ({
+          skillId: createdSkill.id,
+          fileAssetId: null,
+          filename: entry.filename,
+          path: entry.path,
+          mimeType: entry.mimeType,
+          sizeBytes: entry.content.byteLength,
+          storageKey: buildRuntimeVolumeObjectKey(storagePrefix, entry.path),
+          description: null,
+        })),
       );
     }
 

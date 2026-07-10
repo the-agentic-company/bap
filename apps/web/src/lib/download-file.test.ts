@@ -14,7 +14,7 @@ describe("triggerBrowserDownload", () => {
       ok: true,
       status: 200,
       blob: vi.fn<() => Promise<Blob>>().mockResolvedValue(blob),
-    } as Response);
+    } as unknown as Response);
     const createObjectUrlMock = vi
       .spyOn(URL, "createObjectURL")
       .mockReturnValue("blob:download-url");

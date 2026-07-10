@@ -289,6 +289,7 @@ export function ChatAreaContent({
   stopRecordingAndTranscribe,
   streamElapsedMs,
   streamError,
+  transcriptFooter,
   transcriptNodes,
   visibleActivityItemsBySegmentId,
   voiceError,
@@ -336,6 +337,7 @@ export function ChatAreaContent({
   stopRecordingAndTranscribe: () => void;
   streamElapsedMs: number | null;
   streamError: string | null;
+  transcriptFooter?: React.ReactNode;
   transcriptNodes: React.ReactNode[];
   visibleActivityItemsBySegmentId: Map<string, ActivityItemData[]>;
   voiceError: string | null;
@@ -369,6 +371,11 @@ export function ChatAreaContent({
             </div>
           )}
           {transcriptNodes.length > 0 && transcriptNodes}
+          {transcriptFooter ? (
+            <div className={cn("mx-auto w-full", compact ? "max-w-full" : "max-w-3xl")}>
+              {transcriptFooter}
+            </div>
+          ) : null}
 
           {isEmptyChat ? null : (
             <>
@@ -466,7 +473,9 @@ export function ChatAreaContent({
       </div>
 
       <div className={cn("bg-background mt-auto min-w-0 shrink-0", compact ? "p-3" : "p-4")}>
-        <div className={cn("mx-auto w-full min-w-0 space-y-2", compact ? "max-w-full" : "max-w-4xl")}>
+        <div
+          className={cn("mx-auto w-full min-w-0 space-y-2", compact ? "max-w-full" : "max-w-4xl")}
+        >
           {isEmptyChat && (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-1.5">

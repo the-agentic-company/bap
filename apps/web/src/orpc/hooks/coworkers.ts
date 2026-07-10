@@ -477,8 +477,10 @@ export function useCoworkerRuns(
       ? zeroQueries.coworkerInventory.runsByCoworker({ coworkerId, limit })
       : null,
   );
-  const data = useMemo(() => (runs ?? []).map(mapZeroCoworkerRun), [runs]);
-  const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const zeroData = useMemo(() => (runs ?? []).map(mapZeroCoworkerRun), [runs]);
+  const data = zeroData;
+  const zeroError = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
+  const error = data.length > 0 ? null : zeroError;
   const isLoading =
     enabled &&
     !error &&

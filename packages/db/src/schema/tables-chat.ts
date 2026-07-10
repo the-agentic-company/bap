@@ -28,6 +28,7 @@ import type {
 } from "./enums";
 import type {
   ContentPart,
+  GenerationFailureKind,
   GenerationExecutionPolicy,
   GenerationInterruptDisplay,
   GenerationInterruptResponsePayload,
@@ -232,6 +233,7 @@ export const generation = pgTable(
     lastRuntimeProgressAt: timestamp("last_runtime_progress_at").defaultNow().notNull(),
     recoveryAttempts: integer("recovery_attempts").default(0).notNull(),
     completionReason: text("completion_reason"),
+    failureKind: text("failure_kind").$type<GenerationFailureKind>(),
     // Metadata
     errorMessage: text("error_message"),
     debugInfo: jsonb("debug_info").$type<Record<string, unknown>>(),
