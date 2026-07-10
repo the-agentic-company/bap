@@ -818,12 +818,10 @@ export function OutputPanel({
 
 export function RunDetailsPanel({
   conversationId,
-  hiddenMessageContents,
   runDebugInfo,
   runFailureKind,
 }: {
   conversationId?: string;
-  hiddenMessageContents?: string[];
   runDebugInfo?: unknown;
   runFailureKind?: string | null;
 }) {
@@ -836,7 +834,6 @@ export function RunDetailsPanel({
               conversationId={conversationId}
               compact
               debugInfo={runDebugInfo}
-              hiddenMessageContents={hiddenMessageContents}
               hideStreamError
               runnerDeclaredFailure={isRunnerDeclaredFailure(runFailureKind)}
             />

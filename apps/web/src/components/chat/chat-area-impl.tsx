@@ -35,7 +35,6 @@ export type ChatAreaProps = {
   enableAgenticApp?: boolean;
   compact?: boolean;
   hideStreamError?: boolean;
-  hiddenMessageContents?: string[];
   transcriptFooter?: React.ReactNode;
 };
 
@@ -52,7 +51,6 @@ export function ChatAreaImpl({
   enableAgenticApp = false,
   compact = false,
   hideStreamError = false,
-  hiddenMessageContents,
   transcriptFooter,
 }: ChatAreaProps) {
   const { setHeaderActions } = useChatHeaderActions();
@@ -244,13 +242,7 @@ export function ChatAreaImpl({
     }
   }, [messages, streamingParts]);
 
-  const {
-    autoApprovalNode,
-    compactSkillsMenuSectionNode,
-    modelSelectorNode,
-    selectedSkillCount,
-    skillsMenuNode,
-  } = useChatAreaControls({
+  const { autoApprovalNode, modelSelectorNode, skillsMenuNode } = useChatAreaControls({
     accessibleSkills,
     armedDebugPreset,
     autoApproveEnabled,
@@ -267,7 +259,6 @@ export function ChatAreaImpl({
     isCoworkerConversation,
     isResumingPausedRunDeadline,
     isStreaming,
-    compactControls: compact,
     normalizedSelectedModel,
     platformSkills,
     providerAvailability,
@@ -281,7 +272,6 @@ export function ChatAreaImpl({
 
   const transcriptNodes = useChatAreaTranscriptNodes({
     historicalActivityBlocks,
-    hiddenMessageContents,
     messages,
   });
   const showLiveActivity = shouldRenderLiveActivity({
@@ -365,9 +355,7 @@ export function ChatAreaImpl({
     modelSelectorNode,
     normalizedQueuedMessages,
     queueingEnabled,
-    renderCompactSkillsMenuSection: compactSkillsMenuSectionNode,
     scrollContainerRef,
-    selectedSkillCount,
     segmentApproveHandlers,
     segmentDenyHandlers,
     segmentToggleHandlers,

@@ -51,14 +51,12 @@ export function RunnerDeclaredFailureChatArea({
   compact,
   conversationId,
   debugInfo,
-  hiddenMessageContents,
   hideStreamError,
   runnerDeclaredFailure,
 }: {
   compact?: boolean;
   conversationId: string;
   debugInfo: unknown;
-  hiddenMessageContents?: string[];
   hideStreamError?: boolean;
   runnerDeclaredFailure: boolean;
 }) {
@@ -74,7 +72,6 @@ export function RunnerDeclaredFailureChatArea({
     <ChatArea
       conversationId={conversationId}
       compact={compact}
-      hiddenMessageContents={hiddenMessageContents}
       hideStreamError={hideStreamError}
       transcriptFooter={transcriptFooter}
     />

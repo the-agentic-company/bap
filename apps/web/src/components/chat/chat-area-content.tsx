@@ -276,9 +276,7 @@ export function ChatAreaContent({
   modelSelectorNode,
   normalizedQueuedMessages,
   queueingEnabled,
-  renderCompactSkillsMenuSection,
   scrollContainerRef,
-  selectedSkillCount,
   segmentApproveHandlers,
   segmentDenyHandlers,
   segmentToggleHandlers,
@@ -324,9 +322,7 @@ export function ChatAreaContent({
   modelSelectorNode: React.ReactNode;
   normalizedQueuedMessages: QueuedMessage[];
   queueingEnabled: boolean;
-  renderCompactSkillsMenuSection?: React.ReactNode;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
-  selectedSkillCount: number;
   segmentApproveHandlers: Map<string, (questionAnswers?: string[][]) => void>;
   segmentDenyHandlers: Map<string, () => void>;
   segmentToggleHandlers: Map<string, () => void>;
@@ -639,13 +635,9 @@ export function ChatAreaContent({
             placeholder="Send a message..."
             animatedPlaceholders={CHAT_PLACEHOLDER_PROMPTS}
             shouldAnimatePlaceholder={isEmptyChat}
-            compactControls={compact}
-            className={compact ? "w-full" : undefined}
-            renderCompactSkillsMenuSection={renderCompactSkillsMenuSection}
             renderSkills={skillsMenuNode}
             renderModelSelector={modelSelectorNode}
             renderAutoApproval={autoApprovalNode}
-            selectedSkillCount={selectedSkillCount}
           />
         </div>
       </div>

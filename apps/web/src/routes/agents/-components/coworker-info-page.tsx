@@ -156,13 +156,6 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     [run.data?.finishedAt, run.data?.startedAt, run.data?.status, runClockNow],
   );
   const shouldShowHeaderRunMeta = Boolean(run.data?.startedAt || run.data?.status);
-  const hiddenErrorMessageContents = useMemo(() => {
-    if (!run.data?.errorMessage) {
-      return undefined;
-    }
-
-    return [run.data.errorMessage, `Error : ${run.data.errorMessage}`];
-  }, [run.data?.errorMessage]);
   const outputPanel = useMemo(
     () => (
       <OutputPanel
@@ -309,12 +302,11 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     () => (
       <RunDetailsPanel
         conversationId={conversationId}
-        hiddenMessageContents={hiddenErrorMessageContents}
         runDebugInfo={run.data?.debugInfo}
         runFailureKind={run.data?.failureKind}
       />
     ),
-    [conversationId, hiddenErrorMessageContents, run.data?.debugInfo, run.data?.failureKind],
+    [conversationId, run.data?.debugInfo, run.data?.failureKind],
   );
   const emptyOutputPanel = useMemo(
     () => (
@@ -647,7 +639,6 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                       conversationId={conversationId}
                       compact
                       debugInfo={run.data?.debugInfo}
-                      hiddenMessageContents={hiddenErrorMessageContents}
                       hideStreamError
                       runnerDeclaredFailure={runnerDeclaredFailure}
                     />

@@ -9,29 +9,13 @@ import { MessageList, type Message } from "./message-list";
 
 export function useChatAreaTranscriptNodes({
   historicalActivityBlocks,
-  hiddenMessageContents,
   messages,
 }: {
   historicalActivityBlocks: HistoricalActivityBlock[];
-  hiddenMessageContents?: string[];
   messages: Message[];
 }) {
   return useMemo(() => {
-    const hiddenNormalizedContents = new Set(
-      (hiddenMessageContents ?? [])
-        .map((content) => content.trim())
-        .filter((content) => content.length > 0),
-    );
-    const visibleMessages =
-      hiddenNormalizedContents.size === 0
-        ? messages
-        : messages.filter((message) => {
-            if (message.role !== "assistant" && message.role !== "system") {
-              return true;
-            }
-            return !hiddenNormalizedContents.has(message.content.trim());
-          });
-    const continueMessageIndices = visibleMessages.reduce<number[]>((indices, message, index) => {
+    const continueMessageIndices = messages.reduce<number[]>((indices, message, index) => {
       if (isContinueMessage(message)) {
         indices.push(index);
       }
@@ -50,7 +34,7 @@ export function useChatAreaTranscriptNodes({
 
     for (let index = 0; index < pairedBlockCount; index += 1) {
       const continueIndex = continueMessageIndices[index];
-      const messageSlice = visibleMessages.slice(cursor, continueIndex);
+      const messageSlice = messages.slice(cursor, continueIndex);
       if (messageSlice.length > 0) {
         nodes.push(
           <MessageList key={`messages-before-${continueIndex}`} messages={messageSlice} />,
@@ -62,7 +46,7 @@ export function useChatAreaTranscriptNodes({
         nodes.push(renderHistoricalActivityBlock(block));
       }
 
-      const continueMessage = visibleMessages.slice(continueIndex, continueIndex + 1);
+      const continueMessage = messages.slice(continueIndex, continueIndex + 1);
       if (continueMessage.length > 0) {
         nodes.push(
           <MessageList key={`messages-continue-${continueIndex}`} messages={continueMessage} />,
@@ -74,7 +58,7 @@ export function useChatAreaTranscriptNodes({
       }
     }
 
-    const remainingMessages = visibleMessages.slice(cursor);
+    const remainingMessages = messages.slice(cursor);
     if (remainingMessages.length > 0) {
       nodes.push(<MessageList key="messages-remaining" messages={remainingMessages} />);
     }
@@ -84,5 +68,5 @@ export function useChatAreaTranscriptNodes({
     }
 
     return nodes;
-  }, [hiddenMessageContents, historicalActivityBlocks, messages]);
+  }, [historicalActivityBlocks, messages]);
 }

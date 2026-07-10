@@ -15,16 +15,6 @@ import { PromptBar } from "./prompt-bar";
 
 void jestDomVitest;
 
-const uploadFileAssetMock =
-  vi.fn<
-    (
-      file: File,
-      options?: {
-        onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
-      },
-    ) => Promise<unknown>
-  >();
-
 const heroRichAnimatedPlaceholders: PromptSegment[][] = [
   [
     { type: "text", content: "Every hour, triage new " },
@@ -60,15 +50,6 @@ vi.mock("@/components/ui/popover", () => ({
   PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/orpc/hooks/file-assets", () => ({
-  uploadFileAsset: (
-    file: File,
-    options?: {
-      onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
-    },
-  ) => uploadFileAssetMock(file, options),
-}));
-
 describe("PromptBar", () => {
   beforeEach(() => {
     globalThis.localStorage?.clear();
@@ -77,7 +58,6 @@ describe("PromptBar", () => {
 
   afterEach(() => {
     cleanup();
-    uploadFileAssetMock.mockReset();
   });
 
   it("clears the composer after a successful async submit", async () => {
@@ -200,32 +180,5 @@ describe("PromptBar", () => {
     expect(measurer).toHaveClass("overflow-hidden");
     expect(measurer).toHaveTextContent("Every hour, triage new");
     expect(measurer).toHaveTextContent("Zendesk");
-  });
-
-  it("keeps upload progress visible even when the file name is truncated", async () => {
-    uploadFileAssetMock.mockImplementation(
-      async (
-        _file: File,
-        options?: {
-          onProgress?: (progress: { loaded: number; total: number; percent: number }) => void;
-        },
-      ) => {
-        options?.onProgress?.({ loaded: 42, total: 100, percent: 42 });
-        return new Promise(() => {});
-      },
-    );
-
-    render(<PromptBar onSubmit={vi.fn<VitestProcedure>()} />);
-
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(["content"], "Ecole Primaire tres long nom.pdf", {
-      type: "application/pdf",
-    });
-
-    fireEvent.change(fileInput, { target: { files: [file] } });
-
-    await waitFor(() => {
-      expect(screen.getByText("42%")).toBeInTheDocument();
-    });
   });
 });

@@ -259,7 +259,7 @@ export function useCoworkerEditorPage({
       backlogRunCount >= COWORKER_RUN_BACKLOG_LIMIT
     );
   }, [activeCoworker?.disabledReason, runs]);
-  const [, setSelectedRunId] = useState<string | null>(routeRunId);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(routeRunId);
   const hasSetMobileDefaultRef = useRef(false);
   const remoteUserOptions = useMemo(
     () => (remoteUserSearchData?.users as RemoteIntegrationUserOption[] | undefined) ?? [],
@@ -350,15 +350,15 @@ export function useCoworkerEditorPage({
     if (!isRunsRoute) {
       setSelectedRunId(null);
       if (routeBaseTab) {
-        setActiveTab(routeBaseTab === "runs" ? "instruction" : routeBaseTab);
+        setActiveTab(routeBaseTab);
       }
       return;
     }
 
-    setActiveTab("instruction");
+    setActiveTab("runs");
     setSelectedRunId(routeRunId);
   }, [isRunsRoute, routeBaseTab, routeRunId]);
-  const [isInstructionPanelCollapsed, setIsInstructionPanelCollapsed] = useState(false);
+  const [isInstructionPanelCollapsed, setIsInstructionPanelCollapsed] = useState(true);
   const previousHasAgentInstructionsRef = useRef(false);
   const handleClose = useCallback(() => {
     setIsInstructionPanelCollapsed(true);
@@ -571,6 +571,7 @@ export function useCoworkerEditorPage({
     const previousHasAgentInstructions = previousHasAgentInstructionsRef.current;
 
     if (!hasAgentInstructions) {
+      setIsInstructionPanelCollapsed(true);
       previousHasAgentInstructionsRef.current = false;
       return;
     }
@@ -583,7 +584,13 @@ export function useCoworkerEditorPage({
   }, [hasAgentInstructions]);
 
   const isRunDisabled = !hasAgentInstructions || triggerCoworker.isPending || actions.isStartingRun;
-  const { handleRunClick, handleRemoteRunClick, handleTabChange } = useCoworkerEditorNavigation({
+  const {
+    handleRunClick,
+    handleRemoteRunClick,
+    handleTabChange,
+    handleSelectRun,
+    handleBackToRuns,
+  } = useCoworkerEditorNavigation({
     coworkerId,
     coworkerRouteSlug,
     embedded,
@@ -700,6 +707,7 @@ export function useCoworkerEditorPage({
         documents: activeCoworker?.documents ?? EMPTY_COWORKER_DOCUMENTS,
         runs,
         activeTab,
+        selectedRunId,
         isRunDisabled,
         isRunning,
         isResettingRuns: resetCoworkerRuns.isPending,
@@ -715,6 +723,8 @@ export function useCoworkerEditorPage({
         onTabChange: handleTabChange,
         onRun: handleRunClick,
         onResetRunsAndEnable: handleResetRunsAndEnable,
+        onSelectRun: handleSelectRun,
+        onBackToRuns: handleBackToRuns,
         onNameChange: handleNameChange,
         onDescriptionChange: handleDescriptionChange,
         onUsernameChange: handleUsernameChange,
@@ -774,6 +784,7 @@ export function useCoworkerEditorPage({
       downloadingDocumentIds,
       executorSourceEntries,
       handleAutoApproveChange,
+      handleBackToRuns,
       handleClearIntegrations,
       handleClearSkills,
       handleClearWorkspaceMcpServers,
@@ -798,6 +809,7 @@ export function useCoworkerEditorPage({
       handleScheduleTimeChange,
       handleScheduleTypeChange,
       handleSelectAllIntegrations,
+      handleSelectRun,
       handleStatusChange,
       handleTabChange,
       handleToggleIntegrationChecked,
@@ -833,6 +845,7 @@ export function useCoworkerEditorPage({
       scheduleTime,
       scheduleTimezone,
       scheduleType,
+      selectedRunId,
       selectedSkillKeys,
       setRequiresUserInput,
       setShowDeleteDialog,
@@ -848,10 +861,7 @@ export function useCoworkerEditorPage({
   );
   const renderSettingsPanel = useCallback(
     ({ hideHeader = false }: { hideHeader?: boolean } = {}) =>
-      createElement(CoworkerSettingsPanel, {
-        ...settingsPanelProps,
-        hideHeader,
-      }),
+      createElement(CoworkerSettingsPanel, { ...settingsPanelProps, hideHeader }),
     [settingsPanelProps],
   );
   const autoApproveDialog = useMemo(

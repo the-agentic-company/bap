@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { CoworkerDocumentsPanel } from "./coworker-documents-panel";
 import { DeleteCoworkerDialog } from "./coworker-editor-layout";
 import { CoworkerInstructionsPanel } from "./coworker-instructions-panel";
+import { CoworkerRunsPanel } from "./coworker-runs-panel";
 import { CoworkerToolboxPanel } from "./coworker-toolbox-panel";
 import type {
   AvailableSkillEntry,
@@ -78,6 +79,7 @@ type CoworkerSettingsPanelProps = {
   documents: CoworkerDocumentRecord[];
   runs: CoworkerRunListItem[] | undefined;
   activeTab: CoworkerTab;
+  selectedRunId: string | null;
   isRunDisabled: boolean;
   isRunning: boolean;
   isResettingRuns: boolean;
@@ -93,6 +95,8 @@ type CoworkerSettingsPanelProps = {
   onTabChange: (tab: CoworkerTab) => void;
   onRun: (event: React.MouseEvent) => void;
   onResetRunsAndEnable: () => void | Promise<void>;
+  onSelectRun: (runId: string) => void;
+  onBackToRuns: () => void;
   onNameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onDescriptionChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onUsernameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -134,6 +138,7 @@ type CoworkerSettingsPanelProps = {
 
 export function CoworkerSettingsPanel({
   coworkerId,
+  coworkerRouteSlug,
   name,
   description,
   username,
@@ -173,6 +178,7 @@ export function CoworkerSettingsPanel({
   documents,
   runs,
   activeTab,
+  selectedRunId,
   isRunDisabled,
   isRunning,
   isResettingRuns,
@@ -188,6 +194,8 @@ export function CoworkerSettingsPanel({
   onTabChange,
   onRun,
   onResetRunsAndEnable,
+  onSelectRun,
+  onBackToRuns,
   onNameChange,
   onDescriptionChange,
   onUsernameChange,
@@ -259,12 +267,15 @@ export function CoworkerSettingsPanel({
   return (
     <div className="flex h-full flex-col">
       {!hideHeader && (
-        <div className="bg-background/95 border-border/60 flex h-12 items-center border-b px-4 py-2 backdrop-blur-sm">
-          <div className="flex w-full items-center justify-between gap-3">
+        <div className="flex flex-col gap-1.5 px-3 py-1.5">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1 overflow-x-auto">
-              <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange} className="gap-1">
+              <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
                 <AnimatedTab value="instruction">
                   <T>Instruction</T>
+                </AnimatedTab>
+                <AnimatedTab value="runs">
+                  <T>Runs</T>
                 </AnimatedTab>
                 <AnimatedTab value="docs">
                   <T>Docs</T>
@@ -285,7 +296,7 @@ export function CoworkerSettingsPanel({
                   <T>Saving...</T>
                 </span>
               ) : null}
-              <div className="bg-muted/60 flex items-center gap-1.5 rounded-full px-2.5 py-1">
+              <div className="flex items-center gap-1.5">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={status}
@@ -309,47 +320,47 @@ export function CoworkerSettingsPanel({
                   disabled={isResettingRuns}
                 />
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 rounded-xl px-3 text-xs font-medium"
-                onClick={onRun}
-                disabled={isRunDisabled}
-              >
-                {isRunning ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Play className="h-3 w-3" />
-                )}
-                <T>Run now</T>
-              </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 px-3 text-xs font-medium"
+              onClick={onRun}
+              disabled={isRunDisabled}
+            >
+              {isRunning ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Play className="h-3 w-3" />
+              )}
+              <T>Run now</T>
+            </Button>
+            <button
+              type="button"
+              onClick={handleOpenDeleteDialog}
+              className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+              aria-label={t("Delete coworker")}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            {showCloseButton ? (
               <button
                 type="button"
-                onClick={handleOpenDeleteDialog}
-                className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-8 w-8 items-center justify-center rounded-xl transition-colors"
-                aria-label={t("Delete coworker")}
+                onClick={onClose}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                aria-label={t("Close panel")}
               >
-                <Trash2 className="h-4 w-4" />
+                <X className="h-4 w-4" />
               </button>
-              {showCloseButton ? (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-xl transition-colors"
-                  aria-label={t("Close panel")}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
-              <DeleteCoworkerDialog
-                open={showDeleteDialog}
-                isDeleting={isDeleting}
-                onOpenChange={onShowDeleteDialogChange}
-                onDelete={onDelete}
-              />
-            </div>
+            ) : null}
+            <DeleteCoworkerDialog
+              open={showDeleteDialog}
+              isDeleting={isDeleting}
+              onOpenChange={onShowDeleteDialogChange}
+              onDelete={onDelete}
+            />
           </div>
         </div>
+      </div>
       )}
       {shouldShowRunBacklogNotice ? (
         <div className="border-border bg-muted/40 border-y px-3 py-2">
@@ -389,7 +400,14 @@ export function CoworkerSettingsPanel({
           </div>
         </div>
       ) : null}
-      <div className={cn("min-h-0 flex-1", "overflow-y-auto")}>
+      <div
+        className={cn(
+          "min-h-0 flex-1",
+          activeTab === "runs" && selectedRunId
+            ? "flex flex-col overflow-hidden"
+            : "overflow-y-auto",
+        )}
+      >
         {activeTab === "instruction" ? (
           <CoworkerInstructionsPanel
             coworkerId={coworkerId}
@@ -440,6 +458,16 @@ export function CoworkerSettingsPanel({
             onRotateCoworkerAlias={onRotateCoworkerAlias}
             onDisableCoworkerAlias={onDisableCoworkerAlias}
             onCreateCoworkerAlias={onCreateCoworkerAlias}
+          />
+        ) : null}
+        {activeTab === "runs" ? (
+          <CoworkerRunsPanel
+            runs={runs}
+            selectedRunId={selectedRunId}
+            coworkerId={coworkerId}
+            coworkerRouteSlug={coworkerRouteSlug}
+            onSelectRun={onSelectRun}
+            onBackToRuns={onBackToRuns}
           />
         ) : null}
         {activeTab === "docs" ? (

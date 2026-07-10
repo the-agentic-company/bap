@@ -60,7 +60,6 @@ export function useChatAreaControls({
   isCoworkerConversation,
   isResumingPausedRunDeadline,
   isStreaming,
-  compactControls = false,
   normalizedSelectedModel,
   platformSkills,
   providerAvailability,
@@ -87,7 +86,6 @@ export function useChatAreaControls({
   isCoworkerConversation: boolean;
   isResumingPausedRunDeadline: boolean;
   isStreaming: boolean;
-  compactControls?: boolean;
   normalizedSelectedModel: string;
   platformSkills?: PlatformSkill[];
   providerAvailability: ModelSelectorProps["providerAvailability"];
@@ -101,8 +99,42 @@ export function useChatAreaControls({
   const [skillsMenuOpen, setSkillsMenuOpen] = useState(false);
   const [skillSearchQuery, setSkillSearchQuery] = useState("");
 
-  const selectableSkills = useMemo(
-    () => [
+  const selectedSkillLabel = useMemo(() => {
+    const selectableSkills = [
+      ...(platformSkills ?? []).map((skill) => ({
+        key: skill.slug,
+        title: skill.title,
+        searchable: `${skill.title} ${skill.slug}`.toLowerCase(),
+      })),
+      ...((accessibleSkills ?? [])
+        .filter((skill) => skill.enabled)
+        .map((skill) => ({
+          key: `${CUSTOM_SKILL_PREFIX}${skill.name}`,
+          title: skill.displayName,
+          subtitle: skill.isOwnedByCurrentUser
+            ? skill.visibility === "public"
+              ? "Custom · Public"
+              : "Custom · Private"
+            : `Shared · ${skill.owner.name ?? skill.owner.email ?? "Workspace"}`,
+          searchable: `${skill.displayName} ${skill.name} ${skill.owner.name ?? ""} ${
+            skill.owner.email ?? ""
+          } ${skill.visibility}`.toLowerCase(),
+        })) ?? []),
+    ];
+
+    if (selectedSkillKeys.length === 0) {
+      return "Skills";
+    }
+    if (selectedSkillKeys.length === 1) {
+      const only = selectableSkills.find((skill) => skill.key === selectedSkillKeys[0]);
+      const fallback = selectedSkillKeys[0] ?? "1 skill";
+      return only?.title ?? fallback.replace(CUSTOM_SKILL_PREFIX, "");
+    }
+    return `${selectedSkillKeys.length} skills`;
+  }, [platformSkills, accessibleSkills, selectedSkillKeys]);
+
+  const filteredSelectableSkills = useMemo(() => {
+    const selectableSkills = [
       ...(platformSkills ?? []).map((skill) => ({
         key: skill.slug,
         title: skill.title,
@@ -123,29 +155,13 @@ export function useChatAreaControls({
             skill.owner.email ?? ""
           } ${skill.visibility}`.toLowerCase(),
         })) ?? []),
-    ],
-    [accessibleSkills, platformSkills],
-  );
-
-  const selectedSkillLabel = useMemo(() => {
-    if (selectedSkillKeys.length === 0) {
-      return "Skills";
-    }
-    if (selectedSkillKeys.length === 1) {
-      const only = selectableSkills.find((skill) => skill.key === selectedSkillKeys[0]);
-      const fallback = selectedSkillKeys[0] ?? "1 skill";
-      return only?.title ?? fallback.replace(CUSTOM_SKILL_PREFIX, "");
-    }
-    return `${selectedSkillKeys.length} skills`;
-  }, [selectableSkills, selectedSkillKeys]);
-
-  const filteredSelectableSkills = useMemo(() => {
+    ];
     const query = skillSearchQuery.trim().toLowerCase();
     if (!query) {
       return selectableSkills;
     }
     return selectableSkills.filter((skill) => skill.searchable.includes(query));
-  }, [selectableSkills, skillSearchQuery]);
+  }, [platformSkills, accessibleSkills, skillSearchQuery]);
 
   const handleSkillDropdownSelect = useCallback(
     (event: Event) => {
@@ -178,68 +194,6 @@ export function useChatAreaControls({
       setSkillSearchQuery("");
     }
   }, []);
-
-  const handleCompactSkillToggle = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      const key = event.currentTarget.dataset.skillSlug;
-      if (!key) {
-        return;
-      }
-      toggleSelectedSkillSlug(skillSelectionScopeKey, key);
-    },
-    [skillSelectionScopeKey, toggleSelectedSkillSlug],
-  );
-
-  const compactSkillsMenuSectionNode = useMemo(
-    () => (
-      <div className="space-y-1">
-        <div className="text-muted-foreground px-1 text-[11px] font-medium tracking-wide uppercase">
-          <T>Skills</T>
-        </div>
-        <div className="max-h-56 space-y-1 overflow-y-auto">
-          {isPlatformOrAccessibleLoading(isAccessibleSkillsLoading, isPlatformSkillsLoading) ? (
-            <div className="text-muted-foreground px-3 py-2 text-sm">
-              <T>Loading...</T>
-            </div>
-          ) : selectableSkills.length === 0 ? (
-            <div className="text-muted-foreground px-3 py-2 text-sm">
-              <T>No skills found</T>
-            </div>
-          ) : (
-            selectableSkills.map((skill) => {
-              const isSelected = selectedSkillKeys.includes(skill.key);
-              return (
-                <button
-                  key={skill.key}
-                  type="button"
-                  data-skill-slug={skill.key}
-                  onClick={handleCompactSkillToggle}
-                  className="hover:bg-muted flex w-full items-start gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors"
-                >
-                  <Check
-                    className={isSelected ? "mt-0.5 h-4 w-4 opacity-100" : "mt-0.5 h-4 w-4 opacity-0"}
-                  />
-                  <div className="min-w-0">
-                    <div className="truncate">{skill.title}</div>
-                    <div className="text-muted-foreground truncate text-[10px]">
-                      {skill.subtitle}
-                    </div>
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div>
-    ),
-    [
-      isAccessibleSkillsLoading,
-      isPlatformSkillsLoading,
-      selectableSkills,
-      selectedSkillKeys,
-      handleCompactSkillToggle,
-    ],
-  );
 
   const skillsMenuNode = useMemo(
     () => (
@@ -359,27 +313,26 @@ export function useChatAreaControls({
   );
 
   const autoApprovalNode = useMemo(
-    () =>
-      isCoworkerConversation ? null : (
-        <div className="flex items-center gap-1.5">
-          <Switch
-            id="auto-approve"
-            checked={autoApproveEnabled}
-            onCheckedChange={handleAutoApproveChange}
-          />
-          <label
-            htmlFor="auto-approve"
-            className="text-muted-foreground flex cursor-pointer items-center gap-1 text-xs select-none"
-            title="Auto-approve"
-          >
-            {!compactControls ? <CircleCheck className="h-3.5 w-3.5" /> : null}
-            <span className={compactControls ? "text-[11px]" : "hidden sm:inline"}>
-              <T>Auto-approve</T>
-            </span>
-          </label>
-        </div>
-      ),
-    [autoApproveEnabled, compactControls, handleAutoApproveChange, isCoworkerConversation],
+    () => (
+      <div className="flex items-center gap-1.5">
+        <Switch
+          id="auto-approve"
+          checked={isCoworkerConversation ? false : autoApproveEnabled}
+          onCheckedChange={handleAutoApproveChange}
+          disabled={isCoworkerConversation}
+        />
+        <label
+          htmlFor="auto-approve"
+          className="text-muted-foreground flex cursor-pointer items-center gap-1 text-xs select-none"
+        >
+          <CircleCheck className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">
+            <T>Auto-approve</T>
+          </span>
+        </label>
+      </div>
+    ),
+    [autoApproveEnabled, handleAutoApproveChange, isCoworkerConversation],
   );
 
   const debugControlNode = useMemo(() => {
@@ -419,10 +372,8 @@ export function useChatAreaControls({
 
   return {
     autoApprovalNode,
-    compactSkillsMenuSectionNode,
     modelSelectorNode,
-    skillsMenuNode: compactControls ? null : skillsMenuNode,
-    selectedSkillCount: selectedSkillKeys.length,
+    skillsMenuNode,
   };
 }
 
