@@ -140,7 +140,7 @@ function createContext(overrides: Partial<GenerationContext> = {}): GenerationCo
 
 function createSandbox(overrides: Partial<SandboxHandle> = {}): SandboxHandle {
   return {
-    provider: "e2b", sandboxId: "sandbox-1",
+    provider: "daytona", sandboxId: "sandbox-1",
     exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
     writeFile: vi.fn().mockResolvedValue(undefined),
     readFile: vi.fn().mockResolvedValue(""),
@@ -373,6 +373,7 @@ describe("OpenCodeNormalRunner", () => {
       writtenIntegrationSkills: ["github"],
       prePromptCacheHit: false,
       startPostPromptCacheWrite: null,
+      runtimeVolumeMountPlan: null,
     });
     writeCoworkerDocumentsToSandboxMock.mockResolvedValue([]);
     resolveWorkspaceMcpServersForGenerationMock.mockResolvedValue({

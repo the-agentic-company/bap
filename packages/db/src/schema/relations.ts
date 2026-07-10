@@ -34,6 +34,7 @@ import {
   message,
   messageAttachment,
   providerAuth,
+  runtimeVolume,
   sandboxFile,
   session,
   sessionTranscript,
@@ -52,6 +53,7 @@ import {
   workspaceMcpAuthorization,
   workspaceMcpServer,
   workspaceMember,
+  invitation,
 } from "./tables";
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -59,8 +61,8 @@ export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
   dailyActivities: many(userDailyActivity),
   webPushSubscriptions: many(webPushSubscription),
-  workspacesCreated: many(workspace),
   workspaceMemberships: many(workspaceMember),
+  workspaceInvitations: many(invitation),
   conversations: many(conversation),
   fileAssetsCreated: many(fileAsset),
   uploadSessions: many(uploadSession),
@@ -87,6 +89,7 @@ export const userRelations = relations(user, ({ many }) => ({
   workspaceMcpAuthorizations: many(workspaceMcpAuthorization),
   integrationSkillsCreated: many(integrationSkill),
   integrationSkillPreferences: many(integrationSkillPreference),
+  runtimeVolumes: many(runtimeVolume),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -103,12 +106,9 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
-export const workspaceRelations = relations(workspace, ({ one, many }) => ({
-  createdByUser: one(user, {
-    fields: [workspace.createdByUserId],
-    references: [user.id],
-  }),
+export const workspaceRelations = relations(workspace, ({ many }) => ({
   members: many(workspaceMember),
+  invitations: many(invitation),
   conversations: many(conversation),
   fileAssets: many(fileAsset),
   uploadSessions: many(uploadSession),
@@ -116,15 +116,27 @@ export const workspaceRelations = relations(workspace, ({ one, many }) => ({
   billingTopUps: many(billingTopUp),
   skills: many(skill),
   workspaceMcpServers: many(workspaceMcpServer),
+  runtimeVolumes: many(runtimeVolume),
 }));
 
 export const workspaceMemberRelations = relations(workspaceMember, ({ one }) => ({
   workspace: one(workspace, {
-    fields: [workspaceMember.workspaceId],
+    fields: [workspaceMember.organizationId],
     references: [workspace.id],
   }),
   user: one(user, {
     fields: [workspaceMember.userId],
+    references: [user.id],
+  }),
+}));
+
+export const invitationRelations = relations(invitation, ({ one }) => ({
+  workspace: one(workspace, {
+    fields: [invitation.organizationId],
+    references: [workspace.id],
+  }),
+  user: one(user, {
+    fields: [invitation.inviterId],
     references: [user.id],
   }),
 }));
@@ -266,7 +278,7 @@ export const sandboxFileRelations = relations(sandboxFile, ({ one }) => ({
   }),
 }));
 
-export const generationRelations = relations(generation, ({ one }) => ({
+export const generationRelations = relations(generation, ({ one, many }) => ({
   conversation: one(conversation, {
     fields: [generation.conversationId],
     references: [conversation.id],
@@ -279,6 +291,7 @@ export const generationRelations = relations(generation, ({ one }) => ({
     fields: [generation.messageId],
     references: [message.id],
   }),
+  reconciledRuntimeVolumes: many(runtimeVolume),
 }));
 
 export const billingLedgerRelations = relations(billingLedger, ({ one }) => ({
@@ -347,6 +360,7 @@ export const coworkerRelations = relations(coworker, ({ one, many }) => ({
   runs: many(coworkerRun),
   documents: many(coworkerDocument),
   emailAliases: many(coworkerEmailAlias),
+  runtimeVolumes: many(runtimeVolume),
 }));
 
 export const coworkerFolderRelations = relations(coworkerFolder, ({ one, many }) => ({
@@ -418,6 +432,25 @@ export const coworkerEmailAliasRelations = relations(coworkerEmailAlias, ({ one 
     fields: [coworkerEmailAlias.replacedByAliasId],
     references: [coworkerEmailAlias.id],
     relationName: "replacedByAlias",
+  }),
+}));
+
+export const runtimeVolumeRelations = relations(runtimeVolume, ({ one }) => ({
+  workspace: one(workspace, {
+    fields: [runtimeVolume.workspaceId],
+    references: [workspace.id],
+  }),
+  ownerUser: one(user, {
+    fields: [runtimeVolume.ownerUserId],
+    references: [user.id],
+  }),
+  coworker: one(coworker, {
+    fields: [runtimeVolume.coworkerId],
+    references: [coworker.id],
+  }),
+  lastReconciledGeneration: one(generation, {
+    fields: [runtimeVolume.lastReconciledGenerationId],
+    references: [generation.id],
   }),
 }));
 

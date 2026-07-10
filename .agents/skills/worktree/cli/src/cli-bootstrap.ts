@@ -72,6 +72,17 @@ import {
   saveMetadata,
 } from "./cli-state";
 
+const DEFAULT_WORKTREE_DEV_USER_EMAIL = "baptiste@theagenticcompany.ai";
+const DEFAULT_WORKTREE_DEV_USER_NAME = "Baptiste";
+
+export function resolveWorktreeDevUserEmail(): string {
+  return (
+    process.env.BAP_WORKTREE_DEV_USER_EMAIL?.trim() ||
+    process.env.APP_DEFAULT_USER_EMAIL?.trim() ||
+    DEFAULT_WORKTREE_DEV_USER_EMAIL
+  );
+}
+
 export async function resolveLatestLocalSessionProfile(
   metadata: InstanceMetadata,
 ): Promise<SessionProfileRecord | null> {
@@ -117,8 +128,10 @@ export async function syncCliProfileFromLocalSession(metadata: InstanceMetadata)
   return true;
 }
 
-export async function resolveBootstrapSourceUser(sourceClient: PgClient): Promise<SourceUserRecord | null> {
-  const explicitEmail = process.env.BAP_WORKTREE_DEV_USER_EMAIL?.trim();
+export async function resolveBootstrapSourceUser(
+  sourceClient: PgClient,
+): Promise<SourceUserRecord | null> {
+  const explicitEmail = resolveWorktreeDevUserEmail();
   if (explicitEmail) {
     const result = await sourceClient.query<SourceUserRecord>(
       `select id, email from "user" where lower(email) = lower($1) limit 1`,
@@ -150,6 +163,186 @@ export async function resolveBootstrapSourceUser(sourceClient: PgClient): Promis
   return null;
 }
 
+async function tableExists(client: PgClient, tableName: string): Promise<boolean> {
+  const result = await client.query<{ exists: boolean }>(
+    `
+      select exists (
+        select 1
+        from information_schema.tables
+        where table_schema = current_schema()
+          and table_name = $1
+      )
+    `,
+    [tableName],
+  );
+  return result.rows[0]?.exists ?? false;
+}
+
+async function resolveSourceWorkspaceTables(client: PgClient): Promise<{
+  workspaceTable: "organization" | "workspace";
+  memberTable: "member" | "workspace_member";
+}> {
+  if ((await tableExists(client, "organization")) && (await tableExists(client, "member"))) {
+    return { workspaceTable: "organization", memberTable: "member" };
+  }
+
+  return { workspaceTable: "workspace", memberTable: "workspace_member" };
+}
+
+async function writeWorktreeSessionArtifacts(params: {
+  metadata: InstanceMetadata;
+  email: string;
+  userId: string;
+  sessionToken: string;
+  expiresAt: Date;
+}): Promise<void> {
+  const secret = process.env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    fail("BETTER_AUTH_SECRET is required to generate a developer session cookie.");
+  }
+
+  const signedCookie = (await serializeSignedCookie("", params.sessionToken, secret)).replace(
+    "=",
+    "",
+  );
+
+  ensureDir(authArtifactsDir(params.metadata.instanceRoot));
+  const storageStatePath = agentBrowserStatePath(params.metadata.instanceRoot);
+  const sessionInfoPath = join(authArtifactsDir(params.metadata.instanceRoot), "dev-user.session.json");
+
+  writeFileSync(
+    storageStatePath,
+    buildJsonStorageState({
+      appUrl: params.metadata.appUrl,
+      signedSessionToken: signedCookie,
+      expiresAtEpochSeconds: Math.floor(params.expiresAt.getTime() / 1000),
+    }),
+    "utf8",
+  );
+  writeFileSync(
+    sessionInfoPath,
+    `${JSON.stringify(
+      {
+        appUrl: params.metadata.appUrl,
+        email: params.email,
+        userId: params.userId,
+        cookieHeader: `better-auth.session_token=${signedCookie}`,
+        createdAt: new Date().toISOString(),
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+  console.log(`[worktree] auth storage ${storageStatePath}`);
+  loadAgentBrowserAuthState(params.metadata);
+}
+
+export async function ensureStandaloneDeveloperSession(metadata: InstanceMetadata): Promise<void> {
+  const targetDatabaseUrl = buildDatabaseUrlForMetadata(metadata);
+  const email = resolveWorktreeDevUserEmail();
+  const now = new Date();
+  const userId = randomUUID();
+  const workspaceId = randomUUID();
+  const sessionToken = randomBytes(48).toString("hex");
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  await withClient(targetDatabaseUrl, async (client) => {
+    await client.query("begin");
+    try {
+      const existingUser = await client.query<{ id: string }>(
+        `select id from "user" where lower(email) = lower($1) limit 1`,
+        [email],
+      );
+      const effectiveUserId = existingUser.rows[0]?.id ?? userId;
+
+      if (!existingUser.rows[0]) {
+        await client.query(
+          `
+            insert into "user" (
+              id, name, email, email_verified, role,
+              created_at, updated_at, onboarded_at
+            )
+            values ($1, $2, $3, true, 'admin', $4, $4, $4)
+          `,
+          [effectiveUserId, DEFAULT_WORKTREE_DEV_USER_NAME, email, now],
+        );
+      }
+
+      const existingWorkspace = await client.query<{ id: string }>(
+        `
+          select w.id
+          from member wm
+          join organization w on w.id = wm.organization_id
+          where wm.user_id = $1
+          order by w.updated_at desc nulls last, w.created_at desc
+          limit 1
+        `,
+        [effectiveUserId],
+      );
+      const effectiveWorkspaceId = existingWorkspace.rows[0]?.id ?? workspaceId;
+
+      if (!existingWorkspace.rows[0]) {
+        await client.query(
+          `
+            insert into organization (id, name, slug, billing_plan_id, autumn_customer_id, created_at, updated_at)
+            values ($1, $2, $3, 'free', null, $4, $4)
+          `,
+          [
+            effectiveWorkspaceId,
+            `${DEFAULT_WORKTREE_DEV_USER_NAME}'s workspace`,
+            `worktree-${metadata.instanceId}`.slice(0, 63),
+            now,
+          ],
+        );
+        await client.query(
+          `
+            insert into member (id, organization_id, user_id, role, created_at)
+            values ($1, $2, $3, 'owner', $4)
+            on conflict (organization_id, user_id) do nothing
+          `,
+          [randomUUID(), effectiveWorkspaceId, effectiveUserId, now],
+        );
+      }
+
+      await client.query(
+        `
+          update "user"
+          set email_verified = true,
+              onboarded_at = coalesce(onboarded_at, $2),
+              role = 'admin',
+              updated_at = $2
+          where id = $1
+        `,
+        [effectiveUserId, now],
+      );
+      await client.query(
+        `
+          insert into "session" (
+            id, expires_at, token, created_at, updated_at,
+            ip_address, user_agent, user_id, impersonated_by, active_organization_id
+          )
+          values ($1, $2, $3, $4, $4, '127.0.0.1', 'bap-worktree-bootstrap', $5, null, $6)
+        `,
+        [randomUUID(), expiresAt, sessionToken, now, effectiveUserId, effectiveWorkspaceId],
+      );
+      await client.query("commit");
+
+      await writeWorktreeSessionArtifacts({
+        metadata,
+        email,
+        userId: effectiveUserId,
+        sessionToken,
+        expiresAt,
+      });
+      console.log(`[worktree] bootstrapped developer user ${email}`);
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
+  });
+}
+
 export function remapWorkspaceRows(
   rows: Array<Record<string, unknown>>,
   targetUserId: string,
@@ -158,6 +351,20 @@ export function remapWorkspaceRows(
     ...row,
     created_by_user_id: targetUserId,
   }));
+}
+
+export function remapWorkspaceMemberRows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return rows.map((row) => {
+    if (!("workspace_id" in row)) {
+      return row;
+    }
+
+    const { workspace_id, ...rest } = row;
+    return {
+      ...rest,
+      organization_id: workspace_id,
+    };
+  });
 }
 
 export function remapCustomIntegrationRows(
@@ -228,14 +435,7 @@ export function loadAgentBrowserAuthState(metadata: InstanceMetadata): void {
 
   const env = buildDerivedEnv(metadata);
   for (const cookie of cookies) {
-    const args = [
-      "cookies",
-      "set",
-      cookie.name,
-      cookie.value,
-      "--url",
-      metadata.appUrl,
-    ];
+    const args = ["cookies", "set", cookie.name, cookie.value, "--url", metadata.appUrl];
 
     if (cookie.httpOnly) {
       args.push("--httpOnly");
@@ -262,9 +462,7 @@ export function loadAgentBrowserAuthState(metadata: InstanceMetadata): void {
 
     if (result.status !== 0) {
       const output = result.stderr?.trim() || result.stdout?.trim() || `exit ${result.status ?? 1}`;
-      console.warn(
-        `[worktree] failed to hydrate agent-browser cookie ${cookie.name}: ${output}`,
-      );
+      console.warn(`[worktree] failed to hydrate agent-browser cookie ${cookie.name}: ${output}`);
       return;
     }
   }
@@ -296,10 +494,14 @@ export function createMetadata(
   repoRoot: string,
   appPort: number,
   wsPort: number,
+  zeroCachePort: number,
   stackSlot: number,
 ): InstanceMetadata {
   const instanceId = buildInstanceId(repoRoot);
-  const instanceRoot = resolveSharedWorktreeInstanceRoot(resolveSharedWorktreeRootPath(), instanceId);
+  const instanceRoot = resolveSharedWorktreeInstanceRoot(
+    resolveSharedWorktreeRootPath(),
+    instanceId,
+  );
   const databaseName = buildDatabaseName(instanceId);
   const databaseUser = buildDatabaseUser(instanceId);
   const databasePassword = generateCredentialSecret();
@@ -317,6 +519,7 @@ export function createMetadata(
     stackSlot,
     appPort,
     wsPort,
+    zeroCachePort,
     appUrl: buildAppUrl(appPort),
     databaseName,
     databaseUser,
@@ -338,13 +541,17 @@ export function createMetadata(
   };
 }
 
-export function updateMetadataStackSlot(metadata: InstanceMetadata, stackSlot: number): InstanceMetadata {
+export function updateMetadataStackSlot(
+  metadata: InstanceMetadata,
+  stackSlot: number,
+): InstanceMetadata {
   const ports = buildAppPorts(stackSlot);
   const updated = hydrateMetadataCredentials({
     ...metadata,
     stackSlot,
     appPort: ports.appPort,
     wsPort: ports.wsPort,
+    zeroCachePort: ports.zeroCachePort,
     appUrl: buildAppUrl(ports.appPort),
     updatedAt: new Date().toISOString(),
   });
@@ -416,13 +623,27 @@ export async function resolveMetadata(): Promise<InstanceMetadata> {
 
   const stackSlot = (await reserveStackSlot(repoRoot, null)).slot;
   const ports = buildAppPorts(stackSlot);
-  const metadata = createMetadata(repoRoot, ports.appPort, ports.wsPort, stackSlot);
+  const metadata = createMetadata(
+    repoRoot,
+    ports.appPort,
+    ports.wsPort,
+    ports.zeroCachePort,
+    stackSlot,
+  );
   saveMetadata(metadata);
   writeDerivedEnvFile(metadata);
   return metadata;
 }
 
-export function spawnWithEnv(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv, mode: "foreground" | "background", name: ProcessName, instanceRoot: string) {
+export function spawnWithEnv(
+  command: string,
+  args: string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+  mode: "foreground" | "background",
+  name: ProcessName,
+  instanceRoot: string,
+) {
   const processEnv = {
     ...process.env,
     ...env,
@@ -474,23 +695,13 @@ export function buildProcessCommand(
     case "worker":
       return {
         command: "bun",
-        args: [
-          ...(options?.watch ? ["--watch"] : []),
-          "--env-file",
-          envFile,
-          "index.ts",
-        ],
+        args: [...(options?.watch ? ["--watch"] : []), "--env-file", envFile, "index.ts"],
         cwd: join(metadata.repoRoot, "apps/worker"),
       };
     case "ws":
       return {
         command: "bun",
-        args: [
-          ...(options?.watch ? ["--watch"] : []),
-          "--env-file",
-          envFile,
-          "index.ts",
-        ],
+        args: [...(options?.watch ? ["--watch"] : []), "--env-file", envFile, "index.ts"],
         cwd: join(metadata.repoRoot, "apps/ws"),
       };
   }
@@ -515,7 +726,10 @@ export async function waitForHttp(url: string, timeoutMs: number): Promise<void>
   fail(`Timed out waiting for ${url}`);
 }
 
-export async function waitForDatabaseReady(connectionString: string, timeoutMs: number): Promise<void> {
+export async function waitForDatabaseReady(
+  connectionString: string,
+  timeoutMs: number,
+): Promise<void> {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < timeoutMs) {
@@ -558,6 +772,7 @@ export async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promis
   const sourceDatabaseUrl = resolveSourceDatabaseUrl(metadata.repoRoot);
   const targetDatabaseUrl = buildDatabaseUrlForMetadata(metadata);
   if (!sourceDatabaseUrl || sourceDatabaseUrl === targetDatabaseUrl) {
+    await ensureStandaloneDeveloperSession(metadata);
     return;
   }
 
@@ -565,9 +780,8 @@ export async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promis
     await withClient(sourceDatabaseUrl, async (sourceClient) => {
       const sourceUser = await resolveBootstrapSourceUser(sourceClient);
       if (!sourceUser) {
-        fail(
-          "Unable to resolve a source developer user. Set BAP_WORKTREE_DEV_USER_EMAIL or make sure the source worktree has a recent session.",
-        );
+        await ensureStandaloneDeveloperSession(metadata);
+        return;
       }
 
       await withClient(targetDatabaseUrl, async (targetClient) => {
@@ -576,286 +790,290 @@ export async function bootstrapDeveloperUser(metadata: InstanceMetadata): Promis
           fail(`Source user ${sourceUser.email} was not found in the source database.`);
         }
 
-      const workspaceRows = await sourceClient.query<Record<string, unknown>>(
-        `
-          select distinct w.*
-          from workspace_member wm
-          join workspace w on w.id = wm.workspace_id
-          where wm.user_id = $1
-             or w.id = (select active_workspace_id from "user" where id = $1)
-        `,
-        [sourceUser.id],
-      );
-      const workspaceIds = workspaceRows.rows
-        .map((row) => row.id)
-        .filter((value): value is string => typeof value === "string");
-
-      const workspaceMemberRows =
-        workspaceIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from workspace_member where user_id = $1 and workspace_id = any($2::text[])`,
-              [sourceUser.id, workspaceIds],
-            )
-          : { rows: [] };
-
-      const accountRows = await selectRows(sourceClient, "account", "user_id = $1", [sourceUser.id]);
-      const connectedIdentityRows = await selectRows(sourceClient, "connected_identity", "user_id = $1", [
-        sourceUser.id,
-      ]);
-      const integrationRows = await selectRows(sourceClient, "integration", "user_id = $1", [sourceUser.id]);
-      const integrationIds = integrationRows
-        .map((row) => row.id)
-        .filter((value): value is string => typeof value === "string");
-
-      const integrationTokenRows =
-        integrationIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from integration_token where integration_id = any($1::text[])`,
-              [integrationIds],
-            )
-          : { rows: [] };
-
-      const providerAuthRows = await selectRows(sourceClient, "provider_auth", "user_id = $1", [sourceUser.id]);
-      const cloudAccountLinkRows = await selectRows(sourceClient, "cloud_account_link", "user_id = $1", [sourceUser.id]);
-      const customIntegrationCredentialRows = await selectRows(
-        sourceClient,
-        "custom_integration_credential",
-        "user_id = $1",
-        [sourceUser.id],
-      );
-      const customIntegrationIds = customIntegrationCredentialRows
-        .map((row) => row.custom_integration_id)
-        .filter((value): value is string => typeof value === "string");
-
-      const customIntegrationRows =
-        customIntegrationIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from custom_integration where id = any($1::text[])`,
-              [customIntegrationIds],
-            )
-          : { rows: [] };
-
-      const executorSourceCredentialRows = await selectRows(
-        sourceClient,
-        "workspace_mcp_authorization",
-        "user_id = $1",
-        [sourceUser.id],
-      );
-      const executorSourceIds = executorSourceCredentialRows
-        .map((row) => row.workspace_mcp_server_id)
-        .filter((value): value is string => typeof value === "string");
-
-      const executorSourceRows =
-        executorSourceIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from workspace_mcp_server where id = any($1::text[])`,
-              [executorSourceIds],
-            )
-          : { rows: [] };
-
-      const coworkerRows =
-        workspaceIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from coworker where owner_id = $1 and workspace_id = any($2::text[])`,
-              [sourceUser.id, workspaceIds],
-            )
-          : { rows: [] };
-      const coworkerIds = coworkerRows.rows
-        .map((row) => row.id)
-        .filter((value): value is string => typeof value === "string");
-
-      const coworkerDocumentRows =
-        coworkerIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from coworker_document where coworker_id = any($1::text[])`,
-              [coworkerIds],
-            )
-          : { rows: [] };
-
-      const coworkerEmailAliasRows =
-        coworkerIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from coworker_email_alias where coworker_id = any($1::text[])`,
-              [coworkerIds],
-            )
-          : { rows: [] };
-
-      const coworkerTagAssignmentRows =
-        coworkerIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from coworker_tag_assignment where coworker_id = any($1::text[])`,
-              [coworkerIds],
-            )
-          : { rows: [] };
-      const coworkerTagIds = coworkerTagAssignmentRows.rows
-        .map((row) => row.tag_id)
-        .filter((value): value is string => typeof value === "string");
-
-      const coworkerTagRows =
-        coworkerTagIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from coworker_tag where id = any($1::text[])`,
-              [coworkerTagIds],
-            )
-          : { rows: [] };
-
-      const orgChartNodeRows =
-        workspaceIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
+        const sourceWorkspaceTables = await resolveSourceWorkspaceTables(sourceClient);
+        const sourceWorkspaceIdColumn =
+          sourceWorkspaceTables.memberTable === "member" ? "organization_id" : "workspace_id";
+        const activeWorkspaceSubquery =
+          sourceWorkspaceTables.workspaceTable === "organization"
+            ? `
+                select active_organization_id
+                from "session"
+                where user_id = $1
+                  and active_organization_id is not null
+                order by updated_at desc nulls last, created_at desc
+                limit 1
               `
+            : `select active_workspace_id from "user" where id = $1`;
+        const workspaceRows = await sourceClient.query<Record<string, unknown>>(
+          `
+          select distinct w.*
+          from ${sourceWorkspaceTables.memberTable} wm
+          join ${sourceWorkspaceTables.workspaceTable} w on w.id = wm.${sourceWorkspaceIdColumn}
+          where wm.user_id = $1
+             or w.id = (${activeWorkspaceSubquery})
+        `,
+          [sourceUser.id],
+        );
+        const workspaceIds = workspaceRows.rows
+          .map((row) => row.id)
+          .filter((value): value is string => typeof value === "string");
+
+        const workspaceMemberRows =
+          workspaceIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from ${sourceWorkspaceTables.memberTable} where user_id = $1 and ${sourceWorkspaceIdColumn} = any($2::text[])`,
+                [sourceUser.id, workspaceIds],
+              )
+            : { rows: [] };
+
+        const accountRows = await selectRows(sourceClient, "account", "user_id = $1", [
+          sourceUser.id,
+        ]);
+        const connectedIdentityRows = await selectRows(
+          sourceClient,
+          "connected_identity",
+          "user_id = $1",
+          [sourceUser.id],
+        );
+        const integrationRows = await selectRows(sourceClient, "integration", "user_id = $1", [
+          sourceUser.id,
+        ]);
+        const integrationIds = integrationRows
+          .map((row) => row.id)
+          .filter((value): value is string => typeof value === "string");
+
+        const integrationTokenRows =
+          integrationIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from integration_token where integration_id = any($1::text[])`,
+                [integrationIds],
+              )
+            : { rows: [] };
+
+        const providerAuthRows = await selectRows(sourceClient, "provider_auth", "user_id = $1", [
+          sourceUser.id,
+        ]);
+        const cloudAccountLinkRows = await selectRows(
+          sourceClient,
+          "cloud_account_link",
+          "user_id = $1",
+          [sourceUser.id],
+        );
+        const customIntegrationCredentialRows = await selectRows(
+          sourceClient,
+          "custom_integration_credential",
+          "user_id = $1",
+          [sourceUser.id],
+        );
+        const customIntegrationIds = customIntegrationCredentialRows
+          .map((row) => row.custom_integration_id)
+          .filter((value): value is string => typeof value === "string");
+
+        const customIntegrationRows =
+          customIntegrationIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from custom_integration where id = any($1::text[])`,
+                [customIntegrationIds],
+              )
+            : { rows: [] };
+
+        const executorSourceCredentialRows = await selectRows(
+          sourceClient,
+          "workspace_mcp_authorization",
+          "user_id = $1",
+          [sourceUser.id],
+        );
+        const executorSourceIds = executorSourceCredentialRows
+          .map((row) => row.workspace_mcp_server_id)
+          .filter((value): value is string => typeof value === "string");
+
+        const executorSourceRows =
+          executorSourceIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from workspace_mcp_server where id = any($1::text[])`,
+                [executorSourceIds],
+              )
+            : { rows: [] };
+
+        const coworkerRows =
+          workspaceIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from coworker where owner_id = $1 and workspace_id = any($2::text[])`,
+                [sourceUser.id, workspaceIds],
+              )
+            : { rows: [] };
+        const coworkerIds = coworkerRows.rows
+          .map((row) => row.id)
+          .filter((value): value is string => typeof value === "string");
+
+        const coworkerDocumentRows =
+          coworkerIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from coworker_document where coworker_id = any($1::text[])`,
+                [coworkerIds],
+              )
+            : { rows: [] };
+
+        const coworkerEmailAliasRows =
+          coworkerIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from coworker_email_alias where coworker_id = any($1::text[])`,
+                [coworkerIds],
+              )
+            : { rows: [] };
+
+        const coworkerTagAssignmentRows =
+          coworkerIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from coworker_tag_assignment where coworker_id = any($1::text[])`,
+                [coworkerIds],
+              )
+            : { rows: [] };
+        const coworkerTagIds = coworkerTagAssignmentRows.rows
+          .map((row) => row.tag_id)
+          .filter((value): value is string => typeof value === "string");
+
+        const coworkerTagRows =
+          coworkerTagIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from coworker_tag where id = any($1::text[])`,
+                [coworkerTagIds],
+              )
+            : { rows: [] };
+
+        const orgChartNodeRows =
+          workspaceIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `
                 select *
                 from org_chart_node
                 where workspace_id = any($1::text[])
                   and (coworker_id is null or coworker_id = any($2::text[]))
               `,
-              [workspaceIds, coworkerIds],
-            )
-          : { rows: [] };
+                [workspaceIds, coworkerIds],
+              )
+            : { rows: [] };
 
-      const coworkerViewRows =
-        workspaceIds.length > 0
-          ? await sourceClient.query<Record<string, unknown>>(
-              `select * from coworker_view where workspace_id = any($1::text[])`,
-              [workspaceIds],
-            )
-          : { rows: [] };
+        const coworkerViewRows =
+          workspaceIds.length > 0
+            ? await sourceClient.query<Record<string, unknown>>(
+                `select * from coworker_view where workspace_id = any($1::text[])`,
+                [workspaceIds],
+              )
+            : { rows: [] };
 
-      const sharedProviderAuthRows = (
-        await sourceClient.query<Record<string, unknown>>(`select * from shared_provider_auth`)
-      ).rows;
+        const sharedProviderAuthRows = (
+          await sourceClient.query<Record<string, unknown>>(`select * from shared_provider_auth`)
+        ).rows;
 
-      await targetClient.query("begin");
-      try {
-        await upsertRows(targetClient, "user", userRows, ["id"]);
-        await upsertRows(
-          targetClient,
-          "workspace",
-          remapWorkspaceRows(workspaceRows.rows, sourceUser.id),
-          ["id"],
-        );
-        await upsertRows(targetClient, "workspace_member", workspaceMemberRows.rows, ["id"]);
-        await upsertRows(targetClient, "account", accountRows, ["id"]);
-        await upsertRows(targetClient, "connected_identity", connectedIdentityRows, ["id"]);
-        await upsertRows(targetClient, "integration", integrationRows, ["id"]);
-        await upsertRows(targetClient, "integration_token", integrationTokenRows.rows, ["id"]);
-        await upsertRows(targetClient, "provider_auth", providerAuthRows, ["id"]);
-        await upsertRows(
-          targetClient,
-          "shared_provider_auth",
-          remapSharedProviderAuthRows(sharedProviderAuthRows, sourceUser.id),
-          ["id"],
-        );
-        await upsertRows(targetClient, "cloud_account_link", cloudAccountLinkRows, ["id"]);
-        await upsertRows(
-          targetClient,
-          "custom_integration",
-          remapCustomIntegrationRows(customIntegrationRows.rows, sourceUser.id),
-          ["id"],
-        );
-        await upsertRows(
-          targetClient,
-          "custom_integration_credential",
-          customIntegrationCredentialRows,
-          ["id"],
-        );
-        await upsertRows(
-          targetClient,
-          "workspace_mcp_server",
-          remapWorkspaceMcpServerRows(executorSourceRows.rows, sourceUser.id),
-          ["id"],
-        );
-        await upsertRows(
-          targetClient,
-          "workspace_mcp_authorization",
-          executorSourceCredentialRows,
-          ["id"],
-        );
-        await upsertRows(
-          targetClient,
-          "coworker",
-          remapCoworkerRows(coworkerRows.rows, sourceUser.id),
-          ["id"],
-        );
-        await upsertRows(targetClient, "coworker_document", coworkerDocumentRows.rows, ["id"]);
-        await upsertRows(targetClient, "coworker_email_alias", coworkerEmailAliasRows.rows, ["id"]);
-        await upsertRows(targetClient, "coworker_tag", coworkerTagRows.rows, ["id"]);
-        await upsertRows(
-          targetClient,
-          "coworker_tag_assignment",
-          coworkerTagAssignmentRows.rows,
-          ["id"],
-        );
-        await upsertRows(targetClient, "org_chart_node", orgChartNodeRows.rows, ["id"]);
-        await upsertRows(targetClient, "coworker_view", coworkerViewRows.rows, ["id"]);
+        await targetClient.query("begin");
+        try {
+          await upsertRows(targetClient, "user", userRows, ["id"]);
+          await upsertRows(
+            targetClient,
+            "organization",
+            remapWorkspaceRows(workspaceRows.rows, sourceUser.id),
+            ["id"],
+          );
+          await upsertRows(
+            targetClient,
+            "member",
+            remapWorkspaceMemberRows(workspaceMemberRows.rows),
+            ["id"],
+          );
+          await upsertRows(targetClient, "account", accountRows, ["id"]);
+          await upsertRows(targetClient, "connected_identity", connectedIdentityRows, ["id"]);
+          await upsertRows(targetClient, "integration", integrationRows, ["id"]);
+          await upsertRows(targetClient, "integration_token", integrationTokenRows.rows, ["id"]);
+          await upsertRows(targetClient, "provider_auth", providerAuthRows, ["id"]);
+          await upsertRows(
+            targetClient,
+            "shared_provider_auth",
+            remapSharedProviderAuthRows(sharedProviderAuthRows, sourceUser.id),
+            ["id"],
+          );
+          await upsertRows(targetClient, "cloud_account_link", cloudAccountLinkRows, ["id"]);
+          await upsertRows(
+            targetClient,
+            "custom_integration",
+            remapCustomIntegrationRows(customIntegrationRows.rows, sourceUser.id),
+            ["id"],
+          );
+          await upsertRows(
+            targetClient,
+            "custom_integration_credential",
+            customIntegrationCredentialRows,
+            ["id"],
+          );
+          await upsertRows(
+            targetClient,
+            "workspace_mcp_server",
+            remapWorkspaceMcpServerRows(executorSourceRows.rows, sourceUser.id),
+            ["id"],
+          );
+          await upsertRows(
+            targetClient,
+            "workspace_mcp_authorization",
+            executorSourceCredentialRows,
+            ["id"],
+          );
+          await upsertRows(
+            targetClient,
+            "coworker",
+            remapCoworkerRows(coworkerRows.rows, sourceUser.id),
+            ["id"],
+          );
+          await upsertRows(targetClient, "coworker_document", coworkerDocumentRows.rows, ["id"]);
+          await upsertRows(targetClient, "coworker_email_alias", coworkerEmailAliasRows.rows, [
+            "id",
+          ]);
+          await upsertRows(targetClient, "coworker_tag", coworkerTagRows.rows, ["id"]);
+          await upsertRows(
+            targetClient,
+            "coworker_tag_assignment",
+            coworkerTagAssignmentRows.rows,
+            ["id"],
+          );
+          await upsertRows(targetClient, "org_chart_node", orgChartNodeRows.rows, ["id"]);
+          await upsertRows(targetClient, "coworker_view", coworkerViewRows.rows, ["id"]);
 
-        const sessionToken = randomBytes(48).toString("hex");
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        await upsertRows(
-          targetClient,
-          "session",
-          [
-            {
-              id: randomUUID(),
-              expires_at: expiresAt,
-              token: sessionToken,
-              created_at: new Date(),
-              updated_at: new Date(),
-              ip_address: "127.0.0.1",
-              user_agent: "bap-worktree-bootstrap",
-              user_id: sourceUser.id,
-              impersonated_by: null,
-            },
-          ],
-          ["id"],
-        );
+          const sessionToken = randomBytes(48).toString("hex");
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          await upsertRows(
+            targetClient,
+            "session",
+            [
+              {
+                id: randomUUID(),
+                expires_at: expiresAt,
+                token: sessionToken,
+                created_at: new Date(),
+                updated_at: new Date(),
+                ip_address: "127.0.0.1",
+                user_agent: "bap-worktree-bootstrap",
+                user_id: sourceUser.id,
+                impersonated_by: null,
+                active_organization_id: workspaceIds[0] ?? null,
+              },
+            ],
+            ["id"],
+          );
 
-        await targetClient.query("commit");
+          await targetClient.query("commit");
 
-        const secret = process.env.BETTER_AUTH_SECRET;
-        if (!secret) {
-          fail("BETTER_AUTH_SECRET is required to generate a developer session cookie.");
+          console.log(`[worktree] bootstrapped developer user ${sourceUser.email}`);
+          console.log(`[worktree] imported coworkers ${coworkerRows.rows.length}`);
+          await writeWorktreeSessionArtifacts({
+            metadata,
+            email: sourceUser.email,
+            userId: sourceUser.id,
+            sessionToken,
+            expiresAt,
+          });
+        } catch (error) {
+          await targetClient.query("rollback");
+          throw error;
         }
-        const signedCookie = (await serializeSignedCookie("", sessionToken, secret)).replace(
-          "=",
-          "",
-        );
-
-        ensureDir(authArtifactsDir(metadata.instanceRoot));
-        const storageStatePath = agentBrowserStatePath(metadata.instanceRoot);
-        const sessionInfoPath = join(authArtifactsDir(metadata.instanceRoot), "dev-user.session.json");
-
-        writeFileSync(
-          storageStatePath,
-          buildJsonStorageState({
-            appUrl: metadata.appUrl,
-            signedSessionToken: signedCookie,
-            expiresAtEpochSeconds: Math.floor(expiresAt.getTime() / 1000),
-          }),
-          "utf8",
-        );
-        writeFileSync(
-          sessionInfoPath,
-          `${JSON.stringify(
-            {
-              appUrl: metadata.appUrl,
-              email: sourceUser.email,
-              userId: sourceUser.id,
-              cookieHeader: `better-auth.session_token=${signedCookie}`,
-              createdAt: new Date().toISOString(),
-            },
-            null,
-            2,
-          )}\n`,
-          "utf8",
-        );
-        console.log(`[worktree] bootstrapped developer user ${sourceUser.email}`);
-        console.log(`[worktree] imported coworkers ${coworkerRows.rows.length}`);
-        console.log(`[worktree] auth storage ${storageStatePath}`);
-        loadAgentBrowserAuthState(metadata);
-      } catch (error) {
-        await targetClient.query("rollback");
-        throw error;
-      }
       });
     });
   } catch (error) {

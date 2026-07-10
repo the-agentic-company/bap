@@ -32,12 +32,19 @@ const userImageInput = z.object({
   ),
 });
 
+function getActiveOrganizationId(session: unknown) {
+  return (session as { activeOrganizationId?: string | null } | null)?.activeOrganizationId ?? null;
+}
+
 // Get current user with onboardedAt status
 const me = protectedProcedure.handler(async ({ context }) => {
   const dbUser = await context.db.query.user.findFirst({
     where: eq(user.id, context.user.id),
   });
-  const workspace = await ensureWorkspaceForUser(context.user.id, dbUser?.activeWorkspaceId);
+  const workspace = await ensureWorkspaceForUser(
+    context.user.id,
+    getActiveOrganizationId(context.session) ?? context.workspaceId,
+  );
 
   return {
     id: context.user.id,
@@ -75,10 +82,12 @@ const forwarding = protectedProcedure.handler(async ({ context }) => {
     columns: {
       id: true,
       defaultForwardedCoworkerId: true,
-      activeWorkspaceId: true,
     },
   });
-  const workspace = await ensureWorkspaceForUser(context.user.id, dbUser?.activeWorkspaceId);
+  const workspace = await ensureWorkspaceForUser(
+    context.user.id,
+    getActiveOrganizationId(context.session) ?? context.workspaceId,
+  );
 
   const receivingDomain = process.env.RESEND_RECEIVING_DOMAIN?.trim().toLowerCase() ?? null;
   const userForwardingAddress = receivingDomain
@@ -115,11 +124,10 @@ const setDefaultForwardedCoworker = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const dbUser = await context.db.query.user.findFirst({
-      where: eq(user.id, context.user.id),
-      columns: { activeWorkspaceId: true },
-    });
-    const workspace = await ensureWorkspaceForUser(context.user.id, dbUser?.activeWorkspaceId);
+    const workspace = await ensureWorkspaceForUser(
+      context.user.id,
+      getActiveOrganizationId(context.session) ?? context.workspaceId,
+    );
     if (input.coworkerId) {
       const owned = await context.db.query.coworker.findFirst({
         where: and(

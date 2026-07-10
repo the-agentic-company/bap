@@ -20,6 +20,7 @@ import type {
   RuntimeSelection,
   SandboxHandle,
 } from "../../sandbox/core/types";
+import type { RuntimeVolumeMountPlan } from "../../sandbox/prep/runtime-volume-prep";
 import { getOrCreateConversationSandbox } from "../../sandbox/core/orchestrator";
 import { buildMemorySystemPrompt, syncMemoryFilesToSandbox } from "../../sandbox/prep/memory-prep";
 import {
@@ -48,6 +49,7 @@ export type RunnerBootstrapResult = {
   verboseOpenCodeEventLogs: boolean;
   stagedUploadCount: number;
   startPostPromptCacheWrite: (() => Promise<void>) | null;
+  runtimeVolumeMountPlan: RuntimeVolumeMountPlan | null;
 };
 
 // The sandbox + agent bootstrap phase of a normal turn: it provisions (or
@@ -252,6 +254,9 @@ export async function runNormalRunnerBootstrap(
     runtimeMetadata,
     executionEnvironment: undefined,
   });
+  if (runtimeSandbox.provider !== "daytona") {
+    throw new Error("runtime_volume_provider_unsupported: only Daytona supports Runtime Volumes");
+  }
   if (ctx.remoteIntegrationSource) {
     callbacks.recordRemoteRunPhase(ctx, "sandbox_created");
   }
@@ -305,8 +310,173 @@ export async function runNormalRunnerBootstrap(
   const runtimeMcpWarnings: Array<{ serverName: string; message: string }> = [];
   let resolvedWorkspaceMcpServerNames: string[] = [];
 
+  ctx.generationMarkerTime = Date.now();
+  ctx.sentFilePaths = new Set();
+  ctx.userStagedFilePaths = new Set();
+  callbacks.markPhase(ctx, "pre_prompt_setup_started");
+  const prePromptStartedAt = Date.now();
+  const prePromptBreakdown: Record<string, number> = {};
+  const markPrePromptStep = (step: string, startedAt: number) => {
+    prePromptBreakdown[step] = Date.now() - startedAt;
+  };
+  const markPrePromptPhase = (step: string, status: "started" | "completed") => {
+    callbacks.markPhase(ctx, `pre_prompt_${step}_${status}`);
+  };
+  const runPrePromptStep = async <T>(
+    step: string,
+    metricKey: string,
+    action: () => Promise<T>,
+  ): Promise<T> => {
+    markPrePromptPhase(step, "started");
+    const startedAt = Date.now();
+    try {
+      return await action();
+    } finally {
+      markPrePromptStep(metricKey, startedAt);
+      markPrePromptPhase(step, "completed");
+    }
+  };
+
+  let memoryInstructions = buildMemorySystemPrompt();
+  let enabledSkillRows: Array<{ name: string; updatedAt: Date }> = [];
+  let writtenSkills: string[] = [];
+  let writtenIntegrationSkills: string[] = [];
+  let prePromptCacheHit = false;
+  let startPostPromptCacheWrite: (() => Promise<void>) | null = null;
+  let runtimeVolumeMountPlan: RuntimeVolumeMountPlan | null = null;
+
+  const memorySyncPromise = (async () => {
+    try {
+      await runPrePromptStep("memory_sync", "syncMemoryFilesToSandboxMs", async () => {
+        await syncMemoryFilesToSandbox(ctx.userId, runtimeSandbox);
+      });
+    } catch (err) {
+      console.error("[GenerationManager] Failed to sync memory to sandbox:", err);
+      memoryInstructions = buildMemorySystemPrompt();
+    }
+  })();
+
+  const runtimeContextWritePromise = (async () => {
+    try {
+      await runPrePromptStep("runtime_context_write", "writeRuntimeContextMs", async () => {
+        if (ctx.runtimeId && ctx.runtimeCallbackToken && ctx.runtimeTurnSeq) {
+          const runtimeContext: RuntimeContextFile = {
+            runtimeId: ctx.runtimeId,
+            turnSeq: ctx.runtimeTurnSeq,
+            callbackToken: ctx.runtimeCallbackToken,
+            updatedAt: new Date().toISOString(),
+          };
+          await writeRuntimeContextToSandbox(runtimeSandbox, runtimeContext);
+        }
+        await writeRuntimeEnvToSandbox(runtimeSandbox, sandboxRuntimeEnv);
+      });
+    } catch (error) {
+      console.error("[GenerationManager] Failed to write runtime metadata to sandbox:", error);
+    }
+  })();
+
+  const workspaceMcpPreparePromise = (async (): Promise<void> => {
+    markPrePromptPhase("workspace_mcp_resolve", "started");
+    const startedAt = Date.now();
+    try {
+      const [resolved, platformResolution] = await Promise.all([
+        resolveWorkspaceMcpServersForGeneration({
+          workspaceId: ctx.workspaceId,
+          userId: ctx.userId,
+          allowedWorkspaceMcpServerIds: ctx.allowedWorkspaceMcpServerIds,
+          remoteIntegrationSource: ctx.remoteIntegrationSource,
+        }),
+        // Platform MCP Server (ADR-0013): hard-wired into every generation,
+        // independent of the Workspace MCP Server Allowlist.
+        resolveBapPlatformMcpServer({
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+          spawnDepth: ctx.spawnDepth,
+          surface: ctx.coworkerRunId
+            ? "coworker_runner"
+            : ctx.builderCoworkerContext
+              ? "coworker_builder"
+              : "chat",
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          coworkerId: ctx.coworkerId ?? ctx.builderCoworkerContext?.coworkerId,
+          coworkerRunId: ctx.coworkerRunId,
+        }),
+      ]);
+      for (const unavailable of resolved.unavailableServers) {
+        runtimeMcpWarnings.push({
+          serverName: unavailable.namespace,
+          message: `${unavailable.name} tools are unavailable: ${unavailable.reason}`,
+        });
+      }
+      if (!platformResolution.server) {
+        runtimeMcpWarnings.push(platformResolution.warning);
+      }
+      const sessionServers = [
+        ...resolved.requestedServers.map((entry) => entry.server),
+        ...(platformResolution.server ? [platformResolution.server] : []),
+      ];
+      resolvedWorkspaceMcpServerNames = sessionServers.map((server) => server.name);
+      resolveWorkspaceMcpSessionServers(sessionServers);
+    } catch (error) {
+      rejectWorkspaceMcpSessionServers(error);
+      throw error;
+    } finally {
+      markPrePromptStep("resolveWorkspaceMcpServersMs", startedAt);
+      markPrePromptPhase("workspace_mcp_resolve", "completed");
+    }
+  })();
+
+  const skillAssetPreparePromise = (async () => {
+    const preparedAssets = await stagePrePromptAssets({
+      runtimeSandbox,
+      userId: ctx.userId,
+      workspaceId: ctx.workspaceId,
+      generationId: ctx.id,
+      allowedIntegrations,
+      allowedCustomIntegrations: ctx.allowedCustomIntegrations,
+      allowedSkillSlugs: ctx.allowedSkillSlugs,
+      selectedPlatformSkillSlugs: ctx.selectedPlatformSkillSlugs,
+      customSkillNames,
+      runtimeVolumeSkillScope: ctx.coworkerId
+        ? {
+            type: "selected",
+            skillSlugs: customSkillNames,
+            ownedSkillSlugs: [],
+            sharedSkillSlugs: [],
+          }
+        : { type: "authoring" },
+      coworkerDocumentsCoworkerId:
+        ctx.coworkerId ?? ctx.builderCoworkerContext?.coworkerId ?? null,
+      agentSandboxMode: ctx.agentSandboxMode,
+      runStep: runPrePromptStep,
+      markPhase: (phase) => callbacks.markPhase(ctx, phase),
+      recordMetric: (metricName, durationMs) => {
+        prePromptBreakdown[metricName] = durationMs;
+      },
+      logContext: () => ({
+        source: "generation-manager",
+        traceId: ctx.traceId,
+        generationId: ctx.id,
+        conversationId: ctx.conversationId,
+        userId: ctx.userId,
+        sandboxId: runtimeSandbox.sandboxId,
+        sessionId: ctx.sessionId ?? undefined,
+      }),
+    });
+    enabledSkillRows = preparedAssets.enabledSkillRows;
+    writtenSkills = preparedAssets.writtenSkills;
+    writtenIntegrationSkills = preparedAssets.writtenIntegrationSkills;
+    prePromptCacheHit = preparedAssets.prePromptCacheHit;
+    startPostPromptCacheWrite = preparedAssets.startPostPromptCacheWrite;
+    runtimeVolumeMountPlan = preparedAssets.runtimeVolumeMountPlan;
+  })();
+
   const runtimeSessionPromise = (async () => {
     try {
+      // Daytona Runtime Volumes reset /app/.opencode/skills. Complete agent
+      // init only after that reset so OpenCode cannot hold the FUSE mount busy.
+      await skillAssetPreparePromise;
       const sessionMcpServers = await workspaceMcpSessionServersPromise;
       const session = await withTimeout(
         runtimeInit.completeAgentInit({ sessionMcpServers }),
@@ -377,146 +547,6 @@ export async function runNormalRunnerBootstrap(
     } finally {
       clearTimeout(agentInitWarnTimer);
     }
-  })();
-
-  ctx.generationMarkerTime = Date.now();
-  ctx.sentFilePaths = new Set();
-  ctx.userStagedFilePaths = new Set();
-  callbacks.markPhase(ctx, "pre_prompt_setup_started");
-  const prePromptStartedAt = Date.now();
-  const prePromptBreakdown: Record<string, number> = {};
-  const markPrePromptStep = (step: string, startedAt: number) => {
-    prePromptBreakdown[step] = Date.now() - startedAt;
-  };
-  const markPrePromptPhase = (step: string, status: "started" | "completed") => {
-    callbacks.markPhase(ctx, `pre_prompt_${step}_${status}`);
-  };
-  const runPrePromptStep = async <T>(
-    step: string,
-    metricKey: string,
-    action: () => Promise<T>,
-  ): Promise<T> => {
-    markPrePromptPhase(step, "started");
-    const startedAt = Date.now();
-    try {
-      return await action();
-    } finally {
-      markPrePromptStep(metricKey, startedAt);
-      markPrePromptPhase(step, "completed");
-    }
-  };
-
-  let memoryInstructions = buildMemorySystemPrompt();
-  let enabledSkillRows: Array<{ name: string; updatedAt: Date }> = [];
-  let writtenSkills: string[] = [];
-  let writtenIntegrationSkills: string[] = [];
-  let prePromptCacheHit = false;
-  let startPostPromptCacheWrite: (() => Promise<void>) | null = null;
-
-  const memorySyncPromise = (async () => {
-    try {
-      await runPrePromptStep("memory_sync", "syncMemoryFilesToSandboxMs", async () => {
-        await syncMemoryFilesToSandbox(ctx.userId, runtimeSandbox);
-      });
-    } catch (err) {
-      console.error("[GenerationManager] Failed to sync memory to sandbox:", err);
-      memoryInstructions = buildMemorySystemPrompt();
-    }
-  })();
-
-  const runtimeContextWritePromise = (async () => {
-    try {
-      await runPrePromptStep("runtime_context_write", "writeRuntimeContextMs", async () => {
-        if (ctx.runtimeId && ctx.runtimeCallbackToken && ctx.runtimeTurnSeq) {
-          const runtimeContext: RuntimeContextFile = {
-            runtimeId: ctx.runtimeId,
-            turnSeq: ctx.runtimeTurnSeq,
-            callbackToken: ctx.runtimeCallbackToken,
-            updatedAt: new Date().toISOString(),
-          };
-          await writeRuntimeContextToSandbox(runtimeSandbox, runtimeContext);
-        }
-        await writeRuntimeEnvToSandbox(runtimeSandbox, sandboxRuntimeEnv);
-      });
-    } catch (error) {
-      console.error("[GenerationManager] Failed to write runtime metadata to sandbox:", error);
-    }
-  })();
-
-  const workspaceMcpPreparePromise = (async (): Promise<void> => {
-    markPrePromptPhase("workspace_mcp_resolve", "started");
-    const startedAt = Date.now();
-    try {
-      const [resolved, platformResolution] = await Promise.all([
-        resolveWorkspaceMcpServersForGeneration({
-          workspaceId: ctx.workspaceId,
-          userId: ctx.userId,
-          allowedWorkspaceMcpServerIds: ctx.allowedWorkspaceMcpServerIds,
-          remoteIntegrationSource: ctx.remoteIntegrationSource,
-        }),
-        // Platform MCP Server (ADR-0013): hard-wired into every generation,
-        // independent of the Workspace MCP Server Allowlist.
-        resolveBapPlatformMcpServer({
-          userId: ctx.userId,
-          workspaceId: ctx.workspaceId,
-          spawnDepth: ctx.spawnDepth,
-        }),
-      ]);
-      for (const unavailable of resolved.unavailableServers) {
-        runtimeMcpWarnings.push({
-          serverName: unavailable.namespace,
-          message: `${unavailable.name} tools are unavailable: ${unavailable.reason}`,
-        });
-      }
-      if (!platformResolution.server) {
-        runtimeMcpWarnings.push(platformResolution.warning);
-      }
-      const sessionServers = [
-        ...resolved.requestedServers.map((entry) => entry.server),
-        ...(platformResolution.server ? [platformResolution.server] : []),
-      ];
-      resolvedWorkspaceMcpServerNames = sessionServers.map((server) => server.name);
-      resolveWorkspaceMcpSessionServers(sessionServers);
-    } catch (error) {
-      rejectWorkspaceMcpSessionServers(error);
-      throw error;
-    } finally {
-      markPrePromptStep("resolveWorkspaceMcpServersMs", startedAt);
-      markPrePromptPhase("workspace_mcp_resolve", "completed");
-    }
-  })();
-
-  const skillAssetPreparePromise = (async () => {
-    const preparedAssets = await stagePrePromptAssets({
-      runtimeSandbox,
-      userId: ctx.userId,
-      generationId: ctx.id,
-      allowedIntegrations,
-      allowedCustomIntegrations: ctx.allowedCustomIntegrations,
-      allowedSkillSlugs: ctx.allowedSkillSlugs,
-      selectedPlatformSkillSlugs: ctx.selectedPlatformSkillSlugs,
-      customSkillNames,
-      agentSandboxMode: ctx.agentSandboxMode,
-      runStep: runPrePromptStep,
-      markPhase: (phase) => callbacks.markPhase(ctx, phase),
-      recordMetric: (metricName, durationMs) => {
-        prePromptBreakdown[metricName] = durationMs;
-      },
-      logContext: () => ({
-        source: "generation-manager",
-        traceId: ctx.traceId,
-        generationId: ctx.id,
-        conversationId: ctx.conversationId,
-        userId: ctx.userId,
-        sandboxId: runtimeSandbox.sandboxId,
-        sessionId: ctx.sessionId ?? undefined,
-      }),
-    });
-    enabledSkillRows = preparedAssets.enabledSkillRows;
-    writtenSkills = preparedAssets.writtenSkills;
-    writtenIntegrationSkills = preparedAssets.writtenIntegrationSkills;
-    prePromptCacheHit = preparedAssets.prePromptCacheHit;
-    startPostPromptCacheWrite = preparedAssets.startPostPromptCacheWrite;
   })();
 
   await Promise.all([
@@ -638,9 +668,14 @@ export async function runNormalRunnerBootstrap(
   const modelConfig = buildOpenCodeRuntimeModelConfig(ctx.model);
 
   const promptParts: RuntimePromptPart[] = [{ type: "text", text: ctx.userMessageContent }];
+  const coworkerDocumentsCoworkerId =
+    ctx.coworkerId ?? ctx.builderCoworkerContext?.coworkerId ?? null;
+  const mountedCoworkerDocumentsPath = (runtimeVolumeMountPlan as RuntimeVolumeMountPlan | null)
+    ?.coworkerDocumentsPath;
   const stagedPromptAttachments = await stageRuntimePromptAttachments({
     runtimeSandbox,
-    coworkerId: ctx.coworkerId,
+    coworkerId: coworkerDocumentsCoworkerId,
+    coworkerDocumentsMountedPath: mountedCoworkerDocumentsPath,
     workspaceId: ctx.workspaceId,
     attachments: ctx.attachments,
     userStagedFilePaths: ctx.userStagedFilePaths,
@@ -704,5 +739,6 @@ export async function runNormalRunnerBootstrap(
     verboseOpenCodeEventLogs,
     stagedUploadCount,
     startPostPromptCacheWrite,
+    runtimeVolumeMountPlan,
   };
 }

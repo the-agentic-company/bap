@@ -13,10 +13,10 @@ import {
   Wrench,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { ChatArea } from "@/components/chat/chat-area";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import type { Message, MessagePart, SandboxFileData } from "@/components/chat/message-list";
 import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
+import { RunnerDeclaredFailureChatArea } from "@/components/coworkers/runner-declared-failure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
@@ -48,6 +48,7 @@ export const MOBILE_PANEL_VARIANTS = {
 type HistoryRunItem = {
   id: string;
   status: string;
+  failureKind?: string | null;
   startedAt?: Date | string | null;
 };
 
@@ -172,6 +173,20 @@ function isInProgressStatus(status?: string | null) {
   return status === "running";
 }
 
+function isRunnerDeclaredFailure(failureKind?: string | null) {
+  return failureKind === "runner_declared_failure";
+}
+
+function getRunStatusLabel(status?: string | null, failureKind?: string | null) {
+  if (status === "completed" || status === "success") {
+    return "Completed";
+  }
+  if (status === "error" && isRunnerDeclaredFailure(failureKind)) {
+    return "Failed";
+  }
+  return status ?? "Unknown";
+}
+
 function readableToolName(part: MessagePart) {
   if (part.type === "tool_call") {
     if (part.integration && part.operation) {
@@ -268,27 +283,53 @@ function formatErrorMessage(message?: string | null, fallback = "Run failed.") {
 function EmptyPreview({
   latestMessage,
   runStatus,
+  failureKind,
   errorMessage,
 }: {
   latestMessage?: string;
   runStatus?: string | null;
+  failureKind?: string | null;
   errorMessage?: string | null;
 }) {
   if (runStatus === "error" || runStatus === "cancelled") {
     const fallback = runStatus === "cancelled" ? "Run cancelled." : "Run failed.";
+    const runnerDeclaredFailure = isRunnerDeclaredFailure(failureKind);
 
     return (
       <div className="bg-background h-full overflow-auto p-5">
-        <div className="mx-auto max-w-3xl rounded-xl border border-red-300 bg-red-50/80 p-4">
-          <div className="mb-3 flex items-center gap-2 border-b border-red-200 pb-3">
-            <MessageSquareText className="h-4 w-4 text-red-600" />
-            <p className="text-sm font-medium text-red-700">
-              <T>Error</T>
+        <div
+          className={cn(
+            "mx-auto max-w-3xl rounded-xl border p-4",
+            runnerDeclaredFailure
+              ? "border-amber-300 bg-amber-50/80"
+              : "border-red-300 bg-red-50/80",
+          )}
+        >
+          <div
+            className={cn(
+              "mb-3 flex items-center gap-2 border-b pb-3",
+              runnerDeclaredFailure ? "border-amber-200" : "border-red-200",
+            )}
+          >
+            <MessageSquareText
+              className={cn("h-4 w-4", runnerDeclaredFailure ? "text-amber-600" : "text-red-600")}
+            />
+            <p
+              className={cn(
+                "text-sm font-medium",
+                runnerDeclaredFailure ? "text-amber-800" : "text-red-700",
+              )}
+            >
+              {runnerDeclaredFailure ? <T>Run failed</T> : <T>Error</T>}
             </p>
           </div>
           <MessageBubble
             messageRole="assistant"
-            content={formatErrorMessage(errorMessage, fallback)}
+            content={
+              runnerDeclaredFailure
+                ? (errorMessage?.trim() || fallback)
+                : formatErrorMessage(errorMessage, fallback)
+            }
           />
         </div>
       </div>
@@ -523,7 +564,9 @@ export function HistoryRunButton({
     >
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium">{formatRunDate(run.startedAt)}</span>
-        <span className="block truncate text-xs">{run.status}</span>
+        <span className="block truncate text-xs">
+          {getRunStatusLabel(run.status, run.failureKind)}
+        </span>
       </span>
       {selected ? <span className="bg-brand h-1.5 w-1.5 shrink-0 rounded-full" /> : null}
     </button>
@@ -532,18 +575,21 @@ export function HistoryRunButton({
 
 export function RunSummaryPanel({
   status,
+  failureKind,
   startedAt,
   finishedAt,
   events,
   messages,
 }: {
   status?: string | null;
+  failureKind?: string | null;
   startedAt?: Date | string | null;
   finishedAt?: Date | string | null;
   events?: RunEventSummary[];
   messages: Message[];
 }) {
   const completed = isCompletedStatus(status);
+  const statusLabel = getRunStatusLabel(status, failureKind);
   const tools = useMemo(() => collectToolSummary(messages, events), [events, messages]);
   const files = useMemo(() => collectSandboxFiles(messages), [messages]);
   const duration = useMemo(() => formatDuration(startedAt, finishedAt), [finishedAt, startedAt]);
@@ -558,7 +604,7 @@ export function RunSummaryPanel({
             <T>Status</T>
           </div>
           <p className={cn("mt-0.5 truncate text-sm font-medium", completed && "text-emerald-700")}>
-            {completed ? "Completed" : (status ?? "Unknown")}
+            {statusLabel}
           </p>
         </div>
         <div className="border-border/70 rounded-md border px-2.5 py-1.5">
@@ -639,6 +685,7 @@ export function OutputPanel({
   latestCoworkerMessage,
   runStatus,
   runErrorMessage,
+  runFailureKind,
   showOutputToolbar = true,
 }: {
   outputFile?: SandboxFileData | null;
@@ -646,6 +693,7 @@ export function OutputPanel({
   latestCoworkerMessage?: string;
   runStatus?: string | null;
   runErrorMessage?: string | null;
+  runFailureKind?: string | null;
   showOutputToolbar?: boolean;
 }) {
   const sendAgenticAppPrompt = useSendAgenticAppPrompt(conversationId);
@@ -661,6 +709,7 @@ export function OutputPanel({
     <EmptyPreview
       latestMessage={latestCoworkerMessage}
       runStatus={runStatus}
+      failureKind={runFailureKind}
       errorMessage={runErrorMessage}
     />
   );
@@ -679,6 +728,8 @@ export function RunDetailsPanel({
   isFetchingConversation: boolean;
   run: {
     status?: string | null;
+    failureKind?: string | null;
+    debugInfo?: unknown;
     startedAt?: Date | string | null;
     finishedAt?: Date | string | null;
     events?: RunEventSummary[];
@@ -710,6 +761,7 @@ export function RunDetailsPanel({
           <div className="h-full min-w-0 overflow-auto">
             <RunSummaryPanel
               status={run.status}
+              failureKind={run.failureKind}
               startedAt={run.startedAt}
               finishedAt={run.finishedAt}
               events={run.events}
@@ -718,7 +770,12 @@ export function RunDetailsPanel({
           </div>
         ) : conversationId ? (
           <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
-            <ChatArea conversationId={conversationId} compact />
+            <RunnerDeclaredFailureChatArea
+              conversationId={conversationId}
+              compact
+              debugInfo={run.debugInfo}
+              runnerDeclaredFailure={isRunnerDeclaredFailure(run.failureKind)}
+            />
           </div>
         ) : (
           <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-center text-sm">

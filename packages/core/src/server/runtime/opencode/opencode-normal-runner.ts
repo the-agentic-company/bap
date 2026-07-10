@@ -5,8 +5,10 @@ import {
 } from "./opencode-runtime-driver";
 import { logger } from "../../utils/observability";
 import { GenerationSuspendedError } from "../../services/generation/core/turn-suspension";
-import type { RuntimeHarnessClient } from "../../sandbox/core/types";
+import type { RuntimeHarnessClient, SandboxHandle } from "../../sandbox/core/types";
 import type { GenerationContext } from "../../services/generation/types";
+import { reconcileRuntimeVolumeProjection } from "../../services/runtime-volume-service";
+import type { RuntimeVolumeMountPlan } from "../../sandbox/prep/runtime-volume-prep";
 import type { NormalRunnerCallbacks } from "./opencode-runner-types";
 import {
   OPENCODE_EARLY_STREAM_REATTACH_ATTEMPTS,
@@ -115,6 +117,60 @@ export class OpenCodeNormalRunner {
     let stopPromptCancellationPoll: (() => void) | undefined;
     let watchdog: RuntimeNoProgressWatchdog | undefined;
     let client: RuntimeHarnessClient | undefined;
+    let runtimeVolumeMountPlan: RuntimeVolumeMountPlan | null = null;
+    let runtimeVolumeSandbox: SandboxHandle | undefined;
+    const reconcileRuntimeVolumes = async (terminalStatus: "completed" | "cancelled" | "error") => {
+      if (!runtimeVolumeMountPlan) {
+        return;
+      }
+
+      try {
+        await runtimeVolumeSandbox?.exec("sync", { timeoutMs: 15_000 });
+      } catch (error) {
+        logger.warn({
+          event: "RUNTIME_VOLUME_SYNC_FLUSH_FAILED",
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+          terminalStatus,
+          error: formatErrorMessage(error),
+        });
+      }
+
+      const results = await Promise.allSettled(
+        runtimeVolumeMountPlan.roots.map((root) => reconcileRuntimeVolumeProjection(root)),
+      );
+      const failures = results.filter((result) => result.status === "rejected");
+      if (failures.length > 0) {
+        logger.warn({
+          event: "RUNTIME_VOLUME_RECONCILIATION_FAILED",
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+          terminalStatus,
+          rootCount: runtimeVolumeMountPlan.roots.length,
+          failureCount: failures.length,
+          errors: failures.map((failure) => formatErrorMessage(failure.reason)),
+        });
+        return;
+      }
+
+      logger.info({
+        event: "RUNTIME_VOLUME_RECONCILIATION_COMPLETED",
+        generationId: ctx.id,
+        conversationId: ctx.conversationId,
+        userId: ctx.userId,
+        terminalStatus,
+        rootCount: runtimeVolumeMountPlan.roots.length,
+        changedCount: results.filter(
+          (result) => result.status === "fulfilled" && result.value.changed,
+        ).length,
+      });
+    };
+    const finishGeneration = async (status: "completed" | "cancelled" | "error") => {
+      await reconcileRuntimeVolumes(status);
+      await this.callbacks.finishGeneration(ctx, status);
+    };
     const stopPromptLevelWatchers = () => {
       this.callbacks.stopExternalInterruptPolling(ctx);
       clearPromptTimeout?.();
@@ -126,11 +182,11 @@ export class OpenCodeNormalRunner {
       if (ctx.abortForInterruptPark) {
         return;
       }
-      await this.callbacks.finishGeneration(ctx, "cancelled");
+      await finishGeneration("cancelled");
     };
     try {
       if (await this.callbacks.refreshCancellationSignal(ctx, { force: true })) {
-        await this.callbacks.finishGeneration(ctx, "cancelled");
+        await finishGeneration("cancelled");
         return;
       }
 
@@ -147,8 +203,11 @@ export class OpenCodeNormalRunner {
         verboseOpenCodeEventLogs,
         stagedUploadCount,
         startPostPromptCacheWrite,
+        runtimeVolumeMountPlan: resolvedRuntimeVolumeMountPlan,
       } = bootstrap;
       client = runtimeClient;
+      runtimeVolumeMountPlan = resolvedRuntimeVolumeMountPlan;
+      runtimeVolumeSandbox = runtimeSandbox;
 
       let lastExternalInterruptPollAt = 0;
       let reconciledTerminalIdle = false;
@@ -286,7 +345,7 @@ export class OpenCodeNormalRunner {
         forceRuntimeNoProgress,
         promptTimeoutController,
         snapshot: () => eventLoop.snapshot(),
-        finishGeneration: (c, status) => this.callbacks.finishGeneration(c, status),
+        finishGeneration: (_c, status) => finishGeneration(status),
         clearPromptTimeout: () => clearPromptTimeout?.(),
       });
       const runtimeNoProgressPromise = watchdog.promise;
@@ -426,7 +485,7 @@ export class OpenCodeNormalRunner {
         if (ctx.abortForInterruptPark) {
           return;
         }
-        await this.callbacks.finishGeneration(ctx, "cancelled");
+        await finishGeneration("cancelled");
         return;
       }
       if (promptResultOutcome.type === "runtime_no_progress") {
@@ -520,7 +579,7 @@ export class OpenCodeNormalRunner {
           if (ctx.abortForInterruptPark) {
             return;
           }
-          await this.callbacks.finishGeneration(ctx, "cancelled");
+          await finishGeneration("cancelled");
           return;
         }
 
@@ -569,7 +628,7 @@ export class OpenCodeNormalRunner {
               opencodeLogReadError: emptyCompletionDiagnostics.opencodeLogReadError,
             },
           });
-          await this.callbacks.finishGeneration(ctx, "error");
+          await finishGeneration("error");
           return;
         }
       }
@@ -610,7 +669,7 @@ export class OpenCodeNormalRunner {
         console.info(
           `[GenerationManager][SUMMARY] status=cancelled generationId=${ctx.id} conversationId=${ctx.conversationId} durationMs=${Date.now() - ctx.startedAt.getTime()} opencodeEvents=${opencodeStats.eventCount} toolCalls=${opencodeStats.toolCallCount} permissions=${opencodeStats.permissionCount} questions=${opencodeStats.questionCount} stagedUploads=${stagedUploadCount} uploadedFiles=${uploadedSandboxFileCount}`,
         );
-        await this.callbacks.finishGeneration(ctx, "cancelled");
+        await finishGeneration("cancelled");
         return;
       }
 
@@ -618,7 +677,7 @@ export class OpenCodeNormalRunner {
       console.info(
         `[GenerationManager][SUMMARY] status=completed generationId=${ctx.id} conversationId=${ctx.conversationId} durationMs=${Date.now() - ctx.startedAt.getTime()} opencodeEvents=${opencodeStats.eventCount} toolCalls=${opencodeStats.toolCallCount} permissions=${opencodeStats.permissionCount} questions=${opencodeStats.questionCount} stagedUploads=${stagedUploadCount} uploadedFiles=${uploadedSandboxFileCount}`,
       );
-      await this.callbacks.finishGeneration(ctx, "completed");
+      await finishGeneration("completed");
     } catch (error) {
       stopPromptLevelWatchers();
       if (error instanceof GenerationSuspendedError) {
@@ -645,7 +704,7 @@ export class OpenCodeNormalRunner {
         });
         this.callbacks.setCompletionReason(ctx, "bootstrap_timeout");
         ctx.errorMessage = error instanceof Error ? error.message : formatErrorMessage(error);
-        await this.callbacks.finishGeneration(ctx, "error");
+        await finishGeneration("error");
         return;
       }
       if (promptTimeoutTriggered) {
@@ -683,13 +742,13 @@ export class OpenCodeNormalRunner {
         if (client && ctx.sessionId) {
           await this.callbacks.captureUsageFromRuntimeSession(ctx, client, ctx.sessionId);
         }
-        await this.callbacks.finishGeneration(ctx, "completed");
+        await finishGeneration("completed");
         return;
       }
       console.info(
         `[GenerationManager][SUMMARY] status=error generationId=${ctx.id} conversationId=${ctx.conversationId} durationMs=${Date.now() - ctx.startedAt.getTime()} error=${JSON.stringify(ctx.errorMessage)}`,
       );
-      await this.callbacks.finishGeneration(ctx, "error");
+      await finishGeneration("error");
     }
   }
 }

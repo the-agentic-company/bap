@@ -34,6 +34,12 @@ export type RuntimeMcpContext = {
   userId: string;
   workspaceId: string;
   spawnDepth: number;
+  scopes: string[];
+  surface?: ManagedMcpTokenClaims["surface"];
+  generationId?: string;
+  conversationId?: string;
+  coworkerId?: string;
+  coworkerRunId?: string;
   expiresAt: number;
 };
 
@@ -225,16 +231,6 @@ async function resolveRuntimeMcpContext(headers: Headers): Promise<{
       return null;
     }
 
-    // Confine the token to its own workspace. Most routes resolve the user's
-    // active workspace and ignore context.workspaceId, so a token minted for
-    // workspace A could otherwise act in whatever workspace is currently active.
-    // Fail closed when they diverge; the platform re-mints with the live
-    // workspace on the next generation.
-    const activeWorkspaceId = (dbUser as { activeWorkspaceId?: string | null }).activeWorkspaceId;
-    if (activeWorkspaceId && activeWorkspaceId !== claims.workspaceId) {
-      return null;
-    }
-
     return {
       user: dbUser as unknown as User,
       session: {
@@ -252,6 +248,12 @@ async function resolveRuntimeMcpContext(headers: Headers): Promise<{
         userId: claims.userId,
         workspaceId: claims.workspaceId,
         spawnDepth: claims.spawnDepth ?? 0,
+        scopes: claims.scopes ?? [claims.internalKey],
+        surface: claims.surface,
+        generationId: claims.generationId,
+        conversationId: claims.conversationId,
+        coworkerId: claims.coworkerId,
+        coworkerRunId: claims.coworkerRunId,
         expiresAt: claims.exp,
       },
     };
@@ -273,7 +275,9 @@ export async function createORPCContext(opts: { headers: Headers }): Promise<ORP
       authSource: "session",
       hostedMcp: null,
       runtimeMcp: null,
-      workspaceId: null,
+      workspaceId:
+        (sessionData.session as { activeOrganizationId?: string | null }).activeOrganizationId ??
+        null,
     };
   }
 

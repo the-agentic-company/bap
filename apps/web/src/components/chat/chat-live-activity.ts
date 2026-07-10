@@ -3,7 +3,7 @@ export function shouldRenderLiveActivity(params: {
   isStreaming: boolean;
   suppressLiveActivity: boolean;
 }): boolean {
-  return !params.suppressLiveActivity && (params.isStreaming || params.displaySegmentCount > 0);
+  return !params.suppressLiveActivity && params.isStreaming;
 }
 
 export function shouldRenderInitialLiveActivity(params: {

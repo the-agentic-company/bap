@@ -6,9 +6,16 @@ import { logger } from "../utils/observability";
 import type { SandboxHandle } from "../sandbox/core/types";
 import {
   writeSandboxCommonLibToSandbox,
+  writeSkillsAgentsIndexToSandbox,
   writeResolvedIntegrationSkillsToSandbox,
   writeSkillsToSandbox,
 } from "../sandbox/prep/skills-prep";
+import {
+  buildRuntimeVolumeMountPlan,
+  prepareRuntimeVolumesForSandbox,
+  type RuntimeVolumeMountPlan,
+  type RuntimeVolumeSkillScope,
+} from "../sandbox/prep/runtime-volume-prep";
 import { listAccessibleEnabledSkillMetadataForUser } from "../services/workspace-skill-service";
 
 const PRE_PROMPT_CACHE_PATH = "/app/.opencode/pre-prompt-cache.json";
@@ -38,33 +45,47 @@ export type PrePromptAssetsLogContext = {
 };
 
 export type StagePrePromptAssetsResult = {
-  enabledSkillRows: Array<{ name: string; updatedAt: Date }>;
+  enabledSkillRows: SkillMetadataRow[];
   writtenSkills: string[];
   writtenIntegrationSkills: string[];
   prePromptCacheHit: boolean;
   startPostPromptCacheWrite: (() => Promise<void>) | null;
+  runtimeVolumeMountPlan: RuntimeVolumeMountPlan | null;
+};
+
+type SkillMetadataRow = {
+  name: string;
+  displayName?: string | null;
+  description?: string | null;
+  visibility: "private" | "public";
+  userId: string;
+  updatedAt: Date;
 };
 
 export async function stagePrePromptAssets(input: {
   runtimeSandbox: SandboxHandle;
   userId: string;
+  workspaceId?: string | null;
   generationId: string;
   allowedIntegrations: Iterable<string>;
   allowedCustomIntegrations?: readonly string[] | null;
   allowedSkillSlugs?: readonly string[] | null;
   selectedPlatformSkillSlugs?: readonly string[] | null;
   customSkillNames?: readonly string[];
+  runtimeVolumeSkillScope?: RuntimeVolumeSkillScope;
+  coworkerDocumentsCoworkerId?: string | null;
   agentSandboxMode?: string | null;
   runStep: PrePromptAssetStep;
   markPhase: (phase: string) => void;
   recordMetric: (metricName: string, durationMs: number) => void;
   logContext: () => PrePromptAssetsLogContext;
 }): Promise<StagePrePromptAssetsResult> {
-  let enabledSkillRows: Array<{ name: string; updatedAt: Date }> = [];
+  let enabledSkillRows: SkillMetadataRow[] = [];
   let writtenSkills: string[] = [];
   let writtenIntegrationSkills: string[] = [];
   let prePromptCacheHit = false;
   let startPostPromptCacheWrite: (() => Promise<void>) | null = null;
+  let runtimeVolumeMountPlan: RuntimeVolumeMountPlan | null = null;
 
   const [loadedSkillRows, customCreds] = await input.runStep(
     "skills_and_creds_load",
@@ -118,6 +139,51 @@ export async function stagePrePromptAssets(input: {
     async () => await writeSandboxCommonLibToSandbox(input.runtimeSandbox),
   );
 
+  const runtimeVolumesEnabled = input.runtimeSandbox.provider === "daytona";
+  if (runtimeVolumesEnabled) {
+    if (!input.workspaceId) {
+      throw new Error("runtime_volume_workspace_required: workspaceId is required");
+    }
+    const requestedSkillScope = input.runtimeVolumeSkillScope ?? { type: "authoring" };
+    const visibleSkillRows =
+      requestedSkillScope.type === "selected"
+        ? enabledSkillRows.filter((row) => requestedSkillScope.skillSlugs.includes(row.name))
+        : enabledSkillRows;
+    const visibleSkillNames = visibleSkillRows.map((row) => row.name);
+    const resolvedSkillScope: RuntimeVolumeSkillScope =
+      requestedSkillScope.type === "selected"
+        ? {
+            type: "selected",
+            skillSlugs: visibleSkillNames,
+            ownedSkillSlugs: visibleSkillRows
+              .filter((row) => row.userId === input.userId)
+              .map((row) => row.name),
+            sharedSkillSlugs: visibleSkillRows
+              .filter((row) => row.userId !== input.userId && row.visibility === "public")
+              .map((row) => row.name),
+          }
+        : requestedSkillScope;
+
+    runtimeVolumeMountPlan = buildRuntimeVolumeMountPlan({
+      workspaceId: input.workspaceId,
+      userId: input.userId,
+      generationId: input.generationId,
+      skillScope: resolvedSkillScope,
+      visibleSkillNames,
+      coworkerDocumentsCoworkerId: input.coworkerDocumentsCoworkerId,
+    });
+    await input.runStep("runtime_volume_mount", "mountRuntimeVolumesMs", async () => {
+      await prepareRuntimeVolumesForSandbox({
+        sandbox: input.runtimeSandbox,
+        plan: runtimeVolumeMountPlan!,
+      });
+    });
+    await input.runStep("skills_index_write", "writeSkillsIndexMs", async () => {
+      await writeSkillsAgentsIndexToSandbox(input.runtimeSandbox, visibleSkillRows);
+    });
+    writtenSkills = visibleSkillNames;
+  }
+
   if (input.agentSandboxMode === "reused") {
     try {
       const parsed = await input.runStep("cache_read", "readPrePromptCacheMs", async () => {
@@ -151,18 +217,20 @@ export async function stagePrePromptAssets(input: {
   if (!prePromptCacheHit) {
     try {
       await input.runStep("skill_asset_prepare", "prepareSkillAssetsMs", async () => {
-        const skillsWritePromise = input.runStep(
-          "skills_write",
-          "writeSkillsToSandboxMs",
-          async () =>
-            await writeSkillsToSandbox(
-              input.runtimeSandbox,
-              input.userId,
-              input.customSkillNames && input.customSkillNames.length > 0
-                ? [...input.customSkillNames]
-                : undefined,
-            ),
-        );
+        const skillsWritePromise = runtimeVolumeMountPlan
+          ? Promise.resolve(writtenSkills)
+          : input.runStep(
+              "skills_write",
+              "writeSkillsToSandboxMs",
+              async () =>
+                await writeSkillsToSandbox(
+                  input.runtimeSandbox,
+                  input.userId,
+                  input.customSkillNames && input.customSkillNames.length > 0
+                    ? [...input.customSkillNames]
+                    : undefined,
+                ),
+            );
 
         const customIntegrationCliWritePromise = input.runStep(
           "custom_integration_cli_write",
@@ -269,5 +337,6 @@ export async function stagePrePromptAssets(input: {
     writtenIntegrationSkills,
     prePromptCacheHit,
     startPostPromptCacheWrite,
+    runtimeVolumeMountPlan,
   };
 }

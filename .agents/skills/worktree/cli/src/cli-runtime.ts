@@ -9,13 +9,12 @@ import {
   resolveSharedWorktreeLocksDir,
   resolveSharedWorktreeSlotLeasePath,
 } from "./coordination";
-import {
-  buildSharedStackConfig,
-  type SharedStackConfig,
-} from "./stack";
+import { buildSharedStackConfig, type SharedStackConfig } from "./stack";
 import { MAX_RUNNING_WORKTREE_WEB_PROCESSES } from "./start-guard";
 
-export const require = createRequire(new URL("../../../../../apps/web/package.json", import.meta.url));
+export const require = createRequire(
+  new URL("../../../../../apps/web/package.json", import.meta.url),
+);
 export const { Client } = require("pg") as typeof import("pg");
 export const { serializeSignedCookie } = require("better-call") as typeof import("better-call");
 export const dotenv = require("dotenv") as typeof import("dotenv");
@@ -42,6 +41,7 @@ export type InstanceMetadata = {
   stackSlot: number;
   appPort: number;
   wsPort: number;
+  zeroCachePort: number;
   appUrl: string;
   databaseName: string;
   databaseUser: string;
@@ -89,10 +89,10 @@ export const PROCESS_NAMES = ["web", "worker", "ws"] as const;
 export const DEV_START_TIMEOUT_MS = 120_000;
 export const GENERATED_WORKTREE_ENV_HEADER =
   "# Auto-generated for worktree by .agents/skills/worktree/cli/src/cli.ts.";
-export const GENERATED_WORKTREE_ENV_NOTICE = "# Do not edit manually; re-run a worktree command to refresh it.";
+export const GENERATED_WORKTREE_ENV_NOTICE =
+  "# Do not edit manually; re-run a worktree command to refresh it.";
 export const WORKTREE_CLI_COMMAND = "bun .agents/skills/worktree/cli/src/cli.ts";
-export const WORKTREE_START_LIMIT_ERROR =
-  `You already have ${MAX_RUNNING_WORKTREE_WEB_PROCESSES} worktree web servers running, you cannot start another one, please talk to the user first for him to stop one of the worktrees`;
+export const WORKTREE_START_LIMIT_ERROR = `You already have ${MAX_RUNNING_WORKTREE_WEB_PROCESSES} worktree web servers running, you cannot start another one, please talk to the user first for him to stop one of the worktrees`;
 export type ProcessName = (typeof PROCESS_NAMES)[number];
 
 let sharedStackRuntimeCache: SharedStackConfig | null = null;
@@ -102,12 +102,18 @@ export function printHelp(): void {
   console.log("");
   console.log("Commands:");
   console.log("  create   Create or update the isolated worktree instance");
-  console.log("  setup    Ensure shared Docker services are running, prepare the database, and start background processes");
+  console.log(
+    "  setup    Ensure shared Docker services are running, prepare the database, and start background processes",
+  );
   console.log("  start    Start or restart background processes for this worktree");
   console.log("  stop     Stop background processes for this worktree");
   console.log("  destroy  Stop processes, remove worktree resources, and remove local state");
-  console.log("  docker-up    Ensure the shared Docker stack is running and provision worktree resources");
-  console.log("  docker-down  No-op for shared observability; worktree Docker is no longer isolated");
+  console.log(
+    "  docker-up    Ensure the shared Docker stack is running and provision worktree resources",
+  );
+  console.log(
+    "  docker-down  No-op for shared observability; worktree Docker is no longer isolated",
+  );
   console.log("  dev      Start web, worker, and ws in the foreground");
   console.log("  status   Show the current worktree instance state");
   console.log("  processes  List running worktree processes and stop commands, including stop all");
@@ -294,7 +300,9 @@ export function generateCredentialSecret(bytes = 24): string {
   return randomBytes(bytes).toString("hex");
 }
 
-export function buildDatabaseUrlForMetadata(metadata: Pick<InstanceMetadata, "databaseName" | "databaseUser" | "databasePassword">): string {
+export function buildDatabaseUrlForMetadata(
+  metadata: Pick<InstanceMetadata, "databaseName" | "databaseUser" | "databasePassword">,
+): string {
   const shared = resolveRuntimeSharedStackConfig();
   const url = new URL(buildPostgresBaseUrl(shared.postgresPort, metadata.databaseName));
   url.username = metadata.databaseUser;
@@ -306,7 +314,10 @@ export function clearSharedStackRuntimeCache(): void {
   sharedStackRuntimeCache = null;
 }
 
-export function resolveDockerComposeServiceContainerId(projectName: string, service: string): string | null {
+export function resolveDockerComposeServiceContainerId(
+  projectName: string,
+  service: string,
+): string | null {
   const result = spawnSync(
     "docker",
     [
@@ -335,20 +346,19 @@ export function resolveDockerComposeServiceContainerId(projectName: string, serv
   );
 }
 
-export function resolveDockerComposeServiceEnv(projectName: string, service: string): Record<string, string> {
+export function resolveDockerComposeServiceEnv(
+  projectName: string,
+  service: string,
+): Record<string, string> {
   const containerId = resolveDockerComposeServiceContainerId(projectName, service);
   if (!containerId) {
     return {};
   }
 
-  const result = spawnSync(
-    "docker",
-    ["inspect", containerId, "--format", "{{json .Config.Env}}"],
-    {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
+  const result = spawnSync("docker", ["inspect", containerId, "--format", "{{json .Config.Env}}"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
   if (result.status !== 0 || !result.stdout.trim()) {
     return {};
   }
@@ -375,7 +385,11 @@ export function resolveDockerComposeServiceEnv(projectName: string, service: str
   }
 }
 
-export function resolveDockerPublishedPort(projectName: string, service: string, containerPort: number): number | null {
+export function resolveDockerPublishedPort(
+  projectName: string,
+  service: string,
+  containerPort: number,
+): number | null {
   const containerId = resolveDockerComposeServiceContainerId(projectName, service);
   if (!containerId) {
     return null;
@@ -409,9 +423,10 @@ export function resolveDockerPublishedPort(projectName: string, service: string,
       return null;
     }
 
-    const hostPort = bindings.find((binding) => binding.HostIp === "0.0.0.0")?.HostPort
-      ?? bindings.find((binding) => binding.HostIp === "::")?.HostPort
-      ?? bindings[0]?.HostPort;
+    const hostPort =
+      bindings.find((binding) => binding.HostIp === "0.0.0.0")?.HostPort ??
+      bindings.find((binding) => binding.HostIp === "::")?.HostPort ??
+      bindings[0]?.HostPort;
     const parsed = Number.parseInt(hostPort ?? "", 10);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   } catch {
@@ -421,7 +436,10 @@ export function resolveDockerPublishedPort(projectName: string, service: string,
 
 export function resolveRuntimeSharedStackConfig(): SharedStackConfig {
   const base = buildSharedStackConfig();
-  if (sharedStackRuntimeCache && sharedStackRuntimeCache.composeProjectName === base.composeProjectName) {
+  if (
+    sharedStackRuntimeCache &&
+    sharedStackRuntimeCache.composeProjectName === base.composeProjectName
+  ) {
     return sharedStackRuntimeCache;
   }
 
@@ -429,8 +447,7 @@ export function resolveRuntimeSharedStackConfig(): SharedStackConfig {
     ...base,
     postgresPort:
       resolveDockerPublishedPort(base.composeProjectName, "database", 5432) ?? base.postgresPort,
-    redisPort:
-      resolveDockerPublishedPort(base.composeProjectName, "redis", 6379) ?? base.redisPort,
+    redisPort: resolveDockerPublishedPort(base.composeProjectName, "redis", 6379) ?? base.redisPort,
     minioApiPort:
       resolveDockerPublishedPort(base.composeProjectName, "minio", 9000) ?? base.minioApiPort,
     minioConsolePort:
@@ -438,7 +455,8 @@ export function resolveRuntimeSharedStackConfig(): SharedStackConfig {
     grafanaPort:
       resolveDockerPublishedPort(base.composeProjectName, "grafana", 3000) ?? base.grafanaPort,
     alertmanagerPort:
-      resolveDockerPublishedPort(base.composeProjectName, "alertmanager", 9093) ?? base.alertmanagerPort,
+      resolveDockerPublishedPort(base.composeProjectName, "alertmanager", 9093) ??
+      base.alertmanagerPort,
   };
 
   sharedStackRuntimeCache = resolved;

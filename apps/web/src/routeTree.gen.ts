@@ -117,6 +117,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AgentsInfoSlugRouteImport } from './routes/agents/info/$slug'
 import { Route as AgentsFoldersFolderIdRouteImport } from './routes/agents/folders/$folderId'
 import { Route as AgentsDeployTemplateIdRouteImport } from './routes/agents/deploy/$templateId'
+import { Route as AuthWorkspaceInvitationsInvitationIdRouteImport } from './routes/_auth/workspace-invitations.$invitationId'
 import { Route as AuthSignInTokenRouteImport } from './routes/_auth/sign-in.$token'
 import { Route as AppChatConversationIdRouteImport } from './routes/_app/chat/$conversationId'
 import { Route as AgentsRunsIdRouteRouteImport } from './routes/agents/runs/$id/route'
@@ -717,6 +718,12 @@ const AgentsDeployTemplateIdRoute = AgentsDeployTemplateIdRouteImport.update({
   path: '/deploy/$templateId',
   getParentRoute: () => AgentsRouteRoute,
 } as any)
+const AuthWorkspaceInvitationsInvitationIdRoute =
+  AuthWorkspaceInvitationsInvitationIdRouteImport.update({
+    id: '/workspace-invitations/$invitationId',
+    path: '/workspace-invitations/$invitationId',
+    getParentRoute: () => AuthRoute,
+  } as any)
 const AuthSignInTokenRoute = AuthSignInTokenRouteImport.update({
   id: '/sign-in/$token',
   path: '/sign-in/$token',
@@ -1120,6 +1127,7 @@ export interface FileRoutesByFullPath {
   '/agents/runs/$id': typeof AgentsRunsIdRouteRouteWithChildren
   '/chat/$conversationId': typeof AppChatConversationIdRoute
   '/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
+  '/workspace-invitations/$invitationId': typeof AuthWorkspaceInvitationsInvitationIdRoute
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
   '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
@@ -1273,6 +1281,7 @@ export interface FileRoutesByTo {
   '/toolbox': typeof ToolboxIndexRoute
   '/chat/$conversationId': typeof AppChatConversationIdRoute
   '/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
+  '/workspace-invitations/$invitationId': typeof AuthWorkspaceInvitationsInvitationIdRoute
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
   '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
@@ -1441,6 +1450,7 @@ export interface FileRoutesById {
   '/agents/runs/$id': typeof AgentsRunsIdRouteRouteWithChildren
   '/_app/chat/$conversationId': typeof AppChatConversationIdRoute
   '/_auth/sign-in/$token': typeof AuthSignInTokenRouteWithChildren
+  '/_auth/workspace-invitations/$invitationId': typeof AuthWorkspaceInvitationsInvitationIdRoute
   '/agents/deploy/$templateId': typeof AgentsDeployTemplateIdRoute
   '/agents/folders/$folderId': typeof AgentsFoldersFolderIdRoute
   '/agents/info/$slug': typeof AgentsInfoSlugRoute
@@ -1607,6 +1617,7 @@ export interface FileRouteTypes {
     | '/agents/runs/$id'
     | '/chat/$conversationId'
     | '/sign-in/$token'
+    | '/workspace-invitations/$invitationId'
     | '/agents/deploy/$templateId'
     | '/agents/folders/$folderId'
     | '/agents/info/$slug'
@@ -1760,6 +1771,7 @@ export interface FileRouteTypes {
     | '/toolbox'
     | '/chat/$conversationId'
     | '/sign-in/$token'
+    | '/workspace-invitations/$invitationId'
     | '/agents/deploy/$templateId'
     | '/agents/folders/$folderId'
     | '/agents/info/$slug'
@@ -1927,6 +1939,7 @@ export interface FileRouteTypes {
     | '/agents/runs/$id'
     | '/_app/chat/$conversationId'
     | '/_auth/sign-in/$token'
+    | '/_auth/workspace-invitations/$invitationId'
     | '/agents/deploy/$templateId'
     | '/agents/folders/$folderId'
     | '/agents/info/$slug'
@@ -2864,6 +2877,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsDeployTemplateIdRouteImport
       parentRoute: typeof AgentsRouteRoute
     }
+    '/_auth/workspace-invitations/$invitationId': {
+      id: '/_auth/workspace-invitations/$invitationId'
+      path: '/workspace-invitations/$invitationId'
+      fullPath: '/workspace-invitations/$invitationId'
+      preLoaderRoute: typeof AuthWorkspaceInvitationsInvitationIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/sign-in/$token': {
       id: '/_auth/sign-in/$token'
       path: '/sign-in/$token'
@@ -3547,6 +3567,7 @@ interface AuthRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignInTokenRoute: typeof AuthSignInTokenRouteWithChildren
+  AuthWorkspaceInvitationsInvitationIdRoute: typeof AuthWorkspaceInvitationsInvitationIdRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -3554,6 +3575,8 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignInTokenRoute: AuthSignInTokenRouteWithChildren,
+  AuthWorkspaceInvitationsInvitationIdRoute:
+    AuthWorkspaceInvitationsInvitationIdRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

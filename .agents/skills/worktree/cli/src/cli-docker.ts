@@ -3,10 +3,7 @@ import { existsSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Client as PgClient } from "pg";
 
-import {
-  buildSharedStackConfig,
-  formatWorktreeStackSlot,
-} from "./stack";
+import { buildSharedStackConfig, formatWorktreeStackSlot } from "./stack";
 import {
   MAX_RUNNING_WORKTREE_WEB_PROCESSES,
   shouldBlockStartingWorktreeWeb,
@@ -36,6 +33,7 @@ import {
   resolveSharedWorktreeInstancesPath,
   resolveSharedEnvFile,
   resolveWorktreeEnvFile,
+  runtimeDir,
   runCommand,
   WORKTREE_START_LIMIT_ERROR,
   type InstanceMetadata,
@@ -57,7 +55,12 @@ import {
 } from "./cli-state";
 import { isPidRunning } from "./cli-process";
 
-export function runInheritedCommand(command: string, args: string[], cwd: string, env?: NodeJS.ProcessEnv): void {
+export function runInheritedCommand(
+  command: string,
+  args: string[],
+  cwd: string,
+  env?: NodeJS.ProcessEnv,
+): void {
   const result = spawnSync(command, args, {
     cwd,
     env,
@@ -86,11 +89,7 @@ export function ensureDockerDaemonAvailable(): void {
 
   if (infoResult.status !== 0) {
     const output = infoResult.stderr?.trim() || infoResult.stdout?.trim();
-    fail(
-      `cannot start worktree because Docker is not running${
-        output ? `: ${output}` : ""
-      }`,
-    );
+    fail(`cannot start worktree because Docker is not running${output ? `: ${output}` : ""}`);
   }
 }
 
@@ -142,10 +141,14 @@ export function printStatusEndpoints(metadata: InstanceMetadata): void {
 
 export function isDockerPortAllocationFailure(output: string): boolean {
   const normalized = output.toLowerCase();
-  return normalized.includes("port is already allocated") || normalized.includes("bind for 0.0.0.0:");
+  return (
+    normalized.includes("port is already allocated") || normalized.includes("bind for 0.0.0.0:")
+  );
 }
 
-export async function ensureWorktreeDockerStackUp(metadata: InstanceMetadata): Promise<InstanceMetadata> {
+export async function ensureWorktreeDockerStackUp(
+  metadata: InstanceMetadata,
+): Promise<InstanceMetadata> {
   return metadata;
 }
 
@@ -234,7 +237,9 @@ export function ensureSharedInfraRunning(repoRoot: string): void {
     "vmalert",
     "grafana",
   ];
-  const missingServices = services.filter((service) => !isDockerComposeServiceRunning(projectName, service));
+  const missingServices = services.filter(
+    (service) => !isDockerComposeServiceRunning(projectName, service),
+  );
 
   if (missingServices.length === 0) {
     return;
@@ -265,8 +270,78 @@ export function buildZeroCacheVolumeName(metadata: InstanceMetadata): string {
   return `${metadata.instanceId}_zero_cache_data`;
 }
 
+export function buildZeroCacheServiceName(metadata: InstanceMetadata): string {
+  return `zero-cache-${metadata.instanceId}`.replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
+}
+
+export function buildZeroCacheComposeFilePath(metadata: InstanceMetadata): string {
+  return join(runtimeDir(metadata.instanceRoot), "zero-cache.compose.yml");
+}
+
 export function buildZeroQueryUrl(metadata: InstanceMetadata): string {
   return `http://host.docker.internal:${metadata.appPort}/api/zero/query`;
+}
+
+export function buildZeroCacheUrl(metadata: InstanceMetadata): string {
+  return `http://127.0.0.1:${metadata.zeroCachePort}`;
+}
+
+function buildZeroPostgresUrl(metadata: InstanceMetadata): string {
+  const sharedStack = resolveRuntimeSharedStackConfig();
+  const postgresPassword = resolvePostgresPassword();
+  const url = new URL(
+    `postgresql://postgres@host.docker.internal:${sharedStack.postgresPort}/${metadata.databaseName}`,
+  );
+  url.password = postgresPassword;
+  return url.toString();
+}
+
+function yamlString(value: string): string {
+  return JSON.stringify(value);
+}
+
+export function buildZeroCacheComposeFileContent(metadata: InstanceMetadata): string {
+  const serviceName = buildZeroCacheServiceName(metadata);
+  const databaseUrl = buildZeroPostgresUrl(metadata);
+  const volumeName = buildZeroCacheVolumeName(metadata);
+
+  return [
+    `name: ${yamlString(buildSharedStackConfig().composeProjectName)}`,
+    "",
+    "services:",
+    `  ${serviceName}:`,
+    "    image: rocicorp/zero:1.6.2",
+    "    ports:",
+    `      - ${yamlString(`${metadata.zeroCachePort}:4848`)}`,
+    "    stop_grace_period: 10m",
+    "    environment:",
+    `      ZERO_UPSTREAM_DB: ${yamlString(databaseUrl)}`,
+    `      ZERO_CVR_DB: ${yamlString(databaseUrl)}`,
+    `      ZERO_CHANGE_DB: ${yamlString(databaseUrl)}`,
+    "      ZERO_REPLICA_FILE: /data/replica.db",
+    `      ZERO_ADMIN_PASSWORD: ${yamlString(process.env.ZERO_ADMIN_PASSWORD?.trim() || "bap-local-zero")}`,
+    `      ZERO_QUERY_URL: ${yamlString(buildZeroQueryUrl(metadata))}`,
+    '      ZERO_QUERY_FORWARD_COOKIES: "true"',
+    '      ZERO_ENABLE_CRUD_MUTATIONS: "false"',
+    "    volumes:",
+    "      - type: volume",
+    "        source: zero_cache_data",
+    "        target: /data",
+    "    extra_hosts:",
+    '      - "host.docker.internal:host-gateway"',
+    "    restart: unless-stopped",
+    "    healthcheck:",
+    '      test: ["CMD-SHELL", "curl -f http://localhost:4848/keepalive"]',
+    "      interval: 5s",
+    "      timeout: 5s",
+    "      retries: 5",
+    "      start_period: 10m",
+    "",
+    "volumes:",
+    "  zero_cache_data:",
+    `    name: ${yamlString(volumeName)}`,
+    "",
+  ].join("\n");
 }
 
 export function buildZeroCacheComposeEnv(metadata: InstanceMetadata): NodeJS.ProcessEnv {
@@ -276,19 +351,24 @@ export function buildZeroCacheComposeEnv(metadata: InstanceMetadata): NodeJS.Pro
     DATABASE_PASSWORD: postgresPassword,
     DB_PASSWORD: postgresPassword,
     BAP_POSTGRES_DB: metadata.databaseName,
+    BAP_ZERO_CACHE_PORT: String(metadata.zeroCachePort),
     BAP_ZERO_CACHE_VOLUME: buildZeroCacheVolumeName(metadata),
+    VITE_ZERO_CACHE_URL: buildZeroCacheUrl(metadata),
     VITE_ZERO_QUERY_URL: buildZeroQueryUrl(metadata),
   };
 }
 
 export function isZeroCacheConfiguredForMetadata(metadata: InstanceMetadata): boolean {
   const sharedStack = buildSharedStackConfig();
-  const containerEnv = resolveDockerComposeServiceEnv(sharedStack.composeProjectName, "zero-cache");
+  const containerEnv = resolveDockerComposeServiceEnv(
+    sharedStack.composeProjectName,
+    buildZeroCacheServiceName(metadata),
+  );
   if (Object.keys(containerEnv).length === 0) {
     return false;
   }
 
-  const expectedDatabaseUrl = `postgresql://postgres:${resolvePostgresPassword()}@database:5432/${metadata.databaseName}`;
+  const expectedDatabaseUrl = buildZeroPostgresUrl(metadata);
   return (
     containerEnv.ZERO_QUERY_URL === buildZeroQueryUrl(metadata) &&
     containerEnv.ZERO_UPSTREAM_DB === expectedDatabaseUrl &&
@@ -300,6 +380,8 @@ export function isZeroCacheConfiguredForMetadata(metadata: InstanceMetadata): bo
 export function ensureZeroCacheConfigured(metadata: InstanceMetadata): void {
   const env = buildZeroCacheComposeEnv(metadata);
   const projectName = env.BAP_COMPOSE_PROJECT ?? buildSharedStackConfig().composeProjectName;
+  const composeFile = buildZeroCacheComposeFilePath(metadata);
+  writeFileSync(composeFile, buildZeroCacheComposeFileContent(metadata), "utf8");
   const args = [
     "compose",
     "--env-file",
@@ -307,7 +389,7 @@ export function ensureZeroCacheConfigured(metadata: InstanceMetadata): void {
     "-p",
     projectName,
     "-f",
-    "docker/compose/dev.yml",
+    composeFile,
     "up",
     "-d",
     "--wait",
@@ -320,11 +402,11 @@ export function ensureZeroCacheConfigured(metadata: InstanceMetadata): void {
     args.push("--force-recreate");
   }
 
-  args.push("zero-cache");
+  args.push(buildZeroCacheServiceName(metadata));
   runInheritedCommand("docker", args, metadata.repoRoot, env);
   clearSharedStackRuntimeCache();
   console.log(
-    `[worktree] ensured zero-cache ${metadata.databaseName} -> ${buildZeroQueryUrl(metadata)}`,
+    `[worktree] ensured ${buildZeroCacheServiceName(metadata)} ${metadata.databaseName} -> ${buildZeroCacheUrl(metadata)}`,
   );
 }
 
@@ -334,7 +416,76 @@ export function listDockerProjectContainerIds(metadata: InstanceMetadata): strin
 }
 
 export function teardownDockerResources(metadata: InstanceMetadata): void {
-  void metadata;
+  const composeFile = buildZeroCacheComposeFilePath(metadata);
+  if (!existsSync(composeFile)) {
+    return;
+  }
+
+  const env = buildZeroCacheComposeEnv(metadata);
+  const projectName = env.BAP_COMPOSE_PROJECT ?? buildSharedStackConfig().composeProjectName;
+  const serviceName = buildZeroCacheServiceName(metadata);
+  const stopResult = spawnSync(
+    "docker",
+    [
+      "compose",
+      "--env-file",
+      resolveSharedEnvFile(metadata.repoRoot),
+      "-p",
+      projectName,
+      "-f",
+      composeFile,
+      "stop",
+      serviceName,
+    ],
+    {
+      cwd: metadata.repoRoot,
+      env,
+      stdio: "inherit",
+    },
+  );
+  if (stopResult.status !== 0) {
+    console.warn(`[worktree] failed to stop ${serviceName}`);
+  }
+
+  const removeResult = spawnSync(
+    "docker",
+    [
+      "compose",
+      "--env-file",
+      resolveSharedEnvFile(metadata.repoRoot),
+      "-p",
+      projectName,
+      "-f",
+      composeFile,
+      "rm",
+      "-f",
+      "-v",
+      serviceName,
+    ],
+    {
+      cwd: metadata.repoRoot,
+      env,
+      stdio: "inherit",
+    },
+  );
+  if (removeResult.status !== 0) {
+    console.warn(`[worktree] failed to remove ${serviceName}`);
+  }
+
+  const volumeResult = spawnSync(
+    "docker",
+    ["volume", "rm", "-f", buildZeroCacheVolumeName(metadata)],
+    {
+      cwd: metadata.repoRoot,
+      env,
+      stdio: "inherit",
+    },
+  );
+  if (volumeResult.status !== 0) {
+    console.warn(
+      `[worktree] failed to remove zero cache volume ${buildZeroCacheVolumeName(metadata)}`,
+    );
+  }
 }
 
 export function resolveSourceRepoRoot(targetRepoRoot: string): string | null {
@@ -396,7 +547,9 @@ export function listLinkedRepoRoots(repoRoot: string): string[] {
   return Array.from(new Set(repoRoots));
 }
 
-export function buildWorktreeWebProcessSnapshots(currentRepoRoot: string): WorktreeWebProcessSnapshot[] {
+export function buildWorktreeWebProcessSnapshots(
+  currentRepoRoot: string,
+): WorktreeWebProcessSnapshot[] {
   return listLinkedRepoRoots(currentRepoRoot).map((repoRoot) => {
     const recognized = isRecognizedWorktreeRepo(repoRoot);
     const trackedProcesses = recognized ? loadProcessesForRepoRoot(repoRoot) : {};
@@ -495,8 +648,7 @@ export function listWebDevProcessesForWorktree(
       }
 
       return (
-        processEntry.command.includes(repoRoot) &&
-        isWebDevProcessCommand(processEntry.command)
+        processEntry.command.includes(repoRoot) && isWebDevProcessCommand(processEntry.command)
       );
     })
     .sort((left, right) => left.pid - right.pid);
@@ -549,7 +701,9 @@ export function classifyWebDevProcess(command: string): string {
   return basename && basename !== "(node)" ? basename : "node helper";
 }
 
-export function groupWebDevProcesses(processes: SystemProcess[]): Array<{ label: string; pids: number[] }> {
+export function groupWebDevProcesses(
+  processes: SystemProcess[],
+): Array<{ label: string; pids: number[] }> {
   const groups = new Map<string, number[]>();
   for (const processEntry of processes) {
     const label = classifyWebDevProcess(processEntry.command);
@@ -565,8 +719,10 @@ export function groupWebDevProcesses(processes: SystemProcess[]): Array<{ label:
       const leftPriority = priority.indexOf(left.label);
       const rightPriority = priority.indexOf(right.label);
       if (leftPriority !== -1 || rightPriority !== -1) {
-        return (leftPriority === -1 ? priority.length : leftPriority) -
-          (rightPriority === -1 ? priority.length : rightPriority);
+        return (
+          (leftPriority === -1 ? priority.length : leftPriority) -
+          (rightPriority === -1 ? priority.length : rightPriority)
+        );
       }
 
       return left.label.localeCompare(right.label);
@@ -604,9 +760,7 @@ export function resolveSourceDatabaseUrl(targetRepoRoot: string): string | null 
   }
 
   return (
-    loadMetadataForRepoRoot(sourceRepoRoot)?.databaseUrl ??
-    process.env.DATABASE_URL?.trim() ??
-    null
+    loadMetadataForRepoRoot(sourceRepoRoot)?.databaseUrl ?? process.env.DATABASE_URL?.trim() ?? null
   );
 }
 
@@ -672,9 +826,7 @@ export async function upsertRows(
   }
 
   const targetColumns = await getTableColumnSet(client, tableName);
-  const columns = Object.keys(rows[0] ?? {}).filter((column) =>
-    targetColumns.has(column),
-  );
+  const columns = Object.keys(rows[0] ?? {}).filter((column) => targetColumns.has(column));
   if (columns.length === 0) {
     return;
   }

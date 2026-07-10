@@ -72,6 +72,8 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
           coworkerId:
             typeof runRecord.coworkerId === "string" ? runRecord.coworkerId : String(row.id),
           status: typeof runRecord.status === "string" ? runRecord.status : "unknown",
+          failureKind:
+            typeof runRecord.failureKind === "string" ? runRecord.failureKind : null,
           generationId: typeof runRecord.generationId === "string" ? runRecord.generationId : null,
           conversationId:
             typeof runRecord.conversationId === "string" ? runRecord.conversationId : null,
@@ -124,7 +126,11 @@ export const loadInitialCoworkerInventory = createServerFn({ method: "GET" }).ha
     return EMPTY_INITIAL_COWORKER_INVENTORY_DATA;
   }
 
-  const workspaceId = await resolveSessionPrincipalWorkspaceId(userId);
+  const workspaceId = await resolveSessionPrincipalWorkspaceId(
+    userId,
+    (sessionData?.session as { activeOrganizationId?: string | null } | undefined)
+      ?.activeOrganizationId ?? null,
+  );
   const result = await queryInitialCoworkerInventory({
     userId,
     workspaceId,

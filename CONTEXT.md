@@ -4,6 +4,26 @@ Bap is a platform for building and running agents across connected company tools
 
 ## Language
 
+**Workspace**:
+The shared Bap boundary for members, billing, conversations, **Coworkers**, **File Assets**, skills, and **Workspace MCP Servers**. Bap uses **Workspace** as the canonical product term even when lower-level auth or billing systems use organization-like language.
+_Avoid_: organization, team, company, tenant
+
+**Active Workspace**:
+The **Workspace** a **User** is currently operating in when a Bap surface or runtime needs a default **Workspace**. A **User** can belong to many **Workspaces**, but only one is active for default-scoped actions at a time.
+_Avoid_: current organization, selected tenant, default team
+
+**Workspace Invitation**:
+A request for an email recipient to join a **Workspace** with a specific role. A **Workspace Invitation** is distinct from **Workspace Membership** because access is not granted until the invitation is accepted.
+_Avoid_: member add, invite email, access grant
+
+**Workspace Membership**:
+The relationship that gives a **User** access to one **Workspace** with a workspace role. **Workspace Membership** answers whether a **User** can access **Workspace** resources; resource-specific authorizations such as **Workspace MCP Authorization** remain separate.
+_Avoid_: organization member, team member, account access
+
+**Platform Admin**:
+A **User** with global Bap administrative authority for platform, support, or internal operations. A **Platform Admin** role is separate from **Workspace Membership** roles; being a **Platform Admin** does not itself describe ordinary membership in a specific **Workspace**.
+_Avoid_: internal admin, super user, workspace admin
+
 **Connected Account**:
 One credential-bearing connection for one **Integration Type** under a **Connected Identity**. A **User** can have many **Connected Accounts** for the same **Integration Type**, and one conversation can use more than one of them.
 _Avoid_: account, provider account, integration account
@@ -177,11 +197,15 @@ A **File Asset** attached to a user-visible message as task-specific input for t
 _Avoid_: inline file, data URL, uploaded document
 
 **Staged File Asset**:
-A **File Asset** that Bap has made available at a Bap-owned filesystem path inside a runtime sandbox for a **Generation**. **Message Attachments** and relevant **Coworker Documents** are staged when the **Generation** starts, while the underlying storage mechanism remains private infrastructure.
+A **File Asset** that Bap has made available at a Bap-owned filesystem path inside a runtime sandbox for a **Generation**. **Message Attachments** are staged when the **Generation** starts, while mutable **Coworker Documents** use **Runtime Volumes** instead.
 _Avoid_: lazy file, remote file, storage path
 
+**Runtime Volume**:
+A durable Bap-owned filesystem area made available inside **Generation** runtimes so mutable agent reference material can persist across sandbox lifecycles. A **Runtime Volume** is distinct from a **File Asset** because its filesystem contents may change over time; it is not tied to one sandbox lifecycle or sandbox provider, and Bap can index product state from filesystem presence instead of requiring pre-existing upload records.
+_Avoid_: shared sandbox, mounted upload, mutable File Asset
+
 **Coworker Document**:
-A **File Asset** a **User** attaches to a **Coworker** so future **Coworker** **Generations** can use it as persistent reference material. A **Coworker Document** belongs to exactly one **Coworker** and is managed separately from the **Coworker**'s instructions, trigger, and **Toolbox**.
+A mutable file or document set attached to one **Coworker** so future **Coworker** **Generations** can use it as persistent reference material through a **Runtime Volume**. A **Coworker Document** belongs to exactly one **Coworker** and is managed separately from the **Coworker**'s instructions, trigger, and **Toolbox**.
 _Avoid_: doc, attachment, file upload
 
 **Sandbox File**:
@@ -189,7 +213,7 @@ A **File Asset** produced inside a **Generation** runtime and surfaced to the **
 _Avoid_: generated attachment, output upload
 
 **Skill Document**:
-A **File Asset** attached to a skill as reference material for agents using that skill. A **Skill Document** is distinct from a **Coworker Document** because it follows the skill rather than one **Coworker**.
+A mutable file or document set attached to a skill as reference material for agents using that skill through a **Runtime Volume**. A **Skill Document** is distinct from a **Coworker Document** because it follows the skill rather than one **Coworker**.
 _Avoid_: skill upload, skill attachment
 
 **Coworker Definition**:

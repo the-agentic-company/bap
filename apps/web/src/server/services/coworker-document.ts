@@ -1,10 +1,17 @@
 import {
   assertReadyFileAssetsForWorkspace,
   createFileAssetFromBuffer,
-  markFileAssetReference,
   type ReadyFileAsset,
 } from "@bap/core/server/services/file-asset-service";
-import { deleteFromS3 } from "@bap/core/server/storage/s3-client";
+import {
+  buildCoworkerDocumentsRuntimeVolumePrefix,
+  buildRuntimeVolumeObjectKey,
+  deleteRuntimeVolumeFile,
+  readRuntimeVolumeFile,
+  reconcileRuntimeVolumeProjection,
+  writeRuntimeVolumeFile,
+} from "@bap/core/server/services/runtime-volume-service";
+import { downloadFromS3 } from "@bap/core/server/storage/s3-client";
 import { db } from "@bap/db/client";
 import { coworker, coworkerDocument } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
@@ -12,6 +19,21 @@ import { and, count, eq } from "drizzle-orm";
 import { validateFileUpload } from "@/server/storage/validation";
 
 type Database = typeof db;
+
+async function refreshCoworkerDocumentsRuntimeVolumeProjection(input: {
+  workspaceId: string;
+  coworkerId: string;
+}): Promise<void> {
+  await reconcileRuntimeVolumeProjection({
+    workspaceId: input.workspaceId,
+    kind: "coworker_documents",
+    coworkerId: input.coworkerId,
+    storagePrefix: buildCoworkerDocumentsRuntimeVolumePrefix(input),
+    mountPath: "/home/user/coworker-documents",
+    readOnly: false,
+    generationId: null,
+  });
+}
 
 export async function uploadCoworkerDocument(params: {
   database: Database;
@@ -59,25 +81,32 @@ export async function uploadCoworkerDocument(params: {
     fileAssetId: params.fileAssetId,
   });
   validateFileUpload(asset.filename, asset.mimeType, asset.sizeBytes, documentCount);
+  const storagePrefix = buildCoworkerDocumentsRuntimeVolumePrefix({
+    workspaceId: existingCoworker.workspaceId,
+    coworkerId: params.coworkerId,
+  });
+  await writeRuntimeVolumeFile({
+    storagePrefix,
+    relativePath: asset.filename,
+    body: await downloadFromS3(asset.storageKey),
+    contentType: asset.mimeType,
+  });
 
   const [document] = await params.database
     .insert(coworkerDocument)
     .values({
       coworkerId: params.coworkerId,
-      fileAssetId: asset.id,
+      fileAssetId: null,
       filename: asset.filename,
       mimeType: asset.mimeType,
       sizeBytes: asset.sizeBytes,
-      storageKey: asset.storageKey,
+      storageKey: buildRuntimeVolumeObjectKey(storagePrefix, asset.filename),
       description: params.description,
     })
     .returning();
-
-  await markFileAssetReference({
-    database: params.database,
-    fileAssetId: asset.id,
-    kind: "coworker_document",
-    referenceId: document.id,
+  await refreshCoworkerDocumentsRuntimeVolumeProjection({
+    workspaceId: existingCoworker.workspaceId,
+    coworkerId: params.coworkerId,
   });
 
   return {
@@ -153,8 +182,6 @@ export async function updateCoworkerDocument(params: {
       filename: true,
       mimeType: true,
       sizeBytes: true,
-      storageKey: true,
-      fileAssetId: true,
       description: true,
     },
   });
@@ -174,11 +201,11 @@ export async function updateCoworkerDocument(params: {
   if (!existingCoworker) {
     throw new ORPCError("NOT_FOUND", { message: "Document not found" });
   }
-  if (isFileReplacement && !existingCoworker.workspaceId) {
+  if ((hasFilename || isFileReplacement) && !existingCoworker.workspaceId) {
     throw new ORPCError("BAD_REQUEST", { message: "Coworker workspace not found" });
   }
 
-  let replacementFileAssetId: string | undefined;
+  let replacementAsset: ReadyFileAsset | undefined;
   const updates: Partial<typeof coworkerDocument.$inferInsert> = {};
 
   if (hasFilename) {
@@ -201,12 +228,36 @@ export async function updateCoworkerDocument(params: {
     // Replacement does not increase the number of documents, so skip the count-limit branch.
     validateFileUpload(asset.filename, asset.mimeType, asset.sizeBytes, 0);
 
-    replacementFileAssetId = asset.id;
-    updates.fileAssetId = asset.id;
+    replacementAsset = asset;
+    updates.fileAssetId = null;
     updates.filename = asset.filename;
     updates.mimeType = asset.mimeType;
     updates.sizeBytes = asset.sizeBytes;
-    updates.storageKey = asset.storageKey;
+  }
+
+  let deletePreviousRuntimeFile = false;
+  if (existingCoworker.workspaceId && (hasFilename || isFileReplacement)) {
+    const storagePrefix = buildCoworkerDocumentsRuntimeVolumePrefix({
+      workspaceId: existingCoworker.workspaceId,
+      coworkerId: existingDocument.coworkerId,
+    });
+    const nextFilename = updates.filename ?? existingDocument.filename;
+    const nextMimeType = updates.mimeType ?? existingDocument.mimeType;
+    const nextBody = replacementAsset
+      ? await downloadFromS3(replacementAsset.storageKey)
+      : await readRuntimeVolumeFile({
+          storagePrefix,
+          relativePath: existingDocument.filename,
+        });
+    await writeRuntimeVolumeFile({
+      storagePrefix,
+      relativePath: nextFilename,
+      body: nextBody,
+      contentType: nextMimeType,
+    });
+    updates.fileAssetId = null;
+    updates.storageKey = buildRuntimeVolumeObjectKey(storagePrefix, nextFilename);
+    deletePreviousRuntimeFile = existingDocument.filename !== nextFilename;
   }
 
   let updatedDocument: typeof coworkerDocument.$inferSelect | undefined;
@@ -220,17 +271,20 @@ export async function updateCoworkerDocument(params: {
     throw new ORPCError("NOT_FOUND", { message: "Document not found" });
   }
 
-  if (replacementFileAssetId) {
-    await markFileAssetReference({
-      database: params.database,
-      fileAssetId: replacementFileAssetId,
-      kind: "coworker_document",
-      referenceId: updatedDocument.id,
-    });
+  if (existingCoworker.workspaceId && deletePreviousRuntimeFile) {
+    await deleteRuntimeVolumeFile({
+      storagePrefix: buildCoworkerDocumentsRuntimeVolumePrefix({
+        workspaceId: existingCoworker.workspaceId,
+        coworkerId: existingDocument.coworkerId,
+      }),
+      relativePath: existingDocument.filename,
+    }).catch(() => undefined);
   }
-
-  if (replacementFileAssetId && !existingDocument.fileAssetId) {
-    await deleteFromS3(existingDocument.storageKey);
+  if (existingCoworker.workspaceId && (hasFilename || isFileReplacement)) {
+    await refreshCoworkerDocumentsRuntimeVolumeProjection({
+      workspaceId: existingCoworker.workspaceId,
+      coworkerId: existingDocument.coworkerId,
+    });
   }
 
   return {
@@ -286,8 +340,6 @@ export async function deleteCoworkerDocument(params: {
       id: true,
       coworkerId: true,
       filename: true,
-      storageKey: true,
-      fileAssetId: true,
     },
   });
 
@@ -299,6 +351,7 @@ export async function deleteCoworkerDocument(params: {
     where: and(eq(coworker.id, existingDocument.coworkerId), eq(coworker.ownerId, params.userId)),
     columns: {
       id: true,
+      workspaceId: true,
     },
   });
 
@@ -306,12 +359,24 @@ export async function deleteCoworkerDocument(params: {
     throw new ORPCError("NOT_FOUND", { message: "Document not found" });
   }
 
-  if (!existingDocument.fileAssetId) {
-    await deleteFromS3(existingDocument.storageKey);
+  if (existingCoworker.workspaceId) {
+    await deleteRuntimeVolumeFile({
+      storagePrefix: buildCoworkerDocumentsRuntimeVolumePrefix({
+        workspaceId: existingCoworker.workspaceId,
+        coworkerId: existingDocument.coworkerId,
+      }),
+      relativePath: existingDocument.filename,
+    }).catch(() => undefined);
   }
   await params.database
     .delete(coworkerDocument)
     .where(eq(coworkerDocument.id, existingDocument.id));
+  if (existingCoworker.workspaceId) {
+    await refreshCoworkerDocumentsRuntimeVolumeProjection({
+      workspaceId: existingCoworker.workspaceId,
+      coworkerId: existingDocument.coworkerId,
+    });
+  }
 
   return {
     success: true,

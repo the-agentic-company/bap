@@ -62,7 +62,78 @@ const maxMockedModules = {
   },
 };
 
+/**
+ * no-product-organization-import — keep Better Auth's physical organization
+ * table out of product modules. Bap product code should import the `workspace`
+ * alias from @bap/db/schema; only auth/schema/migration code should use the
+ * Better Auth table name directly.
+ */
+const noProductOrganizationImport = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "Disallow importing Better Auth organization table directly from product modules.",
+    },
+    schema: [
+      {
+        type: "object",
+        properties: {
+          allow: {
+            type: "array",
+            items: { type: "string" },
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
+  },
+  create(context) {
+    const allow = context.options?.[0]?.allow ?? [];
+    const filename = context.filename ?? context.physicalFilename ?? "";
+    const normalizedFilename = filename.replaceAll("\\", "/");
+    const isAllowed = allow.some((pattern) => normalizedFilename.includes(pattern));
+
+    if (isAllowed) {
+      return {};
+    }
+
+    const isDbSchemaImport = (source) =>
+      source === "@bap/db/schema" ||
+      source === "@bap/db/src/schema" ||
+      source.endsWith("/packages/db/src/schema") ||
+      source.endsWith("/packages/db/src/schema/tables") ||
+      source.endsWith("/packages/db/src/schema/tables-auth");
+
+    return {
+      ImportDeclaration(node) {
+        if (!isDbSchemaImport(node.source?.value)) {
+          return;
+        }
+
+        const importedOrganization = node.specifiers?.find(
+          (specifier) =>
+            specifier.type === "ImportSpecifier" && specifier.imported?.name === "organization",
+        );
+
+        if (!importedOrganization) {
+          return;
+        }
+
+        context.report({
+          node: importedOrganization,
+          message:
+            "Import the Bap `workspace` schema alias in product code. Direct `organization` imports are reserved for Better Auth integration, schema, migration, and focused tests.",
+        });
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "local" },
-  rules: { "max-mocked-modules": maxMockedModules },
+  rules: {
+    "max-mocked-modules": maxMockedModules,
+    "no-product-organization-import": noProductOrganizationImport,
+  },
 };

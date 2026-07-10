@@ -20,7 +20,7 @@ polling to Zero reads — no long-lived dual read path.
 ## Scope (what Zero owns)
 
 - **Synced tables:** `conversation`, `message`, `messageAttachment`, `coworker`,
-  `coworkerRun`, `coworkerFolder`, and `workspaceMember` (replicated for permission
+  `coworkerRun`, `coworkerFolder`, and Better Auth `member` (replicated for permission
   checks only, hidden from clients by a read rule). Coworker folders are the synced coworker
   organization model; folder reads remain on Zero and must encode private vs.
   workspace-visible access in their named query. The previous coworker tag tables
@@ -47,7 +47,7 @@ polling to Zero reads — no long-lived dual read path.
   direct (non-pooled) internal connection string.
 - **Auth:** mint a short-lived JWT via Better Auth's JWT plugin carrying `userId`
   (+ global role) only. Workspace membership is resolved **live** by joining the
-  replicated `workspaceMember` table inside read permissions — so removing a member
+  replicated Better Auth `member` table inside read permissions — so removing a member
   cuts access immediately (no token-staleness window).
 - **IDs:** no migration needed — target tables already use app-generated
   `text` UUIDs (`crypto.randomUUID()`), with no Postgres-default IDs.

@@ -161,7 +161,7 @@ async function ensureDevUser(email: string): Promise<string> {
       })
       .where(eq(user.id, existingUser.id));
 
-    await ensureWorkspaceForUser(existingUser.id, existingUser.activeWorkspaceId);
+    await ensureWorkspaceForUser(existingUser.id);
     return existingUser.id;
   }
 

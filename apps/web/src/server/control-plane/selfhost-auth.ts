@@ -72,7 +72,6 @@ export async function resolveOrCreateLocalUserFromCloudIdentity(
         columns: {
           id: true,
           role: true,
-          activeWorkspaceId: true,
         },
       },
     },
@@ -92,7 +91,7 @@ export async function resolveOrCreateLocalUserFromCloudIdentity(
       })
       .where(eq(user.id, linkedUser.user.id));
 
-    await ensureWorkspaceForUser(linkedUser.user.id, linkedUser.user.activeWorkspaceId);
+    await ensureWorkspaceForUser(linkedUser.user.id);
     return linkedUser.user.id;
   }
 
@@ -101,7 +100,6 @@ export async function resolveOrCreateLocalUserFromCloudIdentity(
     columns: {
       id: true,
       role: true,
-      activeWorkspaceId: true,
     },
   });
 
@@ -131,7 +129,7 @@ export async function resolveOrCreateLocalUserFromCloudIdentity(
       .where(eq(user.id, existingUser.id));
 
     await upsertCloudAccountLinkForUser(existingUser.id, identity.cloudUserId);
-    await ensureWorkspaceForUser(existingUser.id, existingUser.activeWorkspaceId);
+    await ensureWorkspaceForUser(existingUser.id);
     return existingUser.id;
   }
 

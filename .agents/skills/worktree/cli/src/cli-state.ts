@@ -20,7 +20,7 @@ import {
   resolveSharedWorktreeInstanceRoot,
   type WorktreeSlotLease,
 } from "./coordination";
-import { buildWorktreeHostPorts, type WorktreeHostPort } from "./stack";
+import { buildWorktreeHostPorts, buildWorktreeStackConfig, type WorktreeHostPort } from "./stack";
 import {
   buildDatabaseUrlForMetadata,
   buildInstanceId,
@@ -60,7 +60,10 @@ export function resolveLegacyInstanceRoot(repoRoot: string, instanceId: string):
 }
 
 export function resolveInstanceRootForRepoRoot(repoRoot: string): string {
-  return resolveSharedWorktreeInstanceRoot(resolveSharedWorktreeRootPath(), buildInstanceId(repoRoot));
+  return resolveSharedWorktreeInstanceRoot(
+    resolveSharedWorktreeRootPath(),
+    buildInstanceId(repoRoot),
+  );
 }
 
 export function pruneLegacyStateRootIfEmpty(repoRoot: string): void {
@@ -139,8 +142,7 @@ export function isRecognizedWorktreeRepo(repoRoot: string): boolean {
     resolveRecognizedWorktreeRoots().some((root) => {
       const normalizedRoot = normalizePath(root);
       return (
-        normalizedRepoRoot === normalizedRoot ||
-        normalizedRepoRoot.startsWith(`${normalizedRoot}/`)
+        normalizedRepoRoot === normalizedRoot || normalizedRepoRoot.startsWith(`${normalizedRoot}/`)
       );
     }) || hasRecognizedWorktreePathSegment(normalizedRepoRoot)
   );
@@ -157,7 +159,11 @@ export function loadMetadata(instanceRoot: string): InstanceMetadata | null {
 
 export function saveMetadata(metadata: InstanceMetadata): void {
   ensureDir(metadata.instanceRoot);
-  writeFileSync(metadataPath(metadata.instanceRoot), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+  writeFileSync(
+    metadataPath(metadata.instanceRoot),
+    `${JSON.stringify(metadata, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 export function loadProcesses(instanceRoot: string): InstanceProcesses {
@@ -200,12 +206,7 @@ export function writeSlotLease(lease: WorktreeSlotLease, mode: "create" | "updat
     });
     return true;
   } catch (error) {
-    if (
-      mode === "create" &&
-      error instanceof Error &&
-      "code" in error &&
-      error.code === "EEXIST"
-    ) {
+    if (mode === "create" && error instanceof Error && "code" in error && error.code === "EEXIST") {
       return false;
     }
 
@@ -246,6 +247,9 @@ export function hydrateMetadataCredentials(metadata: InstanceMetadata): Instance
 
   return {
     ...metadata,
+    zeroCachePort:
+      metadata.zeroCachePort ||
+      buildWorktreeStackConfig(metadata.instanceId, metadata.stackSlot).zeroCachePort,
     databaseUser,
     databasePassword,
     databaseUrl: buildDatabaseUrlForMetadata({
@@ -261,10 +265,15 @@ export function hydrateMetadataCredentials(metadata: InstanceMetadata): Instance
   };
 }
 
-export function buildAppPorts(stackSlot: number): { appPort: number; wsPort: number } {
+export function buildAppPorts(stackSlot: number): {
+  appPort: number;
+  wsPort: number;
+  zeroCachePort: number;
+} {
   return {
     appPort: 3700 + stackSlot,
     wsPort: 4700 + stackSlot,
+    zeroCachePort: buildWorktreeStackConfig("bap-slot", stackSlot).zeroCachePort,
   };
 }
 
@@ -339,10 +348,7 @@ function describeListeningPortOwner(port: number): string | null {
     return null;
   }
 
-  const details = [
-    pid ? `pid=${pid}` : null,
-    user ? `user=${user}` : null,
-  ].filter(Boolean);
+  const details = [pid ? `pid=${pid}` : null, user ? `user=${user}` : null].filter(Boolean);
 
   return details.length > 0 ? `${command} ${details.join(" ")}` : command;
 }
@@ -395,7 +401,10 @@ export function isSlotLeaseStale(lease: WorktreeSlotLease): boolean {
   return !isWorktreeSlotLeaseFresh(lease);
 }
 
-export async function canUseReservedSlot(slot: number, existing: InstanceMetadata | null): Promise<boolean> {
+export async function canUseReservedSlot(
+  slot: number,
+  existing: InstanceMetadata | null,
+): Promise<boolean> {
   const conflicts = await resolveSlotConflicts(slot);
   if (conflicts.length === 0) {
     return true;
@@ -404,9 +413,7 @@ export async function canUseReservedSlot(slot: number, existing: InstanceMetadat
   return existing?.stackSlot === slot && isSlotActivelyOwnedByInstance(existing);
 }
 
-export type SlotReservationAttempt =
-  | { status: "reserved" }
-  | { status: "busy"; reason: string };
+export type SlotReservationAttempt = { status: "reserved" } | { status: "busy"; reason: string };
 
 export async function tryReserveStackSlot(
   repoRoot: string,

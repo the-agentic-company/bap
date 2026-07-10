@@ -219,7 +219,7 @@ export async function canUserUseModulrInWorkspace(input: {
   const membership = await database.query.workspaceMember.findFirst({
     where: and(
       eq(workspaceMember.userId, input.userId),
-      eq(workspaceMember.workspaceId, input.workspaceId),
+      eq(workspaceMember.organizationId, input.workspaceId),
     ),
     with: {
       user: {

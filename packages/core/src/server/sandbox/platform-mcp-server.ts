@@ -1,6 +1,6 @@
 import { env } from "../../env";
 import { requireActiveWorkspaceForUser } from "../billing/service";
-import { signManagedMcpToken } from "../managed-mcp-auth";
+import { signManagedMcpToken, type ManagedMcpSurface } from "../managed-mcp-auth";
 import { generationLifecyclePolicy } from "../services/lifecycle-policy";
 import type { RuntimeMcpServer } from "./core/types";
 
@@ -16,6 +16,11 @@ const PLATFORM_MCP_TOKEN_BUFFER_SECONDS = 5 * 60;
 export const PLATFORM_MCP_TOKEN_TTL_SECONDS =
   Math.ceil(generationLifecyclePolicy.runDeadlineMs / 1000) + PLATFORM_MCP_TOKEN_BUFFER_SECONDS;
 
+export const BAP_MCP_SCOPE = {
+  base: "bap",
+  coworkerRunFail: "bap:coworker_run:fail",
+} as const;
+
 // Platform MCP Server (see CONTEXT.md / ADR-0013): hard-wired into every
 // generation, never represented as a workspaceMcpServer row and never part of
 // the Workspace MCP Server Allowlist.
@@ -23,6 +28,11 @@ export function buildBapPlatformMcpServer(input: {
   userId: string;
   workspaceId: string;
   spawnDepth: number;
+  surface?: ManagedMcpSurface;
+  generationId?: string;
+  conversationId?: string;
+  coworkerId?: string;
+  coworkerRunId?: string;
   baseUrl: string;
   secret: string;
   nowSeconds?: number;
@@ -34,6 +44,15 @@ export function buildBapPlatformMcpServer(input: {
       workspaceId: input.workspaceId,
       internalKey: BAP_PLATFORM_MCP_INTERNAL_KEY,
       spawnDepth: input.spawnDepth,
+      scopes:
+        input.surface === "coworker_runner"
+          ? [BAP_MCP_SCOPE.base, BAP_MCP_SCOPE.coworkerRunFail]
+          : [BAP_MCP_SCOPE.base],
+      surface: input.surface ?? "chat",
+      generationId: input.generationId,
+      conversationId: input.conversationId,
+      coworkerId: input.coworkerId,
+      coworkerRunId: input.coworkerRunId,
       exp: nowSeconds + PLATFORM_MCP_TOKEN_TTL_SECONDS,
     },
     input.secret,
@@ -55,6 +74,11 @@ export async function resolveBapPlatformMcpServer(input: {
   userId: string;
   workspaceId?: string | null;
   spawnDepth: number;
+  surface?: ManagedMcpSurface;
+  generationId?: string;
+  conversationId?: string;
+  coworkerId?: string;
+  coworkerRunId?: string;
 }): Promise<PlatformMcpServerResolution> {
   const baseUrl = env.APP_MCP_BASE_URL?.trim() || env.APP_MCP_BASE_URL?.trim();
   const secret = env.APP_SERVER_SECRET;
@@ -76,6 +100,11 @@ export async function resolveBapPlatformMcpServer(input: {
         userId: input.userId,
         workspaceId,
         spawnDepth: input.spawnDepth,
+        surface: input.surface,
+        generationId: input.generationId,
+        conversationId: input.conversationId,
+        coworkerId: input.coworkerId,
+        coworkerRunId: input.coworkerRunId,
         baseUrl,
         secret,
       }),

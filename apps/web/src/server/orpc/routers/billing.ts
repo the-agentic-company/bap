@@ -6,12 +6,15 @@ import {
   adminRemoveWorkspaceMember,
   attachPlanToOwner,
   cancelPlanForOwner,
+  cancelWorkspaceInvitation,
   createManualTopUp,
+  createWorkspaceInvitations,
   createWorkspaceForUser,
   getAdminBillingOverviewForUser,
   getExistingBillingOwnerForUser,
   ensureWorkspaceForUser,
   getBillingOverviewForUser,
+  getWorkspaceInvitation,
   getWorkspaceMembershipForUser,
   listWorkspaceMembers,
   openBillingPortalForOwner,
@@ -27,6 +30,7 @@ import { user, workspace } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import type { ORPCContext } from "../context";
 import { protectedProcedure } from "../middleware";
 import {
@@ -48,6 +52,10 @@ function assertCloudWorkspaceManagementEnabled() {
       message: "This workspace action is not available in self-hosted edition",
     });
   }
+}
+
+function getActiveOrganizationId(session: unknown) {
+  return (session as { activeOrganizationId?: string | null } | null)?.activeOrganizationId ?? null;
 }
 
 async function getDbRole(userId: string, db: typeof import("@bap/db/client").db) {
@@ -135,17 +143,14 @@ async function resolveRequestedOwner(params: {
   db: typeof import("@bap/db/client").db;
   ownerType: "user" | "workspace";
   workspaceId?: string;
+  activeWorkspaceId?: string | null;
 }) {
   if (params.ownerType === "user") {
     throw new ORPCError("BAD_REQUEST", { message: "Personal billing is no longer supported" });
   }
 
   if (!params.workspaceId) {
-    const dbUser = await params.db.query.user.findFirst({
-      where: eq(user.id, params.userId),
-      columns: { activeWorkspaceId: true },
-    });
-    const ensuredWorkspace = await ensureWorkspaceForUser(params.userId, dbUser?.activeWorkspaceId);
+    const ensuredWorkspace = await ensureWorkspaceForUser(params.userId, params.activeWorkspaceId);
     return {
       ownerType: "workspace" as const,
       ownerId: ensuredWorkspace.id,
@@ -176,7 +181,10 @@ async function resolveRequestedOwner(params: {
 }
 
 const overview = protectedProcedure.handler(async ({ context }) => {
-  const overview = await getBillingOverviewForUser(context.user.id);
+  const overview = await getBillingOverviewForUser(
+    context.user.id,
+    getActiveOrganizationId(context.session) ?? context.workspaceId,
+  );
   if (context.hostedMcp?.audience !== "bap" || context.hostedMcp.allowAllWorkspaces) {
     return overview;
   }
@@ -230,6 +238,12 @@ const switchWorkspace = protectedProcedure
   .handler(async ({ input, context }) => {
     assertCloudWorkspaceManagementEnabled();
     assertHostedMcpWorkspaceAccess(context, input.workspaceId);
+    if (context.authSource === "session") {
+      await auth.api.setActiveOrganization({
+        headers: context.headers,
+        body: { organizationId: input.workspaceId },
+      });
+    }
     await setActiveWorkspace(context.user.id, input.workspaceId);
     return { success: true };
   });
@@ -250,6 +264,7 @@ const attachPlan = protectedProcedure
       db: context.db,
       ownerType: "workspace",
       workspaceId: input.workspaceId,
+      activeWorkspaceId: getActiveOrganizationId(context.session) ?? context.workspaceId,
     });
     const plan = BILLING_PLANS[input.planId];
     if (plan.ownerType !== owner.ownerType) {
@@ -288,6 +303,7 @@ const openPortal = protectedProcedure
       db: context.db,
       ownerType: "workspace",
       workspaceId: input.workspaceId,
+      activeWorkspaceId: getActiveOrganizationId(context.session) ?? context.workspaceId,
     });
     const result = await openBillingPortalForOwner(owner, input.returnUrl);
     return { url: result.url };
@@ -308,6 +324,7 @@ const cancelPlan = protectedProcedure
       db: context.db,
       ownerType: "workspace",
       workspaceId: input.workspaceId,
+      activeWorkspaceId: getActiveOrganizationId(context.session) ?? context.workspaceId,
     });
     await requireWorkspaceAdminMembership({
       userId: context.user.id,
@@ -334,6 +351,7 @@ const manualTopUp = protectedProcedure
       db: context.db,
       ownerType: "workspace",
       workspaceId: input.workspaceId,
+      activeWorkspaceId: getActiveOrganizationId(context.session) ?? context.workspaceId,
     });
     const result = await createManualTopUp({
       owner,
@@ -400,8 +418,69 @@ const inviteMembers = protectedProcedure
       context,
       workspaceId: input.workspaceId,
     });
-    const added = await addWorkspaceMembers(input.workspaceId, input.emails, input.role);
-    return added;
+
+    if (context.authSource === "session") {
+      return Promise.all(
+        input.emails.map(async (email) => {
+          const invitation = await auth.api.createInvitation({
+            headers: context.headers,
+            body: {
+              organizationId: input.workspaceId,
+              email,
+              role: input.role,
+            },
+          });
+          return invitation.email;
+        }),
+      );
+    }
+    const invited = await createWorkspaceInvitations(
+      input.workspaceId,
+      input.emails,
+      input.role,
+      context.user.id,
+    );
+    return invited;
+  });
+
+const cancelInvitation = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+      invitationId: z.string(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    assertCloudWorkspaceManagementEnabled();
+    await requireHostedMcpWorkspaceAdmin({
+      context,
+      workspaceId: input.workspaceId,
+    });
+
+    const invitation = await getWorkspaceInvitation(input.workspaceId, input.invitationId);
+    if (!invitation || invitation.status !== "pending") {
+      throw new ORPCError("NOT_FOUND", { message: "Invitation not found" });
+    }
+
+    if (context.authSource === "session") {
+      const canceled = await auth.api.cancelInvitation({
+        headers: context.headers,
+        body: { invitationId: input.invitationId },
+      });
+      return {
+        id: canceled?.id ?? input.invitationId,
+        status: canceled?.status ?? "canceled",
+      };
+    }
+
+    const canceled = await cancelWorkspaceInvitation(input.workspaceId, input.invitationId);
+    if (!canceled) {
+      throw new ORPCError("NOT_FOUND", { message: "Invitation not found" });
+    }
+    return {
+      id: canceled.id,
+      status: canceled.status,
+    };
   });
 
 const members = protectedProcedure
@@ -416,8 +495,9 @@ const members = protectedProcedure
       workspaceId: input.workspaceId,
     });
 
+    const result = await listWorkspaceMembers(input.workspaceId);
     return {
-      members: await listWorkspaceMembers(input.workspaceId),
+      ...result,
       membershipRole: membership.role,
     };
   });
@@ -566,6 +646,7 @@ export const billingRouter = {
   manualTopUp,
   adminManualTopUp,
   inviteMembers,
+  cancelInvitation,
   members,
   rename,
   updateImage,

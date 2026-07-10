@@ -39,6 +39,7 @@
     "build:ws": "turbo build --filter=@bap/ws",
     "workflow": "bun run --cwd apps/web workflow",
     "observability:validate-generation": "bun scripts/validate-generation-observability.ts",
+    "migrate:runtime-volumes": "bun --env-file=.env scripts/migrate-runtime-volumes.ts",
     "check:cli": "turbo check --filter=@bap/cli",
     "cli:e2e:live:record": "bun run --cwd apps/web test:e2e:live:record",
     "check:web": "turbo check --filter=@bap/web",

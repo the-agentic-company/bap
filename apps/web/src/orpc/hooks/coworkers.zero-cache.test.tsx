@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
 import { renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useCoworkerFolderList } from "./coworkers";
+import { useCoworkerFolderList, useCoworkerRuns } from "./coworkers";
 
 type QueryDetails = { type: "unknown" | "complete" | "error"; error?: Error };
 
@@ -15,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     workspaceId: "workspace-1",
   },
   zeroResult: [[], { type: "unknown" } satisfies QueryDetails] as [unknown[], QueryDetails],
+  listRuns: vi.fn<() => Promise<unknown[]>>(),
 }));
 
 vi.mock("@rocicorp/zero/react", () => ({
@@ -30,6 +33,7 @@ vi.mock("@/zero/queries", () => ({
     coworkerInventory: {
       coworkers: () => ({ table: "coworker" }),
       folders: () => ({ table: "coworkerFolder" }),
+      runsByCoworker: () => ({ table: "coworkerRun" }),
     },
   },
 }));
@@ -41,17 +45,30 @@ vi.mock("@/zero/coworker-data", () => ({
 }));
 
 vi.mock("../client", () => ({
-  client: new Proxy(
-    {},
-    {
-      get: () => new Proxy({}, { get: () => vi.fn<() => unknown>() }),
+  client: {
+    coworker: {
+      listRuns: mocks.listRuns,
     },
-  ),
+  },
 }));
 
 function setRuntimeIdentity(userId: string, workspaceId: string) {
   mocks.runtime.userId = userId;
   mocks.runtime.workspaceId = workspaceId;
+}
+
+function createQueryWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return function QueryWrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  };
 }
 
 describe("coworker Zero inventory hooks", () => {
@@ -62,6 +79,7 @@ describe("coworker Zero inventory hooks", () => {
     mocks.runtime.isResolvingWorkspace = false;
     setRuntimeIdentity("user-1", "workspace-1");
     mocks.zeroResult = [[], { type: "unknown" }];
+    mocks.listRuns.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -108,6 +126,50 @@ describe("coworker Zero inventory hooks", () => {
 
     expect(result.current.data).toHaveLength(1);
     expect(result.current.data[0]?.name).toBe("Cached folder");
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("uses Zero as the sole coworker runs read path", async () => {
+    const startedAt = new Date("2026-06-27T04:23:28.807Z");
+    mocks.zeroResult = [
+      [
+        {
+          id: "run-1",
+          coworkerId: "coworker-1",
+          status: "error",
+          failureKind: "runner_declared_failure",
+          generationId: "generation-1",
+          conversationId: "conversation-1",
+          startedAt,
+          finishedAt: null,
+          errorMessage: null,
+          source: "manual",
+        },
+      ],
+      { type: "complete" },
+    ];
+    mocks.listRuns.mockResolvedValue([
+      {
+        id: "fallback-run",
+        coworkerId: "coworker-1",
+        status: "completed",
+        failureKind: null,
+        generationId: "fallback-generation",
+        conversationId: "fallback-conversation",
+        startedAt,
+        finishedAt: null,
+        errorMessage: null,
+        source: "manual",
+      },
+    ]);
+
+    const { result } = renderHook(() => useCoworkerRuns("coworker-1"), {
+      wrapper: createQueryWrapper(),
+    });
+
+    expect(result.current.data).toHaveLength(1);
+    expect(result.current.data[0]?.id).toBe("run-1");
+    expect(mocks.listRuns).not.toHaveBeenCalled();
     expect(result.current.isLoading).toBe(false);
   });
 });
