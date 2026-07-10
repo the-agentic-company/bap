@@ -409,6 +409,7 @@ export type CoworkerDetails = {
     startedAt: string | Date;
     finishedAt: string | Date | null;
     errorMessage: string | null;
+    failureKind: string | null;
   }>;
 };
 
@@ -532,6 +533,7 @@ export type CoworkerRun = {
   startedAt: string | Date;
   finishedAt: string | Date | null;
   errorMessage: string | null;
+  failureKind: string | null;
   debugInfo: unknown;
   events: CoworkerRunEvent[];
 };
@@ -542,6 +544,7 @@ export type CoworkerRunSummary = {
   startedAt: string | Date;
   finishedAt: string | Date | null;
   errorMessage: string | null;
+  failureKind: string | null;
 };
 
 export type CoworkerRunStatus =
@@ -656,6 +659,13 @@ export interface BapApiClient {
     startGeneration(input: GenerationStartInput): Promise<{
       generationId: string;
       conversationId: string;
+    }>;
+    markCurrentCoworkerRunFailed(input: { reason: string; message?: string }): Promise<{
+      status: "failed";
+      generationId: string;
+      conversationId: string;
+      coworkerRunId: string;
+      active: boolean;
     }>;
     getActiveGeneration(input: { conversationId: string }): Promise<{
       generationId: string | null;

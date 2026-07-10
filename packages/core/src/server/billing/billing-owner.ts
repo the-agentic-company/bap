@@ -4,7 +4,7 @@ import {
   type BillingPlanId,
 } from "../../lib/billing-plans";
 import { db } from "@bap/db/client";
-import { conversation, user, workspace } from "@bap/db/schema";
+import { conversation, user, workspaceMember, workspace } from "@bap/db/schema";
 import { getAutumnClient } from "./autumn";
 import { buildWorkspaceImageUrl } from "./workspace-image";
 import { ensureWorkspaceForUser, getWorkspaceForUser } from "./workspace-lifecycle";
@@ -54,12 +54,14 @@ export async function ensureBillingCustomer(
   }
 }
 
-export async function resolveBillingOwnerForUser(userId: string): Promise<BillingOwner> {
+export async function resolveBillingOwnerForUser(
+  userId: string,
+  activeWorkspaceId?: string | null,
+): Promise<BillingOwner> {
   const dbUser = await db.query.user.findFirst({
     where: eq(user.id, userId),
     columns: {
       id: true,
-      activeWorkspaceId: true,
     },
   });
 
@@ -67,7 +69,7 @@ export async function resolveBillingOwnerForUser(userId: string): Promise<Billin
     throw new Error("User not found");
   }
 
-  const activeWorkspace = await ensureWorkspaceForUser(userId, dbUser.activeWorkspaceId);
+  const activeWorkspace = await ensureWorkspaceForUser(userId, activeWorkspaceId);
   return {
     ownerType: "workspace",
     ownerId: activeWorkspace.id,
@@ -126,7 +128,6 @@ export async function getExistingBillingOwnerForUser(userId: string): Promise<{
       id: true,
       name: true,
       email: true,
-      activeWorkspaceId: true,
     },
   });
 
@@ -134,7 +135,24 @@ export async function getExistingBillingOwnerForUser(userId: string): Promise<{
     throw new Error("User not found");
   }
 
-  if (!dbUser.activeWorkspaceId) {
+  const membership = await db.query.workspaceMember.findFirst({
+    where: eq(workspaceMember.userId, dbUser.id),
+    with: {
+      workspace: {
+        columns: {
+          id: true,
+          name: true,
+          slug: true,
+          imageStorageKey: true,
+          imageMimeType: true,
+          billingPlanId: true,
+          autumnCustomerId: true,
+        },
+      },
+    },
+  });
+
+  if (!membership?.workspace) {
     return {
       targetUser: {
         id: dbUser.id,
@@ -146,18 +164,7 @@ export async function getExistingBillingOwnerForUser(userId: string): Promise<{
     };
   }
 
-  const activeWorkspace = await getWorkspaceForUser(dbUser.id, dbUser.activeWorkspaceId);
-  if (!activeWorkspace) {
-    return {
-      targetUser: {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-      },
-      activeWorkspace: null,
-      owner: null,
-    };
-  }
+  const activeWorkspace = membership.workspace;
 
   return {
     targetUser: {

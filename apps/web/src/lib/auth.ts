@@ -6,7 +6,7 @@ import { autumn } from "autumn-js/better-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware, APIError } from "better-auth/api";
-import { admin, bearer, lastLoginMethod, magicLink } from "better-auth/plugins";
+import { admin, bearer, lastLoginMethod, magicLink, organization } from "better-auth/plugins";
 import { defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
@@ -18,6 +18,10 @@ import { MAGIC_LINK_TTL_SECONDS } from "@/lib/magic-link-request";
 import { buildSignInMagicLinkUrl } from "@/lib/magic-link-request";
 import { buildPasswordResetEmailPayload } from "@/lib/password-reset-email";
 import { getTrustedOrigins } from "@/lib/trusted-origins";
+import {
+  buildWorkspaceInvitationEmailPayload,
+  buildWorkspaceInvitationUrl,
+} from "@/lib/workspace-invitation-email";
 import { isApprovedLoginEmail } from "@/server/lib/approved-login-emails";
 import { createMagicLinkRequestState } from "@/server/lib/magic-link-request-state";
 
@@ -204,6 +208,70 @@ export const auth = betterAuth({
         } else {
           console.info(`[better-auth] Magic link for ${email}: ${signInUrl}`);
         }
+      },
+    }),
+    organization({
+      disableOrganizationDeletion: true,
+      teams: {
+        enabled: false,
+      },
+      cancelPendingInvitationsOnReInvite: true,
+      async sendInvitationEmail({
+        email,
+        organization: workspaceOrganization,
+        inviter,
+        invitation,
+      }) {
+        const invitationUrl = buildWorkspaceInvitationUrl(invitation.id, appUrl);
+        const emailContent = buildWorkspaceInvitationEmailPayload({
+          invitationUrl,
+          workspaceName: workspaceOrganization.name,
+          inviterEmail: inviter.user.email,
+        });
+
+        if (resend && env.EMAIL_FROM) {
+          await resend.emails.send({
+            from: `Bap <${env.EMAIL_FROM}>`,
+            to: email,
+            subject: `Join ${workspaceOrganization.name} on Bap | ${new Date().toISOString().slice(0, 19).replace("T", " ")}`,
+            html: emailContent.html,
+            text: emailContent.text,
+          });
+        } else {
+          console.info(`[better-auth] Workspace invitation for ${email}: ${invitationUrl}`);
+        }
+      },
+      schema: {
+        organization: {
+          additionalFields: {
+            billingPlanId: {
+              type: "string",
+              required: false,
+              defaultValue: "free",
+              input: false,
+            },
+            autumnCustomerId: {
+              type: "string",
+              required: false,
+              input: false,
+            },
+            imageStorageKey: {
+              type: "string",
+              required: false,
+              input: false,
+            },
+            imageMimeType: {
+              type: "string",
+              required: false,
+              input: false,
+            },
+            updatedAt: {
+              type: "date",
+              required: false,
+              input: false,
+            },
+          },
+        },
       },
     }),
     // TanStack Start cookie integration. MUST be the final plugin so it can set cookies on

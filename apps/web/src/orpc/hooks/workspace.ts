@@ -124,6 +124,19 @@ export function useInviteWorkspaceMembers() {
   });
 }
 
+export function useCancelWorkspaceInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { workspaceId: string; invitationId: string }) =>
+      client.billing.cancelInvitation(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
+      queryClient.invalidateQueries({ queryKey: ["billing", "members"] });
+    },
+  });
+}
+
 export function useWorkspaceMembers(workspaceId: string | null | undefined) {
   return useQuery({
     queryKey: ["billing", "members", workspaceId],

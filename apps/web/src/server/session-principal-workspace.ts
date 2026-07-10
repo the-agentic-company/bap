@@ -1,16 +1,10 @@
 import { ensureWorkspaceForUser } from "@bap/core/server/billing/service";
-import { db } from "@bap/db/client";
-import { user as userTable } from "@bap/db/schema";
-import { eq } from "drizzle-orm";
 
-export async function resolveSessionPrincipalWorkspaceId(userId: string): Promise<string> {
-  const dbUser = await db.query.user.findFirst({
-    where: eq(userTable.id, userId),
-    columns: {
-      activeWorkspaceId: true,
-    },
-  });
-  const activeWorkspace = await ensureWorkspaceForUser(userId, dbUser?.activeWorkspaceId);
+export async function resolveSessionPrincipalWorkspaceId(
+  userId: string,
+  activeOrganizationId?: string | null,
+): Promise<string> {
+  const activeWorkspace = await ensureWorkspaceForUser(userId, activeOrganizationId);
 
   return activeWorkspace.id;
 }

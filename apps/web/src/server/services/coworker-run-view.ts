@@ -38,6 +38,28 @@ function decodeRunCursor(cursor: string | undefined): z.infer<typeof runCursorSc
   }
 }
 
+function inferFailureKindFromDebugInfo(debugInfo: unknown): string | null {
+  if (!debugInfo || typeof debugInfo !== "object") {
+    return null;
+  }
+  const record = debugInfo as Record<string, unknown>;
+  return record.markedFailedBy === "runner_mcp_tool" ? "runner_declared_failure" : null;
+}
+
+function resolveRunFailureKind(input: {
+  runFailureKind?: string | null;
+  runDebugInfo?: unknown;
+  generationFailureKind?: string | null;
+  generationDebugInfo?: unknown;
+}): string | null {
+  return (
+    input.runFailureKind ??
+    input.generationFailureKind ??
+    inferFailureKindFromDebugInfo(input.runDebugInfo) ??
+    inferFailureKindFromDebugInfo(input.generationDebugInfo)
+  );
+}
+
 export async function getCoworkerRunView(input: {
   context: RunViewContext;
   workspaceId: string;
@@ -95,6 +117,7 @@ export async function getCoworkerRunView(input: {
         columns: {
           conversationId: true,
           debugInfo: true,
+          failureKind: true,
         },
       })
     : null;
@@ -111,6 +134,12 @@ export async function getCoworkerRunView(input: {
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
     errorMessage: run.errorMessage,
+    failureKind: resolveRunFailureKind({
+      runFailureKind: run.failureKind,
+      runDebugInfo: run.debugInfo,
+      generationFailureKind: gen?.failureKind,
+      generationDebugInfo: gen?.debugInfo,
+    }),
     debugInfo: run.debugInfo ?? gen?.debugInfo ?? null,
     events: events.map((evt) => ({
       id: evt.id,
@@ -146,6 +175,7 @@ export async function listCoworkerRunViews(input: {
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
     errorMessage: run.errorMessage,
+    failureKind: run.failureKind,
   }));
 }
 
@@ -186,6 +216,7 @@ export async function listWorkspaceCoworkerRunViews(input: {
       generation: {
         columns: {
           conversationId: true,
+          failureKind: true,
         },
       },
     },
@@ -207,6 +238,10 @@ export async function listWorkspaceCoworkerRunViews(input: {
       startedAt: run.startedAt,
       finishedAt: run.finishedAt,
       errorMessage: run.errorMessage,
+      failureKind: resolveRunFailureKind({
+        runFailureKind: run.failureKind,
+        generationFailureKind: run.generation?.failureKind,
+      }),
       conversationId: run.conversationId ?? run.generation?.conversationId ?? null,
       coworkerId: run.coworker?.id ?? null,
       coworkerName: run.coworker?.name?.trim() || "Untitled",
@@ -260,6 +295,7 @@ export async function getAdminWorkspaceCoworkerRunView(input: {
         columns: {
           conversationId: true,
           debugInfo: true,
+          failureKind: true,
         },
       })
     : null;
@@ -270,6 +306,12 @@ export async function getAdminWorkspaceCoworkerRunView(input: {
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
     errorMessage: run.errorMessage,
+    failureKind: resolveRunFailureKind({
+      runFailureKind: run.failureKind,
+      runDebugInfo: run.debugInfo,
+      generationFailureKind: gen?.failureKind,
+      generationDebugInfo: gen?.debugInfo,
+    }),
     debugInfo: run.debugInfo ?? gen?.debugInfo ?? null,
     conversationId: run.conversationId ?? gen?.conversationId ?? null,
     coworker: run.coworker

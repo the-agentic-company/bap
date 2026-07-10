@@ -43,9 +43,12 @@ export {
   adminJoinWorkspace,
   adminListAllWorkspaces,
   adminRemoveWorkspaceMember,
+  cancelWorkspaceInvitation,
+  createWorkspaceInvitations,
   createWorkspaceForUser,
   ensureWorkspaceForUser,
   getWorkspaceForUser,
+  getWorkspaceInvitation,
   getWorkspaceMembershipForUser,
   listWorkspaceMembers,
   listWorkspacesForUser,
@@ -195,8 +198,8 @@ export async function createManualTopUp(args: {
   return topUp;
 }
 
-export async function getBillingOverviewForUser(userId: string) {
-  const owner = await resolveBillingOwnerForUser(userId);
+export async function getBillingOverviewForUser(userId: string, activeWorkspaceId?: string | null) {
+  const owner = await resolveBillingOwnerForUser(userId, activeWorkspaceId);
   const recentCharges = await db.query.billingLedger.findMany({
     where:
       owner.ownerType === "workspace"
@@ -213,7 +216,7 @@ export async function getBillingOverviewForUser(userId: string) {
     feature: snapshot.feature,
     recentCharges,
     recentTopUps: snapshot.recentTopUps,
-    workspaces: await listWorkspacesForUser(userId),
+    workspaces: await listWorkspacesForUser(userId, owner.ownerId),
   };
 }
 

@@ -5,7 +5,20 @@
   },
   "jsPlugins": ["./oxlint-plugins/local.mjs"],
   "rules": {
-    "max-lines": ["error", { "max": 1000 }]
+    "max-lines": ["error", { "max": 1000 }],
+    "local/no-product-organization-import": [
+      "error",
+      {
+        "allow": [
+          "packages/db/src/auth-schema.ts",
+          "packages/db/src/schema/tables-auth.ts",
+          "packages/db/src/schema/tables.ts",
+          "packages/db/src/schema/relations.ts",
+          "apps/web/src/lib/auth.ts",
+          "apps/web/src/lib/auth-client.ts"
+        ]
+      }
+    ]
   },
   "overrides": [
     {

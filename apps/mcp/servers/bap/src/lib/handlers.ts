@@ -36,6 +36,20 @@ export async function handleChatRun(params: {
   return result;
 }
 
+export async function handleRunnerMarkFailed(params: {
+  client: BapApiClient;
+  reason: string;
+  message?: string;
+}) {
+  return {
+    status: "completed" as const,
+    failure: await params.client.generation.markCurrentCoworkerRunFailed({
+      reason: params.reason,
+      message: params.message,
+    }),
+  };
+}
+
 export async function handleWorkspaceList(client: BapApiClient) {
   const overview = await client.billing.overview();
   return {

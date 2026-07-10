@@ -384,6 +384,7 @@ describe("coworkerRouter", () => {
       startedAt: createdAt,
       finishedAt: createdAt,
       errorMessage: null,
+      failureKind: null,
       debugInfo: null,
       events: [
         {
@@ -579,6 +580,7 @@ describe("coworkerRouter", () => {
         startedAt: newestRunAt,
         finishedAt: newestRunAt,
         errorMessage: null,
+        failureKind: null,
         conversationId: "conv-1",
         coworkerId: "wf-1",
         coworkerName: "Inbox Triage",

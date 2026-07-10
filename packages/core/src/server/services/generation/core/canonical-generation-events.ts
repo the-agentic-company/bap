@@ -73,6 +73,8 @@ function resolveFailurePhase(completionReason: string | null | undefined): strin
       return "user_cancel";
     case "runtime_error":
       return "runtime";
+    case "runner_declared_failure":
+      return "runner";
     case "completed":
       return "none";
     default:

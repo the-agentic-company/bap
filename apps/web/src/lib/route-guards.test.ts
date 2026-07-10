@@ -22,7 +22,8 @@ const {
   getRequestSessionMock: vi.fn<() => Promise<unknown>>(),
   isSelfHostedEditionMock: vi.fn<() => boolean>(),
   redirectMock: vi.fn<(options: unknown) => never>(),
-  resolveSessionPrincipalWorkspaceIdMock: vi.fn<(userId: string) => Promise<string>>(),
+  resolveSessionPrincipalWorkspaceIdMock:
+    vi.fn<(userId: string, activeOrganizationId?: string | null) => Promise<string>>(),
 }));
 
 vi.mock("@/server/session-principal-workspace", () => ({
@@ -58,7 +59,7 @@ import {
   requireSupportAdmin,
 } from "./route-guards";
 
-function mockSession(role: string | null = null) {
+function mockSession(role: string | null = null, activeOrganizationId?: string | null) {
   getRequestSessionMock.mockResolvedValue({
     user: {
       id: "user-1",
@@ -67,6 +68,7 @@ function mockSession(role: string | null = null) {
     },
     session: {
       id: "session-1",
+      activeOrganizationId,
     },
   });
 }
@@ -100,7 +102,18 @@ describe("route guards", () => {
       isAdmin: true,
       worktreeAutoLoginConfigured: false,
     });
-    expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1");
+    expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1", null);
+  });
+
+  it("passes Better Auth active organization into session workspace resolution", async () => {
+    mockSession("user", "workspace-2");
+
+    await expect(fetchSessionContext()).resolves.toMatchObject({
+      principal: {
+        activeWorkspaceId: "workspace-1",
+      },
+    });
+    expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1", "workspace-2");
   });
 
   it("redirects unauthenticated protected routes to login with callback", async () => {

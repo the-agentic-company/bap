@@ -4,7 +4,7 @@ This file captures the repository-specific worktree setup for the CLI bundled wi
 
 This repository has a dedicated worktree flow for running isolated app processes with a shared local Docker model:
 
-- shared stateful services for Postgres, Redis, MinIO, and Zero cache
+- shared stateful services for Postgres, Redis, and MinIO
 - one shared observability stack for Vector, VictoriaMetrics, VictoriaLogs, VictoriaTraces, Grafana, Alertmanager, and vmalert
 - per-worktree app processes for the web app, worker, and WS runtime
 
@@ -28,14 +28,15 @@ Each worktree gets:
 - its own Postgres database and Postgres role on the shared Postgres server
 - its own Redis ACL user and Redis key namespace on the shared Redis server
 - its own MinIO bucket and MinIO credentials on the shared MinIO server
-- a reconciled Zero cache container pointed at this worktree's database and app query URL
-- a 2-digit stack slot used to derive worktree-only ports such as `37xx`, `47xx`, and optional Daytona ports
+- its own Zero cache container pointed at this worktree's database and app query URL
+- a 2-digit stack slot used to derive worktree-only ports such as `37xx`, `47xx`, `58xx`, and optional Daytona ports
 - shared observability endpoints, with telemetry labeled by `BAP_INSTANCE_ID`, `BAP_WORKTREE_ID`, and `BAP_WORKTREE_SLOT`
 
 Example:
 
 - slot `07` maps to app port `3707`
 - slot `07` maps to WS port `4707`
+- slot `07` maps to Zero cache port `5807`
 - all worktrees still send logs, metrics, and traces to the same shared local observability stack
 
 ## Start a worktree app

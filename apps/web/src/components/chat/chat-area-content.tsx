@@ -287,6 +287,7 @@ export function ChatAreaContent({
   stopRecordingAndTranscribe,
   streamElapsedMs,
   streamError,
+  transcriptFooter,
   transcriptNodes,
   visibleActivityItemsBySegmentId,
   voiceError,
@@ -332,6 +333,7 @@ export function ChatAreaContent({
   stopRecordingAndTranscribe: () => void;
   streamElapsedMs: number | null;
   streamError: string | null;
+  transcriptFooter?: React.ReactNode;
   transcriptNodes: React.ReactNode[];
   visibleActivityItemsBySegmentId: Map<string, ActivityItemData[]>;
   voiceError: string | null;
@@ -365,6 +367,11 @@ export function ChatAreaContent({
             </div>
           )}
           {transcriptNodes.length > 0 && transcriptNodes}
+          {transcriptFooter ? (
+            <div className={cn("mx-auto w-full", compact ? "max-w-full" : "max-w-3xl")}>
+              {transcriptFooter}
+            </div>
+          ) : null}
 
           {isEmptyChat ? null : (
             <>

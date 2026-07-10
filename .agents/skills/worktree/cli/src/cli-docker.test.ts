@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  buildZeroCacheComposeFileContent,
   buildZeroCacheComposeEnv,
+  buildZeroCacheServiceName,
+  buildZeroCacheUrl,
   buildZeroCacheVolumeName,
   buildZeroQueryUrl,
 } from "./cli-docker";
@@ -15,11 +18,13 @@ function metadata(overrides: Partial<InstanceMetadata> = {}): InstanceMetadata {
     stackSlot: 7,
     appPort: 3707,
     wsPort: 4707,
+    zeroCachePort: 5807,
     appUrl: "http://127.0.0.1:3707",
     databaseName: "bap_bap_1234abcd",
     databaseUser: "bap_bap_1234abcd_user",
     databasePassword: "worktree-db-password",
-    databaseUrl: "postgresql://bap_bap_1234abcd_user:worktree-db-password@127.0.0.1:5432/bap_bap_1234abcd",
+    databaseUrl:
+      "postgresql://bap_bap_1234abcd_user:worktree-db-password@127.0.0.1:5432/bap_bap_1234abcd",
     redisUser: "wt-redis",
     redisPassword: "redis-password",
     queueName: "bap-bap-1234abcd",
@@ -37,9 +42,9 @@ describe("worktree zero cache docker config", () => {
   test("derives a worktree-specific query URL and cache volume", () => {
     const instance = metadata();
 
-    expect(buildZeroQueryUrl(instance)).toBe(
-      "http://host.docker.internal:3707/api/zero/query",
-    );
+    expect(buildZeroQueryUrl(instance)).toBe("http://host.docker.internal:3707/api/zero/query");
+    expect(buildZeroCacheUrl(instance)).toBe("http://127.0.0.1:5807");
+    expect(buildZeroCacheServiceName(instance)).toBe("zero-cache-bap-1234abcd");
     expect(buildZeroCacheVolumeName(instance)).toBe("bap-1234abcd_zero_cache_data");
   });
 
@@ -59,7 +64,9 @@ describe("worktree zero cache docker config", () => {
       const env = buildZeroCacheComposeEnv(instance);
       expect(env).toMatchObject({
         BAP_POSTGRES_DB: "bap_bap_1234abcd",
+        BAP_ZERO_CACHE_PORT: "5807",
         BAP_ZERO_CACHE_VOLUME: "bap-1234abcd_zero_cache_data",
+        VITE_ZERO_CACHE_URL: "http://127.0.0.1:5807",
         VITE_ZERO_QUERY_URL: "http://host.docker.internal:3707/api/zero/query",
       });
       expect(env.AWS_ACCESS_KEY_ID).toBeUndefined();
@@ -88,6 +95,29 @@ describe("worktree zero cache docker config", () => {
         delete process.env.AWS_SECRET_ACCESS_KEY;
       } else {
         process.env.AWS_SECRET_ACCESS_KEY = previousAwsSecretAccessKey;
+      }
+    }
+  });
+
+  test("builds a dedicated compose service for the current worktree", () => {
+    const instance = metadata();
+    const previousDatabasePassword = process.env.DATABASE_PASSWORD;
+
+    try {
+      process.env.DATABASE_PASSWORD = "shared-postgres-password";
+      const content = buildZeroCacheComposeFileContent(instance);
+
+      expect(content).toContain("  zero-cache-bap-1234abcd:\n");
+      expect(content).toContain('      - "5807:4848"\n');
+      expect(content).toContain('ZERO_UPSTREAM_DB: "postgresql://postgres:');
+      expect(content).toContain("@host.docker.internal:");
+      expect(content).toContain('/bap_bap_1234abcd"\n');
+      expect(content).toContain('    name: "bap-1234abcd_zero_cache_data"\n');
+    } finally {
+      if (previousDatabasePassword === undefined) {
+        delete process.env.DATABASE_PASSWORD;
+      } else {
+        process.env.DATABASE_PASSWORD = previousDatabasePassword;
       }
     }
   });

@@ -27,6 +27,12 @@ const {
   requireActiveWorkspaceAccessMock,
   resolveUniqueSkillNameInWorkspaceMock,
   copySkillToWorkspaceOwnerMock,
+  writeRuntimeVolumeFileMock,
+  deleteRuntimeVolumeFileMock,
+  deleteRuntimeVolumePrefixMock,
+  copyRuntimeVolumePrefixMock,
+  readRuntimeVolumeFileMock,
+  reconcileRuntimeVolumeProjectionMock,
 } = vi.hoisted(() => ({
   uploadToS3Mock: vi.fn<VitestProcedure>(),
   deleteFromS3Mock: vi.fn<VitestProcedure>(),
@@ -38,6 +44,12 @@ const {
   requireActiveWorkspaceAccessMock: vi.fn<VitestProcedure>(),
   resolveUniqueSkillNameInWorkspaceMock: vi.fn<VitestProcedure>(),
   copySkillToWorkspaceOwnerMock: vi.fn<VitestProcedure>(),
+  writeRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  deleteRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  deleteRuntimeVolumePrefixMock: vi.fn<VitestProcedure>(),
+  copyRuntimeVolumePrefixMock: vi.fn<VitestProcedure>(),
+  readRuntimeVolumeFileMock: vi.fn<VitestProcedure>(),
+  reconcileRuntimeVolumeProjectionMock: vi.fn<VitestProcedure>(),
 }));
 
 vi.mock("../middleware", () => ({
@@ -54,6 +66,27 @@ vi.mock("@bap/core/server/storage/s3-client", () => ({
   getPresignedDownloadUrl: getPresignedDownloadUrlMock,
   generateStorageKey: generateStorageKeyMock,
   ensureBucket: ensureBucketMock,
+}));
+
+vi.mock("@bap/core/server/services/runtime-volume-service", () => ({
+  appendRuntimeVolumeSkillSlug: (prefix: string, skillSlug: string) =>
+    `${prefix.replace(/\/?$/, "/")}${skillSlug}/`,
+  buildOwnedSkillsRuntimeVolumePrefix: ({
+    workspaceId,
+    userId,
+  }: {
+    workspaceId: string;
+    userId: string;
+  }) => `runtime-volumes/${workspaceId}/users/${userId}/skills/`,
+  buildSharedSkillsRuntimeVolumePrefix: ({ workspaceId }: { workspaceId: string }) =>
+    `runtime-volumes/${workspaceId}/shared-skills/`,
+  buildRuntimeVolumeObjectKey: (prefix: string, relativePath: string) => `${prefix}${relativePath}`,
+  copyRuntimeVolumePrefix: copyRuntimeVolumePrefixMock,
+  deleteRuntimeVolumeFile: deleteRuntimeVolumeFileMock,
+  deleteRuntimeVolumePrefix: deleteRuntimeVolumePrefixMock,
+  readRuntimeVolumeFile: readRuntimeVolumeFileMock,
+  reconcileRuntimeVolumeProjection: reconcileRuntimeVolumeProjectionMock,
+  writeRuntimeVolumeFile: writeRuntimeVolumeFileMock,
 }));
 
 vi.mock("@bap/core/server/services/workspace-skill-service", () => ({
@@ -143,6 +176,16 @@ describe("skillRouter", () => {
     );
     generateStorageKeyMock.mockReturnValue("skills/user-1/skill-1/doc.pdf");
     getPresignedDownloadUrlMock.mockResolvedValue("https://example.com/doc.pdf");
+    readRuntimeVolumeFileMock.mockResolvedValue(Buffer.from("content"));
+    writeRuntimeVolumeFileMock.mockResolvedValue(undefined);
+    deleteRuntimeVolumeFileMock.mockResolvedValue(undefined);
+    deleteRuntimeVolumePrefixMock.mockResolvedValue(undefined);
+    copyRuntimeVolumePrefixMock.mockResolvedValue(1);
+    reconcileRuntimeVolumeProjectionMock.mockResolvedValue({
+      changed: true,
+      manifestHash: "hash",
+      entryCount: 1,
+    });
   });
 
   it("lists accessible skills with owner and visibility info", async () => {
@@ -294,6 +337,15 @@ describe("skillRouter", () => {
         visibility: "private",
       }),
     );
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "owned_skills",
+      ownerUserId: "user-1",
+      storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/",
+      mountPath: "/runtime/skills",
+      readOnly: false,
+      generationId: null,
+    });
   });
 
   it("delegates imports with the active workspace id", async () => {
@@ -314,12 +366,22 @@ describe("skillRouter", () => {
       filename: "skill.zip",
       contentBase64: "Zm9v",
     });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "owned_skills",
+      ownerUserId: "user-1",
+      storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/",
+      mountPath: "/runtime/skills",
+      readOnly: false,
+      generationId: null,
+    });
   });
 
   it("shares and unshares owned skills", async () => {
     const context = createContext();
     context.db.query.skill.findFirst.mockResolvedValue({
       id: "skill-1",
+      name: "my-skill",
       userId: "user-1",
       workspaceId: "ws-1",
     });
@@ -332,11 +394,27 @@ describe("skillRouter", () => {
       id: "skill-1",
       visibility: "public",
     });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenLastCalledWith({
+      workspaceId: "ws-1",
+      kind: "shared_skills",
+      storagePrefix: "runtime-volumes/ws-1/shared-skills/",
+      mountPath: "/runtime/shared-skills",
+      readOnly: true,
+      generationId: null,
+    });
 
     await expect(skillRouterAny.unshare({ input: { id: "skill-1" }, context })).resolves.toEqual({
       success: true,
       id: "skill-1",
       visibility: "private",
+    });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenLastCalledWith({
+      workspaceId: "ws-1",
+      kind: "shared_skills",
+      storagePrefix: "runtime-volumes/ws-1/shared-skills/",
+      mountPath: "/runtime/shared-skills",
+      readOnly: true,
+      generationId: null,
     });
   });
 
@@ -344,6 +422,7 @@ describe("skillRouter", () => {
     const context = createContext();
     context.db.query.skill.findFirst.mockResolvedValue({
       id: "skill-shared",
+      name: "shared-skill",
       userId: "user-2",
       workspaceId: "ws-1",
       visibility: "public",
@@ -370,6 +449,61 @@ describe("skillRouter", () => {
         visibility: "private",
       }),
     );
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      kind: "owned_skills",
+      ownerUserId: "user-1",
+      storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/",
+      mountPath: "/runtime/skills",
+      readOnly: false,
+      generationId: null,
+    });
+  });
+
+  it("refreshes owned skill projections after file writes and deletes", async () => {
+    const context = createContext();
+    context.db.query.skill.findFirst.mockResolvedValue({
+      id: "skill-1",
+      name: "my-skill",
+      userId: "user-1",
+      workspaceId: "ws-1",
+    });
+    context.db.query.skillFile.findFirst.mockResolvedValue({
+      id: "file-1",
+      path: "notes.md",
+      skill: {
+        id: "skill-1",
+        name: "my-skill",
+        userId: "user-1",
+        workspaceId: "ws-1",
+      },
+    });
+    context.mocks.insertReturningMock.mockResolvedValue([{ id: "file-2", path: "extra.md" }]);
+
+    await skillRouterAny.addFile({
+      input: {
+        skillId: "skill-1",
+        path: "extra.md",
+        contentBase64: Buffer.from("hello").toString("base64"),
+      },
+      context,
+    });
+    await skillRouterAny.updateFile({
+      input: { id: "file-1", contentBase64: Buffer.from("updated").toString("base64") },
+      context,
+    });
+    await skillRouterAny.deleteFile({ input: { id: "file-1" }, context });
+
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledTimes(3);
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenLastCalledWith({
+      workspaceId: "ws-1",
+      kind: "owned_skills",
+      ownerUserId: "user-1",
+      storagePrefix: "runtime-volumes/ws-1/users/user-1/skills/",
+      mountPath: "/runtime/skills",
+      readOnly: false,
+      generationId: null,
+    });
   });
 
   it("returns a document url for readable shared skills", async () => {

@@ -2,11 +2,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import type { Client as PgClient } from "pg";
 
-import {
-  buildSharedStackConfig,
-  buildWorktreeStackConfig,
-  formatWorktreeStackSlot,
-} from "./stack";
+import { buildSharedStackConfig, buildWorktreeStackConfig, formatWorktreeStackSlot } from "./stack";
 import { buildWorktreePublicCallbackBaseUrl } from "../../../../../packages/core/src/lib/worktree-routing";
 import {
   agentBrowserSessionName,
@@ -53,18 +49,16 @@ export function resolveSharedMinioRootCredentialsFromEnv(
   }
 
   return {
-    accessKeyId:
-      env.MINIO_ROOT_USER?.trim() ||
-      env.BAP_MINIO_ROOT_USER?.trim() ||
-      "minioadmin",
+    accessKeyId: env.MINIO_ROOT_USER?.trim() || env.BAP_MINIO_ROOT_USER?.trim() || "minioadmin",
     secretAccessKey:
-      env.MINIO_ROOT_PASSWORD?.trim() ||
-      env.BAP_MINIO_ROOT_PASSWORD?.trim() ||
-      "minioadmin",
+      env.MINIO_ROOT_PASSWORD?.trim() || env.BAP_MINIO_ROOT_PASSWORD?.trim() || "minioadmin",
   };
 }
 
-export function resolveSharedMinioRootCredentials(): { accessKeyId: string; secretAccessKey: string } {
+export function resolveSharedMinioRootCredentials(): {
+  accessKeyId: string;
+  secretAccessKey: string;
+} {
   const sharedStack = buildSharedStackConfig();
   const containerEnv = resolveDockerComposeServiceEnv(sharedStack.composeProjectName, "minio");
   return resolveSharedMinioRootCredentialsFromEnv(containerEnv, process.env);
@@ -96,7 +90,10 @@ export async function withAdminClient<T>(
   }
 }
 
-export async function withClient<T>(connectionString: string, fn: (client: PgClient) => Promise<T>): Promise<T> {
+export async function withClient<T>(
+  connectionString: string,
+  fn: (client: PgClient) => Promise<T>,
+): Promise<T> {
   const client = new Client({ connectionString });
   await client.connect();
   try {
@@ -138,7 +135,9 @@ export async function ensureDatabaseRole(metadata: InstanceMetadata): Promise<vo
       );
     }
 
-    await client.query(`revoke all on database ${quoteIdentifier(metadata.databaseName)} from public`);
+    await client.query(
+      `revoke all on database ${quoteIdentifier(metadata.databaseName)} from public`,
+    );
     await client.query(
       `grant all privileges on database ${quoteIdentifier(metadata.databaseName)} to ${quoteIdentifier(metadata.databaseUser)}`,
     );
@@ -151,12 +150,8 @@ export async function ensureDatabaseRole(metadata: InstanceMetadata): Promise<vo
     buildPostgresBaseUrl(resolveRuntimeSharedStackConfig().postgresPort, metadata.databaseName),
     async (client) => {
       await client.query(`revoke all on schema public from public`);
-      await client.query(
-        `grant all on schema public to ${quoteIdentifier(metadata.databaseUser)}`,
-      );
-      await client.query(
-        `alter schema public owner to ${quoteIdentifier(metadata.databaseUser)}`,
-      );
+      await client.query(`grant all on schema public to ${quoteIdentifier(metadata.databaseUser)}`);
+      await client.query(`alter schema public owner to ${quoteIdentifier(metadata.databaseUser)}`);
     },
   );
 }
@@ -315,7 +310,9 @@ export async function dropMinioTenant(metadata: InstanceMetadata): Promise<void>
     `mc admin policy remove local ${policyName} >/dev/null 2>&1 || true`,
   ].join("\n");
 
-  runSharedServiceCommand(metadata.repoRoot, "minio", ["sh", "-lc", script], { allowFailure: true });
+  runSharedServiceCommand(metadata.repoRoot, "minio", ["sh", "-lc", script], {
+    allowFailure: true,
+  });
   console.log(`[worktree] removed minio bucket ${metadata.minioBucketName}`);
 }
 
@@ -330,6 +327,8 @@ export function buildDerivedEnv(metadata: InstanceMetadata): DerivedEnv {
     WS_PORT: String(metadata.wsPort),
     APP_URL: instanceAppUrl,
     VITE_APP_URL: instanceAppUrl,
+    VITE_ZERO_CACHE_URL: `http://127.0.0.1:${metadata.zeroCachePort}`,
+    VITE_ZERO_QUERY_URL: `http://host.docker.internal:${metadata.appPort}/api/zero/query`,
     E2B_CALLBACK_BASE_URL: buildWorktreePublicCallbackBaseUrl({
       instanceId: metadata.instanceId,
       callbackBaseUrl: process.env.E2B_CALLBACK_BASE_URL,
@@ -398,7 +397,9 @@ export function buildDerivedEnv(metadata: InstanceMetadata): DerivedEnv {
   };
 }
 
-export function buildCommentedWorktreeEnv(metadata: InstanceMetadata): Record<(typeof COMMENTED_WORKTREE_ENV_KEYS)[number], string> {
+export function buildCommentedWorktreeEnv(
+  metadata: InstanceMetadata,
+): Record<(typeof COMMENTED_WORKTREE_ENV_KEYS)[number], string> {
   const stack = buildWorktreeStackConfig(metadata.instanceId, metadata.stackSlot);
 
   return {

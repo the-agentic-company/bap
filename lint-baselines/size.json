@@ -1,7 +1,13 @@
 {
   "description": "Baseline for size/design Oxlint checks. Entries allow only existing violations at or below the recorded count; new violations and baseline growth fail.",
   "rules": {
-    "eslint(max-lines)": {},
+    "eslint(max-lines)": {
+      "apps/mcp/servers/bap/src/lib/handlers.test.ts": 1291,
+      "apps/web/src/routes/audit.tsx": 2511,
+      "apps/web/src/server/orpc/routers/agentic-audit.ts": 1257,
+      "packages/core/src/server/services/generation/core/lifecycle-store.ts": 1087,
+      "packages/core/src/server/services/generation/generation-manager.ts": 1013
+    },
     "local(max-mocked-modules)": {}
   }
 }

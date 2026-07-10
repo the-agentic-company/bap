@@ -165,6 +165,7 @@ const INTEGRATION_NAMES: Record<string, string> = {
 };
 
 const INTERNAL_DISPLAY_ONLY_INTEGRATIONS = new Set(["coworker", "agent-browser"]);
+const GLOBAL_OPTION_FLAGS_WITH_VALUE = new Set(["--account"]);
 
 export interface ParsedCommand {
   integration: string;
@@ -191,6 +192,26 @@ function extractCommandCandidate(command: string): string | null {
   return fallback.length > 0 ? fallback : null;
 }
 
+function removeLeadingGlobalOptions(parts: string[]): string[] {
+  let cursor = 1;
+  while (cursor < parts.length) {
+    const part = parts[cursor];
+    if (!part || part === "--") {
+      cursor += 1;
+      break;
+    }
+    if (!part.startsWith("-")) {
+      break;
+    }
+
+    const [flag] = part.split("=", 1);
+    cursor +=
+      flag && GLOBAL_OPTION_FLAGS_WITH_VALUE.has(flag) && !part.includes("=") ? 2 : 1;
+  }
+
+  return [parts[0], ...parts.slice(cursor)];
+}
+
 /**
  * Parse a bash command to extract integration and operation.
  */
@@ -199,7 +220,7 @@ export function parseBashCommand(command: string): ParsedCommand | null {
   if (!trimmed) {
     return null;
   }
-  const parts = trimmed.split(/\s+/);
+  const parts = removeLeadingGlobalOptions(trimmed.split(/\s+/));
   if (parts.length === 0) {
     return null;
   }

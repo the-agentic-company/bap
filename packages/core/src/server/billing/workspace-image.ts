@@ -199,7 +199,7 @@ export async function removeWorkspaceImage(workspaceId: string) {
 
 export async function downloadWorkspaceImageForUser(userId: string, workspaceId: string) {
   const membership = await db.query.workspaceMember.findFirst({
-    where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.workspaceId, workspaceId)),
+    where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, workspaceId)),
     with: {
       workspace: {
         columns: {

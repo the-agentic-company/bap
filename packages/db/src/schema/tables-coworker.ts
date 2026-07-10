@@ -34,6 +34,7 @@ import {
   user,
   workspace,
 } from "./tables";
+import type { GenerationFailureKind } from "./types";
 
 export const coworkerFolder = pgTable(
   "coworker_folder",
@@ -149,6 +150,7 @@ export const coworkerRun = pgTable(
     startedAt: timestamp("started_at").defaultNow().notNull(),
     finishedAt: timestamp("finished_at"),
     errorMessage: text("error_message"),
+    failureKind: text("failure_kind").$type<GenerationFailureKind>(),
     debugInfo: jsonb("debug_info").$type<Record<string, unknown>>(),
     syntheticKind: text("synthetic_kind").$type<SyntheticTrafficKind>(),
     sloEmittedAt: timestamp("slo_emitted_at"),

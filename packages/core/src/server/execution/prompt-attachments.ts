@@ -44,6 +44,7 @@ export type StageRuntimePromptAttachmentsResult = {
 export async function stageRuntimePromptAttachments(input: {
   runtimeSandbox: RuntimePromptAttachmentSandbox;
   coworkerId?: string | null;
+  coworkerDocumentsMountedPath?: string | null;
   workspaceId?: string | null;
   attachments?: RuntimePromptAttachment[] | null;
   userStagedFilePaths?: Set<string>;
@@ -74,17 +75,24 @@ export async function stageRuntimePromptAttachments(input: {
 
   const coworkerId = input.coworkerId;
   if (coworkerId) {
-    const coworkerDocumentPaths = await input.runStep(
-      "coworker_docs_stage",
-      "stageCoworkerDocsMs",
-      async () => await writeCoworkerDocumentsToSandbox(input.runtimeSandbox, coworkerId),
-    );
-    if (coworkerDocumentPaths.length > 0) {
-      stagedCoworkerDocumentCount = coworkerDocumentPaths.length;
+    if (input.coworkerDocumentsMountedPath) {
       promptParts.push({
         type: "text",
-        text: buildCoworkerDocumentAttachmentPrompt(coworkerDocumentPaths),
+        text: buildCoworkerDocumentAttachmentPrompt([input.coworkerDocumentsMountedPath]),
       });
+    } else {
+      const coworkerDocumentPaths = await input.runStep(
+        "coworker_docs_stage",
+        "stageCoworkerDocsMs",
+        async () => await writeCoworkerDocumentsToSandbox(input.runtimeSandbox, coworkerId),
+      );
+      if (coworkerDocumentPaths.length > 0) {
+        stagedCoworkerDocumentCount = coworkerDocumentPaths.length;
+        promptParts.push({
+          type: "text",
+          text: buildCoworkerDocumentAttachmentPrompt(coworkerDocumentPaths),
+        });
+      }
     }
   }
 

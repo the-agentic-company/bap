@@ -48,6 +48,7 @@ describe("Zero schema allowlist", () => {
       "ownerId",
       "workspaceId",
       "status",
+      "failureKind",
       "generationId",
       "conversationId",
       "startedAt",
@@ -66,7 +67,6 @@ describe("Zero schema allowlist", () => {
       "userId",
       "role",
       "createdAt",
-      "updatedAt",
     ]);
   });
 

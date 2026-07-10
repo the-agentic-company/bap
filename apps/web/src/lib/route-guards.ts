@@ -51,7 +51,12 @@ export const fetchSessionContext = createServerFn({ method: "GET" }).handler(
     const user = sessionData?.user ?? null;
     const session = sessionData?.session ?? null;
     const activeWorkspaceId =
-      user && session ? await resolveSessionPrincipalWorkspaceId(user.id) : null;
+      user && session
+        ? await resolveSessionPrincipalWorkspaceId(
+            user.id,
+            (session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null,
+          )
+        : null;
     const principal: SessionPrincipal | null =
       user && session
         ? {

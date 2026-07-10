@@ -12,7 +12,7 @@ describe("Zero provider URLs", () => {
     );
   });
 
-  it("falls back to local docker compose URLs on loopback app hosts", async () => {
+  it("falls back to host-reachable local URLs on loopback app hosts", async () => {
     const location = {
       host: "localhost:3000",
       hostname: "localhost",
@@ -21,9 +21,31 @@ describe("Zero provider URLs", () => {
     };
 
     expect(resolveZeroCacheURL(undefined, location)).toBe("http://localhost:4848");
-    expect(resolveZeroQueryURL(undefined, location)).toBe(
-      "http://host.docker.internal:3000/api/zero/query",
-    );
+    expect(resolveZeroQueryURL(undefined, location)).toBe("http://localhost:3000/api/zero/query");
+  });
+
+  it("preserves the loopback host used by the browser", async () => {
+    const location = {
+      host: "127.0.0.1:3001",
+      hostname: "127.0.0.1",
+      port: "3001",
+      protocol: "http:",
+    };
+
+    expect(resolveZeroCacheURL(undefined, location)).toBe("http://127.0.0.1:4848");
+    expect(resolveZeroQueryURL(undefined, location)).toBe("http://127.0.0.1:3001/api/zero/query");
+  });
+
+  it("formats IPv6 loopback URLs correctly", async () => {
+    const location = {
+      host: "[::1]:3000",
+      hostname: "::1",
+      port: "3000",
+      protocol: "http:",
+    };
+
+    expect(resolveZeroCacheURL(undefined, location)).toBe("http://[::1]:4848");
+    expect(resolveZeroQueryURL(undefined, location)).toBe("http://[::1]:3000/api/zero/query");
   });
 
   it("falls back to same-origin app edge URLs on non-loopback hosts", async () => {

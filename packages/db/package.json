@@ -24,7 +24,8 @@
     "db:seed:coworker-backlog": "bun --env-file=../../.env src/seed-coworker-backlog.ts",
     "db:studio": "bun --env-file=../../.env drizzle-kit studio --config=drizzle.config.ts",
     "db:studio:prod": "bun --env-file=../../.env scripts/db-studio.ts prod",
-    "db:studio:staging": "bun --env-file=../../.env scripts/db-studio.ts staging"
+    "db:studio:staging": "bun --env-file=../../.env scripts/db-studio.ts staging",
+    "db:workspace-org-backfill": "bun --env-file=../../.env src/workspace-organization-backfill.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",

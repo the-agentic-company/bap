@@ -12,24 +12,19 @@ type VictoriaMetricsRenderConfig = {
   dockerCommand: string;
 };
 
-function readArg(name: string): string | null {
-  const prefix = `${name}=`;
-  const value = process.argv.find((arg) => arg.startsWith(prefix));
-  if (value) {
-    return value.slice(prefix.length);
-  }
-
-  const index = process.argv.indexOf(name);
-  if (index >= 0) {
-    return process.argv[index + 1] ?? null;
-  }
-
-  return null;
-}
-
 function fail(message: string): never {
   console.error(`[render-observability-config] ${message}`);
   process.exit(1);
+}
+
+function readEnvironmentArg(): string | null {
+  const inlineValue = process.argv.find((arg) => arg.startsWith("--environment="));
+  if (inlineValue) {
+    return inlineValue.slice("--environment=".length);
+  }
+
+  const flagIndex = process.argv.indexOf("--environment");
+  return flagIndex >= 0 ? (process.argv[flagIndex + 1] ?? null) : null;
 }
 
 function parseEnvironment(value: string | null): Environment {
@@ -105,7 +100,7 @@ function check(): void {
 }
 
 function writeVictoriaMetricsEnv(): void {
-  const environment = parseEnvironment(readArg("--environment"));
+  const environment = parseEnvironment(readEnvironmentArg());
   const config = getVictoriaMetricsRenderConfig(environment);
 
   requireVictoriaMetricsVmalertProxy(environment);
