@@ -37,7 +37,7 @@ export function MobileBottomBar() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const infoTab = searchParams.get("tab");
-  const isFlatBottomBar = pathname.startsWith("/agents/info/") && (!infoTab || infoTab === "app");
+  const isFlatBottomBar = pathname.startsWith("/agents/info/") && infoTab === "app";
 
   const isActive = useCallback(
     (href: string) => {

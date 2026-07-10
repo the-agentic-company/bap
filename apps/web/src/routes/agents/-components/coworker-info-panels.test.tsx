@@ -7,19 +7,24 @@ import {
   AGENTIC_APP_PROMPT_RESULT_TYPE,
   AGENTIC_APP_PROMPT_TYPE,
 } from "@/components/chat/agentic-app-protocol";
-import type { Message } from "@/components/chat/message-list";
 
 const {
   mockUseAgenticAppHtml,
   mockDownloadSandboxFile,
   mockUseSendAgenticAppPrompt,
   mockSendAgenticAppPrompt,
+  mockUseConversation,
+  mockShareConversation,
+  mockUnshareConversation,
 } = vi.hoisted(() => ({
   mockUseAgenticAppHtml: vi.fn<() => unknown>(),
   mockDownloadSandboxFile: vi.fn<() => Promise<unknown>>(),
   mockUseSendAgenticAppPrompt:
     vi.fn<(conversationId: string | undefined) => (prompt: string) => Promise<unknown>>(),
   mockSendAgenticAppPrompt: vi.fn<(prompt: string) => Promise<unknown>>(),
+  mockUseConversation: vi.fn<() => unknown>(),
+  mockShareConversation: vi.fn<() => Promise<unknown>>(),
+  mockUnshareConversation: vi.fn<() => Promise<unknown>>(),
 }));
 
 vi.mock("@/components/chat/chat-area", () => ({
@@ -33,6 +38,9 @@ vi.mock("@/components/chat/message-bubble", () => ({
 vi.mock("@/orpc/hooks/conversation", () => ({
   useAgenticAppHtml: mockUseAgenticAppHtml,
   useDownloadSandboxFile: () => ({ mutateAsync: mockDownloadSandboxFile, isPending: false }),
+  useConversation: mockUseConversation,
+  useShareConversation: () => ({ mutateAsync: mockShareConversation, isPending: false }),
+  useUnshareConversation: () => ({ mutateAsync: mockUnshareConversation, isPending: false }),
 }));
 
 vi.mock("@/orpc/hooks/generation", () => ({
@@ -49,7 +57,7 @@ vi.mock("posthog-js/react", () => ({
   usePostHog: () => ({ capture: vi.fn<() => void>() }),
 }));
 
-import { OutputPanel, RunDetailsPanel } from "./coworker-info-panels";
+import { formatLiveDuration, OutputPanel, RunDetailsPanel } from "./coworker-info-panels";
 
 const outputFile = {
   fileId: "file-1",
@@ -58,8 +66,6 @@ const outputFile = {
   mimeType: "text/html",
   sizeBytes: 128,
 };
-const runningRun = { status: "running" } as const;
-const emptyMessages: Message[] = [];
 
 let now = 10_000_000;
 
@@ -95,6 +101,9 @@ beforeEach(() => {
   });
   mockSendAgenticAppPrompt.mockResolvedValue(true);
   mockUseSendAgenticAppPrompt.mockReturnValue(mockSendAgenticAppPrompt);
+  mockUseConversation.mockReturnValue({ data: { isShared: false, shareToken: null } });
+  mockShareConversation.mockResolvedValue({ shareToken: "share-token" });
+  mockUnshareConversation.mockResolvedValue({});
 });
 
 afterEach(() => {
@@ -105,7 +114,9 @@ afterEach(() => {
 
 describe("OutputPanel Agentic-App prompts", () => {
   it("sends inline iframe prompts through the selected run conversation", async () => {
-    render(<OutputPanel outputFile={outputFile} conversationId="conv-run-1" />);
+    render(
+      <OutputPanel outputFile={outputFile} conversationId="conv-run-1" runStatus="completed" />,
+    );
 
     const iframe = screen.getByTitle("output.html Agentic-App") as HTMLIFrameElement;
     const postMessageSpy = vi.spyOn(iframe.contentWindow!, "postMessage");
@@ -124,7 +135,9 @@ describe("OutputPanel Agentic-App prompts", () => {
   });
 
   it("sends fullscreen iframe prompts through the selected run conversation", async () => {
-    render(<OutputPanel outputFile={outputFile} conversationId="conv-run-2" />);
+    render(
+      <OutputPanel outputFile={outputFile} conversationId="conv-run-2" runStatus="completed" />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Open Agentic-App fullscreen" }));
     const iframe = (await screen.findByTitle(
@@ -148,24 +161,36 @@ describe("OutputPanel Agentic-App prompts", () => {
 });
 
 describe("RunDetailsPanel layout", () => {
-  it("keeps the chat tab shrinkable inside the split workspace", () => {
-    const { container } = render(
-      <RunDetailsPanel
-        activeTab="chat"
-        onTabChange={vi.fn<() => void>()}
-        isFetchingConversation={false}
-        run={runningRun}
-        messages={emptyMessages}
-        conversationId="conv-run-1"
-      />,
-    );
+  it("keeps the chat panel shrinkable inside the split workspace", () => {
+    const { container } = render(<RunDetailsPanel conversationId="conv-run-1" />);
 
     expect(container.firstElementChild?.className).toContain("min-w-0");
     expect(screen.getByTestId("chat-area").parentElement?.className).toContain("min-w-0");
   });
 });
 
+describe("formatLiveDuration", () => {
+  it("keeps seconds visible for running durations", () => {
+    expect(formatLiveDuration(new Date(1_000_000), new Date(1_002_000))).toBe("2s");
+    expect(formatLiveDuration(new Date(1_000_000), new Date(1_065_000))).toBe("1m 5s");
+    expect(formatLiveDuration(new Date(1_000_000), new Date(4_723_000))).toBe("1h 2m 3s");
+  });
+});
+
 describe("OutputPanel empty states", () => {
+  it("renders the output file without the coworker-page header actions", () => {
+    render(
+      <OutputPanel
+        outputFile={outputFile}
+        conversationId="conv-run-header"
+        runStatus="completed"
+      />,
+    );
+
+    expect(screen.getByTitle("output.html Agentic-App")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Download output" })).toBeNull();
+  });
+
   it("shows a loading message while the run is generating output", () => {
     render(<OutputPanel conversationId="conv-run-3" runStatus="running" />);
 
@@ -210,5 +235,30 @@ describe("OutputPanel empty states", () => {
 
     expect(screen.getByText("Error")).toBeTruthy();
     expect(screen.getByText("Error : Run cancelled.")).toBeTruthy();
+  });
+
+  it("shows a generic failure message when an error run has no stored error message", () => {
+    render(<OutputPanel conversationId="conv-run-6" runStatus="error" />);
+
+    expect(screen.getByText("Error")).toBeTruthy();
+    expect(screen.getByText("Error : Run failed.")).toBeTruthy();
+  });
+
+  it("keeps the output error visible even if the latest chat message matches it", () => {
+    render(
+      <OutputPanel
+        conversationId="conv-run-7"
+        runStatus="error"
+        runErrorMessage="The sandbox stopped while this run was still active. Retry the task to continue."
+        latestCoworkerMessage="The sandbox stopped while this run was still active. Retry the task to continue."
+      />,
+    );
+
+    expect(screen.getByText("Error")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Error : The sandbox stopped while this run was still active. Retry the task to continue.",
+      ),
+    ).toBeTruthy();
   });
 });

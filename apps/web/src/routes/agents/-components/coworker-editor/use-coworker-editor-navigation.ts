@@ -45,6 +45,23 @@ export function useCoworkerEditorNavigation({
   const t = useGT();
   const navigate = useNavigate();
 
+  const navigateToCoworkerRun = useCallback(
+    (runId: string, options?: { replace?: boolean }) => {
+      if (!coworkerId) {
+        void navigate({ to: "/agents", replace: options?.replace });
+        return;
+      }
+
+      void navigate({
+        to: "/agents/info/$slug",
+        params: { slug: coworkerRouteSlug ?? coworkerId },
+        search: { run: runId },
+        replace: options?.replace,
+      });
+    },
+    [coworkerId, coworkerRouteSlug, navigate],
+  );
+
   const navigateToCoworkerEditor = useCallback(
     (tab?: Exclude<CoworkerTab, "runs"> | null, options?: { replace?: boolean }) => {
       if (!coworkerId) {
@@ -152,14 +169,13 @@ export function useCoworkerEditorNavigation({
         return;
       }
 
-      setActiveTab("runs");
       setSelectedRunId(result.runId);
       if (embedded) {
         return;
       }
-      navigateToCoworkerPanel({ runId: result.runId, replace: true });
+      navigateToCoworkerRun(result.runId, { replace: true });
     },
-    [embedded, navigateToCoworkerPanel, runCoworker, setActiveTab, setSelectedRunId],
+    [embedded, navigateToCoworkerRun, runCoworker, setSelectedRunId],
   );
 
   const handleRemoteRunClick = useCallback(async () => {
@@ -178,35 +194,28 @@ export function useCoworkerEditorNavigation({
       return;
     }
 
-    setActiveTab("runs");
     setSelectedRunId(result.runId);
     if (embedded) {
       return;
     }
-    navigateToCoworkerPanel({ runId: result.runId, replace: true });
+    navigateToCoworkerRun(result.runId, { replace: true });
   }, [
     embedded,
-    navigateToCoworkerPanel,
+    navigateToCoworkerRun,
     remoteTargetEnv,
     runCoworker,
     selectedRemoteUser,
-    setActiveTab,
     setSelectedRunId,
     t,
   ]);
 
   const handleTabChange = useCallback(
     (key: string) => {
-      const nextTab = key as CoworkerTab;
+      const nextTab = (key === "runs" ? "instruction" : key) as Exclude<CoworkerTab, "runs">;
       setActiveTab(nextTab);
       setSelectedRunId(null);
 
       if (!coworkerId || embedded) {
-        return;
-      }
-
-      if (nextTab === "runs") {
-        navigateToCoworkerPanel({ replace: true });
         return;
       }
 
@@ -227,7 +236,6 @@ export function useCoworkerEditorNavigation({
       isMobile,
       isRunsRoute,
       navigateToCoworkerEditor,
-      navigateToCoworkerPanel,
       routeBaseTab,
       setActiveTab,
       setSelectedRunId,
@@ -236,14 +244,14 @@ export function useCoworkerEditorNavigation({
 
   const handleSelectRun = useCallback(
     (runId: string) => {
-      setActiveTab("runs");
+      setActiveTab("instruction");
       setSelectedRunId(runId);
       if (embedded) {
         return;
       }
-      navigateToCoworkerPanel({ runId });
+      navigateToCoworkerRun(runId);
     },
-    [embedded, navigateToCoworkerPanel, setActiveTab, setSelectedRunId],
+    [embedded, navigateToCoworkerRun, setActiveTab, setSelectedRunId],
   );
 
   const handleBackToRuns = useCallback(() => {

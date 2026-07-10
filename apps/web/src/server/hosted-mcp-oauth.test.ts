@@ -287,7 +287,9 @@ describe("hosted MCP OAuth authorization requests", () => {
         selectedWorkspaceIds: ["ws-1"],
         workspaceId: null,
       }),
-    ).rejects.toThrow("Bap MCP authorization now requires access to all current and future workspaces.");
+    ).rejects.toThrow(
+      "Bap MCP authorization now requires access to all current and future workspaces.",
+    );
   });
 
   it("resolves Bap all-workspace consent to every current membership", async () => {

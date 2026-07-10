@@ -565,7 +565,9 @@ export async function resolveHostedMcpWorkspaceConsent(params: {
   }
 
   if (params.workspaceAccessMode && params.workspaceAccessMode !== "all") {
-    throw new Error("Bap MCP authorization now requires access to all current and future workspaces.");
+    throw new Error(
+      "Bap MCP authorization now requires access to all current and future workspaces.",
+    );
   }
 
   if (params.selectedWorkspaceIds.length > 0) {

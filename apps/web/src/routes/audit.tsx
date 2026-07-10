@@ -697,9 +697,7 @@ function PreviewVisual({
   visual: "linkedin" | "company" | "bap";
   companyDomain?: string | null;
 }) {
-  return (
-    <PreviewVisualContent visual={visual} companyDomain={companyDomain ?? null} />
-  );
+  return <PreviewVisualContent visual={visual} companyDomain={companyDomain ?? null} />;
 }
 
 function PreviewVisualContent({
@@ -1357,13 +1355,7 @@ function ProgressStepList({
   );
 }
 
-function ProgressStepRow({
-  step,
-  isLatest,
-}: {
-  step: SearchProgressStep;
-  isLatest: boolean;
-}) {
+function ProgressStepRow({ step, isLatest }: { step: SearchProgressStep; isLatest: boolean }) {
   const done = isCompletedProgressStep(step, isLatest);
 
   return (
@@ -1931,7 +1923,11 @@ function getAgentRecommendationCompanyName(result: AuditResult | null): string {
 function getAgentRecommendationCompanyNameCandidates(
   result: AuditResult | null,
 ): Array<string | null | undefined> {
-  return [result?.linkedin?.currentCompany?.name, result?.linkedin?.company, result?.website?.title];
+  return [
+    result?.linkedin?.currentCompany?.name,
+    result?.linkedin?.company,
+    result?.website?.title,
+  ];
 }
 
 function getSelectedRecommendationToolCount(
@@ -2465,13 +2461,13 @@ function parseCards(text: string): {
   company: CompanyProfile | null;
   person: PersonProfile | null;
 } {
-  return Array.from(text.matchAll(/```json\s*([\s\S]*?)```/g)).reduce(
-    mergeParsedCardBlock,
-    { company: null, person: null } as {
-      company: CompanyProfile | null;
-      person: PersonProfile | null;
-    },
-  );
+  return Array.from(text.matchAll(/```json\s*([\s\S]*?)```/g)).reduce(mergeParsedCardBlock, {
+    company: null,
+    person: null,
+  } as {
+    company: CompanyProfile | null;
+    person: PersonProfile | null;
+  });
 }
 
 function mergeParsedCardBlock(

@@ -7,7 +7,6 @@ import {
   Loader2,
   MessageSquare,
   Pencil,
-  Play,
   Shield,
   Trash2,
   Wrench,
@@ -35,7 +34,7 @@ function BackToRunLink({ href, label }: { href: string | undefined; label: strin
   return (
     <Link
       href={href}
-      className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors"
+      className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors"
       aria-label={label}
     >
       <ArrowLeft className="h-4 w-4" />
@@ -87,7 +86,7 @@ export function CoworkerEditorMobileLayout({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-      <div className="border-border/40 flex items-center justify-between gap-1 border-b px-2 py-1.5">
+      <div className="bg-background/95 border-border/60 flex items-center justify-between gap-2 border-b px-3 py-2 backdrop-blur-sm">
         <BackToRunLink href={backHref} label={t("Back to run view")} />
         <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange} className="gap-0">
           <AnimatedTab value="chat" className="px-2.5">
@@ -95,9 +94,6 @@ export function CoworkerEditorMobileLayout({
           </AnimatedTab>
           <AnimatedTab value="instruction" className="px-2.5">
             <Pencil className="h-4 w-4" aria-label={t("Instruction")} />
-          </AnimatedTab>
-          <AnimatedTab value="runs" className="px-2.5">
-            <Play className="h-4 w-4" aria-label={t("Runs")} />
           </AnimatedTab>
           <AnimatedTab value="docs" className="px-2.5">
             <FileText className="h-4 w-4" aria-label={t("Docs")} />
@@ -117,7 +113,7 @@ export function CoworkerEditorMobileLayout({
             type="button"
             onClick={onRun}
             disabled={isRunDisabled}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-40"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-xl transition-colors disabled:opacity-40"
             aria-label={t("Run now")}
           >
             {isRunning ? (
@@ -129,7 +125,7 @@ export function CoworkerEditorMobileLayout({
           <button
             type="button"
             onClick={onOpenDeleteDialog}
-            className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+            className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-8 w-8 items-center justify-center rounded-xl transition-colors"
             aria-label={t("Delete coworker")}
           >
             <Trash2 className="h-4 w-4" />
@@ -172,20 +168,21 @@ export function CoworkerEditorDesktopLayout({
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <DualPanelWorkspace
-        storageKey="coworker-editor-panels-v2"
-        defaultRightWidth={50}
-        minRightWidth={50}
+        storageKey="coworker-editor-panels-v3"
+        defaultRightWidth={75}
+        minLeftWidth={25}
+        minRightWidth={40}
         collapsible
-        collapsedSidebar
+        allowLeftPanelDragCollapse
         showExpandedCollapseButton={false}
         showTitles={false}
         rightCollapsed={rightCollapsed}
         onRightCollapsedChange={onRightCollapsedChange}
         leftTitle="Chat"
         rightTitle={rightTitle}
-        leftPanelClassName="border-0 rounded-none"
+        leftPanelClassName="border-0 rounded-none bg-background"
         separatorClassName="bg-muted/30"
-        rightPanelClassName="border-0 rounded-none bg-muted/30 md:min-w-[34rem]"
+        rightPanelClassName="border-0 rounded-xl bg-card md:min-w-[34rem]"
         left={chatPanel}
         right={settingsPanel}
         hideMobileToggle

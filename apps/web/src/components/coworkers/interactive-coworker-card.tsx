@@ -254,6 +254,7 @@ export function InteractiveCoworkerCard({
         void navigate({
           to: "/agents/info/$slug",
           params: { slug: coworker.id },
+          search: { tab: "chat" },
         });
       });
     }

@@ -19,15 +19,14 @@ import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-pro
 import { RunnerDeclaredFailureChatArea } from "@/components/coworkers/runner-declared-failure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
+import { downloadSandboxFileToBrowser } from "@/lib/download-file";
 import { cn } from "@/lib/utils";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
 
-export type InfoTab = "summary" | "chat";
-export type MobilePanel = "app" | InfoTab;
+export type MobilePanel = "app" | "chat";
 
-export const MOBILE_PANEL_ORDER: MobilePanel[] = ["summary", "app", "chat"];
+export const MOBILE_PANEL_ORDER: MobilePanel[] = ["app", "chat"];
 export const MOBILE_PANEL_SWIPE_THRESHOLD = 48;
 export const MOBILE_PANEL_TRANSITION = { duration: 0.18, ease: [0.22, 1, 0.36, 1] } as const;
 export const MOBILE_PANEL_VARIANTS = {
@@ -62,12 +61,8 @@ type ToolSummaryItem = {
   count: number;
 };
 
-export function getInfoTab(value: string | null): InfoTab {
-  return value === "chat" ? "chat" : "summary";
-}
-
 export function getMobilePanel(value: string): MobilePanel {
-  return value === "summary" || value === "chat" ? value : "app";
+  return value === "chat" ? "chat" : "app";
 }
 
 export function getAdjacentMobilePanel(current: MobilePanel, direction: "next" | "previous") {
@@ -130,7 +125,10 @@ function toDate(value?: Date | string | null) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function formatDuration(startedAt?: Date | string | null, finishedAt?: Date | string | null) {
+export function formatDuration(
+  startedAt?: Date | string | null,
+  finishedAt?: Date | string | null,
+) {
   const start = toDate(startedAt);
   if (!start) {
     return "Not available";
@@ -163,6 +161,126 @@ function formatFileSize(sizeBytes?: number | null) {
     return `${(sizeBytes / 1024).toFixed(1)} KB`;
   }
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function toTimestampDate(value?: Date | string | number | null) {
+  if (!value) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getDurationParts(
+  startedAt?: Date | string | number | null,
+  finishedAt?: Date | string | number | null,
+) {
+  const start = toTimestampDate(startedAt);
+  if (!start) {
+    return null;
+  }
+
+  const finish = toTimestampDate(finishedAt) ?? new Date();
+  const durationMs = Math.max(0, finish.getTime() - start.getTime());
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+
+  return {
+    hours: Math.floor(totalSeconds / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+
+export function formatLiveDuration(
+  startedAt?: Date | string | number | null,
+  finishedAt?: Date | string | number | null,
+) {
+  const duration = getDurationParts(startedAt, finishedAt);
+  if (!duration) {
+    return "Not available";
+  }
+
+  if (duration.hours > 0) {
+    return `${duration.hours}h ${duration.minutes}m ${duration.seconds}s`;
+  }
+  if (duration.minutes > 0) {
+    return `${duration.minutes}m ${duration.seconds}s`;
+  }
+  return `${duration.seconds}s`;
+}
+
+export function formatHeaderTimestamp(value?: Date | string | number | null) {
+  const date = toTimestampDate(value);
+  if (!date) {
+    return "Not started";
+  }
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTargetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDiff = Math.round(
+    (startOfToday.getTime() - startOfTargetDay.getTime()) / (24 * 60 * 60 * 1000),
+  );
+
+  const timeLabel = new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+
+  if (dayDiff === 0) {
+    return `Today at ${timeLabel}`;
+  }
+  if (dayDiff === 1) {
+    return `Yesterday at ${timeLabel}`;
+  }
+
+  const dateLabel = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+
+  return `${dateLabel} at ${timeLabel}`;
+}
+
+export function getRunStatusPresentation(status?: string | null) {
+  switch (status) {
+    case "completed":
+    case "success":
+      return {
+        label: "completed successfully",
+        className: "text-emerald-600",
+      };
+    case "running":
+      return {
+        label: "running",
+        className: "text-sky-600",
+      };
+    case "error":
+      return {
+        label: "failed",
+        className: "text-red-600",
+      };
+    case "cancelled":
+      return {
+        label: "cancelled",
+        className: "text-muted-foreground",
+      };
+    case "awaiting_approval":
+      return {
+        label: "awaiting approval",
+        className: "text-amber-600",
+      };
+    case "awaiting_auth":
+      return {
+        label: "awaiting auth",
+        className: "text-amber-600",
+      };
+    default:
+      return {
+        label: status?.replaceAll("_", " ") ?? "unknown",
+        className: "text-muted-foreground",
+      };
+  }
 }
 
 function isCompletedStatus(status?: string | null) {
@@ -280,6 +398,22 @@ function formatErrorMessage(message?: string | null, fallback = "Run failed.") {
   return trimmed.startsWith("Error :") ? trimmed : `Error : ${trimmed}`;
 }
 
+function EmptyNoOutputState() {
+  return (
+    <div className="bg-muted/25 flex h-full min-h-[22rem] items-center justify-center p-6">
+      <div className="max-w-sm text-center">
+        <FileCode2 className="text-muted-foreground mx-auto mb-3 h-6 w-6" />
+        <p className="text-sm font-medium">
+          <T>No output.html found</T>
+        </p>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+          <T>The linked conversation has not produced an output.html artifact yet.</T>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function EmptyPreview({
   latestMessage,
   runStatus,
@@ -327,7 +461,7 @@ function EmptyPreview({
             messageRole="assistant"
             content={
               runnerDeclaredFailure
-                ? (errorMessage?.trim() || fallback)
+                ? errorMessage?.trim() || fallback
                 : formatErrorMessage(errorMessage, fallback)
             }
           />
@@ -356,19 +490,7 @@ function EmptyPreview({
     return <LoadingState />;
   }
 
-  return (
-    <div className="bg-muted/25 flex h-full min-h-[22rem] items-center justify-center p-6">
-      <div className="max-w-sm text-center">
-        <FileCode2 className="text-muted-foreground mx-auto mb-3 h-6 w-6" />
-        <p className="text-sm font-medium">
-          <T>No output.html found</T>
-        </p>
-        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-          <T>The linked conversation has not produced an output.html artifact yet.</T>
-        </p>
-      </div>
-    </div>
-  );
+  return <EmptyNoOutputState />;
 }
 
 function AgenticAppFrame({
@@ -406,16 +528,10 @@ function AgenticAppFrame({
     void preview.refetch();
   }, [preview]);
 
-  const handleDownload = useCallback(async () => {
-    const result = await downloadSandboxFile(outputFile.fileId);
-    const link = document.createElement("a");
-    link.href = result.url;
-    link.download = outputFile.filename;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, [downloadSandboxFile, outputFile.fileId, outputFile.filename]);
+  const handleDownload = useCallback(
+    () => downloadSandboxFileToBrowser(downloadSandboxFile, outputFile),
+    [downloadSandboxFile, outputFile],
+  );
   const handleOpenFullscreen = useCallback(() => {
     setFullscreenOpen(true);
   }, []);
@@ -664,7 +780,7 @@ export function RunSummaryPanel({
               <div key={file.fileId} className="border-border/70 rounded-md border px-2.5 py-2">
                 <p className="truncate text-xs font-medium">{file.filename}</p>
                 <p className="text-muted-foreground mt-1 truncate text-[11px]">
-                  {formatFileSize(file.sizeBytes)} · {file.path}
+                  {formatFileSize(file.sizeBytes)} - {file.path}
                 </p>
               </div>
             ))}
@@ -698,83 +814,49 @@ export function OutputPanel({
 }) {
   const sendAgenticAppPrompt = useSendAgenticAppPrompt(conversationId);
 
-  return outputFile ? (
-    <AgenticAppFrame
-      key={outputFile.fileId}
-      outputFile={outputFile}
-      onSendPrompt={sendAgenticAppPrompt}
-      showToolbar={showOutputToolbar}
-    />
-  ) : (
-    <EmptyPreview
-      latestMessage={latestCoworkerMessage}
-      runStatus={runStatus}
-      failureKind={runFailureKind}
-      errorMessage={runErrorMessage}
-    />
+  return (
+    <div className="bg-background flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1">
+        {outputFile ? (
+          <AgenticAppFrame
+            key={outputFile.fileId}
+            outputFile={outputFile}
+            onSendPrompt={sendAgenticAppPrompt}
+            showToolbar={showOutputToolbar}
+          />
+        ) : (
+          <EmptyPreview
+            latestMessage={latestCoworkerMessage}
+            runStatus={runStatus}
+            failureKind={runFailureKind}
+            errorMessage={runErrorMessage}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
 export function RunDetailsPanel({
-  activeTab,
-  onTabChange,
-  isFetchingConversation,
-  run,
-  messages,
   conversationId,
+  runDebugInfo,
+  runFailureKind,
 }: {
-  activeTab: InfoTab;
-  onTabChange: (nextTab: string) => void;
-  isFetchingConversation: boolean;
-  run: {
-    status?: string | null;
-    failureKind?: string | null;
-    debugInfo?: unknown;
-    startedAt?: Date | string | null;
-    finishedAt?: Date | string | null;
-    events?: RunEventSummary[];
-  };
-  messages: Message[];
   conversationId?: string;
+  runDebugInfo?: unknown;
+  runFailureKind?: string | null;
 }) {
   return (
     <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-      <div className="flex min-h-12 min-w-0 shrink-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-        <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange}>
-          <AnimatedTab value="summary">
-            <T>Summary</T>
-          </AnimatedTab>
-          <AnimatedTab value="chat">
-            <T>Chat</T>
-          </AnimatedTab>
-        </AnimatedTabs>
-        {activeTab === "chat" && isFetchingConversation ? (
-          <div className="text-muted-foreground flex items-center gap-1.5 px-1 text-xs">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <T>Updating</T>
-          </div>
-        ) : null}
-      </div>
-
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-        {activeTab === "summary" ? (
-          <div className="h-full min-w-0 overflow-auto">
-            <RunSummaryPanel
-              status={run.status}
-              failureKind={run.failureKind}
-              startedAt={run.startedAt}
-              finishedAt={run.finishedAt}
-              events={run.events}
-              messages={messages}
-            />
-          </div>
-        ) : conversationId ? (
+        {conversationId ? (
           <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
             <RunnerDeclaredFailureChatArea
               conversationId={conversationId}
               compact
-              debugInfo={run.debugInfo}
-              runnerDeclaredFailure={isRunnerDeclaredFailure(run.failureKind)}
+              debugInfo={runDebugInfo}
+              hideStreamError
+              runnerDeclaredFailure={isRunnerDeclaredFailure(runFailureKind)}
             />
           </div>
         ) : (

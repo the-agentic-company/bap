@@ -51,11 +51,13 @@ export function RunnerDeclaredFailureChatArea({
   compact,
   conversationId,
   debugInfo,
+  hideStreamError,
   runnerDeclaredFailure,
 }: {
   compact?: boolean;
   conversationId: string;
   debugInfo: unknown;
+  hideStreamError?: boolean;
   runnerDeclaredFailure: boolean;
 }) {
   const transcriptFooter = useMemo(
@@ -67,6 +69,11 @@ export function RunnerDeclaredFailureChatArea({
   );
 
   return (
-    <ChatArea conversationId={conversationId} compact={compact} transcriptFooter={transcriptFooter} />
+    <ChatArea
+      conversationId={conversationId}
+      compact={compact}
+      hideStreamError={hideStreamError}
+      transcriptFooter={transcriptFooter}
+    />
   );
 }

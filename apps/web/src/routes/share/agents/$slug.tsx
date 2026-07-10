@@ -22,8 +22,6 @@ import { cn } from "@/lib/utils";
 import {
   HistoryRunButton,
   RunSummaryPanel,
-  type MobilePanel,
-  getMobilePanel,
 } from "@/routes/agents/-components/coworker-info-panels";
 import { loadPublicCoworkerRoute, type PublicCoworkerPageData } from "@/lib/public-coworker-loader";
 
@@ -228,6 +226,11 @@ function PublicDetailsPanel({
 }
 
 type PublicChatMessages = ReturnType<typeof mapPersistedMessagesToChatMessages>;
+type PublicMobilePanel = "summary" | "app" | "chat";
+
+function getPublicMobilePanel(value: string | null): PublicMobilePanel {
+  return value === "summary" || value === "chat" ? value : "app";
+}
 
 function getPublicCoworkerSlug(coworker: PublicCoworkerPageData["coworker"]): string {
   return coworker.username ?? coworker.id;
@@ -349,7 +352,7 @@ function PublicMobilePanels({
   summaryPanel,
 }: {
   chatPanel: ReactNode;
-  mobilePanel: MobilePanel;
+  mobilePanel: PublicMobilePanel;
   onMobilePanelClick: (event: MouseEvent<HTMLButtonElement>) => void;
   outputPanel: ReactNode;
   summaryPanel: ReactNode;
@@ -395,7 +398,7 @@ function usePublicCoworkerSearchParams(): URLSearchParams {
 }
 
 function usePublicMobilePanel(searchParams: URLSearchParams) {
-  return useState<MobilePanel>(() => getMobilePanel(searchParams.get("tab") ?? "app"));
+  return useState<PublicMobilePanel>(() => getPublicMobilePanel(searchParams.get("tab")));
 }
 
 function usePublicHistorySelect(coworkerSlug: string, searchParams: URLSearchParams) {
@@ -442,13 +445,13 @@ function usePublicMobilePanelChange({
 }: {
   coworkerSlug: string;
   searchParams: URLSearchParams;
-  setMobilePanel: (mobilePanel: MobilePanel) => void;
+  setMobilePanel: (mobilePanel: PublicMobilePanel) => void;
 }) {
   const navigate = useNavigate();
 
   return useCallback(
     (nextPanelValue: string) => {
-      const next = getMobilePanel(nextPanelValue);
+      const next = getPublicMobilePanel(nextPanelValue);
       setMobilePanel(next);
       void navigate({
         to: "/share/agents/$slug",

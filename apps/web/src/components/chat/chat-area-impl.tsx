@@ -34,6 +34,7 @@ export type ChatAreaProps = {
   authCompletion?: { integration: string; interruptId: string } | null;
   enableAgenticApp?: boolean;
   compact?: boolean;
+  hideStreamError?: boolean;
   transcriptFooter?: React.ReactNode;
 };
 
@@ -49,6 +50,7 @@ export function ChatAreaImpl({
   authCompletion,
   enableAgenticApp = false,
   compact = false,
+  hideStreamError = false,
   transcriptFooter,
 }: ChatAreaProps) {
   const { setHeaderActions } = useChatHeaderActions();
@@ -118,7 +120,7 @@ export function ChatAreaImpl({
     setInputPrefillRequest,
     skillSelectionScopeKey,
     streamElapsedMs,
-    streamError,
+    streamError: generationStreamError,
     streamingParts,
     suppressLiveActivity,
     toggleSelectedSkillSlug,
@@ -140,6 +142,7 @@ export function ChatAreaImpl({
     setUserScrolledUpRef,
     skillSelectionScopeKeyOverride,
   });
+  const streamError = hideStreamError ? null : generationStreamError;
 
   const agenticAppStorageKey = useMemo(() => {
     if (!enableAgenticApp) {

@@ -37,7 +37,9 @@ import { createORPCContext } from "./context";
 const SECRET = "test-secret";
 const NOW_SECONDS = 1_900_000_000;
 
-async function buildHostedToken(overrides?: Partial<Parameters<typeof signHostedMcpAccessToken>[0]>) {
+async function buildHostedToken(
+  overrides?: Partial<Parameters<typeof signHostedMcpAccessToken>[0]>,
+) {
   return signHostedMcpAccessToken({
     userId: "user-1",
     workspaceId: "ws-1",

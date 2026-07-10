@@ -1,10 +1,11 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import { AlertCircle, History, Info, Loader2, Pencil, Play } from "lucide-react";
+import { AlertCircle, ArrowLeft, Download, History, Loader2, Pencil, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -12,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { findLatestAgenticAppFile } from "@/components/chat/agentic-app-selection";
 import { mapPersistedMessagesToChatMessages } from "@/components/chat/persisted-message-mapper";
+import { ChatShareControls } from "@/components/chat/chat-share-controls";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import {
   extractRemoteRunSourceDetails,
@@ -24,10 +26,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { downloadSandboxFileToBrowser } from "@/lib/download-file";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
-import { useConversation } from "@/orpc/hooks/conversation";
+import { useConversation, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import {
   useCoworker,
   useCoworkerList,
@@ -36,10 +39,13 @@ import {
   useTriggerCoworker,
 } from "@/orpc/hooks/coworkers";
 import { AppLink as Link } from "../-lib/app-link";
-import { CoworkerInfoEmptyOutput, CoworkerInfoEmptySummary } from "./coworker-info-empty-state";
+import { CoworkerInfoEmptyOutput } from "./coworker-info-empty-state";
 import {
+  formatDuration,
+  formatHeaderTimestamp,
+  formatLiveDuration,
+  getRunStatusPresentation,
   getAdjacentMobilePanel,
-  getInfoTab,
   getMobilePanel,
   HistoryRunButton,
   isUuidRouteSlug,
@@ -50,7 +56,6 @@ import {
   MOBILE_PANEL_VARIANTS,
   OutputPanel,
   RunDetailsPanel,
-  RunSummaryPanel,
   type MobilePanel,
 } from "./coworker-info-panels";
 
@@ -80,74 +85,78 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     enabled: Boolean(resolvedCoworkerId),
   });
   const requestedRunId = searchParams.get("run");
+  const latestKnownRunId = coworkerListItem?.recentRuns?.[0]?.id;
   const selectedRunId =
     coworkerRuns.data?.some((candidate) => candidate.id === requestedRunId) && requestedRunId
       ? requestedRunId
-      : coworkerRuns.data?.[0]?.id;
+      : (coworkerRuns.data?.[0]?.id ?? latestKnownRunId);
   const run = useCoworkerRun(selectedRunId, {
     enabled: Boolean(selectedRunId),
   });
   const coworker = useCoworker(resolvedCoworkerId);
-  const activeTab = getInfoTab(searchParams.get("tab"));
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(() =>
-    getMobilePanel(searchParams.get("tab") ?? "app"),
+    getMobilePanel(searchParams.get("tab") ?? "chat"),
   );
   const [mobilePanelDirection, setMobilePanelDirection] = useState(0);
+  const [runClockNow, setRunClockNow] = useState(() => Date.now());
   const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
-  const [definitionOpen, setDefinitionOpen] = useState(false);
-  const handleDefinitionOpenChange = useCallback((open: boolean) => {
-    setDefinitionOpen(open);
-  }, []);
-  const handleOpenDefinition = useCallback(() => {
-    setDefinitionOpen(true);
-  }, []);
-  const handleToggleDefinition = useCallback(() => {
-    setDefinitionOpen((open) => !open);
-  }, []);
   const shouldWaitForCoworkerList = !routeCoworkerId;
-  const shouldWaitForCoworkerRuns =
-    Boolean(requestedRunId) || (coworkerListItem?.recentRuns?.length ?? 0) > 0;
+  const shouldWaitForCoworkerRuns = Boolean(requestedRunId || latestKnownRunId);
+  const isRunSelectionLoading =
+    shouldWaitForCoworkerRuns && !selectedRunId && coworkerRuns.isLoading;
   const isRunLoading =
     (shouldWaitForCoworkerList && coworkerList.isLoading) ||
-    (shouldWaitForCoworkerRuns && coworkerRuns.isLoading) ||
+    isRunSelectionLoading ||
     Boolean(selectedRunId && run.isLoading);
   const conversationId = run.data?.conversationId ?? undefined;
   const runnerDeclaredFailure = isRunnerDeclaredFailure(run.data?.failureKind);
   const conversation = useConversation(conversationId);
+  const persistedMessages = conversation.data?.messages;
 
   const messages = useMemo(
-    () => mapPersistedMessagesToChatMessages(conversation.data?.messages ?? []),
-    [conversation.data?.messages],
+    () => mapPersistedMessagesToChatMessages(persistedMessages ?? []),
+    [persistedMessages],
   );
   const outputFile = useMemo(() => findLatestAgenticAppFile(messages), [messages]);
-  const latestCoworkerMessage = useMemo(() => {
-    for (let index = messages.length - 1; index >= 0; index -= 1) {
-      const message = messages[index];
-      if (message?.role === "assistant" && message.content.trim()) {
-        return message.content;
-      }
-    }
-    return undefined;
-  }, [messages]);
-  const remoteRunSource = run.data ? extractRemoteRunSourceDetails(run.data) : null;
-  const detailsRun = useMemo(
-    () => ({
-      status: run.data?.status,
-      failureKind: run.data?.failureKind,
-      debugInfo: run.data?.debugInfo,
-      startedAt: run.data?.startedAt,
-      finishedAt: run.data?.finishedAt,
-      events: run.data?.events,
-    }),
-    [
-      run.data?.events,
-      run.data?.debugInfo,
-      run.data?.failureKind,
-      run.data?.finishedAt,
-      run.data?.startedAt,
-      run.data?.status,
-    ],
+  const latestCoworkerMessage = useMemo(
+    () =>
+      messages
+        .toReversed()
+        .find((message) => message.role === "assistant" && message.content.trim())?.content,
+    [messages],
   );
+  const remoteRunSource = run.data ? extractRemoteRunSourceDetails(run.data) : null;
+  const { mutateAsync: downloadSandboxFile, isPending: isDownloadingOutput } =
+    useDownloadSandboxFile();
+
+  useEffect(() => {
+    if (run.data?.status !== "running") {
+      return;
+    }
+
+    setRunClockNow(Date.now());
+    const interval = window.setInterval(() => {
+      setRunClockNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [run.data?.status]);
+
+  const headerRunMeta = useMemo(
+    () => ({
+      launchedAtLabel: formatHeaderTimestamp(run.data?.startedAt),
+      durationLabel:
+        run.data?.status === "running"
+          ? formatLiveDuration(run.data?.startedAt, runClockNow)
+          : formatDuration(run.data?.startedAt, run.data?.finishedAt),
+      statusPresentation: getRunStatusPresentation(run.data?.status),
+      runStatus: run.data?.status,
+    }),
+    [run.data?.finishedAt, run.data?.startedAt, run.data?.status, runClockNow],
+  );
+  const shouldShowHeaderRunMeta = Boolean(run.data?.startedAt || run.data?.status);
   const outputPanel = useMemo(
     () => (
       <OutputPanel
@@ -186,26 +195,13 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     [navigate, resolvedCoworkerSlug, searchParams],
   );
 
-  const handleTabChange = useCallback(
-    (nextTab: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const infoTab = getInfoTab(nextTab);
-      if (infoTab === "summary") {
-        params.delete("tab");
-      } else {
-        params.set("tab", infoTab);
-      }
-      void navigate({
-        to: "/agents/info/$slug",
-        params: { slug: resolvedCoworkerSlug },
-        search: {
-          run: params.get("run") ?? undefined,
-          tab: params.get("tab") ?? undefined,
-        },
-      });
-    },
-    [navigate, resolvedCoworkerSlug, searchParams],
-  );
+  const handleDownloadOutput = useCallback(async () => {
+    if (!outputFile) {
+      return;
+    }
+
+    await downloadSandboxFileToBrowser(downloadSandboxFile, outputFile);
+  }, [downloadSandboxFile, outputFile]);
 
   const handleMobilePanelChange = useCallback(
     (nextPanelValue: string) => {
@@ -267,9 +263,6 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const handleMobilePanelPointerCancel = useCallback(() => {
     mobileSwipeStartRef.current = null;
   }, []);
-  const handleSummaryPanelClick = useCallback(() => {
-    handleMobilePanelChange("summary");
-  }, [handleMobilePanelChange]);
   const handleAppPanelClick = useCallback(() => {
     handleMobilePanelChange("app");
   }, [handleMobilePanelChange]);
@@ -300,21 +293,21 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     coworker.data?.username ?? coworkerListItem?.username ?? run.data?.coworkerUsername;
   const coworkerDefinition =
     coworker.data?.description?.trim() || coworkerListItem?.description?.trim();
+  const backToCoworkersHref = useMemo(() => {
+    const folderId = coworker.data?.folderId ?? coworkerListItem?.folderId ?? null;
+    return folderId ? `/agents/folders/${folderId}` : "/agents";
+  }, [coworker.data?.folderId, coworkerListItem?.folderId]);
 
   const detailsPanel = useMemo(
     () => (
       <RunDetailsPanel
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        isFetchingConversation={conversation.isFetching}
-        run={detailsRun}
-        messages={messages}
         conversationId={conversationId}
+        runDebugInfo={run.data?.debugInfo}
+        runFailureKind={run.data?.failureKind}
       />
     ),
-    [activeTab, conversation.isFetching, conversationId, detailsRun, handleTabChange, messages],
+    [conversationId, run.data?.debugInfo, run.data?.failureKind],
   );
-  const emptySummaryPanel = useMemo(() => <CoworkerInfoEmptySummary />, []);
   const emptyOutputPanel = useMemo(
     () => (
       <CoworkerInfoEmptyOutput
@@ -349,7 +342,12 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const headerSection = (
     <section className="bg-background/95 z-10 hidden shrink-0 px-3 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:block md:px-6 md:py-3">
       <div className="flex min-h-10 items-center gap-2 md:gap-4">
-        <div className="flex min-w-0 items-center gap-2.5 md:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
+            <Link href={backToCoworkersHref} aria-label={t("Back to coworkers")}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-visible">
             <CoworkerAvatar
               username={coworkerUsername}
@@ -361,32 +359,42 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
           <h1 className="truncate text-base leading-tight font-semibold md:text-lg">
             {coworkerName}
           </h1>
-          <Popover open={definitionOpen} onOpenChange={handleDefinitionOpenChange}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground h-7 w-7 shrink-0"
-                onMouseEnter={handleOpenDefinition}
-                onClick={handleToggleDefinition}
-                aria-label={t("Show coworker definition")}
-              >
-                <Info className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 p-3">
-              <p className="text-sm font-medium">
-                <T>Coworker definition</T>
-              </p>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                {coworkerDefinition || "No definition set."}
-              </p>
-            </PopoverContent>
-          </Popover>
+          {shouldShowHeaderRunMeta ? (
+            <p className="text-muted-foreground min-w-0 shrink truncate text-sm">
+              {headerRunMeta.launchedAtLabel} · duration: {headerRunMeta.durationLabel} ·{" "}
+              <span className={cn("font-semibold", headerRunMeta.statusPresentation.className)}>
+                {headerRunMeta.statusPresentation.label}
+              </span>
+            </p>
+          ) : null}
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1 md:gap-2">
+          {outputFile ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-xl"
+                onClick={handleDownloadOutput}
+                disabled={isDownloadingOutput}
+              >
+                {isDownloadingOutput ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                <T>Download output</T>
+              </Button>
+              <ChatShareControls
+                conversationId={conversationId}
+                triggerVariant="button"
+                outputLabel
+                className="h-8 rounded-xl px-3"
+              />
+            </>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
@@ -469,17 +477,43 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     </section>
   );
 
+  const mobileHeaderSection = (
+    <section className="bg-background/95 z-10 shrink-0 px-4 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:hidden">
+      <div className="flex min-h-10 items-center gap-2.5">
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
+          <Link href={backToCoworkersHref} aria-label={t("Back to coworkers")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-visible">
+          <CoworkerAvatar
+            username={coworkerUsername}
+            size={40}
+            scale={82}
+            className="rounded-none"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-sm leading-tight font-semibold">{coworkerName}</h1>
+          {shouldShowHeaderRunMeta ? (
+            <p className="text-muted-foreground truncate text-xs">
+              {headerRunMeta.statusPresentation.label}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+
   if (!run.data && !coworkerRuns.data?.length) {
     return (
       <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 min-w-0 flex-col overflow-hidden md:h-dvh">
         {headerSection}
 
         <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
+          {mobileHeaderSection}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto md:hidden">
-            <div className="space-y-3 px-4 pt-4">
-              <CoworkerInfoEmptySummary />
-            </div>
-            <div className="px-4 pt-3 pb-4">
+            <div className="px-4 pt-4 pb-4">
               <div className="border-border bg-card min-h-[26rem] rounded-xl border">
                 <CoworkerInfoEmptyOutput
                   coworkerDescription={coworkerDefinition}
@@ -503,7 +537,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
               rightPanelClassName="bg-card rounded-xl"
               separatorClassName="bg-muted/40"
               allowLeftPanelDragCollapse
-              left={emptySummaryPanel}
+              left={detailsPanel}
               right={emptyOutputPanel}
             />
           </div>
@@ -518,29 +552,13 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
 
       <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
+        {mobileHeaderSection}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:hidden">
           <div
             role="tablist"
-            className="border-border bg-background grid shrink-0 grid-cols-3 border-b"
+            className="border-border bg-background grid shrink-0 grid-cols-2 border-b"
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mobilePanel === "summary"}
-              onClick={handleSummaryPanelClick}
-              className={cn(
-                "relative flex h-12 items-center justify-center text-sm font-medium transition-colors",
-                mobilePanel === "summary"
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <T>Summary</T>
-              {mobilePanel === "summary" ? (
-                <span className="bg-foreground absolute inset-x-6 bottom-0 h-px" />
-              ) : null}
-            </button>
             <button
               type="button"
               role="tab"
@@ -615,121 +633,13 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
               >
                 {mobilePanel === "app" ? (
                   outputPanel
-                ) : mobilePanel === "summary" ? (
-                  <div className="h-full overflow-auto">
-                    <div className="space-y-3 px-4 pt-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-visible">
-                          <CoworkerAvatar
-                            username={coworkerUsername}
-                            size={50}
-                            scale={82}
-                            className="rounded-none"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h1 className="truncate text-lg leading-tight font-semibold">
-                            {coworkerName}
-                          </h1>
-                          {coworkerUsername ? (
-                            <p className="text-muted-foreground mt-0.5 truncate font-mono text-xs">
-                              @{coworkerUsername}
-                            </p>
-                          ) : null}
-                        </div>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground hover:text-foreground h-8 w-8 shrink-0"
-                              aria-label={t("Show full coworker description")}
-                            >
-                              <Info className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="end" className="w-80 p-3">
-                            <p className="text-sm font-medium">
-                              <T>Coworker description</T>
-                            </p>
-                            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                              {coworkerDefinition || "No definition set."}
-                            </p>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Button type="button" variant="outline" size="sm" asChild>
-                          <Link
-                            href={getCoworkerEditHref({
-                              id: resolvedCoworkerId,
-                              username: coworkerUsername,
-                            })}
-                          >
-                            <Pencil className="h-4 w-4" />
-                            <T>Edit</T>
-                          </Link>
-                        </Button>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button type="button" variant="outline" size="sm">
-                              <History className="h-4 w-4" />
-                              <T>History</T>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent align="center" className="w-72 p-2">
-                            <div className="px-2 py-1.5">
-                              <p className="text-sm font-medium">
-                                <T>Previous Runs</T>
-                              </p>
-                              <p className="text-muted-foreground text-xs">
-                                <T>Switch this page to an older run.</T>
-                              </p>
-                            </div>
-                            <div className="mt-1 max-h-80 space-y-1 overflow-auto">
-                              {(coworkerRuns.data ?? []).map((historyRun) => (
-                                <HistoryRunButton
-                                  key={historyRun.id}
-                                  run={historyRun}
-                                  selected={historyRun.id === selectedRunId}
-                                  onSelect={handleHistorySelect}
-                                />
-                              ))}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                        <Button
-                          type="button"
-                          variant="brand"
-                          size="sm"
-                          onClick={handleRunNow}
-                          disabled={triggerCoworker.isPending}
-                        >
-                          {triggerCoworker.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Play className="h-4 w-4" />
-                          )}
-                          <T>Run</T>
-                        </Button>
-                      </div>
-                    </div>
-                    <RunSummaryPanel
-                      status={detailsRun.status}
-                      failureKind={detailsRun.failureKind}
-                      startedAt={detailsRun.startedAt}
-                      finishedAt={detailsRun.finishedAt}
-                      events={detailsRun.events}
-                      messages={messages}
-                    />
-                  </div>
                 ) : conversationId ? (
                   <div className="flex h-full min-h-0 min-w-0 overflow-hidden">
                     <RunnerDeclaredFailureChatArea
                       conversationId={conversationId}
                       compact
                       debugInfo={run.data?.debugInfo}
+                      hideStreamError
                       runnerDeclaredFailure={runnerDeclaredFailure}
                     />
                   </div>

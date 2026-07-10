@@ -714,7 +714,9 @@ function buildProfileContext(input: {
   );
 }
 
-function auditWebsiteFromInput(website: z.infer<typeof websiteScrapeResultSchema>): AuditWebsiteResult {
+function auditWebsiteFromInput(
+  website: z.infer<typeof websiteScrapeResultSchema>,
+): AuditWebsiteResult {
   return {
     ...website,
     companyProfile: website.companyProfile ?? null,
