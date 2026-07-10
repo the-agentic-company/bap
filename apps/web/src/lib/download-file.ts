@@ -16,3 +16,17 @@ export async function triggerBrowserDownload(url: string, filename: string) {
 
   URL.revokeObjectURL(objectUrl);
 }
+
+type SandboxFileDownloader = (fileId: string) => Promise<{ url: string }>;
+type DownloadableSandboxFile = {
+  fileId: string;
+  filename: string;
+};
+
+export async function downloadSandboxFileToBrowser(
+  downloadSandboxFile: SandboxFileDownloader,
+  file: DownloadableSandboxFile,
+) {
+  const result = await downloadSandboxFile(file.fileId);
+  await triggerBrowserDownload(result.url, file.filename);
+}

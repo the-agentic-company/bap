@@ -120,7 +120,7 @@ export function ChatAreaImpl({
     setInputPrefillRequest,
     skillSelectionScopeKey,
     streamElapsedMs,
-    streamError,
+    streamError: generationStreamError,
     streamingParts,
     suppressLiveActivity,
     toggleSelectedSkillSlug,
@@ -142,6 +142,7 @@ export function ChatAreaImpl({
     setUserScrolledUpRef,
     skillSelectionScopeKeyOverride,
   });
+  const streamError = hideStreamError ? null : generationStreamError;
 
   const agenticAppStorageKey = useMemo(() => {
     if (!enableAgenticApp) {
@@ -365,7 +366,7 @@ export function ChatAreaImpl({
     skillsMenuNode,
     stopRecordingAndTranscribe,
     streamElapsedMs,
-    streamError: hideStreamError ? null : streamError,
+    streamError,
     transcriptFooter,
     transcriptNodes,
     visibleActivityItemsBySegmentId,

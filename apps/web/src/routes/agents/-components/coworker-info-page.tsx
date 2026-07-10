@@ -1,5 +1,5 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { T } from "gt-react";
+import { T, useGT } from "gt-react";
 import { AlertCircle, ArrowLeft, Download, History, Loader2, Pencil, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { triggerBrowserDownload } from "@/lib/download-file";
+import { downloadSandboxFileToBrowser } from "@/lib/download-file";
 import { getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,8 @@ type Props = {
 };
 
 export function CoworkerInfoPage({ coworkerSlug }: Props) {
+  const t = useGT();
+
   const searchStr = useRouterState({ select: (state) => state.location.searchStr });
   const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
   const navigate = useNavigate();
@@ -109,24 +111,23 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const conversationId = run.data?.conversationId ?? undefined;
   const runnerDeclaredFailure = isRunnerDeclaredFailure(run.data?.failureKind);
   const conversation = useConversation(conversationId);
-  const { mutateAsync: downloadSandboxFile, isPending: isDownloadingOutput } =
-    useDownloadSandboxFile();
+  const persistedMessages = conversation.data?.messages;
 
   const messages = useMemo(
-    () => mapPersistedMessagesToChatMessages(conversation.data?.messages ?? []),
-    [conversation.data?.messages],
+    () => mapPersistedMessagesToChatMessages(persistedMessages ?? []),
+    [persistedMessages],
   );
   const outputFile = useMemo(() => findLatestAgenticAppFile(messages), [messages]);
-  const latestCoworkerMessage = useMemo(() => {
-    for (let index = messages.length - 1; index >= 0; index -= 1) {
-      const message = messages[index];
-      if (message?.role === "assistant" && message.content.trim()) {
-        return message.content;
-      }
-    }
-    return undefined;
-  }, [messages]);
+  const latestCoworkerMessage = useMemo(
+    () =>
+      messages
+        .toReversed()
+        .find((message) => message.role === "assistant" && message.content.trim())?.content,
+    [messages],
+  );
   const remoteRunSource = run.data ? extractRemoteRunSourceDetails(run.data) : null;
+  const { mutateAsync: downloadSandboxFile, isPending: isDownloadingOutput } =
+    useDownloadSandboxFile();
 
   useEffect(() => {
     if (run.data?.status !== "running") {
@@ -199,8 +200,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       return;
     }
 
-    const result = await downloadSandboxFile(outputFile.fileId);
-    await triggerBrowserDownload(result.url, outputFile.filename);
+    await downloadSandboxFileToBrowser(downloadSandboxFile, outputFile);
   }, [downloadSandboxFile, outputFile]);
 
   const handleMobilePanelChange = useCallback(
@@ -344,7 +344,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       <div className="flex min-h-10 items-center gap-2 md:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
-            <Link href={backToCoworkersHref} aria-label="Back to coworkers">
+            <Link href={backToCoworkersHref} aria-label={t("Back to coworkers")}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -481,7 +481,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     <section className="bg-background/95 z-10 shrink-0 px-4 pt-[max(0.5rem,var(--safe-area-inset-top))] pb-2 backdrop-blur-sm md:hidden">
       <div className="flex min-h-10 items-center gap-2.5">
         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
-          <Link href={backToCoworkersHref} aria-label="Back to coworkers">
+          <Link href={backToCoworkersHref} aria-label={t("Back to coworkers")}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

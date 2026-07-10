@@ -72,6 +72,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("gt-react", () => ({
   T: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useGT: () => String,
 }));
 
 vi.mock("motion/react", () => ({

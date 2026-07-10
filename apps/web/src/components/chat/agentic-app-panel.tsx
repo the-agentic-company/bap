@@ -2,7 +2,7 @@ import { T, useGT } from "gt-react";
 import { Download, Loader2, RefreshCw, X } from "lucide-react";
 import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { triggerBrowserDownload } from "@/lib/download-file";
+import { downloadSandboxFileToBrowser } from "@/lib/download-file";
 import type { AgenticAppHtmlErrorCode } from "@/server/services/agentic-app-html";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import type { SandboxFileData } from "./message-list";
@@ -64,10 +64,10 @@ export function AgenticAppPanel({ outputFile, onClose, onSendPrompt }: Props) {
     void appHtml.refetch();
   }, [appHtml]);
 
-  const handleDownload = useCallback(async () => {
-    const result = await downloadSandboxFile(outputFile.fileId);
-    await triggerBrowserDownload(result.url, outputFile.filename);
-  }, [downloadSandboxFile, outputFile.fileId, outputFile.filename]);
+  const handleDownload = useCallback(
+    () => downloadSandboxFileToBrowser(downloadSandboxFile, outputFile),
+    [downloadSandboxFile, outputFile],
+  );
 
   return (
     <div

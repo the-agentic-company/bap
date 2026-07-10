@@ -19,7 +19,7 @@ import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-pro
 import { RunnerDeclaredFailureChatArea } from "@/components/coworkers/runner-declared-failure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { triggerBrowserDownload } from "@/lib/download-file";
+import { downloadSandboxFileToBrowser } from "@/lib/download-file";
 import { cn } from "@/lib/utils";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
@@ -82,12 +82,12 @@ export function isUuidRouteSlug(value: string | undefined): value is string {
   );
 }
 
-function formatRunDate(value?: Date | string | number | null) {
+function formatRunDate(value?: Date | string | null) {
   if (!value) {
     return "not started";
   }
 
-  const date = value instanceof Date ? value : new Date(value);
+  const date = typeof value === "string" ? new Date(value) : value;
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.max(0, Math.floor(diffMs / 60_000));
   const diffHours = Math.floor(diffMinutes / 60);
@@ -117,17 +117,17 @@ function formatRunDate(value?: Date | string | number | null) {
   }).format(date);
 }
 
-function toDate(value?: Date | string | number | null) {
+function toDate(value?: Date | string | null) {
   if (!value) {
     return null;
   }
-  const date = value instanceof Date ? value : new Date(value);
+  const date = typeof value === "string" ? new Date(value) : value;
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
 export function formatDuration(
-  startedAt?: Date | string | number | null,
-  finishedAt?: Date | string | number | null,
+  startedAt?: Date | string | null,
+  finishedAt?: Date | string | null,
 ) {
   const start = toDate(startedAt);
   if (!start) {
@@ -163,33 +163,54 @@ function formatFileSize(sizeBytes?: number | null) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function toTimestampDate(value?: Date | string | number | null) {
+  if (!value) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getDurationParts(
+  startedAt?: Date | string | number | null,
+  finishedAt?: Date | string | number | null,
+) {
+  const start = toTimestampDate(startedAt);
+  if (!start) {
+    return null;
+  }
+
+  const finish = toTimestampDate(finishedAt) ?? new Date();
+  const durationMs = Math.max(0, finish.getTime() - start.getTime());
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+
+  return {
+    hours: Math.floor(totalSeconds / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+
 export function formatLiveDuration(
   startedAt?: Date | string | number | null,
   finishedAt?: Date | string | number | null,
 ) {
-  const start = toDate(startedAt);
-  if (!start) {
+  const duration = getDurationParts(startedAt, finishedAt);
+  if (!duration) {
     return "Not available";
   }
 
-  const finish = toDate(finishedAt) ?? new Date();
-  const durationMs = Math.max(0, finish.getTime() - start.getTime());
-  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ${seconds}s`;
+  if (duration.hours > 0) {
+    return `${duration.hours}h ${duration.minutes}m ${duration.seconds}s`;
   }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
+  if (duration.minutes > 0) {
+    return `${duration.minutes}m ${duration.seconds}s`;
   }
-  return `${seconds}s`;
+  return `${duration.seconds}s`;
 }
 
 export function formatHeaderTimestamp(value?: Date | string | number | null) {
-  const date = toDate(value);
+  const date = toTimestampDate(value);
   if (!date) {
     return "Not started";
   }
@@ -507,10 +528,10 @@ function AgenticAppFrame({
     void preview.refetch();
   }, [preview]);
 
-  const handleDownload = useCallback(async () => {
-    const result = await downloadSandboxFile(outputFile.fileId);
-    await triggerBrowserDownload(result.url, outputFile.filename);
-  }, [downloadSandboxFile, outputFile.fileId, outputFile.filename]);
+  const handleDownload = useCallback(
+    () => downloadSandboxFileToBrowser(downloadSandboxFile, outputFile),
+    [downloadSandboxFile, outputFile],
+  );
   const handleOpenFullscreen = useCallback(() => {
     setFullscreenOpen(true);
   }, []);
@@ -678,8 +699,8 @@ export function RunSummaryPanel({
 }: {
   status?: string | null;
   failureKind?: string | null;
-  startedAt?: Date | string | number | null;
-  finishedAt?: Date | string | number | null;
+  startedAt?: Date | string | null;
+  finishedAt?: Date | string | null;
   events?: RunEventSummary[];
   messages: Message[];
 }) {

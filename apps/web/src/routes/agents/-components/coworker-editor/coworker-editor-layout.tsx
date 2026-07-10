@@ -27,13 +27,7 @@ import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import { AppLink as Link } from "../../-lib/app-link";
 import type { CoworkerTab } from "./types";
 
-function BackToRunLink({
-  href,
-  label,
-}: {
-  href: string | undefined;
-  label: string;
-}) {
+function BackToRunLink({ href, label }: { href: string | undefined; label: string }) {
   if (!href) {
     return null;
   }
@@ -94,11 +88,7 @@ export function CoworkerEditorMobileLayout({
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div className="bg-background/95 border-border/60 flex items-center justify-between gap-2 border-b px-3 py-2 backdrop-blur-sm">
         <BackToRunLink href={backHref} label={t("Back to run view")} />
-        <AnimatedTabs
-          activeKey={activeTab}
-          onTabChange={onTabChange}
-          className="gap-0"
-        >
+        <AnimatedTabs activeKey={activeTab} onTabChange={onTabChange} className="gap-0">
           <AnimatedTab value="chat" className="px-2.5">
             <MessageSquare className="h-4 w-4" aria-label={t("Chat")} />
           </AnimatedTab>
@@ -220,9 +210,8 @@ export function DisableAutoApproveDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             <T>
-              If you turn this off, coworker runs can stop and wait for manual
-              approval on write actions. The coworker might stay stuck until
-              someone approves in the UI.
+              If you turn this off, coworker runs can stop and wait for manual approval on write
+              actions. The coworker might stay stuck until someone approves in the UI.
             </T>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -259,8 +248,8 @@ export function DeleteCoworkerDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             <T>
-              This will permanently delete this coworker and all of its run
-              history. This action cannot be undone.
+              This will permanently delete this coworker and all of its run history. This action
+              cannot be undone.
             </T>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -273,9 +262,7 @@ export function DeleteCoworkerDialog({
             disabled={isDeleting}
             className="bg-destructive hover:bg-destructive/90 text-white"
           >
-            {isDeleting ? (
-              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-            ) : null}
+            {isDeleting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
             <T>Delete</T>
           </AlertDialogAction>
         </AlertDialogFooter>
