@@ -1,6 +1,6 @@
 FROM ghcr.io/pyrra-dev/pyrra:v0.9.5 AS pyrra
 
-FROM victoriametrics/vmalert:v1.140.0
+FROM victoriametrics/vmalert:v1.147.0
 
 USER root
 
