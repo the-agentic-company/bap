@@ -7,6 +7,7 @@ import {
   buildSharedSkillsRuntimeVolumePrefix,
   computeRuntimeVolumeManifestHash,
   sanitizeRuntimeVolumeRelativePath,
+  shouldUseStaticRuntimeVolumeCredentialsForEndpoint,
 } from "./runtime-volume-service";
 import { BUCKET_NAME } from "../storage/s3-client";
 
@@ -110,5 +111,24 @@ describe("runtime-volume-service", () => {
     expect(listStatement?.Condition?.StringLike?.["s3:prefix"]).toEqual(
       expect.arrayContaining([ownedPrefix, `${ownedPrefix}*`, sharedPrefix, `${sharedPrefix}*`]),
     );
+  });
+
+  it("uses static credentials for S3-compatible endpoints that do not support AWS STS", () => {
+    expect(
+      shouldUseStaticRuntimeVolumeCredentialsForEndpoint("https://bap-s3-staging.onrender.com"),
+    ).toBe(true);
+    expect(shouldUseStaticRuntimeVolumeCredentialsForEndpoint("http://localhost:9000")).toBe(true);
+    expect(shouldUseStaticRuntimeVolumeCredentialsForEndpoint("http://127.0.0.1:9000")).toBe(
+      true,
+    );
+
+    expect(
+      shouldUseStaticRuntimeVolumeCredentialsForEndpoint("https://s3.us-east-1.amazonaws.com"),
+    ).toBe(false);
+    expect(
+      shouldUseStaticRuntimeVolumeCredentialsForEndpoint(
+        "https://bucket.s3.eu-west-1.amazonaws.com",
+      ),
+    ).toBe(false);
   });
 });
