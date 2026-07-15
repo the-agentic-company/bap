@@ -20,22 +20,34 @@ function createProcedureStub() {
 const {
   conversationFindFirstMock,
   conversationFindManyMock,
+  messageAttachmentFindFirstMock,
   sandboxFileFindFirstMock,
   userFindFirstMock,
   downloadFromS3Mock,
+  getFileAssetDownloadUrlMock,
+  requireActiveWorkspaceAccessMock,
   dbMock,
 } = vi.hoisted(() => {
   const conversationFindFirstMock = vi.fn<VitestProcedure>();
   const conversationFindManyMock = vi.fn<VitestProcedure>();
+  const messageAttachmentFindFirstMock = vi.fn<VitestProcedure>();
   const sandboxFileFindFirstMock = vi.fn<VitestProcedure>();
   const userFindFirstMock = vi.fn<VitestProcedure>();
   const downloadFromS3Mock = vi.fn<VitestProcedure>();
+  const getFileAssetDownloadUrlMock = vi.fn<VitestProcedure>();
+  const requireActiveWorkspaceAccessMock = vi.fn<VitestProcedure>(async () => ({
+    workspace: { id: "ws-1" },
+    membership: { role: "member" },
+  }));
 
   const dbMock = {
     query: {
       conversation: {
         findFirst: conversationFindFirstMock,
         findMany: conversationFindManyMock,
+      },
+      messageAttachment: {
+        findFirst: messageAttachmentFindFirstMock,
       },
       sandboxFile: {
         findFirst: sandboxFileFindFirstMock,
@@ -49,9 +61,12 @@ const {
   return {
     conversationFindFirstMock,
     conversationFindManyMock,
+    messageAttachmentFindFirstMock,
     sandboxFileFindFirstMock,
     userFindFirstMock,
     downloadFromS3Mock,
+    getFileAssetDownloadUrlMock,
+    requireActiveWorkspaceAccessMock,
     dbMock,
   };
 });
@@ -72,11 +87,12 @@ vi.mock("@bap/core/server/storage/s3-client", () => ({
   downloadFromS3: downloadFromS3Mock,
 }));
 
+vi.mock("@bap/core/server/services/file-asset-service", () => ({
+  getFileAssetDownloadUrl: getFileAssetDownloadUrlMock,
+}));
+
 vi.mock("../workspace-access", () => ({
-  requireActiveWorkspaceAccess: vi.fn<VitestProcedure>(async () => ({
-    workspace: { id: "ws-1" },
-    membership: { role: "member" },
-  })),
+  requireActiveWorkspaceAccess: requireActiveWorkspaceAccessMock,
   requireActiveWorkspaceAdmin: vi.fn<VitestProcedure>(async () => ({
     workspace: { id: "ws-1" },
     membership: { role: "admin" },
@@ -88,6 +104,7 @@ import { conversationRouter } from "./conversation";
 const context = {
   user: { id: "user-1" },
   session: { impersonatedBy: null },
+  workspaceId: "ws-1",
   db: dbMock,
 };
 
@@ -429,6 +446,43 @@ describe("conversationRouter.getAgenticAppHtml", () => {
       data: { agenticAppCode: "invalid_mime" },
     });
     expect(downloadFromS3Mock).not.toHaveBeenCalled();
+  });
+});
+
+describe("conversationRouter.downloadAttachment", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("resolves access with the request workspace before downloading", async () => {
+    messageAttachmentFindFirstMock.mockResolvedValue({
+      id: "attachment-1",
+      fileAssetId: "asset-1",
+      message: {
+        conversation: {
+          userId: "user-1",
+          workspaceId: "ws-1",
+        },
+      },
+    });
+    getFileAssetDownloadUrlMock.mockResolvedValue({
+      url: "https://storage.example.com/attachment-1",
+      filename: "recording.mp3",
+      mimeType: "audio/mpeg",
+      sizeBytes: 123,
+    });
+
+    const result = await conversationRouterAny.downloadAttachment({
+      input: { attachmentId: "attachment-1" },
+      context,
+    });
+
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
+    expect(result).toEqual({
+      url: "https://storage.example.com/attachment-1",
+      filename: "recording.mp3",
+      mimeType: "audio/mpeg",
+    });
   });
 });
 

@@ -603,7 +603,7 @@ const downloadAttachment = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     // Find the attachment and verify ownership
     const attachment = await context.db.query.messageAttachment.findFirst({
       where: eq(messageAttachment.id, input.attachmentId),
