@@ -103,8 +103,6 @@ export function ToolboxPage() {
   const [supportsFolderImport, setSupportsFolderImport] = useState(false);
 
   const isLoading = integrationsLoading || skillsLoading || executorLoading;
-  const isWorkspaceAdmin =
-    executorData?.membershipRole === "admin" || executorData?.membershipRole === "owner";
   const executorSources = useMemo(() => executorData?.sources ?? [], [executorData?.sources]);
   const lacksGoogleAccess = googleAccessStatus?.allowed === false;
 
@@ -764,7 +762,6 @@ export function ToolboxPage() {
         onTabChange={handleTabChange}
         importPending={importSkill.isPending}
         isCreating={isCreating}
-        isWorkspaceAdmin={isWorkspaceAdmin}
         supportsFolderImport={supportsFolderImport}
         search={search}
         t={t}

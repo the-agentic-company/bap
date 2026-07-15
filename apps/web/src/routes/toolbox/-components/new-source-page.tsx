@@ -25,12 +25,10 @@ export function NewSourcePage() {
   const t = useGT();
 
   const navigate = useNavigate();
-  const { data, isLoading: listLoading } = useWorkspaceMcpServerList();
+  const { isLoading: listLoading } = useWorkspaceMcpServerList();
   const createSource = useCreateWorkspaceMcpServer();
   const startOAuth = useStartWorkspaceMcpServerOAuth();
   const setCredential = useSetWorkspaceMcpServerCredential();
-
-  const isWorkspaceAdmin = data?.membershipRole === "admin" || data?.membershipRole === "owner";
 
   const initialForm = useMemo<WorkspaceMcpServerFormState>(() => {
     return {
@@ -114,19 +112,6 @@ export function NewSourcePage() {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!isWorkspaceAdmin) {
-    return (
-      <div className="py-24 text-center">
-        <p className="text-muted-foreground text-sm">
-          <T>You need workspace admin access to add sources.</T>
-        </p>
-        <AppLink href="/toolbox" className="text-brand mt-4 inline-block text-sm hover:underline">
-          <T>Back to Toolbox</T>
-        </AppLink>
       </div>
     );
   }

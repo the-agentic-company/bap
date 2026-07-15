@@ -54,7 +54,6 @@ export function ToolboxToolbar({
   onTabChange,
   importPending,
   isCreating,
-  isWorkspaceAdmin,
   supportsFolderImport,
   search,
   t,
@@ -73,7 +72,6 @@ export function ToolboxToolbar({
   onTabChange: (key: string) => void;
   importPending: boolean;
   isCreating: boolean;
-  isWorkspaceAdmin: boolean;
   supportsFolderImport: boolean;
   search: string;
   t: (s: string) => string;
@@ -126,14 +124,10 @@ export function ToolboxToolbar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isWorkspaceAdmin ? (
-                <>
-                  <DropdownMenuItem onClick={onNewMcpSource}>
-                    <Puzzle className="h-4 w-4" />
-                    <T>Add MCP</T>
-                  </DropdownMenuItem>
-                </>
-              ) : null}
+              <DropdownMenuItem onClick={onNewMcpSource}>
+                <Puzzle className="h-4 w-4" />
+                <T>Add MCP</T>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onImportZipClick} disabled={importPending}>
                 <FileInput className="h-4 w-4" />
                 <T>Import .zip</T>
@@ -165,16 +159,12 @@ export function ToolboxToolbar({
           />
         </div>
         <div className="hidden items-center gap-2 xl:flex">
-          {isWorkspaceAdmin && (
-            <>
-              <Button variant="outline" asChild>
-                <AppLink href="/toolbox/sources/new?kind=mcp">
-                  <Puzzle className="mr-2 h-4 w-4" />
-                  <T>Add MCP</T>
-                </AppLink>
-              </Button>
-            </>
-          )}
+          <Button variant="outline" asChild>
+            <AppLink href="/toolbox/sources/new?kind=mcp">
+              <Puzzle className="mr-2 h-4 w-4" />
+              <T>Add MCP</T>
+            </AppLink>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" disabled={importPending}>

@@ -263,7 +263,7 @@ const startOAuth = protectedProcedure
 const create = protectedProcedure
   .input(workspaceMcpServerInputSchema)
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAdmin(context.user.id);
+    const access = await requireActiveWorkspaceAccess(context.user.id);
     const namespace = normalizeExecutorNamespace(input.namespace);
     const existing = await context.db.query.workspaceMcpServer.findFirst({
       where: and(

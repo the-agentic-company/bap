@@ -204,7 +204,7 @@ describe("workspaceMcpServerRouter", () => {
     });
   });
 
-  it("creates new MCP OAuth servers for native OpenCode MCP resolution", async () => {
+  it("allows Workspace members to create new MCP OAuth servers", async () => {
     const context = createContext();
     context.db.query.workspaceMcpServer.findFirst.mockResolvedValue(null);
     const returningMock = vi.fn<VitestProcedure>().mockResolvedValue([{ id: "src-1" }]);
@@ -224,6 +224,8 @@ describe("workspaceMcpServerRouter", () => {
     });
 
     expect(result).toEqual({ id: "src-1" });
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1");
+    expect(requireActiveWorkspaceAdminMock).not.toHaveBeenCalled();
     expect(valuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         authType: "oauth2",
