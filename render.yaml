@@ -433,7 +433,7 @@ projects:
                   name: bap-s3-staging
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_INTERNAL_ENDPOINT_URL
-                value: http://bap-s3-staging:10000
+                value: http://cmdclaw-s3-staging:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_FORCE_PATH_STYLE
@@ -481,7 +481,7 @@ projects:
                   name: bap-s3-staging
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_INTERNAL_ENDPOINT_URL
-                value: http://bap-s3-staging:10000
+                value: http://cmdclaw-s3-staging:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_FORCE_PATH_STYLE
@@ -518,7 +518,7 @@ projects:
                   name: bap-s3-staging
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_INTERNAL_ENDPOINT_URL
-                value: http://bap-s3-staging:10000
+                value: http://cmdclaw-s3-staging:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_FORCE_PATH_STYLE
@@ -941,7 +941,7 @@ projects:
                   name: bap-s3-prod
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_INTERNAL_ENDPOINT_URL
-                value: http://bap-s3-prod:10000
+                value: http://cmdclaw-s3-prod:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_FORCE_PATH_STYLE
@@ -989,7 +989,7 @@ projects:
                   name: bap-s3-prod
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_INTERNAL_ENDPOINT_URL
-                value: http://bap-s3-prod:10000
+                value: http://cmdclaw-s3-prod:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_FORCE_PATH_STYLE
@@ -1026,7 +1026,7 @@ projects:
                   name: bap-s3-prod
                   envVarKey: RENDER_EXTERNAL_URL
               - key: AWS_INTERNAL_ENDPOINT_URL
-                value: http://bap-s3-prod:10000
+                value: http://cmdclaw-s3-prod:10000
               - key: AWS_DEFAULT_REGION
                 value: us-east-1
               - key: AWS_S3_FORCE_PATH_STYLE
