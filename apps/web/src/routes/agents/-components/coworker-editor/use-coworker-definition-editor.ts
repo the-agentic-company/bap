@@ -303,6 +303,11 @@ export function useCoworkerDefinitionEditor({
     },
     [getCoworkerUpdateInput, updateCoworker],
   );
+  const persistCoworkerRef = useRef(persistCoworker);
+
+  useEffect(() => {
+    persistCoworkerRef.current = persistCoworker;
+  }, [persistCoworker]);
 
   useEffect(() => {
     if (!coworker) {
@@ -445,7 +450,7 @@ export function useCoworkerDefinitionEditor({
     }
 
     autoSaveTimeoutRef.current = setTimeout(() => {
-      void persistCoworker();
+      void persistCoworkerRef.current();
     }, 1000);
 
     return () => {
@@ -458,19 +463,16 @@ export function useCoworkerDefinitionEditor({
     allowedSkillSlugs,
     allowedWorkspaceMcpServerIds,
     autoApprove,
-    buildSchedule,
     coworkerId,
     description,
     model,
     name,
-    persistCoworker,
     prompt,
     requiresUserInput,
     scheduleDayOfMonth,
     scheduleDaysOfWeek,
     scheduleTime,
     scheduleType,
-    status,
     toolAccessMode,
     triggerType,
     username,

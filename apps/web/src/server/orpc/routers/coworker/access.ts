@@ -1,6 +1,6 @@
 import { coworker, user } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull, or } from "drizzle-orm";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
 
 export type CoworkerRouterContext = {
@@ -42,6 +42,31 @@ export async function requireCoworkerInActiveWorkspace(
   const workspaceId = access.workspace.id;
   const coworkerRow = await context.db.query.coworker.findFirst({
     where: and(eq(coworker.id, coworkerId), eq(coworker.workspaceId, workspaceId)),
+  });
+
+  if (!coworkerRow) {
+    throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+  }
+
+  return {
+    coworker: coworkerRow,
+    workspaceId,
+    membershipRole: access.membership.role,
+  };
+}
+
+export async function requireAccessibleCoworkerInActiveWorkspace(
+  context: CoworkerRouterContext,
+  coworkerId: string,
+) {
+  const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
+  const workspaceId = access.workspace.id;
+  const coworkerRow = await context.db.query.coworker.findFirst({
+    where: and(
+      eq(coworker.id, coworkerId),
+      eq(coworker.workspaceId, workspaceId),
+      or(eq(coworker.ownerId, context.user.id), isNotNull(coworker.sharedAt)),
+    ),
   });
 
   if (!coworkerRow) {

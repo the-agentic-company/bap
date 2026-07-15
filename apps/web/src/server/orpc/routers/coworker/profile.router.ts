@@ -11,10 +11,14 @@ import {
 } from "./schemas";
 import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
-import { requireOwnedCoworkerInActiveWorkspace } from "./access";
+import {
+  requireAccessibleCoworkerInActiveWorkspace,
+  requireOwnedCoworkerInActiveWorkspace,
+} from "./access";
 import {
   createCoworkerProfile,
   deleteCoworkerProfile,
+  setCoworkerStatus,
   updateCoworkerProfile,
 } from "@/server/services/coworker-profile";
 
@@ -105,8 +109,25 @@ const del = protectedProcedure
     });
   });
 
+const setStatus = protectedProcedure
+  .input(z.object({ id: z.string(), status: z.enum(["on", "off"]) }))
+  .handler(async ({ input, context }) => {
+    const { coworker: existing, workspaceId } = await requireAccessibleCoworkerInActiveWorkspace(
+      context,
+      input.id,
+    );
+
+    return setCoworkerStatus({
+      context,
+      workspaceId,
+      existing,
+      status: input.status,
+    });
+  });
+
 export const coworkerProfileProcedures = {
   create,
   update,
+  setStatus,
   delete: del,
 };

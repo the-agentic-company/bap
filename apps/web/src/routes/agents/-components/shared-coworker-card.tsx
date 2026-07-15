@@ -1,10 +1,12 @@
 import type { CoworkerToolAccessMode } from "@bap/core/lib/coworker-tool-policy";
 import { T } from "gt-react";
 import { Download, Eye, Loader2 } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
+import { toast } from "sonner";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { getCoworkerDisplayName } from "@/components/coworkers/coworker-card-content";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +21,7 @@ import {
   INTEGRATION_LOGOS,
   type IntegrationType,
 } from "@/lib/integration-icons";
+import { useResetCoworkerRunsAndEnable, useSetCoworkerStatus } from "@/orpc/hooks/coworkers";
 import { AppImage as Image } from "../-lib/app-image";
 
 export type SharedCoworkerItem = {
@@ -26,6 +29,8 @@ export type SharedCoworkerItem = {
   name?: string | null;
   description?: string | null;
   folderId?: string | null;
+  status: "on" | "off";
+  disabledReason?: "run_backlog_limit" | null;
   triggerType: string;
   toolAccessMode: CoworkerToolAccessMode;
   allowedIntegrations?: IntegrationType[];
@@ -119,14 +124,48 @@ export function SharedCoworkerCard({
   isImporting: boolean;
   onImport: (id: string) => void;
 }) {
+  const setCoworkerStatus = useSetCoworkerStatus();
+  const resetCoworkerRuns = useResetCoworkerRunsAndEnable();
+  const isStatusPending = setCoworkerStatus.isPending || resetCoworkerRuns.isPending;
+  const status = setCoworkerStatus.isPending
+    ? (setCoworkerStatus.variables?.status ?? coworker.status)
+    : resetCoworkerRuns.isPending
+      ? "on"
+      : coworker.status;
+
   const handleImport = useCallback(() => {
     onImport(coworker.id);
   }, [coworker.id, onImport]);
 
-  const toolSummary = useMemo(
-    () => buildToolSummary(coworker, connectedIntegrationTypes),
-    [connectedIntegrationTypes, coworker],
+  const handleStatusChange = useCallback(
+    async (checked: boolean) => {
+      if (isStatusPending) {
+        return;
+      }
+      try {
+        if (checked && coworker.disabledReason === "run_backlog_limit") {
+          const confirmed = globalThis.confirm(
+            "This coworker was paused because its run backlog is full. Cancel its unfinished runs and turn it on?",
+          );
+          if (!confirmed) {
+            return;
+          }
+          await resetCoworkerRuns.mutateAsync(coworker.id);
+          return;
+        }
+        await setCoworkerStatus.mutateAsync({
+          id: coworker.id,
+          status: checked ? "on" : "off",
+        });
+      } catch (error) {
+        console.error("Failed to update shared coworker status:", error);
+        toast.error("Failed to update coworker status.");
+      }
+    },
+    [coworker.disabledReason, coworker.id, isStatusPending, resetCoworkerRuns, setCoworkerStatus],
   );
+
+  const toolSummary = buildToolSummary(coworker, connectedIntegrationTypes);
 
   return (
     <div className="border-border bg-card flex h-full min-h-[160px] flex-col gap-3 rounded-xl border p-5">
@@ -191,6 +230,15 @@ export function SharedCoworkerCard({
         {formatDate(coworker.sharedAt) ?? "recently"}
       </div>
       <div className="mt-auto flex items-center gap-1.5">
+        <div className="mr-auto flex items-center gap-1.5">
+          <Switch
+            checked={status === "on"}
+            onCheckedChange={handleStatusChange}
+            disabled={isStatusPending}
+            aria-label={status === "on" ? "Turn coworker off" : "Turn coworker on"}
+          />
+          <span className="text-muted-foreground text-xs">{status === "on" ? "On" : "Off"}</span>
+        </div>
         <Button
           variant="outline"
           size="sm"

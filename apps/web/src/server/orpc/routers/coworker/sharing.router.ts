@@ -90,6 +90,8 @@ const listShared = protectedProcedure.handler(async ({ context }) => {
         description: wf.description,
         username: wf.username,
         folderId: wf.folderId,
+        status: wf.status,
+        disabledReason: wf.disabledReason,
         triggerType: wf.triggerType,
         toolAccessMode,
         allowedIntegrations: wf.allowedIntegrations,

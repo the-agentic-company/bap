@@ -4,6 +4,7 @@ import {
   applyCoworkerEditMock,
   coworkerRouterAny,
   createContext,
+  reconcileCoworkerScheduleJobMock,
   reconcileStaleCoworkerRunsForCoworkerMock,
   reconcileStaleCoworkerRunsForCoworkersMock,
   resetCoworkerRouterTestHarness,
@@ -483,6 +484,20 @@ describe("coworkerRouter", () => {
         context,
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("does not reset and enable an inaccessible private coworker", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue(null);
+
+    await expect(
+      coworkerRouterAny.resetRunsAndEnable({
+        input: { coworkerId: "wf-private" },
+        context,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    expect(reconcileCoworkerScheduleJobMock).not.toHaveBeenCalled();
   });
 
   it("lists coworker runs with public fields", async () => {

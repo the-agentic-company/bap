@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
-import { requireOwnedCoworkerInActiveWorkspace } from "./access";
+import { requireAccessibleCoworkerInActiveWorkspace } from "./access";
 import { getCoworkerCatalogDetails, listCoworkerCatalog } from "@/server/services/coworker-catalog";
 
 const list = protectedProcedure.handler(async ({ context }) => {
@@ -24,7 +24,7 @@ const list = protectedProcedure.handler(async ({ context }) => {
 const get = protectedProcedure
   .input(z.object({ id: z.string() }))
   .handler(async ({ input, context }) => {
-    const { coworker: coworkerRow } = await requireOwnedCoworkerInActiveWorkspace(
+    const { coworker: coworkerRow } = await requireAccessibleCoworkerInActiveWorkspace(
       context,
       input.id,
     );
