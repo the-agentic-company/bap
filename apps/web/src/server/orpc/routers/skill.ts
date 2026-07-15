@@ -141,12 +141,13 @@ async function requireOwnedSkillInActiveWorkspace(
   context: {
     user: { id: string };
     db: typeof import("@bap/db/client").db;
+    workspaceId?: string | null;
   },
   skillId: string,
 ) {
   const {
     workspace: { id: workspaceId },
-  } = await requireActiveWorkspaceAccess(context.user.id);
+  } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
   const existingSkill = await context.db.query.skill.findFirst({
     where: and(eq(skill.id, skillId), buildOwnedSkillWhere(workspaceId, context.user.id)),
@@ -163,12 +164,13 @@ async function requireReadableSkillInActiveWorkspace(
   context: {
     user: { id: string };
     db: typeof import("@bap/db/client").db;
+    workspaceId?: string | null;
   },
   skillId: string,
 ) {
   const {
     workspace: { id: workspaceId },
-  } = await requireActiveWorkspaceAccess(context.user.id);
+  } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
   const existingSkill = await context.db.query.skill.findFirst({
     where: and(eq(skill.id, skillId), buildAccessibleSkillWhere(workspaceId, context.user.id)),
@@ -195,7 +197,7 @@ async function requireReadableSkillInActiveWorkspace(
 const list = protectedProcedure.handler(async ({ context }) => {
   const {
     workspace: { id: workspaceId },
-  } = await requireActiveWorkspaceAccess(context.user.id);
+  } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
   const skills = await context.db.query.skill.findMany({
     where: buildAccessibleSkillWhere(workspaceId, context.user.id),
@@ -291,7 +293,7 @@ const create = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const slug = toSkillSlug(input.displayName);
 
     if (!slug) {
@@ -384,7 +386,7 @@ const importSkillDefinition = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
     const created = await importSkill(context.db as never, context.user.id, workspaceId, input);
     await refreshOwnedSkillsRuntimeVolumeProjection({
@@ -595,7 +597,7 @@ const saveShared = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
     const sourceSkill = await context.db.query.skill.findFirst({
       where: and(
@@ -703,7 +705,7 @@ const updateFile = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
     const existingFile = await context.db.query.skillFile.findFirst({
       where: eq(skillFile.id, input.id),
@@ -769,7 +771,7 @@ const deleteFile = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
     const existingFile = await context.db.query.skillFile.findFirst({
       where: eq(skillFile.id, input.id),
@@ -883,7 +885,7 @@ const getDocumentUrl = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
     const document = await context.db.query.skillDocument.findFirst({
       where: eq(skillDocument.id, input.id),
@@ -921,7 +923,7 @@ const deleteDocument = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
     const document = await context.db.query.skillDocument.findFirst({
       where: eq(skillDocument.id, input.id),

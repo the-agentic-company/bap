@@ -71,6 +71,7 @@ const workspaceMcpServerRouterAny = workspaceMcpServerRouter as unknown as Recor
 function createContext() {
   return {
     user: { id: "user-1" },
+    workspaceId: "ws-active",
     db: {
       query: {
         user: {
@@ -127,6 +128,17 @@ describe("workspaceMcpServerRouter", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it("lists Workspace MCP Servers from the request workspace", async () => {
+    const context = createContext();
+
+    await expect(workspaceMcpServerRouterAny.list({ context })).resolves.toMatchObject({
+      workspaceId: "ws-1",
+      sources: [],
+    });
+
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-active");
   });
 
   it("starts MCP OAuth for a Workspace MCP Server", async () => {
@@ -224,7 +236,7 @@ describe("workspaceMcpServerRouter", () => {
     });
 
     expect(result).toEqual({ id: "src-1" });
-    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1");
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-active");
     expect(requireActiveWorkspaceAdminMock).not.toHaveBeenCalled();
     expect(valuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
