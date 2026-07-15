@@ -88,6 +88,7 @@ export const env = createEnv({
     WS_PORT: z.string().default("4097"),
     // S3/MinIO Configuration (AWS SDK generic naming)
     AWS_ENDPOINT_URL: z.url(),
+    AWS_INTERNAL_ENDPOINT_URL: z.url().optional(),
     AWS_DEFAULT_REGION: z.string().default("us-east-1"),
     AWS_ACCESS_KEY_ID: z.string(),
     AWS_SECRET_ACCESS_KEY: z.string(),
@@ -203,6 +204,7 @@ export const env = createEnv({
     E2B_CALLBACK_BASE_URL: process.env.E2B_CALLBACK_BASE_URL,
     WS_PORT: process.env.WS_PORT,
     AWS_ENDPOINT_URL: process.env.AWS_ENDPOINT_URL,
+    AWS_INTERNAL_ENDPOINT_URL: process.env.AWS_INTERNAL_ENDPOINT_URL,
     AWS_DEFAULT_REGION: process.env.AWS_DEFAULT_REGION,
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,

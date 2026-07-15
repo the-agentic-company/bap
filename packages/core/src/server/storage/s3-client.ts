@@ -13,8 +13,43 @@ import { env } from "../../env";
 
 const S3_ERROR_BODY_LOG_LIMIT = 2048;
 
-// S3 client singleton
+type S3EndpointConfig = {
+  publicEndpointUrl: string;
+  internalEndpointUrl?: string;
+};
+
+export function resolveS3Endpoints(config: S3EndpointConfig): {
+  operationEndpointUrl: string;
+  presignEndpointUrl: string;
+} {
+  return {
+    operationEndpointUrl: config.internalEndpointUrl ?? config.publicEndpointUrl,
+    presignEndpointUrl: config.publicEndpointUrl,
+  };
+}
+
+function createS3Client(endpoint: string): S3Client {
+  return new S3Client({
+    endpoint,
+    region: env.AWS_DEFAULT_REGION,
+    credentials: {
+      accessKeyId: env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+    },
+    forcePathStyle: env.AWS_S3_FORCE_PATH_STYLE,
+  });
+}
+
+function getConfiguredS3Endpoints() {
+  return resolveS3Endpoints({
+    publicEndpointUrl: env.AWS_ENDPOINT_URL,
+    internalEndpointUrl: env.AWS_INTERNAL_ENDPOINT_URL,
+  });
+}
+
+// S3 client singletons
 let s3Client: S3Client | null = null;
+let presignS3Client: S3Client | null = null;
 
 export function getS3Client(): S3Client {
   if (!s3Client) {
@@ -24,30 +59,26 @@ export function getS3Client(): S3Client {
       );
     }
 
-    s3Client = new S3Client({
-      endpoint: env.AWS_ENDPOINT_URL,
-      region: env.AWS_DEFAULT_REGION,
-      credentials: {
-        accessKeyId: env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
-      },
-      forcePathStyle: env.AWS_S3_FORCE_PATH_STYLE,
-    });
+    s3Client = createS3Client(getConfiguredS3Endpoints().operationEndpointUrl);
   }
   return s3Client;
 }
 
+function getPresignS3Client(): S3Client {
+  if (!presignS3Client) {
+    presignS3Client = createS3Client(getConfiguredS3Endpoints().presignEndpointUrl);
+  }
+  return presignS3Client;
+}
+
 export const BUCKET_NAME = env.AWS_S3_BUCKET_NAME;
 
-function getS3EndpointHost(): string | undefined {
-  if (!env.AWS_ENDPOINT_URL) {
-    return undefined;
-  }
-
+function getS3EndpointHost(): string {
+  const endpointUrl = getConfiguredS3Endpoints().operationEndpointUrl;
   try {
-    return new URL(env.AWS_ENDPOINT_URL).host;
+    return new URL(endpointUrl).host;
   } catch {
-    return env.AWS_ENDPOINT_URL;
+    return endpointUrl;
   }
 }
 
@@ -225,7 +256,7 @@ export async function getPresignedUploadUrl(
   contentType: string,
   expiresInSeconds: number = 900,
 ): Promise<string> {
-  const client = getS3Client();
+  const client = getPresignS3Client();
 
   const command = new PutObjectCommand({
     Bucket: BUCKET_NAME,
@@ -322,7 +353,7 @@ export async function getPresignedDownloadUrl(
     contentType?: string;
   },
 ): Promise<string> {
-  const client = getS3Client();
+  const client = getPresignS3Client();
 
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
