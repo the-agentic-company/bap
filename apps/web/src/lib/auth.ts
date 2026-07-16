@@ -222,7 +222,7 @@ export const auth = betterAuth({
         inviter,
         invitation,
       }) {
-        const invitationUrl = buildWorkspaceInvitationUrl(invitation.id, appUrl);
+        const invitationUrl = buildWorkspaceInvitationUrl(invitation.id, appUrl, email);
         const emailContent = buildWorkspaceInvitationEmailPayload({
           invitationUrl,
           workspaceName: workspaceOrganization.name,

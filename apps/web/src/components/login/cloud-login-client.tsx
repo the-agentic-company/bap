@@ -113,16 +113,18 @@ const stepTransition = { duration: 0.25, ease: [0.4, 0, 0.2, 1] as const };
 export function CloudLoginClient({
   callbackUrl,
   initialError,
+  initialEmail,
   initialScreen = "login",
 }: {
   callbackUrl: string;
   initialError?: string | null;
+  initialEmail?: string | null;
   initialScreen?: InitialScreen;
 }) {
   const t = useGT();
 
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => normalizeEmail(initialEmail ?? ""));
   const [password, setPassword] = useState("");
   const [step, setStep] = useState<Step>("initial");
   const [passwordStepMode, setPasswordStepMode] = useState<PasswordStepMode | null>(null);

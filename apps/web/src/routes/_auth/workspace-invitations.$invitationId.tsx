@@ -8,10 +8,15 @@ import { authClient } from "@/lib/auth-client";
 type InvitationStatus = "loading" | "unauthenticated" | "ready" | "accepted" | "rejected" | "error";
 type InvitationAction = "accept" | "reject";
 
+type InvitationSearch = {
+  email?: string;
+};
+
 type WorkspaceInvitation = {
   id: string;
   email: string;
   role: string;
+  organizationId?: string | null;
   organizationName: string;
   inviterEmail: string;
 };
@@ -29,6 +34,10 @@ type AuthOrganizationClient = {
     data?: unknown;
     error?: { message?: string } | null;
   }>;
+  setActive(input: { organizationId: string }): Promise<{
+    data?: unknown;
+    error?: { message?: string } | null;
+  }>;
 };
 
 function getOrganizationClient(): AuthOrganizationClient {
@@ -36,6 +45,7 @@ function getOrganizationClient(): AuthOrganizationClient {
 }
 
 export const Route = createFileRoute("/_auth/workspace-invitations/$invitationId")({
+  validateSearch: validateInvitationSearch,
   component: WorkspaceInvitationPage,
   head: () => ({
     meta: [{ title: "Workspace invitation - Bap" }],
@@ -44,10 +54,27 @@ export const Route = createFileRoute("/_auth/workspace-invitations/$invitationId
 
 function WorkspaceInvitationPage() {
   const params = Route.useParams();
+  const search = Route.useSearch();
   const navigate = useNavigate();
   const navigateToHref = useCallback((href: string) => navigate({ href }), [navigate]);
 
-  return <WorkspaceInvitationView invitationId={params.invitationId} navigate={navigateToHref} />;
+  return (
+    <WorkspaceInvitationView
+      invitationId={params.invitationId}
+      invitedEmail={search.email}
+      navigate={navigateToHref}
+    />
+  );
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function validateInvitationSearch(search: Record<string, unknown>): InvitationSearch {
+  return {
+    email: optionalString(search.email),
+  };
 }
 
 function getActionErrorMessage(action: InvitationAction, message: string | undefined): string {
@@ -58,6 +85,33 @@ function getActionErrorMessage(action: InvitationAction, message: string | undef
   return action === "accept"
     ? "We couldn't accept this Workspace Invitation. Try again."
     : "We couldn't reject this Workspace Invitation. Try again.";
+}
+
+function getRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function getStringProperty(value: unknown, property: string): string | null {
+  const record = getRecord(value);
+  const candidate = record?.[property];
+  return typeof candidate === "string" && candidate.length > 0 ? candidate : null;
+}
+
+function getAcceptedOrganizationId(value: unknown): string | null {
+  const direct =
+    getStringProperty(value, "organizationId") ??
+    getStringProperty(value, "workspaceId") ??
+    getStringProperty(value, "orgId");
+  if (direct) {
+    return direct;
+  }
+
+  const record = getRecord(value);
+  return (
+    getStringProperty(record?.organization, "id") ??
+    getStringProperty(record?.member, "organizationId") ??
+    getStringProperty(record?.invitation, "organizationId")
+  );
 }
 
 function InvitationCard({
@@ -83,9 +137,11 @@ function InvitationCard({
 
 export function WorkspaceInvitationView({
   invitationId,
+  invitedEmail,
   navigate,
 }: {
   invitationId: string;
+  invitedEmail?: string;
   navigate: (href: string) => void;
 }) {
   const [status, setStatus] = useState<InvitationStatus>("loading");
@@ -136,8 +192,14 @@ export function WorkspaceInvitationView({
   }, [invitationId]);
 
   const handleLogin = useCallback(() => {
-    navigate(`/login?callbackUrl=${encodeURIComponent(`/workspace-invitations/${invitationId}`)}`);
-  }, [invitationId, navigate]);
+    const loginUrl = new URL("/login", "http://localhost");
+    loginUrl.searchParams.set("callbackUrl", `/workspace-invitations/${invitationId}`);
+    loginUrl.searchParams.set("mode", "getting-started");
+    if (invitedEmail) {
+      loginUrl.searchParams.set("email", invitedEmail);
+    }
+    navigate(`${loginUrl.pathname}${loginUrl.search}`);
+  }, [invitationId, invitedEmail, navigate]);
 
   const handleOpenWorkspace = useCallback(() => {
     navigate("/chat");
@@ -148,22 +210,61 @@ export function WorkspaceInvitationView({
       setPendingAction(action);
       setError(null);
 
-      const { error: actionError } =
-        action === "accept"
-          ? await getOrganizationClient().acceptInvitation({ invitationId })
-          : await getOrganizationClient().rejectInvitation({ invitationId });
+      try {
+        const { data, error: actionError } =
+          action === "accept"
+            ? await getOrganizationClient().acceptInvitation({ invitationId })
+            : await getOrganizationClient().rejectInvitation({ invitationId });
 
-      setPendingAction(null);
+        if (actionError) {
+          setStatus("error");
+          setError(getActionErrorMessage(action, actionError.message));
+          return;
+        }
 
-      if (actionError) {
+        if (action === "accept") {
+          const organizationId =
+            getAcceptedOrganizationId(data) ??
+            getAcceptedOrganizationId(invitation) ??
+            invitation?.organizationId ??
+            null;
+
+          if (!organizationId) {
+            setStatus("error");
+            setError("Workspace joined, but we couldn't switch to it. Open Bap and select it.");
+            return;
+          }
+
+          const { error: activeError } = await getOrganizationClient().setActive({
+            organizationId,
+          });
+          if (activeError) {
+            setStatus("error");
+            setError(
+              activeError.message ??
+                "Workspace joined, but we couldn't switch to it. Open Bap and select it.",
+            );
+            return;
+          }
+
+          setStatus("accepted");
+          navigate("/chat");
+          return;
+        }
+
+        setStatus("rejected");
+      } catch (caughtError) {
         setStatus("error");
-        setError(getActionErrorMessage(action, actionError.message));
-        return;
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : getActionErrorMessage(action, undefined),
+        );
+      } finally {
+        setPendingAction(null);
       }
-
-      setStatus(action === "accept" ? "accepted" : "rejected");
     },
-    [invitationId],
+    [invitation, invitationId, navigate],
   );
 
   const handleAccept = useCallback(() => {
