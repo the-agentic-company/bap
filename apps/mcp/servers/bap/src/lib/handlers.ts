@@ -7,6 +7,7 @@ import {
   type CoworkerRunStatus,
   type CoworkerUpdateInput,
   type FileAttachmentInput,
+  type WorkspaceMcpServerInput,
 } from "@bap/client";
 
 export async function handleChatRun(params: {
@@ -19,6 +20,9 @@ export async function handleChatRun(params: {
   autoApprove?: boolean;
   fileAttachments?: FileAttachmentInput[];
 }) {
+  if (!params.message.trim() && !params.fileAttachments?.length) {
+    throw new Error("Chat run requires a message or at least one ready attachment.");
+  }
   const result = await runChatSession({
     client: params.client,
     input: {
@@ -66,6 +70,24 @@ export async function handleWorkspaceCreate(params: { client: BapApiClient; name
   };
 }
 
+export async function handleWorkspaceSave(params: {
+  client: BapApiClient;
+  workspaceId?: string;
+  name: string;
+}) {
+  if (!params.workspaceId) {
+    return handleWorkspaceCreate({ client: params.client, name: params.name });
+  }
+
+  return {
+    status: "completed" as const,
+    workspace: await params.client.billing.rename({
+      workspaceId: params.workspaceId,
+      name: params.name,
+    }),
+  };
+}
+
 function buildWorkspaceAddMembersResponse(params: {
   workspaceId: string;
   role?: "admin" | "member";
@@ -95,12 +117,16 @@ export async function handleWorkspaceAddMembers(params: {
     role: params.role,
   });
 
+  const normalized = Array.isArray(result)
+    ? { added: result, alreadyMembers: [], notFound: [] }
+    : result;
+
   return buildWorkspaceAddMembersResponse({
     workspaceId: params.workspaceId,
     role: params.role ?? "member",
-    added: result.added,
-    alreadyMembers: result.alreadyMembers,
-    notFound: result.notFound,
+    added: normalized.added,
+    alreadyMembers: normalized.alreadyMembers,
+    notFound: normalized.notFound,
   });
 }
 
@@ -553,5 +579,616 @@ export async function handleSkillAdd(params: {
   return {
     status: "completed" as const,
     skill: created,
+  };
+}
+
+export async function handleConnectedAccountRead(params: {
+  client: BapApiClient;
+  query: { type: "list"; integrationType?: string } | { type: "get"; connectedAccountId: string };
+}) {
+  const accounts = await params.client.integration.list();
+  const matches = accounts.filter((account) => {
+    if (params.query.type === "get") return account.id === params.query.connectedAccountId;
+    return !params.query.integrationType || account.type === params.query.integrationType;
+  });
+
+  if (params.query.type === "get" && matches.length === 0) {
+    throw new Error("Connected Account not found.");
+  }
+
+  return { status: "completed" as const, connectedAccounts: matches };
+}
+
+export async function handleConnectedAccountConnect(params: {
+  client: BapApiClient;
+  integrationType: string;
+  redirectUrl: string;
+  mode?: "connect" | "connect_to_label" | "reauth";
+  accountLabel?: string;
+  connectedAccountId?: string;
+}) {
+  const result = await params.client.integration.getAuthUrl({
+    type: params.integrationType,
+    redirectUrl: params.redirectUrl,
+    mode: params.mode,
+    accountLabel: params.accountLabel,
+    connectedAccountId: params.connectedAccountId,
+  });
+  return { status: "completed" as const, integrationType: params.integrationType, ...result };
+}
+
+export async function handleConnectedAccountDisconnect(params: {
+  client: BapApiClient;
+  connectedAccountId: string;
+}) {
+  const result = await params.client.integration.disconnect({ id: params.connectedAccountId });
+  return {
+    status: "completed" as const,
+    connectedAccountId: params.connectedAccountId,
+    disconnected: result.success,
+  };
+}
+
+export async function handleWorkspaceMemberList(params: {
+  client: BapApiClient;
+  workspaceId: string;
+}) {
+  const result = await params.client.billing.members({ workspaceId: params.workspaceId });
+  return { status: "completed" as const, workspaceId: params.workspaceId, ...result };
+}
+
+export async function handleWorkspaceMemberSave(params: {
+  client: BapApiClient;
+  workspaceId: string;
+  email: string;
+  role: "admin" | "member";
+}) {
+  const current = await params.client.billing.members({ workspaceId: params.workspaceId });
+  const member = current.members.find(
+    (candidate) => candidate.email?.toLowerCase() === params.email.toLowerCase(),
+  );
+  if (member) {
+    const updated = await params.client.billing.setMemberRole({
+      workspaceId: params.workspaceId,
+      email: params.email,
+      role: params.role,
+    });
+    return {
+      status: "completed" as const,
+      workspaceId: params.workspaceId,
+      access: { type: "membership" as const, ...updated },
+    };
+  }
+
+  const invited = await params.client.billing.inviteMembers({
+    workspaceId: params.workspaceId,
+    emails: [params.email],
+    role: params.role,
+  });
+  return {
+    status: "completed" as const,
+    workspaceId: params.workspaceId,
+    access: {
+      type: "invitation" as const,
+      email: (Array.isArray(invited) ? invited[0] : invited.added[0]) ?? params.email,
+      role: params.role,
+    },
+  };
+}
+
+export async function handleWorkspaceMemberRemove(params: {
+  client: BapApiClient;
+  workspaceId: string;
+  email: string;
+}) {
+  const removed = await params.client.billing.removeMember({
+    workspaceId: params.workspaceId,
+    email: params.email,
+  });
+  return { status: "completed" as const, workspaceId: params.workspaceId, ...removed };
+}
+
+export async function handleWorkspaceMcpServerList(client: BapApiClient) {
+  const result = await client.workspaceMcpServer.list();
+  return {
+    status: "completed" as const,
+    workspaceId: result.workspaceId,
+    membershipRole: result.membershipRole,
+    servers: result.sources,
+  };
+}
+
+type WorkspaceMcpServerValues = Partial<Omit<WorkspaceMcpServerInput, "kind">>;
+
+function requireWorkspaceMcpServerCreateValues(
+  values: WorkspaceMcpServerValues,
+): WorkspaceMcpServerInput {
+  if (!values.name || !values.namespace || !values.endpoint) {
+    throw new Error("Workspace MCP Server creation requires name, namespace, and endpoint.");
+  }
+  return {
+    kind: "mcp",
+    ...values,
+    name: values.name,
+    namespace: values.namespace,
+    endpoint: values.endpoint,
+  };
+}
+
+export async function handleWorkspaceMcpServerSave(params: {
+  client: BapApiClient;
+  id?: string;
+  values: WorkspaceMcpServerValues;
+}) {
+  if (Object.keys(params.values).length === 0) {
+    throw new Error("Workspace MCP Server save must include at least one value.");
+  }
+  if (!params.id) {
+    const created = await params.client.workspaceMcpServer.create(
+      requireWorkspaceMcpServerCreateValues(params.values),
+    );
+    return { status: "completed" as const, id: created.id, created: true };
+  }
+
+  const current = (await params.client.workspaceMcpServer.list()).sources.find(
+    (server) => server.id === params.id,
+  );
+  if (!current) throw new Error("Workspace MCP Server not found.");
+  const input = requireWorkspaceMcpServerCreateValues({
+    name: current.name,
+    namespace: current.namespace,
+    endpoint: current.endpoint,
+    ...params.values,
+  });
+  await params.client.workspaceMcpServer.update({ id: params.id, ...input });
+  return { status: "completed" as const, id: params.id, created: false };
+}
+
+export async function handleWorkspaceMcpServerDelete(params: { client: BapApiClient; id: string }) {
+  await params.client.workspaceMcpServer.delete({ id: params.id });
+  return { status: "completed" as const, id: params.id, deleted: true };
+}
+
+export async function handleWorkspaceMcpServerSetCredential(params: {
+  client: BapApiClient;
+  id: string;
+  secret: string;
+  displayName?: string | null;
+  enabled?: boolean;
+}) {
+  await params.client.workspaceMcpServer.setCredential({
+    workspaceMcpServerId: params.id,
+    secret: params.secret,
+    displayName: params.displayName,
+    enabled: params.enabled,
+  });
+  return { status: "completed" as const, id: params.id };
+}
+
+export async function handleWorkspaceMcpServerStartOAuth(params: {
+  client: BapApiClient;
+  id: string;
+  redirectUrl: string;
+}) {
+  const result = await params.client.workspaceMcpServer.startOAuth({
+    workspaceMcpServerId: params.id,
+    redirectUrl: params.redirectUrl,
+  });
+  return { status: "completed" as const, id: params.id, ...result };
+}
+
+export async function handleSkillRead(params: {
+  client: BapApiClient;
+  query: { type: "list" } | { type: "get"; id: string };
+}) {
+  if (params.query.type === "get") {
+    return {
+      status: "completed" as const,
+      skill: await params.client.skill.get({ id: params.query.id }),
+    };
+  }
+  return { status: "completed" as const, skills: await params.client.skill.list() };
+}
+
+export async function handleSkillSave(params: {
+  client: BapApiClient;
+  id?: string;
+  values: {
+    files?: Array<{ path: string; mimeType?: string; contentBase64: string }>;
+    displayName?: string;
+    description?: string;
+    icon?: string | null;
+    enabled?: boolean;
+    visibility?: "public" | "private";
+  };
+}) {
+  if (!params.id) {
+    if (!params.values.files?.length) throw new Error("Skill creation requires files.");
+    if (!params.values.files.some((file) => file.path === "SKILL.md")) {
+      throw new Error("Skill creation requires a root SKILL.md file.");
+    }
+    const created = await handleSkillAdd({ client: params.client, files: params.values.files });
+    const { visibility, files: _files, ...metadata } = params.values;
+    if (Object.keys(metadata).length > 0) {
+      await params.client.skill.update({ id: created.skill.id, ...metadata });
+    }
+    if (visibility === "public") await params.client.skill.share({ id: created.skill.id });
+    return {
+      status: "completed" as const,
+      skill: await params.client.skill.get({ id: created.skill.id }),
+    };
+  }
+  const current = await params.client.skill.get({ id: params.id });
+  if (params.values.files !== undefined) {
+    for (const file of params.values.files) {
+      const existing = current.files.find((candidate) => candidate.path === file.path);
+      if (existing) {
+        await params.client.skill.updateFile({
+          id: existing.id,
+          contentBase64: file.contentBase64,
+        });
+      } else {
+        await params.client.skill.addFile({
+          skillId: params.id,
+          path: file.path,
+          contentBase64: file.contentBase64,
+        });
+      }
+    }
+  }
+  const { visibility, files: _files, ...updates } = params.values;
+  if (Object.keys(updates).length > 0) {
+    await params.client.skill.update({ id: params.id, ...updates });
+  }
+  if (visibility) {
+    if (visibility === "public") await params.client.skill.share({ id: params.id });
+    else await params.client.skill.unshare({ id: params.id });
+  }
+  if (Object.keys(updates).length === 0 && !visibility && !params.values.files?.length) {
+    throw new Error("Skill update must include at least one field.");
+  }
+  return { status: "completed" as const, skill: await params.client.skill.get({ id: params.id }) };
+}
+
+export async function handleSkillDelete(params: { client: BapApiClient; id: string }) {
+  await params.client.skill.delete({ id: params.id });
+  return { status: "completed" as const, id: params.id, deleted: true };
+}
+
+export async function handleCoworkerRead(params: {
+  client: BapApiClient;
+  query:
+    | { type: "list" }
+    | { type: "get"; reference: string }
+    | { type: "export"; reference: string };
+}) {
+  if (params.query.type === "list") return handleCoworkerList(params.client);
+  const result = await handleCoworkerGet(params.client, params.query.reference);
+  if (params.query.type === "get") return result;
+  const coworker = result.coworker;
+  return {
+    status: "completed" as const,
+    export: {
+      version: 1 as const,
+      name: coworker.name,
+      description: coworker.description,
+      username: coworker.username,
+      triggerType: coworker.triggerType,
+      prompt: coworker.prompt,
+      model: coworker.model,
+      authSource: coworker.authSource,
+      autoApprove: coworker.autoApprove,
+      toolAccessMode: coworker.toolAccessMode,
+      allowedIntegrations: coworker.allowedIntegrations,
+      allowedCustomIntegrations: coworker.allowedCustomIntegrations,
+      allowedWorkspaceMcpServerIds: coworker.allowedWorkspaceMcpServerIds,
+      allowedSkillSlugs: coworker.allowedSkillSlugs,
+      schedule: coworker.schedule,
+      requiresUserInput: coworker.requiresUserInput,
+      userInputPrompt: coworker.userInputPrompt,
+      documents: coworker.documents,
+    },
+  };
+}
+
+export async function handleCoworkerSave(params: {
+  client: BapApiClient;
+  id?: string;
+  values: {
+    name?: string;
+    description?: string | null;
+    username?: string | null;
+    status?: "on" | "off";
+    favorite?: boolean;
+    folderId?: string | null;
+    trigger?: string;
+    prompt?: string;
+    autoApprove?: boolean;
+    model?: string;
+    authSource?: "user" | "shared" | null;
+    toolAccessMode?: string;
+    integrationTypes?: string[];
+    customIntegrationIds?: string[];
+    workspaceMcpServerIds?: string[];
+    skillSlugs?: string[];
+    schedule?: CoworkerSchedule;
+    requiresUserInput?: boolean;
+    userInputPrompt?: string | null;
+  };
+}) {
+  if (!params.id) {
+    const created = await handleCoworkerCreate({
+      client: params.client,
+      name: params.values.name,
+      trigger: params.values.trigger,
+      prompt: params.values.prompt,
+      autoApprove: params.values.autoApprove,
+      model: params.values.model,
+      authSource: params.values.authSource ?? undefined,
+      integrations: params.values.integrationTypes,
+    });
+    if (params.values.folderId !== undefined) {
+      await params.client.coworkerFolder.moveCoworker({
+        coworkerId: created.coworker.id,
+        folderId: params.values.folderId,
+      });
+    }
+    if (params.values.favorite !== undefined) {
+      await params.client.coworker.update({
+        id: created.coworker.id,
+        isPinned: params.values.favorite,
+      });
+    }
+    const needsFollowUp =
+      params.values.description !== undefined ||
+      params.values.username !== undefined ||
+      params.values.status !== undefined ||
+      params.values.customIntegrationIds !== undefined ||
+      params.values.workspaceMcpServerIds !== undefined ||
+      params.values.skillSlugs !== undefined ||
+      params.values.schedule !== undefined ||
+      params.values.requiresUserInput !== undefined ||
+      params.values.userInputPrompt !== undefined;
+    if (needsFollowUp) {
+      await handleCoworkerUpdate({
+        client: params.client,
+        reference: created.coworker.id,
+        description: params.values.description,
+        username: params.values.username,
+        status: params.values.status,
+        customIntegrations: params.values.customIntegrationIds,
+        workspaceMcpServerIds: params.values.workspaceMcpServerIds,
+        skillSlugs: params.values.skillSlugs,
+        schedule: params.values.schedule,
+        requiresUserInput: params.values.requiresUserInput,
+        userInputPrompt: params.values.userInputPrompt,
+      });
+    }
+    return handleCoworkerGet(params.client, created.coworker.id);
+  }
+
+  const { folderId, favorite, ...values } = params.values;
+  const updateValues = {
+    name: values.name,
+    description: values.description,
+    username: values.username,
+    status: values.status,
+    trigger: values.trigger,
+    prompt: values.prompt,
+    autoApprove: values.autoApprove,
+    model: values.model,
+    authSource: values.authSource,
+    toolAccessMode: values.toolAccessMode,
+    integrations: values.integrationTypes,
+    customIntegrations: values.customIntegrationIds,
+    workspaceMcpServerIds: values.workspaceMcpServerIds,
+    skillSlugs: values.skillSlugs,
+    schedule: values.schedule,
+    requiresUserInput: values.requiresUserInput,
+    userInputPrompt: values.userInputPrompt,
+  };
+  const hasUpdate = Object.values(updateValues).some((value) => value !== undefined);
+  if (hasUpdate) {
+    await handleCoworkerUpdate({ client: params.client, reference: params.id, ...updateValues });
+  }
+  const runner = createCoworkerRunner(params.client);
+  const coworkerId = await runner.resolveReference(params.id);
+  if (folderId !== undefined) {
+    await params.client.coworkerFolder.moveCoworker({ coworkerId, folderId });
+  }
+  if (favorite !== undefined) {
+    await params.client.coworker.update({ id: coworkerId, isPinned: favorite });
+  }
+  if (!hasUpdate && folderId === undefined && favorite === undefined) {
+    throw new Error("Coworker update must include at least one field.");
+  }
+  return handleCoworkerGet(params.client, coworkerId);
+}
+
+export async function handleCoworkerDocumentSave(params: {
+  client: BapApiClient;
+  coworkerReference: string;
+  operation:
+    | {
+        type: "create";
+        files: Array<{
+          filename: string;
+          mimeType: string;
+          contentBase64: string;
+          description?: string;
+        }>;
+      }
+    | {
+        type: "update";
+        documentId: string;
+        values: {
+          filename?: string;
+          description?: string | null;
+          replacement?: { mimeType: string; contentBase64: string };
+        };
+      };
+}) {
+  if (params.operation.type === "create") {
+    return handleCoworkerUploadDocument({
+      client: params.client,
+      reference: params.coworkerReference,
+      files: params.operation.files,
+    });
+  }
+  return handleCoworkerUpdateDocument({
+    client: params.client,
+    reference: params.coworkerReference,
+    documentId: params.operation.documentId,
+    filename: params.operation.values.filename,
+    description: params.operation.values.description,
+    mimeType: params.operation.values.replacement?.mimeType,
+    contentBase64: params.operation.values.replacement?.contentBase64,
+  });
+}
+
+export async function handleCoworkerRunStart(params: {
+  client: BapApiClient;
+  request:
+    | {
+        mode: "new";
+        coworkerReference: string;
+        input?: string;
+        payload?: unknown;
+        fileAttachments?: FileAttachmentInput[];
+      }
+    | {
+        mode: "provideInput";
+        runId: string;
+        input: string;
+        fileAttachments?: FileAttachmentInput[];
+      };
+}) {
+  if (params.request.mode === "provideInput") {
+    if (params.request.fileAttachments?.length) {
+      throw new Error("Providing attachments while continuing a Coworker Run is not supported.");
+    }
+    return {
+      status: "completed" as const,
+      run: await handleCoworkerRunProvideInput({
+        client: params.client,
+        runId: params.request.runId,
+        input: params.request.input,
+      }),
+    };
+  }
+  return handleCoworkerRun({
+    client: params.client,
+    reference: params.request.coworkerReference,
+    payload: params.request.payload,
+    userInput: params.request.input,
+    fileAttachments: params.request.fileAttachments,
+  });
+}
+
+export async function handleCoworkerRunProvideInput(params: {
+  client: BapApiClient;
+  runId: string;
+  input: string;
+}) {
+  const run = await params.client.coworker.getRun({ id: params.runId });
+  if (run.status !== "needs_user_input") {
+    throw new Error(`Coworker Run is ${run.status}, not needs_user_input.`);
+  }
+  if (!run.conversationId) throw new Error("Coworker Run has no conversation.");
+  return params.client.generation.startGeneration({
+    conversationId: run.conversationId,
+    content: params.input,
+  });
+}
+
+export async function handleCoworkerRunResume(params: { client: BapApiClient; runId: string }) {
+  const run = await params.client.coworker.getRun({ id: params.runId });
+  if (run.status !== "paused" || !run.generationId) {
+    throw new Error("Only a paused Coworker Run with a Generation can be resumed.");
+  }
+  const result = await params.client.generation.resumeGeneration({
+    generationId: run.generationId,
+  });
+  return { status: "completed" as const, runId: params.runId, ...result };
+}
+
+export async function handleCoworkerRunCancel(params: { client: BapApiClient; runId: string }) {
+  const run = await params.client.coworker.getRun({ id: params.runId });
+  if (["completed", "error", "cancelled"].includes(run.status) || !run.generationId) {
+    throw new Error(`Coworker Run cannot be cancelled from status ${run.status}.`);
+  }
+  const result = await params.client.generation.cancelGeneration({
+    generationId: run.generationId,
+  });
+  return { status: "completed" as const, runId: params.runId, ...result };
+}
+
+export async function handleCoworkerRunRead(params: {
+  client: BapApiClient;
+  query:
+    | {
+        type: "list";
+        cursor?: string;
+        limit?: number;
+        status?: CoworkerRunStatus;
+        coworkerId?: string;
+      }
+    | { type: "logs"; runId: string }
+    | { type: "downloadFile"; runId: string; fileId: string };
+}) {
+  if (params.query.type === "list") {
+    return handleCoworkerRuns({ client: params.client, ...params.query });
+  }
+  if (params.query.type === "logs") return handleCoworkerLogs(params.client, params.query.runId);
+  const { fileId } = params.query;
+  const run = await params.client.coworker.getRun({ id: params.query.runId });
+  if (!run.conversationId) {
+    throw new Error("Coworker Run has no conversation files.");
+  }
+  const conversation = await params.client.conversation.get({ id: run.conversationId });
+  const belongsToRun = conversation.messages.some((message) =>
+    message.sandboxFiles.some((file) => file.fileId === fileId),
+  );
+  if (!belongsToRun) {
+    throw new Error("File does not belong to this Coworker Run.");
+  }
+  return {
+    status: "completed" as const,
+    runId: params.query.runId,
+    file: await params.client.conversation.downloadSandboxFile({ fileId }),
+  };
+}
+
+export async function handleAttachmentPrepareUpload(params: {
+  client: BapApiClient;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+}) {
+  const result = await params.client.fileAsset.createUpload({
+    filename: params.filename,
+    mimeType: params.mimeType,
+    sizeBytes: params.sizeBytes,
+  });
+  return {
+    status: "completed" as const,
+    attachment: {
+      attachmentId: result.uploadSessionId,
+      uploadUrl: result.uploadUrl,
+      expiresAt: result.expiresAt,
+    },
+  };
+}
+
+export async function handleAttachmentCompleteUpload(params: {
+  client: BapApiClient;
+  attachmentId: string;
+}) {
+  const file = await params.client.fileAsset.completeUpload({
+    uploadSessionId: params.attachmentId,
+  });
+  return {
+    status: "completed" as const,
+    attachment: { attachmentId: file.id, ...file },
   };
 }

@@ -8,6 +8,7 @@ import {
 import { RPCHandler } from "@orpc/server/fetch";
 import { appRouter } from "@/server/orpc";
 import { createORPCContext } from "@/server/orpc/context";
+import { authorizeManagedBapRpcRequest } from "./managed-bap-authorization";
 
 /**
  * Framework-neutral oRPC HTTP handler. oRPC stays the product API layer; this
@@ -117,6 +118,12 @@ export async function handleRpcRequest(request: Request): Promise<Response> {
         }
 
         const context = await createORPCContext({ headers: request.headers });
+        const authorization = await authorizeManagedBapRpcRequest({ request, context });
+        if (!authorization.allowed) {
+          return withNoStore(
+            Response.json({ error: authorization.message }, { status: authorization.status }),
+          );
+        }
         const handlerResult = await handler.handle(request, {
           prefix: RPC_PREFIX,
           context,

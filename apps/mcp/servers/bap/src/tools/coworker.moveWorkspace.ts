@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
-import { toMcpToolResult } from "../../../../shared/tool-result";
-import { createMcpClient } from "../lib/client";
 import { handleCoworkerMoveWorkspace } from "../lib/handlers";
+import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = {
   workspaceId: z.string().trim().min(1).describe("Source Workspace ID containing the coworker"),
@@ -24,14 +23,11 @@ export default async function coworkerMoveWorkspace(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra, params.workspaceId);
-  if (clientState.status !== "ready") {
-    return toMcpToolResult(clientState);
-  }
-  const result = await handleCoworkerMoveWorkspace({
-    client: clientState.client,
-    reference: params.reference,
-    targetWorkspaceId: params.targetWorkspaceId,
-  });
-  return toMcpToolResult(result);
+  return executeBapTool(extra, params.workspaceId, metadata.name, (client) =>
+    handleCoworkerMoveWorkspace({
+      client,
+      reference: params.reference,
+      targetWorkspaceId: params.targetWorkspaceId,
+    }),
+  );
 }

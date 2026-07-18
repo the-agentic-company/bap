@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
-import { toMcpToolResult } from "../../../../shared/tool-result";
-import { createMcpClient } from "../lib/client";
 import { handleRunnerMarkFailed } from "../lib/handlers";
+import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = {
   reason: z
@@ -31,15 +30,7 @@ export default async function runnerMarkFailed(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
-  if (clientState.status !== "ready") {
-    return toMcpToolResult(clientState);
-  }
-
-  const result = await handleRunnerMarkFailed({
-    client: clientState.client,
-    reason: params.reason,
-    message: params.message,
-  });
-  return toMcpToolResult(result);
+  return executeBapTool(extra, undefined, metadata.name, (client) =>
+    handleRunnerMarkFailed({ client, reason: params.reason, message: params.message }),
+  );
 }

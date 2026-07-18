@@ -52,9 +52,11 @@ export {
   getWorkspaceMembershipForUser,
   listWorkspaceMembers,
   listWorkspacesForUser,
+  removeWorkspaceMember,
   renameWorkspace,
   requireActiveWorkspaceForUser,
   setActiveWorkspace,
+  updateWorkspaceMemberRole,
 } from "./workspace-lifecycle";
 
 export async function getAdminBillingOverviewForUser(userId: string) {
