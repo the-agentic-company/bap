@@ -26,6 +26,7 @@ const {
   downloadFromS3Mock,
   getFileAssetDownloadUrlMock,
   requireActiveWorkspaceAccessMock,
+  requireActiveWorkspaceAdminMock,
   dbMock,
 } = vi.hoisted(() => {
   const conversationFindFirstMock = vi.fn<VitestProcedure>();
@@ -38,6 +39,10 @@ const {
   const requireActiveWorkspaceAccessMock = vi.fn<VitestProcedure>(async () => ({
     workspace: { id: "ws-1" },
     membership: { role: "member" },
+  }));
+  const requireActiveWorkspaceAdminMock = vi.fn<VitestProcedure>(async () => ({
+    workspace: { id: "ws-1" },
+    membership: { role: "admin" },
   }));
 
   const dbMock = {
@@ -67,6 +72,7 @@ const {
     downloadFromS3Mock,
     getFileAssetDownloadUrlMock,
     requireActiveWorkspaceAccessMock,
+    requireActiveWorkspaceAdminMock,
     dbMock,
   };
 });
@@ -93,10 +99,7 @@ vi.mock("@bap/core/server/services/file-asset-service", () => ({
 
 vi.mock("../workspace-access", () => ({
   requireActiveWorkspaceAccess: requireActiveWorkspaceAccessMock,
-  requireActiveWorkspaceAdmin: vi.fn<VitestProcedure>(async () => ({
-    workspace: { id: "ws-1" },
-    membership: { role: "admin" },
-  })),
+  requireActiveWorkspaceAdmin: requireActiveWorkspaceAdminMock,
 }));
 
 import { conversationRouter } from "./conversation";
@@ -112,6 +115,36 @@ const conversationRouterAny = conversationRouter as unknown as Record<
   string,
   (args: unknown) => Promise<unknown>
 >;
+
+describe("conversationRouter.get", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("resolves access with the request workspace", async () => {
+    conversationFindFirstMock.mockResolvedValue({
+      id: "conv-1",
+      type: "coworker",
+      title: "Agentic-App Prompt Test",
+      isPinned: false,
+      isShared: false,
+      shareToken: null,
+      model: "openai/gpt-5.5",
+      authSource: "shared",
+      autoApprove: true,
+      messages: [],
+      createdAt: new Date("2026-07-18T05:28:27.000Z"),
+      updatedAt: new Date("2026-07-18T05:29:04.000Z"),
+    });
+
+    await conversationRouterAny.get({
+      input: { id: "conv-1" },
+      context,
+    });
+
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
+  });
+});
 
 describe("conversationRouter.getUsage", () => {
   beforeEach(() => {
@@ -236,6 +269,35 @@ describe("conversationRouter.getUsage", () => {
   });
 });
 
+describe("conversationRouter.adminGetWorkspaceConversation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("resolves admin access with the request workspace", async () => {
+    conversationFindFirstMock.mockResolvedValue({
+      id: "conv-admin-1",
+      type: "coworker",
+      title: "Admin inspection",
+      userId: "user-2",
+      workspaceId: "ws-1",
+      model: "openai/gpt-5.5",
+      authSource: "shared",
+      autoApprove: true,
+      messages: [],
+      createdAt: new Date("2026-07-18T05:28:27.000Z"),
+      updatedAt: new Date("2026-07-18T05:29:04.000Z"),
+    });
+
+    await conversationRouterAny.adminGetWorkspaceConversation({
+      input: { id: "conv-admin-1" },
+      context,
+    });
+
+    expect(requireActiveWorkspaceAdminMock).toHaveBeenCalledWith("user-1", "ws-1");
+  });
+});
+
 describe("conversationRouter.list", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -341,6 +403,7 @@ describe("conversationRouter.getAgenticAppHtml", () => {
       filename: "output.html",
       sizeBytes: 29,
     });
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
     expect(downloadFromS3Mock).toHaveBeenCalledWith("sandbox-files/conv-1/output.html");
   });
 
@@ -530,5 +593,6 @@ describe("conversationRouter.downloadSandboxFile", () => {
       path: "/app/hello.txt",
       sizeBytes: 5,
     });
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
   });
 });
