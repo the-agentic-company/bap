@@ -6,6 +6,7 @@ import { fileAttachmentInputSchema } from "../lib/file-attachment-schema";
 import { handleChatRun } from "../lib/handlers";
 
 export const schema = {
+  workspaceId: z.string().trim().min(1).describe("Workspace ID for this chat turn"),
   message: z.string().describe("The prompt to send to Bap chat"),
   conversationId: z.string().optional().describe("Existing conversation ID to continue"),
   model: z.string().optional().describe("Model reference to use"),
@@ -33,7 +34,7 @@ export default async function chatRun(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

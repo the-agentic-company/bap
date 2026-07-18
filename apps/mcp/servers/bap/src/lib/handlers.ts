@@ -53,37 +53,16 @@ export async function handleWorkspaceList(client: BapApiClient) {
   const overview = await client.billing.overview();
   return {
     status: "completed" as const,
-    activeWorkspaceId: overview.owner.ownerId,
-    workspaces: overview.workspaces,
+    workspaces: overview.workspaces.map(({ active: _active, ...workspace }) => workspace),
   };
 }
 
-export async function handleWorkspaceSwitch(params: {
-  client: BapApiClient;
-  workspaceId: string;
-}) {
-  await params.client.billing.switchWorkspace({ workspaceId: params.workspaceId });
-  const overview = await params.client.billing.overview();
-
-  return {
-    status: "completed" as const,
-    activeWorkspaceId: overview.owner.ownerId,
-    workspaces: overview.workspaces,
-  };
-}
-
-export async function handleWorkspaceCreate(params: {
-  client: BapApiClient;
-  name: string;
-}) {
+export async function handleWorkspaceCreate(params: { client: BapApiClient; name: string }) {
   const workspace = await params.client.billing.createWorkspace({ name: params.name });
-  const overview = await params.client.billing.overview();
 
   return {
     status: "completed" as const,
     workspace,
-    activeWorkspaceId: overview.owner.ownerId,
-    workspaces: overview.workspaces,
   };
 }
 
@@ -359,10 +338,7 @@ export async function handleCoworkerSetStatus(params: {
   };
 }
 
-export async function handleCoworkerDelete(params: {
-  client: BapApiClient;
-  reference: string;
-}) {
+export async function handleCoworkerDelete(params: { client: BapApiClient; reference: string }) {
   const runner = createCoworkerRunner(params.client);
   const coworkerId = await runner.resolveReference(params.reference);
   const coworker = await params.client.coworker.get({ id: coworkerId });

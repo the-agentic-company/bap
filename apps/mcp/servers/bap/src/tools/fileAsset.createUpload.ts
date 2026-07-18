@@ -5,6 +5,7 @@ import { createMcpClient } from "../lib/client";
 import { handleFileAssetCreateUpload } from "../lib/handlers";
 
 export const schema = {
+  workspaceId: z.string().trim().min(1).describe("Workspace ID that will own the File Asset"),
   filename: z.string().min(1).max(256).describe("Attachment filename"),
   mimeType: z.string().min(1).describe("Attachment MIME type"),
   sizeBytes: z.number().int().positive().describe("Attachment size in bytes"),
@@ -25,7 +26,7 @@ export default async function fileAssetCreateUpload(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

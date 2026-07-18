@@ -5,6 +5,7 @@ import { createMcpClient } from "../lib/client";
 import { handleCoworkerSetStatus } from "../lib/handlers";
 
 export const schema = {
+  workspaceId: z.string().trim().min(1).describe("Workspace ID containing the coworker"),
   reference: z.string().describe("Coworker ID or @username"),
   status: z.enum(["on", "off"]).describe("Coworker status"),
 };
@@ -23,7 +24,7 @@ export default async function coworkerSetStatus(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

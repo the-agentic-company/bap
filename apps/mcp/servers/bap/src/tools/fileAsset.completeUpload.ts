@@ -5,7 +5,11 @@ import { createMcpClient } from "../lib/client";
 import { handleFileAssetCompleteUpload } from "../lib/handlers";
 
 export const schema = {
-  uploadSessionId: z.string().min(1).describe("Upload Session ID returned by fileAsset.createUpload"),
+  workspaceId: z.string().trim().min(1).describe("Workspace ID owning the Upload Session"),
+  uploadSessionId: z
+    .string()
+    .min(1)
+    .describe("Upload Session ID returned by fileAsset.createUpload"),
 };
 
 export const metadata: ToolMetadata = {
@@ -23,7 +27,7 @@ export default async function fileAssetCompleteUpload(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

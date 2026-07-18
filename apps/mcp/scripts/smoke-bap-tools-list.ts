@@ -4,11 +4,11 @@ const DEFAULT_URL = "http://127.0.0.1:3010/bap";
 const EXPECTED_TOOLS = [
   "workspace.list",
   "workspace.create",
-  "workspace.switch",
   "workspace.addMembers",
   "coworker.moveWorkspace",
   "coworker.delete",
 ] as const;
+const REMOVED_TOOLS = ["workspace.switch"] as const;
 
 type McpToolsListResponse = {
   jsonrpc: "2.0";
@@ -108,14 +108,21 @@ function printToolNames(parsedUrl: URL, toolNames: string[]) {
 
 function assertExpectedTools(toolNames: string[]) {
   const missing = EXPECTED_TOOLS.filter((tool) => !toolNames.includes(tool));
+  const unexpectedlyPresent = REMOVED_TOOLS.filter((tool) => toolNames.includes(tool));
 
-  if (missing.length === 0) {
+  if (missing.length === 0 && unexpectedlyPresent.length === 0) {
     return;
   }
 
   console.error("\nMissing expected tools:");
   for (const toolName of missing) {
     console.error(`- ${toolName}`);
+  }
+  if (unexpectedlyPresent.length > 0) {
+    console.error("\nRemoved tools still present:");
+    for (const toolName of unexpectedlyPresent) {
+      console.error(`- ${toolName}`);
+    }
   }
   process.exit(1);
 }

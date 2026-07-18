@@ -5,7 +5,7 @@ import { createMcpClient } from "../lib/client";
 import { handleWorkspaceAddMembers } from "../lib/handlers";
 
 export const schema = {
-  workspaceId: z.string().min(1).describe("Workspace ID where members should be added"),
+  workspaceId: z.string().trim().min(1).describe("Workspace ID where members should be added"),
   emails: z.array(z.string().email()).min(1).max(20).describe("Existing user email addresses"),
   role: z.enum(["admin", "member"]).optional().describe("Membership role to grant"),
 };
@@ -24,7 +24,7 @@ export default async function workspaceAddMembers(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

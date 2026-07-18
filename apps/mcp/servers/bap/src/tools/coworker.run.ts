@@ -6,6 +6,7 @@ import { fileAttachmentInputSchema } from "../lib/file-attachment-schema";
 import { handleCoworkerRun } from "../lib/handlers";
 
 export const schema = {
+  workspaceId: z.string().trim().min(1).describe("Workspace ID containing the coworker"),
   reference: z.string().describe("Coworker ID or @username"),
   payload: z.record(z.string(), z.unknown()).optional().describe("Optional run payload"),
   userInput: z.string().optional().describe("Trusted first user input for coworkers that need it"),
@@ -30,7 +31,7 @@ export default async function coworkerRun(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

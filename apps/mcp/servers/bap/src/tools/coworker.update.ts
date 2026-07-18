@@ -32,6 +32,7 @@ const scheduleSchema = z
   .optional();
 
 export const schema = {
+  workspaceId: z.string().trim().min(1).describe("Workspace ID containing the coworker"),
   reference: z.string().describe("Coworker ID or @username"),
   name: z.string().max(128).optional().describe("Coworker name"),
   description: z.string().max(280).nullable().optional().describe("Coworker description"),
@@ -70,7 +71,7 @@ export default async function coworkerUpdate(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

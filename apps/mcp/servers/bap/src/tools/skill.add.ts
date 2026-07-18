@@ -5,6 +5,7 @@ import { createMcpClient } from "../lib/client";
 import { handleSkillAdd } from "../lib/handlers";
 
 export const schema = {
+  workspaceId: z.string().trim().min(1).describe("Workspace ID where the skill will be added"),
   files: z
     .array(
       z.object({
@@ -38,7 +39,7 @@ export default async function skillAdd(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

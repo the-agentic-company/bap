@@ -5,8 +5,9 @@ import { createMcpClient } from "../lib/client";
 import { handleCoworkerMoveWorkspace } from "../lib/handlers";
 
 export const schema = {
+  workspaceId: z.string().trim().min(1).describe("Source Workspace ID containing the coworker"),
   reference: z.string().describe("Coworker ID or @username"),
-  targetWorkspaceId: z.string().min(1).describe("Destination workspace ID"),
+  targetWorkspaceId: z.string().trim().min(1).describe("Destination workspace ID"),
 };
 
 export const metadata: ToolMetadata = {
@@ -23,7 +24,7 @@ export default async function coworkerMoveWorkspace(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }

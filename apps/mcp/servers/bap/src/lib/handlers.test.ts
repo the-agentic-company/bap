@@ -23,7 +23,6 @@ import {
   handleWorkspaceList,
   handleWorkspaceCreate,
   handleWorkspaceAddMembers,
-  handleWorkspaceSwitch,
 } from "./handlers";
 
 function createWorkspaceOverview(params?: {
@@ -67,14 +66,12 @@ function createWorkspaceOverview(params?: {
   };
 }
 
-function expectWorkspaceListResult(
-  result: Awaited<ReturnType<typeof handleWorkspaceList | typeof handleWorkspaceSwitch>>,
-  activeWorkspaceId = "ws-2",
-) {
+function expectWorkspaceListResult(result: Awaited<ReturnType<typeof handleWorkspaceList>>) {
   expect(result).toEqual({
     status: "completed",
-    activeWorkspaceId,
-    workspaces: createWorkspaceOverview().workspaces,
+    workspaces: createWorkspaceOverview().workspaces.map(
+      ({ active: _active, ...workspace }) => workspace,
+    ),
   });
 }
 
@@ -246,54 +243,13 @@ describe("MCP handlers", () => {
     expectWorkspaceListResult(result);
   });
 
-  it("switches the active workspace and returns the refreshed workspace list", async () => {
-    const client = {
-      billing: {
-        switchWorkspace: vi.fn().mockResolvedValue({ success: true }),
-        overview: vi.fn().mockResolvedValue(createWorkspaceOverview()),
-      },
-    };
-
-    const result = await handleWorkspaceSwitch({
-      client: client as never,
-      workspaceId: "ws-2",
-    });
-
-    expect(client.billing.switchWorkspace).toHaveBeenCalledWith({ workspaceId: "ws-2" });
-    expect(client.billing.overview).toHaveBeenCalledWith();
-    expectWorkspaceListResult(result);
-  });
-
-  it("creates a workspace and returns the refreshed workspace list", async () => {
+  it("creates a workspace and returns its ID", async () => {
     const client = {
       billing: {
         createWorkspace: vi.fn().mockResolvedValue({
           id: "ws-3",
           name: "Gamma",
           billingPlanId: "free",
-        }),
-        overview: vi.fn().mockResolvedValue({
-          owner: { ownerType: "workspace", ownerId: "ws-3", planId: "free" },
-          workspaces: [
-            {
-              id: "ws-1",
-              name: "Alpha",
-              slug: "alpha",
-              imageUrl: null,
-              role: "owner",
-              billingPlanId: "free",
-              active: false,
-            },
-            {
-              id: "ws-3",
-              name: "Gamma",
-              slug: "gamma",
-              imageUrl: null,
-              role: "owner",
-              billingPlanId: "free",
-              active: true,
-            },
-          ],
         }),
       },
     };
@@ -304,7 +260,6 @@ describe("MCP handlers", () => {
     });
 
     expect(client.billing.createWorkspace).toHaveBeenCalledWith({ name: "Gamma" });
-    expect(client.billing.overview).toHaveBeenCalledWith();
     expect(result).toEqual({
       status: "completed",
       workspace: {
@@ -312,27 +267,6 @@ describe("MCP handlers", () => {
         name: "Gamma",
         billingPlanId: "free",
       },
-      activeWorkspaceId: "ws-3",
-      workspaces: [
-        {
-          id: "ws-1",
-          name: "Alpha",
-          slug: "alpha",
-          imageUrl: null,
-          role: "owner",
-          billingPlanId: "free",
-          active: false,
-        },
-        {
-          id: "ws-3",
-          name: "Gamma",
-          slug: "gamma",
-          imageUrl: null,
-          role: "owner",
-          billingPlanId: "free",
-          active: true,
-        },
-      ],
     });
   });
 

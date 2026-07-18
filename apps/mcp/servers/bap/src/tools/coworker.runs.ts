@@ -5,6 +5,7 @@ import { createMcpClient } from "../lib/client";
 import { handleCoworkerRuns } from "../lib/handlers";
 
 export const schema = {
+  workspaceId: z.string().trim().min(1).describe("Workspace ID whose runs should be listed"),
   status: z
     .enum([
       "needs_user_input",
@@ -37,7 +38,7 @@ export default async function coworkerRuns(
   params: InferSchema<typeof schema>,
   extra?: ToolExtraArguments,
 ) {
-  const clientState = createMcpClient(extra);
+  const clientState = createMcpClient(extra, params.workspaceId);
   if (clientState.status !== "ready") {
     return toMcpToolResult(clientState);
   }
