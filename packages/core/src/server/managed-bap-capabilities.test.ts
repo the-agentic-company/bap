@@ -24,6 +24,8 @@ describe("managed Bap capability profiles", () => {
   });
 
   it("uses the chat profile when old managed tokens omit a surface", () => {
+    expect(isManagedBapToolAllowed(undefined, "workspace.list")).toBe(true);
+    expect(isManagedBapRpcAllowed(undefined, "billing/overview")).toBe(true);
     expect(isManagedBapToolAllowed(undefined, "coworker.read")).toBe(true);
     expect(isManagedBapToolAllowed(undefined, "workspaceMember.list")).toBe(false);
   });

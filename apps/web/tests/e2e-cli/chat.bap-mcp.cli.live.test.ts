@@ -26,9 +26,14 @@ function normalizeToolName(value: string): string {
     .replaceAll(/^_+|_+$/g, "");
 }
 
-function isBapCoworkerListToolName(toolName: string): boolean {
+function isBapCoworkerReadToolName(toolName: string): boolean {
   const normalized = normalizeToolName(toolName);
-  return /(^|_)bap(_mcp)?_coworker_list$/.test(normalized);
+  return /(^|_)bap(_mcp)?_coworker_read$/.test(normalized);
+}
+
+function isBapWorkspaceListToolName(toolName: string): boolean {
+  const normalized = normalizeToolName(toolName);
+  return /(^|_)bap(_mcp)?_workspace_list$/.test(normalized);
 }
 
 function extractStdoutToolNames(output: string): string[] {
@@ -65,7 +70,8 @@ function countMentionedExpectedCoworkers(text: string, coworkers: CoworkerLike[]
 function buildBapCoworkerPrompt(): string {
   return [
     "List my coworkers using only the Bap MCP.",
-    "Call the Bap MCP coworker.list tool with empty input.",
+    "First call the Bap MCP workspace.list tool with empty input.",
+    'Then call coworker.read for that workspace with query {"type":"list"}.',
     "Do not use bash, read, task, executor_execute, browser tools, or the coworker CLI.",
     "Return exactly COWORKERS_FOUND=YES followed by at least two coworker names or usernames.",
   ].join("\n");
@@ -106,8 +112,14 @@ describe.runIf(liveEnabled)("@live CLI chat Bap MCP", () => {
         ...extractStdoutToolNames(result.stdout),
         ...extractContentPartToolNames(latest.contentParts),
       ];
-      expect(toolNames.some(isBapCoworkerListToolName)).toBe(true);
-      expect(toolNames.filter((toolName) => !isBapCoworkerListToolName(toolName))).toEqual([]);
+      expect(toolNames.some(isBapWorkspaceListToolName)).toBe(true);
+      expect(toolNames.some(isBapCoworkerReadToolName)).toBe(true);
+      expect(
+        toolNames.filter(
+          (toolName) =>
+            !isBapWorkspaceListToolName(toolName) && !isBapCoworkerReadToolName(toolName),
+        ),
+      ).toEqual([]);
       expect(latest.content).toContain("COWORKERS_FOUND=YES");
       expect(
         countMentionedExpectedCoworkers(latest.content, expectedCoworkers as CoworkerLike[]),

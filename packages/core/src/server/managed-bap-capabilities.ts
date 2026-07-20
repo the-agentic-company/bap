@@ -3,6 +3,7 @@ import type { ManagedMcpSurface } from "./managed-mcp-auth";
 export type ManagedBapCapabilityProfile = ManagedMcpSurface;
 
 const CHAT_AND_BUILDER_TOOLS = [
+  "workspace.list",
   "connectedAccount.read",
   "workspaceMcpServer.list",
   "skill.read",
@@ -22,6 +23,7 @@ export const MANAGED_BAP_TOOL_PROFILES = {
 } as const satisfies Record<ManagedBapCapabilityProfile, readonly string[]>;
 
 const CHAT_AND_BUILDER_RPC_PROCEDURES = [
+  "billing/overview",
   "integration/list",
   "workspaceMcpServer/list",
   "skill/list",

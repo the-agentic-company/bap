@@ -8,6 +8,7 @@ describe("Bap MCP capability discovery", () => {
       id: 1,
       result: {
         tools: [
+          { name: "workspace.list" },
           { name: "coworker.read" },
           { name: "workspaceMember.save" },
           { name: "workspaceMcpServer.setCredential" },
@@ -18,7 +19,7 @@ describe("Bap MCP capability discovery", () => {
     expect(filterManagedToolsListPayload(payload, "chat")).toEqual({
       jsonrpc: "2.0",
       id: 1,
-      result: { tools: [{ name: "coworker.read" }] },
+      result: { tools: [{ name: "workspace.list" }, { name: "coworker.read" }] },
     });
   });
 
