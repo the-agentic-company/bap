@@ -86,6 +86,7 @@ export type QueuedGenerationContextInput =
       traceId: string;
       latestUserMessageContent: string;
       linkedCoworkerRun: LinkedCoworkerRunRecord | null;
+      conversationCoworkerId: string | null;
       linkedCoworker: LinkedCoworkerRecord | null;
       executionPolicy: GenerationExecutionPolicy;
       linkedCoworkerAllowedSkillSlugs: string[];
@@ -177,7 +178,7 @@ export class TurnRunnerContextLoader {
       runtimeTools: new Map(),
       backendType: "runtime",
       sandboxProviderOverride: loaded.executionPolicy.sandboxProvider,
-      coworkerId: loaded.linkedCoworkerRun?.coworkerId,
+      coworkerId: loaded.conversationCoworkerId ?? undefined,
       coworkerRunId: loaded.linkedCoworkerRun?.id,
       allowedIntegrations: this.resolveAllowedIntegrations({
         executionPolicy: loaded.executionPolicy,
@@ -245,9 +246,21 @@ export class TurnRunnerContextLoader {
       where: eq(coworkerRun.generationId, genRecord.id),
       columns: { id: true, coworkerId: true, triggerPayload: true, spawnDepth: true },
     });
-    const linkedCoworker = linkedCoworkerRun
+    // A human follow-up Generation does not own the Coworker Run that created
+    // its conversation. Resolve that durable conversation provenance for
+    // Coworker policy and Runtime Volume scope, while keeping linkedCoworkerRun
+    // reserved for lifecycle ownership of the current Generation.
+    const conversationCoworkerRun =
+      linkedCoworkerRun ??
+      (await db.query.coworkerRun.findFirst({
+        where: eq(coworkerRun.conversationId, genRecord.conversationId),
+        columns: { id: true, coworkerId: true, triggerPayload: true, spawnDepth: true },
+        orderBy: (fields, { desc }) => [desc(fields.startedAt)],
+      }));
+    const conversationCoworkerId = conversationCoworkerRun?.coworkerId ?? null;
+    const linkedCoworker = conversationCoworkerId
       ? await db.query.coworker.findFirst({
-          where: eq(coworker.id, linkedCoworkerRun.coworkerId),
+          where: eq(coworker.id, conversationCoworkerId),
           columns: {
             allowedIntegrations: true,
             allowedCustomIntegrations: true,
@@ -312,6 +325,7 @@ export class TurnRunnerContextLoader {
       traceId: genRecord.traceId ?? createTraceId(),
       latestUserMessageContent: latestUserMessage?.content ?? "",
       linkedCoworkerRun: linkedCoworkerRun ?? null,
+      conversationCoworkerId,
       linkedCoworker: linkedCoworker ?? null,
       executionPolicy,
       linkedCoworkerAllowedSkillSlugs,

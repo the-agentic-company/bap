@@ -37,6 +37,16 @@ vi.mock("../../generation-interrupt-service", () => ({
 import { GenerationControl, getExecutionPolicyFromRecord } from "./generation-control";
 
 describe("getExecutionPolicyFromRecord", () => {
+  it("preserves absent and explicit-empty skill policy semantics", () => {
+    expect(
+      getExecutionPolicyFromRecord({ executionPolicy: {} } as never, false).allowedSkillSlugs,
+    ).toBeUndefined();
+    expect(
+      getExecutionPolicyFromRecord({ executionPolicy: { allowedSkillSlugs: [] } } as never, false)
+        .allowedSkillSlugs,
+    ).toEqual([]);
+  });
+
   it("preserves runtime no-progress debug policy fields", () => {
     const policy = getExecutionPolicyFromRecord(
       {
