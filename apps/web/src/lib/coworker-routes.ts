@@ -19,6 +19,10 @@ export function getCoworkerInfoHref(coworker: CoworkerRouteTarget) {
   return `/agents/info/${getCoworkerRouteSlug(coworker)}`;
 }
 
+export function getCoworkerBackHref(folderId?: string | null) {
+  return folderId ? `/agents/folders/${folderId}` : "/agents";
+}
+
 export function getCoworkerPublicShareHref(coworker: CoworkerRouteTarget) {
   return `/share/agents/${getCoworkerRouteSlug(coworker)}`;
 }
