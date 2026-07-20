@@ -126,8 +126,8 @@ function getToolNames(body: McpToolsListResponse) {
   ).sort();
 }
 
-async function fetchToolNames(parsedUrl: URL, token: string) {
-  const response = await fetch(parsedUrl, {
+async function requestToolList(parsedUrl: URL, token: string) {
+  return fetch(parsedUrl, {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -141,7 +141,9 @@ async function fetchToolNames(parsedUrl: URL, token: string) {
       params: {},
     }),
   });
+}
 
+async function readToolListResponse(response: Response) {
   const body = (await response.json()) as McpToolsListResponse;
   if (!response.ok) {
     throw new Error(
@@ -151,9 +153,18 @@ async function fetchToolNames(parsedUrl: URL, token: string) {
     );
   }
 
+  return body;
+}
+
+function logManagedProfile(response: Response) {
   const managedProfile = response.headers.get("x-bap-mcp-profile");
   if (managedProfile) console.log(`Managed profile response: ${managedProfile}`);
+}
 
+async function fetchToolNames(parsedUrl: URL, token: string) {
+  const response = await requestToolList(parsedUrl, token);
+  const body = await readToolListResponse(response);
+  logManagedProfile(response);
   return getToolNames(body);
 }
 

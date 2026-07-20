@@ -11,6 +11,29 @@ import {
 } from "./runtime-volume-prep";
 import type { SandboxHandle } from "../core/types";
 
+function createAuthoringPlan() {
+  return buildRuntimeVolumeMountPlan({
+    workspaceId: "workspace-1",
+    userId: "user-1",
+    skillScope: { type: "authoring" },
+    visibleSkillNames: [],
+  });
+}
+
+function createTestSandbox(
+  provider: SandboxHandle["provider"],
+  execResult?: { exitCode: number; stdout: string; stderr: string },
+): SandboxHandle {
+  return {
+    provider,
+    sandboxId: "sandbox-1",
+    exec: vi.fn().mockResolvedValue(execResult),
+    writeFile: vi.fn(),
+    readFile: vi.fn(),
+    ensureDir: vi.fn(),
+  };
+}
+
 describe("runtime-volume-prep", () => {
   it("builds authoring scope with owned skills, shared skills, and exact coworker docs", () => {
     const plan = buildRuntimeVolumeMountPlan({
@@ -299,25 +322,10 @@ describe("runtime-volume-prep", () => {
   });
 
   it("fails fast for unsupported sandbox providers", async () => {
-    const sandbox: SandboxHandle = {
-      provider: "e2b",
-      sandboxId: "sandbox-1",
-      exec: vi.fn(),
-      writeFile: vi.fn(),
-      readFile: vi.fn(),
-      ensureDir: vi.fn(),
-    };
+    const sandbox = createTestSandbox("e2b");
 
     await expect(
-      prepareRuntimeVolumesForSandbox({
-        sandbox,
-        plan: buildRuntimeVolumeMountPlan({
-          workspaceId: "workspace-1",
-          userId: "user-1",
-          skillScope: { type: "authoring" },
-          visibleSkillNames: [],
-        }),
-      }),
+      prepareRuntimeVolumesForSandbox({ sandbox, plan: createAuthoringPlan() }),
     ).rejects.toMatchObject({
       name: "RuntimeVolumeSetupError",
       message: "Runtime Volumes require a Daytona sandbox.",
@@ -327,29 +335,14 @@ describe("runtime-volume-prep", () => {
   });
 
   it("keeps raw sandbox diagnostics out of Runtime Volume errors", async () => {
-    const sandbox: SandboxHandle = {
-      provider: "daytona",
-      sandboxId: "sandbox-1",
-      exec: vi.fn().mockResolvedValue({
-        exitCode: 1,
-        stdout: "",
-        stderr: "runtime_volume_unmount_failed: /home/user/coworker-documents secret-detail",
-      }),
-      writeFile: vi.fn(),
-      readFile: vi.fn(),
-      ensureDir: vi.fn(),
-    };
+    const sandbox = createTestSandbox("daytona", {
+      exitCode: 1,
+      stdout: "",
+      stderr: "runtime_volume_unmount_failed: /home/user/coworker-documents secret-detail",
+    });
 
     await expect(
-      prepareRuntimeVolumesForSandbox({
-        sandbox,
-        plan: buildRuntimeVolumeMountPlan({
-          workspaceId: "workspace-1",
-          userId: "user-1",
-          skillScope: { type: "authoring" },
-          visibleSkillNames: [],
-        }),
-      }),
+      prepareRuntimeVolumesForSandbox({ sandbox, plan: createAuthoringPlan() }),
     ).rejects.toEqual(
       expect.objectContaining<Partial<RuntimeVolumeSetupError>>({
         message: "Runtime Volume setup failed.",

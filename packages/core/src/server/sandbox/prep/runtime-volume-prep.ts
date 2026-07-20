@@ -18,7 +18,7 @@ const SHARED_SKILLS_MOUNT_PATH = "/runtime/shared-skills";
 const SELECTED_OWNED_SKILLS_MOUNT_ROOT = "/runtime/selected-skills/owned";
 const SELECTED_SHARED_SKILLS_MOUNT_ROOT = "/runtime/selected-skills/shared";
 const OPENCODE_SKILLS_PATH = "/app/.opencode/skills";
-export const COWORKER_DOCUMENTS_RUNTIME_PATH = "/home/user/coworker-documents";
+const COWORKER_DOCUMENTS_RUNTIME_PATH = "/home/user/coworker-documents";
 
 export type RuntimeVolumeSkillScope =
   | { type: "authoring" }
@@ -50,8 +50,6 @@ export type RuntimeVolumeMountPlanInput = {
 };
 
 export class RuntimeVolumeSetupError extends Error {
-  readonly code = "runtime_volume_setup_error";
-
   constructor(
     message: string,
     readonly reason: string = "runtime_volume_setup_failed",
@@ -189,7 +187,7 @@ export async function prepareRuntimeVolumesForSandbox(input: {
   }
 }
 
-export async function buildRuntimeVolumeSetupEnv(
+async function buildRuntimeVolumeSetupEnv(
   plan: RuntimeVolumeMountPlan,
 ): Promise<Record<string, string>> {
   if (plan.roots.length === 0) {
@@ -428,7 +426,7 @@ export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): st
   return `bash <<'BAP_RUNTIME_VOLUME_SCRIPT'\n${script}\nBAP_RUNTIME_VOLUME_SCRIPT`;
 }
 
-export function buildRuntimeVolumeMountPlanSignature(plan: RuntimeVolumeMountPlan): string {
+function buildRuntimeVolumeMountPlanSignature(plan: RuntimeVolumeMountPlan): string {
   return JSON.stringify({
     coworkerDocumentsPath: plan.coworkerDocumentsPath ?? null,
     roots: plan.roots.map((root) => ({

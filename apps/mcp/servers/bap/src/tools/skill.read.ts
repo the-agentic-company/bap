@@ -1,14 +1,9 @@
-import { z } from "zod";
 import type { InferSchema, ToolExtraArguments, ToolMetadata } from "xmcp";
-import { workspaceIdSchema } from "../lib/contract-schemas";
+import { skillReadQuerySchema, workspaceIdSchema } from "../lib/contract-schemas";
 import { handleSkillRead } from "../lib/handlers";
 import { executeBapTool } from "../lib/tool-runtime";
 
-const query = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("list") }).strict(),
-  z.object({ type: z.literal("get"), id: z.string().min(1) }).strict(),
-]);
-export const schema = { workspaceId: workspaceIdSchema, query };
+export const schema = { workspaceId: workspaceIdSchema, query: skillReadQuerySchema };
 export const metadata: ToolMetadata = {
   name: "skill.read",
   description: "List or get skills.",

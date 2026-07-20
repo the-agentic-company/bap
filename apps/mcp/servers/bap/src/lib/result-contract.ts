@@ -1,4 +1,4 @@
-export type BapToolErrorCategory =
+type BapToolErrorCategory =
   | "invalid_input"
   | "not_found"
   | "forbidden"
@@ -14,29 +14,18 @@ function asResultRecord(value: unknown): ResultRecord {
     : { value };
 }
 
+function includesAny(message: string, candidates: readonly string[]): boolean {
+  return candidates.some((candidate) => message.includes(candidate));
+}
+
 function classifyError(error: unknown): BapToolErrorCategory {
   const message =
     error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-  if (message.includes("not found") || message.includes("no conversation")) return "not_found";
-  if (
-    message.includes("forbidden") ||
-    message.includes("unauthorized") ||
-    message.includes("belong")
-  ) {
-    return "forbidden";
-  }
-  if (message.includes("conflict") || message.includes("cannot be") || message.includes("only a")) {
-    return "conflict";
-  }
-  if (message.includes("auth") || message.includes("user input")) return "user_action_required";
-  if (
-    message.includes("requires") ||
-    message.includes("must") ||
-    message.includes("include") ||
-    message.includes("supported")
-  ) {
-    return "invalid_input";
-  }
+  if (includesAny(message, ["not found", "no conversation"])) return "not_found";
+  if (includesAny(message, ["forbidden", "unauthorized", "belong"])) return "forbidden";
+  if (includesAny(message, ["conflict", "cannot be", "only a"])) return "conflict";
+  if (includesAny(message, ["auth", "user input"])) return "user_action_required";
+  if (includesAny(message, ["requires", "must", "include", "supported"])) return "invalid_input";
   return "upstream_failure";
 }
 

@@ -1,3 +1,5 @@
+// fallow-ignore-file code-duplication
+// Runner suites keep module-local hoisted mocks isolated.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "../../../env";
 import type { RuntimeHarnessClient, RuntimeEvent, SandboxHandle } from "../../sandbox/core/types";

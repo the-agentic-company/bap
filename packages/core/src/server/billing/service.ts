@@ -20,24 +20,10 @@ import {
 import { getBillingSnapshotForOwner } from "./credit-snapshot";
 import { listWorkspacesForUser } from "./workspace-lifecycle";
 
-// Re-export the moved interfaces so `@bap/core/server/billing/service` keeps
-// exposing the same symbols to every existing caller. The implementations now
-// live in focused modules: `workspace-lifecycle` (workspace + membership),
-// `billing-owner` (the BillingOwner value object + resolution), and
-// `credit-snapshot` (Autumn-vs-stored balance reconciliation).
-export type {
-  BillingOwner,
-  BillingWorkspaceSummary,
-  BillingTargetUserSummary,
-} from "./billing-owner";
-export {
-  ensureBillingCustomer,
-  getExistingBillingOwnerForUser,
-  resolveBillingOwnerForConversation,
-  resolveBillingOwnerForUser,
-} from "./billing-owner";
-export type { BillingFeatureSnapshot } from "./credit-snapshot";
-export { getBillingSnapshotForOwner } from "./credit-snapshot";
+// Keep the billing service as the public entry point for the focused billing,
+// workspace lifecycle, and credit snapshot modules.
+export type { BillingOwner } from "./billing-owner";
+export { getExistingBillingOwnerForUser, resolveBillingOwnerForUser } from "./billing-owner";
 export {
   addWorkspaceMembers,
   adminJoinWorkspace,
@@ -47,7 +33,6 @@ export {
   createWorkspaceInvitations,
   createWorkspaceForUser,
   ensureWorkspaceForUser,
-  getWorkspaceForUser,
   getWorkspaceInvitation,
   getWorkspaceMembershipForUser,
   listWorkspaceMembers,

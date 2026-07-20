@@ -33,7 +33,7 @@ async function uniqueWorkspaceSlug(name: string): Promise<string> {
   return existing ? `${candidate}-${Date.now().toString(36)}` : candidate;
 }
 
-export async function getWorkspaceForUser(userId: string, workspaceId: string) {
+async function getWorkspaceForUser(userId: string, workspaceId: string) {
   const membership = await db.query.workspaceMember.findFirst({
     where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, workspaceId)),
     with: {
