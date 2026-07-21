@@ -66,13 +66,22 @@ type CreateVisitReportPayload = {
   plvRequired?: number[] | null;
   employeePerDay?: number | null;
 };
+type CreateAppointmentPayload = {
+  clientId?: number;
+  userId?: number;
+  startDate?: string;
+  endDate?: string;
+  appointmentTypeId?: number;
+  contactPersonId?: number;
+  comment?: string;
+};
 
 type GalienRequestParams = {
   method: "GET" | "POST";
   path: string;
   pathParams?: GalienPathParams;
   query?: GalienQuery;
-  body?: CreateVisitReportPayload;
+  body?: CreateVisitReportPayload | CreateAppointmentPayload;
 };
 
 function getGalienCredentials(): GalienCredentials {
