@@ -180,7 +180,7 @@ function assertManualCredentialSource(
 }
 
 const list = protectedProcedure.handler(async ({ context }) => {
-  const access = await requireActiveWorkspaceAccess(context.user.id);
+  const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
   const sources = await listWorkspaceMcpServers({
     database: context.db,
     workspaceId: access.workspace.id,
@@ -219,7 +219,7 @@ const startOAuth = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
+    const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const source = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
         eq(workspaceMcpServer.id, input.workspaceMcpServerId),
@@ -263,7 +263,7 @@ const startOAuth = protectedProcedure
 const create = protectedProcedure
   .input(workspaceMcpServerInputSchema)
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
+    const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const namespace = normalizeExecutorNamespace(input.namespace);
     const existing = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
@@ -379,7 +379,7 @@ const adminCreate = protectedProcedure
 const update = protectedProcedure
   .input(workspaceMcpServerUpdateInputSchema)
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAdmin(context.user.id);
+    const access = await requireActiveWorkspaceAdmin(context.user.id, context.workspaceId);
     const current = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
         eq(workspaceMcpServer.id, input.id),
@@ -519,7 +519,7 @@ const adminUpdate = protectedProcedure
 const remove = protectedProcedure
   .input(z.object({ id: z.string() }))
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAdmin(context.user.id);
+    const access = await requireActiveWorkspaceAdmin(context.user.id, context.workspaceId);
     const current = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
         eq(workspaceMcpServer.id, input.id),
@@ -596,7 +596,7 @@ const setCredential = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
+    const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const source = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
         eq(workspaceMcpServer.id, input.workspaceMcpServerId),
@@ -664,7 +664,7 @@ const adminSetCredential = protectedProcedure
 const disconnectCredential = protectedProcedure
   .input(z.object({ workspaceMcpServerId: z.string() }))
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
+    const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const source = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
         eq(workspaceMcpServer.id, input.workspaceMcpServerId),
@@ -722,7 +722,7 @@ const toggleCredential = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAccess(context.user.id);
+    const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const source = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
         eq(workspaceMcpServer.id, input.workspaceMcpServerId),

@@ -1,7 +1,7 @@
 import { db } from "@bap/db/client";
 import { coworker, coworkerRun, coworkerRunEvent, generation } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { sanitizeJsonForPostgres } from "../utils/postgres-json";
 import { generationInterruptService } from "./generation-interrupt-service";
 import { reconcileStaleCoworkerRunsForCoworker } from "./coworker-service";
@@ -10,17 +10,25 @@ import { NON_TERMINAL_COWORKER_RUN_STATUSES } from "./coworker-run-policy";
 export async function resetCoworkerRunsAndEnable(params: {
   coworkerId: string;
   resetByUserId: string;
+  workspaceId: string;
 }): Promise<{
   coworkerId: string;
   totalAffectedRuns: number;
   cancelledRunCount: number;
   cancellingRunCount: number;
 }> {
-  const wf = await db.query.coworker.findFirst({
-    where: eq(coworker.id, params.coworkerId),
-    columns: { id: true },
-  });
-  if (!wf) {
+  const [authorized] = await db
+    .update(coworker)
+    .set({ updatedAt: new Date() })
+    .where(
+      and(
+        eq(coworker.id, params.coworkerId),
+        eq(coworker.workspaceId, params.workspaceId),
+        or(eq(coworker.ownerId, params.resetByUserId), isNotNull(coworker.sharedAt)),
+      ),
+    )
+    .returning({ id: coworker.id });
+  if (!authorized) {
     throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
   }
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  findFirstMock,
   findManyMock,
   removeJobSchedulerMock,
   upsertJobSchedulerMock,
@@ -8,6 +9,7 @@ const {
   queueMock,
   dbMock,
 } = vi.hoisted(() => {
+  const findFirstMock = vi.fn();
   const findManyMock = vi.fn();
   const removeJobSchedulerMock = vi.fn();
   const upsertJobSchedulerMock = vi.fn();
@@ -19,12 +21,14 @@ const {
   const dbMock = {
     query: {
       coworker: {
+        findFirst: findFirstMock,
         findMany: findManyMock,
       },
     },
   };
 
   return {
+    findFirstMock,
     findManyMock,
     removeJobSchedulerMock,
     upsertJobSchedulerMock,
@@ -47,6 +51,7 @@ import {
   getCoworkerSchedulerId,
   getLegacyCoworkerSchedulerId,
   isCoworkerSchedulable,
+  reconcileCoworkerScheduleJob,
   reconcileScheduledCoworkerJobs,
   removeCoworkerScheduleJob,
   syncCoworkerScheduleJob,
@@ -70,6 +75,7 @@ describe("coworker-scheduler", () => {
     vi.clearAllMocks();
     getQueueMock.mockReturnValue(queueMock);
     findManyMock.mockResolvedValue([]);
+    findFirstMock.mockResolvedValue(undefined);
     removeJobSchedulerMock.mockResolvedValue(undefined);
     upsertJobSchedulerMock.mockResolvedValue(undefined);
   });
@@ -256,6 +262,21 @@ describe("coworker-scheduler", () => {
     expect(removeJobSchedulerMock).toHaveBeenCalledWith("coworker:wf-sync-off");
     expect(removeJobSchedulerMock).toHaveBeenCalledWith("workflow:wf-sync-off");
     expect(upsertJobSchedulerMock).not.toHaveBeenCalled();
+  });
+
+  it("reconciles again when the coworker changes during queue synchronization", async () => {
+    const offRow = createRow({ status: "off" });
+    const onRow = createRow({ status: "on" });
+    findFirstMock
+      .mockResolvedValueOnce(offRow)
+      .mockResolvedValueOnce(onRow)
+      .mockResolvedValueOnce(onRow)
+      .mockResolvedValueOnce(onRow);
+
+    await reconcileCoworkerScheduleJob("wf-1");
+
+    expect(upsertJobSchedulerMock).toHaveBeenCalledOnce();
+    expect(removeJobSchedulerMock).toHaveBeenCalledWith("coworker:wf-1");
   });
 
   it("reconciles coworkers and tracks sync failures", async () => {

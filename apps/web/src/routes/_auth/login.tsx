@@ -50,6 +50,7 @@ type LoginLoaderData =
       kind: "cloud";
       callbackUrl: string;
       errorMessage: string | null;
+      initialEmail: string | null;
       initialScreen: "login" | "getting-started";
     }
   | {
@@ -135,6 +136,7 @@ const resolveLoginPage = createServerFn({ method: "GET" })
         kind: "cloud",
         callbackUrl,
         errorMessage: getCloudErrorMessage(params.error),
+        initialEmail: params.email ?? null,
         initialScreen: params.mode === "getting-started" ? "getting-started" : "login",
       };
     }
@@ -192,6 +194,7 @@ function LoginPage() {
         <CloudLoginClient
           callbackUrl={data.callbackUrl}
           initialError={data.errorMessage}
+          initialEmail={data.initialEmail}
           initialScreen={data.initialScreen}
         />
       </div>

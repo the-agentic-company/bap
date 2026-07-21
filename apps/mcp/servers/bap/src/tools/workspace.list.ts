@@ -1,7 +1,6 @@
 import { type ToolExtraArguments, type ToolMetadata } from "xmcp";
-import { toMcpToolResult } from "../../../../shared/tool-result";
-import { createMcpClient } from "../lib/client";
 import { handleWorkspaceList } from "../lib/handlers";
+import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = {};
 
@@ -16,10 +15,5 @@ export const metadata: ToolMetadata = {
 };
 
 export default async function workspaceList(_params: typeof schema, extra?: ToolExtraArguments) {
-  const clientState = createMcpClient(extra);
-  if (clientState.status !== "ready") {
-    return toMcpToolResult(clientState);
-  }
-  const result = await handleWorkspaceList(clientState.client);
-  return toMcpToolResult(result);
+  return executeBapTool(extra, undefined, metadata.name, handleWorkspaceList);
 }

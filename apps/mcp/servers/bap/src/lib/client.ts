@@ -5,7 +5,7 @@ function resolveServerUrl(): string {
   return process.env.APP_SERVER_URL || DEFAULT_SERVER_URL;
 }
 
-export function createMcpClient(extra?: ToolExtraArguments) {
+export function createMcpClient(extra?: ToolExtraArguments, workspaceId?: string) {
   const resolvedServerUrl = resolveServerUrl();
   const token = extra?.authInfo?.token;
   const authClaims = extra?.authInfo?.extra as
@@ -30,15 +30,21 @@ export function createMcpClient(extra?: ToolExtraArguments) {
     };
   }
 
+  const headers: Record<string, string> = {};
+  if (authClaims?.authType === "hosted_oauth" && authClaims.issuer) {
+    headers["X-Bap-Public-Origin"] = authClaims.issuer;
+  }
+  if (workspaceId) {
+    headers["X-Bap-Workspace-Id"] = workspaceId;
+  }
+
   return {
     status: "ready" as const,
     serverUrl: resolvedServerUrl,
     client: createRpcClient(
       resolvedServerUrl,
       token,
-      authClaims?.authType === "hosted_oauth" && authClaims.issuer
-        ? { "X-Bap-Public-Origin": authClaims.issuer }
-        : undefined,
+      Object.keys(headers).length > 0 ? headers : undefined,
     ),
   };
 }

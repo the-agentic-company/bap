@@ -15,7 +15,6 @@ import { type LinkedInProfileResult, scrapeLinkedInProfile } from "@/server/inte
 import { scrapeWebsite } from "@/server/integrations/firecrawl";
 import { protectedProcedure } from "../middleware";
 import { requireActiveWorkspaceAccess } from "../workspace-access";
-
 const FREE_EMAIL_DOMAINS = new Set([
   "gmail.com",
   "googlemail.com",
@@ -29,7 +28,6 @@ const FREE_EMAIL_DOMAINS = new Set([
   "aol.com",
 ]);
 const AUDIT_STRUCTURED_OUTPUT_MODEL = "gpt-5.5";
-
 type AuditIntegrationRecommendationOutput = {
   importanceScore: number;
   toolType: string;

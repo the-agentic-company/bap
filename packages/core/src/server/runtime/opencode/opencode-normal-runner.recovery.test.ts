@@ -1,9 +1,12 @@
+// fallow-ignore-file code-duplication
+// Runner suites keep module-local hoisted mocks isolated.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "../../../env";
 import type { RuntimeHarnessClient, RuntimeEvent, SandboxHandle } from "../../sandbox/core/types";
 import type { GenerationContext, GenerationEvent } from "../../services/generation/types";
 import { OpenCodeTurnEventBridge } from "./opencode-turn-events";
 import { OpenCodeNormalRunner } from "./opencode-normal-runner";
+import { RuntimeVolumeSetupError } from "../../sandbox/prep/runtime-volume-prep";
 
 const {
   conversationFindFirstMock,
@@ -195,10 +198,12 @@ function createRuntimeClient(overrides: Partial<RuntimeHarnessClient> = {}): Run
   };
 }
 
-function mockSandboxRuntime(input: {
-  client?: RuntimeHarnessClient;
-  completeAgentInit?: ReturnType<typeof vi.fn>;
-} = {}) {
+function mockSandboxRuntime(
+  input: {
+    client?: RuntimeHarnessClient;
+    completeAgentInit?: ReturnType<typeof vi.fn>;
+  } = {},
+) {
   const client = input.client ?? createRuntimeClient();
   const completeAgentInit =
     input.completeAgentInit ??
@@ -390,6 +395,56 @@ describe("OpenCodeNormalRunner recovery and binding", () => {
     expect(callbacks.resolveRuntimeFailure).toHaveBeenCalledWith(ctx, expect.anything());
     expect(scheduleRecoveryReattach).toHaveBeenCalledWith(ctx);
     expect(finishGeneration).not.toHaveBeenCalled();
+  });
+
+  it("finalizes Runtime Volume setup failures before prompt dispatch instead of reattaching", async () => {
+    stagePrePromptAssetsMock.mockRejectedValueOnce(
+      new RuntimeVolumeSetupError("Runtime Volume setup failed.", "runtime_volume_unmount_failed"),
+    );
+    const { client } = mockSandboxRuntime();
+    const { runner, callbacks, scheduleRecoveryReattach, finishGeneration } = createRunner({
+      getCurrentPhase: vi.fn(() => "pre_prompt_runtime_volume_mount"),
+      resolveRuntimeFailure: vi.fn().mockResolvedValue("recoverable_live_runtime"),
+    });
+    const ctx = createContext({ id: "gen-volume-failure", conversationId: "conv-volume" });
+
+    await runner.run(ctx);
+
+    expect(callbacks.resolveRuntimeFailure).not.toHaveBeenCalled();
+    expect(scheduleRecoveryReattach).not.toHaveBeenCalled();
+    expect(callbacks.setCompletionReason).toHaveBeenCalledWith(ctx, "broken_runtime_state");
+    expect(finishGeneration).toHaveBeenCalledWith(ctx, "error");
+    expect(client.prompt).not.toHaveBeenCalled();
+    expect(ctx.errorMessage).toBe(
+      "The runtime could not prepare persistent Coworker files and skills. Retry the task to continue.",
+    );
+    expect(ctx.errorMessage).not.toContain("runtime_volume_unmount_failed");
+  });
+
+  it("finalizes unsupported Runtime Volume providers before prompt dispatch", async () => {
+    const completeAgentInit = vi.fn();
+    getOrCreateConversationSandboxMock.mockResolvedValueOnce({
+      sandbox: createSandbox({ provider: "e2b" }),
+      metadata: {
+        sandboxProvider: "e2b",
+        runtimeHarness: "opencode",
+        runtimeProtocolVersion: "opencode-v2",
+      },
+      completeAgentInit,
+    });
+    const { runner, callbacks, scheduleRecoveryReattach, finishGeneration } = createRunner({
+      getCurrentPhase: vi.fn(() => "sandbox_init_completed"),
+      resolveRuntimeFailure: vi.fn().mockResolvedValue("recoverable_live_runtime"),
+    });
+    const ctx = createContext({ id: "gen-provider-failure", conversationId: "conv-provider" });
+
+    await runner.run(ctx);
+
+    expect(completeAgentInit).not.toHaveBeenCalled();
+    expect(callbacks.resolveRuntimeFailure).not.toHaveBeenCalled();
+    expect(scheduleRecoveryReattach).not.toHaveBeenCalled();
+    expect(callbacks.setCompletionReason).toHaveBeenCalledWith(ctx, "broken_runtime_state");
+    expect(finishGeneration).toHaveBeenCalledWith(ctx, "error");
   });
 
   it("waits for the prompt rejection after a session error before finalizing", async () => {

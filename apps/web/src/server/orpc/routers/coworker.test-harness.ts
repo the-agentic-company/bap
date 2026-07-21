@@ -21,6 +21,7 @@ const coworkerRouterMocks = vi.hoisted(() => ({
   triggerCoworkerRunMock: vi.fn<VitestProcedure>(),
   reconcileStaleCoworkerRunsForCoworkerMock: vi.fn<VitestProcedure>(),
   reconcileStaleCoworkerRunsForCoworkersMock: vi.fn<VitestProcedure>(),
+  reconcileCoworkerScheduleJobMock: vi.fn<VitestProcedure>(),
   syncCoworkerScheduleJobMock: vi.fn<VitestProcedure>(),
   removeCoworkerScheduleJobMock: vi.fn<VitestProcedure>(),
   generateCoworkerMetadataOnFirstPromptFillMock: vi.fn<VitestProcedure>(),
@@ -44,6 +45,7 @@ export const {
   triggerCoworkerRunMock,
   reconcileStaleCoworkerRunsForCoworkerMock,
   reconcileStaleCoworkerRunsForCoworkersMock,
+  reconcileCoworkerScheduleJobMock,
   syncCoworkerScheduleJobMock,
   removeCoworkerScheduleJobMock,
   generateCoworkerMetadataOnFirstPromptFillMock,
@@ -76,6 +78,7 @@ vi.mock("@bap/core/server/services/coworker-service", () => ({
 }));
 
 vi.mock("@bap/core/server/services/coworker-scheduler", () => ({
+  reconcileCoworkerScheduleJob: coworkerRouterMocks.reconcileCoworkerScheduleJobMock,
   syncCoworkerScheduleJob: coworkerRouterMocks.syncCoworkerScheduleJobMock,
   removeCoworkerScheduleJob: coworkerRouterMocks.removeCoworkerScheduleJobMock,
 }));
@@ -129,8 +132,8 @@ vi.mock("@bap/core/server/integrations/remote-integrations", () => {
       targetEnv: z.enum(["staging", "prod"]),
       remoteUserId: z.string().min(1),
       requestedByUserId: z.string().min(1).optional(),
-      requestedByEmail: z.string().email().nullable().optional(),
-      remoteUserEmail: z.string().email().nullable().optional(),
+      requestedByEmail: z.email().nullable().optional(),
+      remoteUserEmail: z.email().nullable().optional(),
     }),
   };
 });
@@ -298,6 +301,7 @@ export function resetCoworkerRouterTestHarness() {
     },
   );
   syncCoworkerScheduleJobMock.mockResolvedValue(undefined);
+  reconcileCoworkerScheduleJobMock.mockResolvedValue(undefined);
   removeCoworkerScheduleJobMock.mockResolvedValue(undefined);
   ensureBucketMock.mockResolvedValue(undefined);
   uploadToS3Mock.mockResolvedValue(undefined);

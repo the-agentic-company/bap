@@ -20,22 +20,39 @@ function createProcedureStub() {
 const {
   conversationFindFirstMock,
   conversationFindManyMock,
+  messageAttachmentFindFirstMock,
   sandboxFileFindFirstMock,
   userFindFirstMock,
   downloadFromS3Mock,
+  getFileAssetDownloadUrlMock,
+  requireActiveWorkspaceAccessMock,
+  requireActiveWorkspaceAdminMock,
   dbMock,
 } = vi.hoisted(() => {
   const conversationFindFirstMock = vi.fn<VitestProcedure>();
   const conversationFindManyMock = vi.fn<VitestProcedure>();
+  const messageAttachmentFindFirstMock = vi.fn<VitestProcedure>();
   const sandboxFileFindFirstMock = vi.fn<VitestProcedure>();
   const userFindFirstMock = vi.fn<VitestProcedure>();
   const downloadFromS3Mock = vi.fn<VitestProcedure>();
+  const getFileAssetDownloadUrlMock = vi.fn<VitestProcedure>();
+  const requireActiveWorkspaceAccessMock = vi.fn<VitestProcedure>(async () => ({
+    workspace: { id: "ws-1" },
+    membership: { role: "member" },
+  }));
+  const requireActiveWorkspaceAdminMock = vi.fn<VitestProcedure>(async () => ({
+    workspace: { id: "ws-1" },
+    membership: { role: "admin" },
+  }));
 
   const dbMock = {
     query: {
       conversation: {
         findFirst: conversationFindFirstMock,
         findMany: conversationFindManyMock,
+      },
+      messageAttachment: {
+        findFirst: messageAttachmentFindFirstMock,
       },
       sandboxFile: {
         findFirst: sandboxFileFindFirstMock,
@@ -49,9 +66,13 @@ const {
   return {
     conversationFindFirstMock,
     conversationFindManyMock,
+    messageAttachmentFindFirstMock,
     sandboxFileFindFirstMock,
     userFindFirstMock,
     downloadFromS3Mock,
+    getFileAssetDownloadUrlMock,
+    requireActiveWorkspaceAccessMock,
+    requireActiveWorkspaceAdminMock,
     dbMock,
   };
 });
@@ -72,15 +93,13 @@ vi.mock("@bap/core/server/storage/s3-client", () => ({
   downloadFromS3: downloadFromS3Mock,
 }));
 
+vi.mock("@bap/core/server/services/file-asset-service", () => ({
+  getFileAssetDownloadUrl: getFileAssetDownloadUrlMock,
+}));
+
 vi.mock("../workspace-access", () => ({
-  requireActiveWorkspaceAccess: vi.fn<VitestProcedure>(async () => ({
-    workspace: { id: "ws-1" },
-    membership: { role: "member" },
-  })),
-  requireActiveWorkspaceAdmin: vi.fn<VitestProcedure>(async () => ({
-    workspace: { id: "ws-1" },
-    membership: { role: "admin" },
-  })),
+  requireActiveWorkspaceAccess: requireActiveWorkspaceAccessMock,
+  requireActiveWorkspaceAdmin: requireActiveWorkspaceAdminMock,
 }));
 
 import { conversationRouter } from "./conversation";
@@ -88,6 +107,7 @@ import { conversationRouter } from "./conversation";
 const context = {
   user: { id: "user-1" },
   session: { impersonatedBy: null },
+  workspaceId: "ws-1",
   db: dbMock,
 };
 
@@ -95,6 +115,36 @@ const conversationRouterAny = conversationRouter as unknown as Record<
   string,
   (args: unknown) => Promise<unknown>
 >;
+
+describe("conversationRouter.get", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("resolves access with the request workspace", async () => {
+    conversationFindFirstMock.mockResolvedValue({
+      id: "conv-1",
+      type: "coworker",
+      title: "Agentic-App Prompt Test",
+      isPinned: false,
+      isShared: false,
+      shareToken: null,
+      model: "openai/gpt-5.5",
+      authSource: "shared",
+      autoApprove: true,
+      messages: [],
+      createdAt: new Date("2026-07-18T05:28:27.000Z"),
+      updatedAt: new Date("2026-07-18T05:29:04.000Z"),
+    });
+
+    await conversationRouterAny.get({
+      input: { id: "conv-1" },
+      context,
+    });
+
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
+  });
+});
 
 describe("conversationRouter.getUsage", () => {
   beforeEach(() => {
@@ -219,6 +269,35 @@ describe("conversationRouter.getUsage", () => {
   });
 });
 
+describe("conversationRouter.adminGetWorkspaceConversation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("resolves admin access with the request workspace", async () => {
+    conversationFindFirstMock.mockResolvedValue({
+      id: "conv-admin-1",
+      type: "coworker",
+      title: "Admin inspection",
+      userId: "user-2",
+      workspaceId: "ws-1",
+      model: "openai/gpt-5.5",
+      authSource: "shared",
+      autoApprove: true,
+      messages: [],
+      createdAt: new Date("2026-07-18T05:28:27.000Z"),
+      updatedAt: new Date("2026-07-18T05:29:04.000Z"),
+    });
+
+    await conversationRouterAny.adminGetWorkspaceConversation({
+      input: { id: "conv-admin-1" },
+      context,
+    });
+
+    expect(requireActiveWorkspaceAdminMock).toHaveBeenCalledWith("user-1", "ws-1");
+  });
+});
+
 describe("conversationRouter.list", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -324,6 +403,7 @@ describe("conversationRouter.getAgenticAppHtml", () => {
       filename: "output.html",
       sizeBytes: 29,
     });
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
     expect(downloadFromS3Mock).toHaveBeenCalledWith("sandbox-files/conv-1/output.html");
   });
 
@@ -432,6 +512,43 @@ describe("conversationRouter.getAgenticAppHtml", () => {
   });
 });
 
+describe("conversationRouter.downloadAttachment", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("resolves access with the request workspace before downloading", async () => {
+    messageAttachmentFindFirstMock.mockResolvedValue({
+      id: "attachment-1",
+      fileAssetId: "asset-1",
+      message: {
+        conversation: {
+          userId: "user-1",
+          workspaceId: "ws-1",
+        },
+      },
+    });
+    getFileAssetDownloadUrlMock.mockResolvedValue({
+      url: "https://storage.example.com/attachment-1",
+      filename: "recording.mp3",
+      mimeType: "audio/mpeg",
+      sizeBytes: 123,
+    });
+
+    const result = await conversationRouterAny.downloadAttachment({
+      input: { attachmentId: "attachment-1" },
+      context,
+    });
+
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
+    expect(result).toEqual({
+      url: "https://storage.example.com/attachment-1",
+      filename: "recording.mp3",
+      mimeType: "audio/mpeg",
+    });
+  });
+});
+
 describe("conversationRouter.downloadSandboxFile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -476,5 +593,6 @@ describe("conversationRouter.downloadSandboxFile", () => {
       path: "/app/hello.txt",
       sizeBytes: 5,
     });
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
   });
 });

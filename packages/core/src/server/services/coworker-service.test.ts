@@ -123,7 +123,6 @@ describe("triggerCoworkerRun", () => {
       requiresUserInput: false,
       userInputPrompt: null,
     });
-
     coworkerRunFindManyMock.mockResolvedValue([]);
     coworkerRunFindFirstMock.mockResolvedValue(null);
     workspaceMcpServerFindManyMock.mockResolvedValue([]);
@@ -952,10 +951,8 @@ describe("triggerCoworkerRun", () => {
       },
     ]);
 
-    const result = await resetCoworkerRunsAndEnable({
-      coworkerId: "wf-1",
-      resetByUserId: "user-reset",
-    });
+    const resetParams = { coworkerId: "wf-1", resetByUserId: "user-reset", workspaceId: "ws-1" };
+    const result = await resetCoworkerRunsAndEnable(resetParams);
 
     expect(result).toEqual({
       coworkerId: "wf-1",
@@ -984,6 +981,10 @@ describe("triggerCoworkerRun", () => {
     expect(updateSetMock).toHaveBeenCalledWith(
       expect.objectContaining({ status: "on", disabledReason: null, disabledAt: null }),
     );
+    const statuses = updateSetMock.mock.calls.map(
+      ([value]) => (value as { status?: string }).status,
+    );
+    expect(statuses.indexOf("on")).toBeGreaterThan(statuses.indexOf("cancelling"));
     expect(insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         coworkerRunId: "run-needs-input",

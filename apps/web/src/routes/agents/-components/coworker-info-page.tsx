@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { downloadSandboxFileToBrowser } from "@/lib/download-file";
-import { getCoworkerEditHref } from "@/lib/coworker-routes";
+import { getCoworkerBackHref, getCoworkerEditHref } from "@/lib/coworker-routes";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
 import { useConversation, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
@@ -293,10 +293,9 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     coworker.data?.username ?? coworkerListItem?.username ?? run.data?.coworkerUsername;
   const coworkerDefinition =
     coworker.data?.description?.trim() || coworkerListItem?.description?.trim();
-  const backToCoworkersHref = useMemo(() => {
-    const folderId = coworker.data?.folderId ?? coworkerListItem?.folderId ?? null;
-    return folderId ? `/agents/folders/${folderId}` : "/agents";
-  }, [coworker.data?.folderId, coworkerListItem?.folderId]);
+  const backToCoworkersHref = getCoworkerBackHref(
+    coworker.data?.folderId ?? coworkerListItem?.folderId,
+  );
 
   const detailsPanel = useMemo(
     () => (

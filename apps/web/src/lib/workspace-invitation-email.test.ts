@@ -6,9 +6,9 @@ import {
 
 describe("workspace-invitation-email", () => {
   it("builds a product route invitation URL", () => {
-    expect(buildWorkspaceInvitationUrl("inv 1", "https://heybap.com")).toBe(
-      "https://heybap.com/workspace-invitations/inv%201",
-    );
+    expect(
+      buildWorkspaceInvitationUrl("inv 1", "https://heybap.com", "recipient@example.com"),
+    ).toBe("https://heybap.com/workspace-invitations/inv%201?email=recipient%40example.com");
   });
 
   it("renders invitation content without exposing raw HTML", () => {

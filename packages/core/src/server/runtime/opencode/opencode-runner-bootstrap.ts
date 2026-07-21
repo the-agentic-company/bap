@@ -20,7 +20,10 @@ import type {
   RuntimeSelection,
   SandboxHandle,
 } from "../../sandbox/core/types";
-import type { RuntimeVolumeMountPlan } from "../../sandbox/prep/runtime-volume-prep";
+import {
+  RuntimeVolumeSetupError,
+  type RuntimeVolumeMountPlan,
+} from "../../sandbox/prep/runtime-volume-prep";
 import { getOrCreateConversationSandbox } from "../../sandbox/core/orchestrator";
 import { buildMemorySystemPrompt, syncMemoryFilesToSandbox } from "../../sandbox/prep/memory-prep";
 import {
@@ -70,51 +73,46 @@ export async function runNormalRunnerBootstrap(
 
   const { customSkillNames } = splitCoworkerAllowedSkillSlugs(ctx.allowedSkillSlugs ?? []);
   callbacks.ensureRemoteRunDebugInfo(ctx);
-  const {
-    allowedIntegrations,
-    cliInstructions,
-    integrationEnvs,
-    sandboxRuntimeEnv,
-    userTimezone,
-  } = await resolveRuntimeEnvironmentForTurn(
-    {
-      userId: ctx.userId,
-      conversationId: ctx.conversationId,
-      allowedIntegrations: ctx.allowedIntegrations,
-      remoteIntegrationSource: ctx.remoteIntegrationSource,
-    },
-    {
-      onRemoteCredentialsAttached: ({
-        remoteUserEmail,
-        allowedIntegrations,
-        attachedTokenEnvVarNames,
-      }) => {
-        if (!ctx.remoteIntegrationSource) {
-          return;
-        }
-        logger.info({
-          event: "REMOTE_INTEGRATION_CREDENTIALS_ATTACHED",
-          ...{
-            source: "generation-manager",
-            traceId: ctx.traceId,
-            generationId: ctx.id,
-            conversationId: ctx.conversationId,
-            userId: ctx.userId,
-          },
-          ...{
-            targetEnv: ctx.remoteIntegrationSource.targetEnv,
-            remoteUserId: ctx.remoteIntegrationSource.remoteUserId,
-            remoteUserEmail,
-            allowedIntegrations: [...allowedIntegrations].toSorted(),
-            attachedTokenEnvVarNames,
-          },
-        });
-        callbacks.recordRemoteRunPhase(ctx, "remote_credentials_fetched", {
-          attachedTokenEnvVarNames,
-        });
+  const { allowedIntegrations, cliInstructions, integrationEnvs, sandboxRuntimeEnv, userTimezone } =
+    await resolveRuntimeEnvironmentForTurn(
+      {
+        userId: ctx.userId,
+        conversationId: ctx.conversationId,
+        allowedIntegrations: ctx.allowedIntegrations,
+        remoteIntegrationSource: ctx.remoteIntegrationSource,
       },
-    },
-  );
+      {
+        onRemoteCredentialsAttached: ({
+          remoteUserEmail,
+          allowedIntegrations,
+          attachedTokenEnvVarNames,
+        }) => {
+          if (!ctx.remoteIntegrationSource) {
+            return;
+          }
+          logger.info({
+            event: "REMOTE_INTEGRATION_CREDENTIALS_ATTACHED",
+            ...{
+              source: "generation-manager",
+              traceId: ctx.traceId,
+              generationId: ctx.id,
+              conversationId: ctx.conversationId,
+              userId: ctx.userId,
+            },
+            ...{
+              targetEnv: ctx.remoteIntegrationSource.targetEnv,
+              remoteUserId: ctx.remoteIntegrationSource.remoteUserId,
+              remoteUserEmail,
+              allowedIntegrations: [...allowedIntegrations].toSorted(),
+              attachedTokenEnvVarNames,
+            },
+          });
+          callbacks.recordRemoteRunPhase(ctx, "remote_credentials_fetched", {
+            attachedTokenEnvVarNames,
+          });
+        },
+      },
+    );
 
   const conv = await db.query.conversation.findFirst({
     where: eq(conversation.id, ctx.conversationId),
@@ -255,7 +253,10 @@ export async function runNormalRunnerBootstrap(
     executionEnvironment: undefined,
   });
   if (runtimeSandbox.provider !== "daytona") {
-    throw new Error("runtime_volume_provider_unsupported: only Daytona supports Runtime Volumes");
+    throw new RuntimeVolumeSetupError(
+      "Runtime Volumes require a Daytona sandbox.",
+      "runtime_volume_provider_unsupported",
+    );
   }
   if (ctx.remoteIntegrationSource) {
     callbacks.recordRemoteRunPhase(ctx, "sandbox_created");
@@ -296,9 +297,7 @@ export async function runNormalRunnerBootstrap(
     });
   }, initWarnAfterMs);
 
-  let resolveWorkspaceMcpSessionServers: (
-    value: RuntimeMcpServer[] | undefined,
-  ) => void = () => {};
+  let resolveWorkspaceMcpSessionServers: (value: RuntimeMcpServer[] | undefined) => void = () => {};
   let rejectWorkspaceMcpSessionServers: (reason?: unknown) => void = () => {};
   const workspaceMcpSessionServersPromise: Promise<RuntimeMcpServer[] | undefined> =
     runtimeMetadata?.runtimeHarness === "opencode"
@@ -446,8 +445,7 @@ export async function runNormalRunnerBootstrap(
             sharedSkillSlugs: [],
           }
         : { type: "authoring" },
-      coworkerDocumentsCoworkerId:
-        ctx.coworkerId ?? ctx.builderCoworkerContext?.coworkerId ?? null,
+      coworkerDocumentsCoworkerId: ctx.coworkerId ?? ctx.builderCoworkerContext?.coworkerId ?? null,
       agentSandboxMode: ctx.agentSandboxMode,
       runStep: runPrePromptStep,
       markPhase: (phase) => callbacks.markPhase(ctx, phase),

@@ -8,7 +8,10 @@ import { GenerationSuspendedError } from "../../services/generation/core/turn-su
 import type { RuntimeHarnessClient, SandboxHandle } from "../../sandbox/core/types";
 import type { GenerationContext } from "../../services/generation/types";
 import { reconcileRuntimeVolumeProjection } from "../../services/runtime-volume-service";
-import type { RuntimeVolumeMountPlan } from "../../sandbox/prep/runtime-volume-prep";
+import {
+  RuntimeVolumeSetupError,
+  type RuntimeVolumeMountPlan,
+} from "../../sandbox/prep/runtime-volume-prep";
 import type { NormalRunnerCallbacks } from "./opencode-runner-types";
 import {
   OPENCODE_EARLY_STREAM_REATTACH_ATTEMPTS,
@@ -373,10 +376,7 @@ export class OpenCodeNormalRunner {
         return;
       }
       let deferredSessionError: Error | null = null;
-      if (
-        eventLoopConsumeOutcome.type === "event_loop_error" &&
-        !watchdog.wasTriggered
-      ) {
+      if (eventLoopConsumeOutcome.type === "event_loop_error" && !watchdog.wasTriggered) {
         if (ctx.abortController.signal.aborted) {
           await finishPromptCancellation();
           return;
@@ -704,6 +704,28 @@ export class OpenCodeNormalRunner {
         });
         this.callbacks.setCompletionReason(ctx, "bootstrap_timeout");
         ctx.errorMessage = error instanceof Error ? error.message : formatErrorMessage(error);
+        await finishGeneration("error");
+        return;
+      }
+      // Runtime Volume setup happens before any prompt is sent. Reattaching to
+      // the old live session cannot resume work because there is no prompt to
+      // resume; it only leaves the Generation waiting until its deadline.
+      if (error instanceof RuntimeVolumeSetupError) {
+        logger.error({
+          event: "RUNTIME_VOLUME_SETUP_FAILED",
+          generationId: ctx.id,
+          conversationId: ctx.conversationId,
+          userId: ctx.userId,
+          phase: this.callbacks.getCurrentPhase(ctx) ?? "runtime_volume_setup",
+          failureReason: error.reason,
+        });
+        this.callbacks.captureOriginalError(ctx, error, {
+          phase: this.callbacks.getCurrentPhase(ctx) ?? "runtime_volume_setup",
+          runtimeFailure: "broken_runtime_state",
+        });
+        this.callbacks.setCompletionReason(ctx, "broken_runtime_state");
+        ctx.errorMessage =
+          "The runtime could not prepare persistent Coworker files and skills. Retry the task to continue.";
         await finishGeneration("error");
         return;
       }

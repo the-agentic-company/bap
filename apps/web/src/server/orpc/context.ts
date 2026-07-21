@@ -11,7 +11,6 @@ import { db } from "@bap/db/client";
 import { user as userTable } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
 import { getRequestSession } from "@/server/session-auth";
-import { resolveSessionPrincipalWorkspaceId } from "@/server/session-principal-workspace";
 
 export type HostedMcpContext = {
   token: string;
@@ -33,6 +32,7 @@ export type RuntimeMcpContext = {
   token: string;
   userId: string;
   workspaceId: string;
+  internalKey: string;
   spawnDepth: number;
   scopes: string[];
   surface?: ManagedMcpTokenClaims["surface"];
@@ -55,8 +55,6 @@ export type ORPCContext = {
 };
 
 const BAP_MANAGED_INTERNAL_KEY = "bap";
-
-type DbUserWithActiveWorkspaceId = User & { activeWorkspaceId?: string | null };
 
 function resolvePublicMcpOrigin(headers: Headers): string | undefined {
   const explicit = headers.get("x-bap-public-origin")?.trim();
@@ -157,9 +155,9 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
       return null;
     }
 
-    const workspaceId = await resolveHostedMcpWorkspaceId({
+    const workspaceId = resolveHostedMcpWorkspaceId({
       hostedMcp,
-      user: dbUser as DbUserWithActiveWorkspaceId,
+      requestedWorkspaceId: resolveRequestedMcpWorkspaceId(headers),
     });
 
     if (!workspaceId) {
@@ -188,33 +186,36 @@ async function resolveHostedMcpContext(headers: Headers): Promise<{
   }
 }
 
-async function resolveHostedMcpWorkspaceId(params: {
+function resolveRequestedMcpWorkspaceId(headers: Headers): string | null {
+  const rawWorkspaceId = headers.get("x-bap-workspace-id");
+  if (rawWorkspaceId === null) {
+    return null;
+  }
+
+  const workspaceId = rawWorkspaceId.trim();
+  if (!workspaceId) {
+    throw new Error("Requested workspace ID must not be empty.");
+  }
+
+  return workspaceId;
+}
+
+function resolveHostedMcpWorkspaceId(params: {
   hostedMcp: HostedMcpContext;
-  user: DbUserWithActiveWorkspaceId;
-}): Promise<string> {
-  if (params.hostedMcp.audience !== "bap") {
+  requestedWorkspaceId: string | null;
+}): string {
+  if (!params.requestedWorkspaceId) {
     return params.hostedMcp.workspaceId;
   }
 
-  if (params.hostedMcp.allowAllWorkspaces) {
-    return (await resolveSessionPrincipalWorkspaceId(params.hostedMcp.userId)) ?? "";
+  if (
+    params.hostedMcp.allowAllWorkspaces ||
+    params.hostedMcp.allowedWorkspaceIds.includes(params.requestedWorkspaceId)
+  ) {
+    return params.requestedWorkspaceId;
   }
 
-  return resolveAllowedActiveWorkspaceId(
-    params.user.activeWorkspaceId,
-    params.hostedMcp.allowedWorkspaceIds,
-  );
-}
-
-function resolveAllowedActiveWorkspaceId(
-  activeWorkspaceId: string | null | undefined,
-  allowedWorkspaceIds: string[],
-): string {
-  if (!activeWorkspaceId) {
-    return "";
-  }
-
-  return allowedWorkspaceIds.includes(activeWorkspaceId) ? activeWorkspaceId : "";
+  throw new Error("Requested workspace is outside the hosted MCP grant.");
 }
 
 async function resolveRuntimeMcpContext(headers: Headers): Promise<{
@@ -228,6 +229,11 @@ async function resolveRuntimeMcpContext(headers: Headers): Promise<{
       where: eq(userTable.id, claims.userId),
     });
     if (!dbUser) {
+      return null;
+    }
+
+    const requestedWorkspaceId = resolveRequestedMcpWorkspaceId(headers);
+    if (requestedWorkspaceId && requestedWorkspaceId !== claims.workspaceId) {
       return null;
     }
 
@@ -246,7 +252,8 @@ async function resolveRuntimeMcpContext(headers: Headers): Promise<{
       runtimeMcp: {
         token: claims.token,
         userId: claims.userId,
-        workspaceId: claims.workspaceId,
+        workspaceId: requestedWorkspaceId ?? claims.workspaceId,
+        internalKey: claims.internalKey,
         spawnDepth: claims.spawnDepth ?? 0,
         scopes: claims.scopes ?? [claims.internalKey],
         surface: claims.surface,

@@ -20,11 +20,7 @@ import {
   type GenerationInterruptRecord,
 } from "../../generation-interrupt-service";
 import type { GenerationLifecycleStore } from "../core/lifecycle-store";
-import type {
-  GenerationContext,
-  GenerationStatus,
-  GenerationRunMode,
-} from "../types";
+import type { GenerationContext, GenerationStatus, GenerationRunMode } from "../types";
 import { isUserFileAttachment, type UserFileAttachment } from "../attachments";
 
 export function getExecutionPolicyFromRecord(
@@ -48,10 +44,7 @@ export function getExecutionPolicyFromRecord(
   queuedUserMessageContent?: string;
 } {
   const policy =
-    (genRecord.executionPolicy as
-      | GenerationExecutionPolicy
-      | null
-      | undefined) ?? undefined;
+    (genRecord.executionPolicy as GenerationExecutionPolicy | null | undefined) ?? undefined;
   const allowedIntegrations = Array.isArray(policy?.allowedIntegrations)
     ? (policy.allowedIntegrations.filter(
         (entry): entry is IntegrationType => typeof entry === "string",
@@ -64,9 +57,12 @@ export function getExecutionPolicyFromRecord(
     allowedIntegrations,
     allowedCustomIntegrations: policy?.allowedCustomIntegrations,
     allowedWorkspaceMcpServerIds: policy?.allowedWorkspaceMcpServerIds,
-    allowedSkillSlugs: normalizeCoworkerAllowedSkillSlugs(
-      policy?.allowedSkillSlugs,
-    ),
+    // Preserve the difference between no per-Generation override and an
+    // explicit empty override. The runner uses undefined to inherit the
+    // Coworker's configured skill policy on follow-up turns.
+    allowedSkillSlugs: Array.isArray(policy?.allowedSkillSlugs)
+      ? normalizeCoworkerAllowedSkillSlugs(policy.allowedSkillSlugs)
+      : undefined,
     remoteIntegrationSource: remoteIntegrationSource.success
       ? remoteIntegrationSource.data
       : undefined,
@@ -77,9 +73,7 @@ export function getExecutionPolicyFromRecord(
       policy?.sandboxProvider === "docker"
         ? policy.sandboxProvider
         : undefined,
-    selectedPlatformSkillSlugs: Array.isArray(
-      policy?.selectedPlatformSkillSlugs,
-    )
+    selectedPlatformSkillSlugs: Array.isArray(policy?.selectedPlatformSkillSlugs)
       ? policy.selectedPlatformSkillSlugs.filter(
           (entry): entry is string => typeof entry === "string",
         )
@@ -88,8 +82,7 @@ export function getExecutionPolicyFromRecord(
     debugRunDeadlineMs: policy?.debugRunDeadlineMs,
     debugApprovalHotWaitMs: policy?.debugApprovalHotWaitMs,
     debugRuntimeNoProgressTimeoutMs: policy?.debugRuntimeNoProgressTimeoutMs,
-    debugForceRuntimeNoProgressAfterPrompt:
-      policy?.debugForceRuntimeNoProgressAfterPrompt,
+    debugForceRuntimeNoProgressAfterPrompt: policy?.debugForceRuntimeNoProgressAfterPrompt,
     queuedFileAttachments: Array.isArray(policy?.queuedFileAttachments)
       ? policy.queuedFileAttachments.filter(isUserFileAttachment)
       : undefined,
@@ -109,10 +102,7 @@ type GenerationControlDependencies = {
 export class GenerationControl {
   constructor(private readonly deps: GenerationControlDependencies) {}
 
-  async cancelGeneration(
-    generationId: string,
-    userId: string,
-  ): Promise<boolean> {
+  async cancelGeneration(generationId: string, userId: string): Promise<boolean> {
     const genRecord = await db.query.generation.findFirst({
       where: eq(generation.id, generationId),
       with: { conversation: true },
@@ -186,9 +176,7 @@ export class GenerationControl {
     }
 
     const pendingInterrupt =
-      await generationInterruptService.getPendingInterruptForGeneration(
-        generationId,
-      );
+      await generationInterruptService.getPendingInterruptForGeneration(generationId);
     const pendingApproval =
       pendingInterrupt && pendingInterrupt.kind !== "auth"
         ? this.projectPendingApproval(pendingInterrupt)
@@ -205,9 +193,7 @@ export class GenerationControl {
     };
   }
 
-  private projectPendingApproval(
-    interrupt: GenerationInterruptRecord,
-  ): PendingApproval {
+  private projectPendingApproval(interrupt: GenerationInterruptRecord): PendingApproval {
     return {
       toolUseId: interrupt.providerToolUseId,
       toolName: interrupt.display.title,

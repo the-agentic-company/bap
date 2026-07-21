@@ -27,8 +27,16 @@ function getWorkspaceInvitationLogoUrl(): string {
   return "https://heybap.com/logo.png";
 }
 
-export function buildWorkspaceInvitationUrl(invitationId: string, baseUrl: string): string {
-  return new URL(`/workspace-invitations/${encodeURIComponent(invitationId)}`, baseUrl).toString();
+export function buildWorkspaceInvitationUrl(
+  invitationId: string,
+  baseUrl: string,
+  invitedEmail?: string,
+): string {
+  const url = new URL(`/workspace-invitations/${encodeURIComponent(invitationId)}`, baseUrl);
+  if (invitedEmail) {
+    url.searchParams.set("email", invitedEmail);
+  }
+  return url.toString();
 }
 
 export function buildWorkspaceInvitationEmailPayload({

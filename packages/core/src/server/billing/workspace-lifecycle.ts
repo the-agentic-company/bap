@@ -12,10 +12,7 @@ import {
   workspaceMember,
 } from "@bap/db/schema";
 import { isSelfHostedEdition } from "../edition";
-import {
-  buildWorkspaceImageDataUrl,
-  buildWorkspaceImageUrl,
-} from "./workspace-image";
+import { buildWorkspaceImageDataUrl, buildWorkspaceImageUrl } from "./workspace-image";
 
 function slugifyWorkspaceName(value: string): string {
   return value
@@ -36,7 +33,7 @@ async function uniqueWorkspaceSlug(name: string): Promise<string> {
   return existing ? `${candidate}-${Date.now().toString(36)}` : candidate;
 }
 
-export async function getWorkspaceForUser(userId: string, workspaceId: string) {
+async function getWorkspaceForUser(userId: string, workspaceId: string) {
   const membership = await db.query.workspaceMember.findFirst({
     where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, workspaceId)),
     with: {
@@ -211,7 +208,10 @@ export async function listWorkspacesForUser(userId: string, activeWorkspaceId?: 
     const ensured = await ensureWorkspaceForUser(userId);
     const [membership, ensuredImage] = await Promise.all([
       db.query.workspaceMember.findFirst({
-        where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, ensured.id)),
+        where: and(
+          eq(workspaceMember.userId, userId),
+          eq(workspaceMember.organizationId, ensured.id),
+        ),
         columns: { role: true },
       }),
       db.query.workspace.findFirst({
@@ -267,7 +267,10 @@ export async function setActiveWorkspace(userId: string, workspaceId: string | n
 
   if (workspaceId) {
     const membership = await db.query.workspaceMember.findFirst({
-      where: and(eq(workspaceMember.userId, userId), eq(workspaceMember.organizationId, workspaceId)),
+      where: and(
+        eq(workspaceMember.userId, userId),
+        eq(workspaceMember.organizationId, workspaceId),
+      ),
       columns: { id: true },
     });
 
@@ -275,7 +278,6 @@ export async function setActiveWorkspace(userId: string, workspaceId: string | n
       throw new Error("Workspace not found");
     }
   }
-
 }
 
 export async function getWorkspaceMembershipForUser(userId: string, workspaceId: string) {
@@ -548,7 +550,74 @@ export async function adminRemoveWorkspaceMember(workspaceId: string, targetEmai
   await db
     .delete(workspaceMember)
     .where(
-      and(eq(workspaceMember.organizationId, workspaceId), eq(workspaceMember.userId, targetUser.id)),
+      and(
+        eq(workspaceMember.organizationId, workspaceId),
+        eq(workspaceMember.userId, targetUser.id),
+      ),
+    );
+
+  return { email: targetUser.email };
+}
+
+async function getWorkspaceMembershipByEmail(workspaceId: string, targetEmail: string) {
+  const normalizedEmail = targetEmail.trim().toLowerCase();
+  const targetUser = await db.query.user.findFirst({
+    where: eq(user.email, normalizedEmail),
+    columns: { id: true, email: true },
+  });
+  if (!targetUser) {
+    throw new Error("User not found");
+  }
+
+  const membership = await db.query.workspaceMember.findFirst({
+    where: and(
+      eq(workspaceMember.organizationId, workspaceId),
+      eq(workspaceMember.userId, targetUser.id),
+    ),
+    columns: { role: true },
+  });
+  if (!membership) {
+    throw new Error("User is not a member of this workspace");
+  }
+  return { targetUser, membership };
+}
+
+export async function updateWorkspaceMemberRole(
+  workspaceId: string,
+  targetEmail: string,
+  role: "admin" | "member",
+) {
+  const { targetUser, membership } = await getWorkspaceMembershipByEmail(workspaceId, targetEmail);
+  if (membership.role === "owner") {
+    throw new Error("Cannot change the workspace owner's role");
+  }
+
+  await db
+    .update(workspaceMember)
+    .set({ role })
+    .where(
+      and(
+        eq(workspaceMember.organizationId, workspaceId),
+        eq(workspaceMember.userId, targetUser.id),
+      ),
+    );
+
+  return { email: targetUser.email, role };
+}
+
+export async function removeWorkspaceMember(workspaceId: string, targetEmail: string) {
+  const { targetUser, membership } = await getWorkspaceMembershipByEmail(workspaceId, targetEmail);
+  if (membership.role === "owner") {
+    throw new Error("Cannot remove the workspace owner");
+  }
+
+  await db
+    .delete(workspaceMember)
+    .where(
+      and(
+        eq(workspaceMember.organizationId, workspaceId),
+        eq(workspaceMember.userId, targetUser.id),
+      ),
     );
 
   return { email: targetUser.email };

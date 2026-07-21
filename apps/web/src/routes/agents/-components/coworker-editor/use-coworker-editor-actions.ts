@@ -10,6 +10,7 @@ import {
   useDeleteCoworker,
   useTriggerCoworker,
   useResetCoworkerRunsAndEnable,
+  useSetCoworkerStatus,
 } from "@/orpc/hooks/coworkers";
 import type { RemoteIntegrationTargetEnv } from "./types";
 
@@ -53,6 +54,7 @@ export function useCoworkerEditorActions({
   const rotateForwardingAlias = useRotateCoworkerForwardingAlias();
   const triggerCoworker = useTriggerCoworker();
   const resetCoworkerRuns = useResetCoworkerRunsAndEnable();
+  const setCoworkerStatus = useSetCoworkerStatus();
   const deleteCoworker = useDeleteCoworker();
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -222,15 +224,41 @@ export function useCoworkerEditorActions({
   }, [coworkerId, executeResetRunsAndEnable, resetCoworkerRuns.isPending, t]);
 
   const handleStatusChange = useCallback(
-    (checked: boolean) => {
+    async (checked: boolean) => {
+      if (setCoworkerStatus.isPending) {
+        return;
+      }
       if (checked && requiresResetBeforeEnable) {
         handleResetRunsAndEnable();
         return;
       }
 
       setStatusFromChecked(checked);
+      if (!coworkerId) {
+        return;
+      }
+
+      try {
+        await setCoworkerStatus.mutateAsync({
+          id: coworkerId,
+          status: checked ? "on" : "off",
+        });
+        await refetchCoworker();
+      } catch (error) {
+        await refetchCoworker();
+        console.error("Failed to update coworker status:", error);
+        toast.error(t("Failed to update coworker status."));
+      }
     },
-    [handleResetRunsAndEnable, requiresResetBeforeEnable, setStatusFromChecked],
+    [
+      coworkerId,
+      handleResetRunsAndEnable,
+      refetchCoworker,
+      requiresResetBeforeEnable,
+      setCoworkerStatus,
+      setStatusFromChecked,
+      t,
+    ],
   );
 
   const handleSaveInstructions = useCallback(async () => {

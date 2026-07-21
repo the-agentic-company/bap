@@ -57,7 +57,7 @@ const list = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const cursor = decodeConversationListCursor(input.cursor);
     const paginationWhere = !cursor
       ? undefined
@@ -129,7 +129,7 @@ const get = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const conv = await context.db.query.conversation.findFirst({
       where: and(
         eq(conversation.id, input.id),
@@ -195,7 +195,7 @@ const getUsage = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const conv = await context.db.query.conversation.findFirst({
       where: and(
         eq(conversation.id, input.id),
@@ -275,7 +275,7 @@ const updateTitle = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const result = await context.db
       .update(conversation)
       .set({ title: input.title })
@@ -307,7 +307,7 @@ const updatePinned = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const result = await context.db
       .update(conversation)
       .set({ isPinned: input.isPinned })
@@ -342,7 +342,7 @@ const markSeen = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const existing = await context.db.query.conversation.findFirst({
       where: and(
         eq(conversation.id, input.id),
@@ -390,7 +390,7 @@ const markSeen = protectedProcedure
 const markAllSeen = protectedProcedure.input(z.object({})).handler(async ({ context }) => {
   const {
     workspace: { id: workspaceId },
-  } = await requireActiveWorkspaceAccess(context.user.id);
+  } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
   const result = await context.db.execute(sql`
     with message_counts as (
       select
@@ -432,7 +432,7 @@ const updateAutoApprove = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const result = await context.db
       .update(conversation)
       .set({ autoApprove: input.autoApprove })
@@ -462,7 +462,7 @@ const share = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const result = await context.db
       .update(conversation)
       .set({
@@ -492,7 +492,7 @@ const unshare = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const result = await context.db
       .update(conversation)
       .set({
@@ -522,7 +522,7 @@ const archive = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     try {
       await writeSessionTranscriptFromConversation({
         userId: context.user.id,
@@ -560,7 +560,7 @@ const del = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     try {
       await writeSessionTranscriptFromConversation({
         userId: context.user.id,
@@ -603,7 +603,7 @@ const downloadAttachment = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     // Find the attachment and verify ownership
     const attachment = await context.db.query.messageAttachment.findFirst({
       where: eq(messageAttachment.id, input.attachmentId),
@@ -653,7 +653,7 @@ const downloadSandboxFile = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     // Find the sandbox file and verify ownership
     const file = await context.db.query.sandboxFile.findFirst({
       where: eq(sandboxFile.id, input.fileId),
@@ -688,7 +688,7 @@ const getAgenticAppHtml = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
     const file = await context.db.query.sandboxFile.findFirst({
       where: eq(sandboxFile.id, input.fileId),
@@ -728,7 +728,7 @@ const getSandboxFiles = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id);
+    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     // Verify ownership
     const conv = await context.db.query.conversation.findFirst({
       where: and(
@@ -765,7 +765,7 @@ const adminGetWorkspaceConversation = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAdmin(context.user.id);
+    } = await requireActiveWorkspaceAdmin(context.user.id, context.workspaceId);
     const conv = await context.db.query.conversation.findFirst({
       where: and(eq(conversation.id, input.id), eq(conversation.workspaceId, workspaceId)),
       with: {

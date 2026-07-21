@@ -91,6 +91,18 @@ describe("CloudLoginClient", () => {
     expect(screen.getByText("Use an approved email to create an account.")).toBeInTheDocument();
   });
 
+  it("prefills the email from an invitation link", () => {
+    render(
+      <CloudLoginClient
+        callbackUrl="/workspace-invitations/inv-1"
+        initialEmail=" Recipient@Example.com "
+        initialScreen="getting-started"
+      />,
+    );
+
+    expect(screen.getByLabelText("Email")).toHaveValue("recipient@example.com");
+  });
+
   it("signs in with password when the approved email already has one", async () => {
     mocks.fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ approved: true, hasPassword: true }), {

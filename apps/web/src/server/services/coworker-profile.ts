@@ -17,13 +17,14 @@ import {
 import { normalizeAndEnsureUniqueCoworkerUsername } from "@bap/core/server/services/coworker-metadata";
 import { generateCoworkerMetadataOnFirstPromptFill } from "@bap/core/server/services/coworker-metadata";
 import {
+  reconcileCoworkerScheduleJob,
   removeCoworkerScheduleJob,
   syncCoworkerScheduleJob,
 } from "@bap/core/server/services/coworker-scheduler";
 import type { IntegrationType } from "@bap/core/server/oauth/config";
 import { coworker, coworkerFolder, coworkerRun, user } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { resolveSelectedWorkspaceMcpServerIds } from "@/server/services/coworker-toolbox";
 
 const DISABLED_TRIGGER_TYPES = ["gmail.new_email"] as const;
@@ -529,6 +530,55 @@ export async function updateCoworkerProfile(input: {
         message: "Coworker updated but failed to sync schedule job",
       });
     }
+  }
+
+  return { success: true };
+}
+
+export async function setCoworkerStatus(input: {
+  context: ProfileContext;
+  workspaceId: string;
+  existing: typeof coworker.$inferSelect;
+  status: "on" | "off";
+}) {
+  if (input.status === "on" && input.existing.status !== "on") {
+    await assertCanEnableCoworker({
+      context: input.context,
+      existing: input.existing,
+    });
+  }
+
+  const result = await input.context.db
+    .update(coworker)
+    .set({ status: input.status })
+    .where(
+      and(
+        eq(coworker.id, input.existing.id),
+        eq(coworker.workspaceId, input.workspaceId),
+        or(eq(coworker.ownerId, input.context.user.id), isNotNull(coworker.sharedAt)),
+      ),
+    )
+    .returning({
+      id: coworker.id,
+      status: coworker.status,
+      triggerType: coworker.triggerType,
+      schedule: coworker.schedule,
+    });
+
+  if (result.length === 0) {
+    throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+  }
+
+  try {
+    await reconcileCoworkerScheduleJob(result[0]!.id);
+  } catch (error) {
+    console.error(
+      `[coworker] failed to sync scheduler after status update (${input.existing.id})`,
+      error,
+    );
+    throw new ORPCError("INTERNAL_SERVER_ERROR", {
+      message: "Coworker status updated but failed to sync schedule job",
+    });
   }
 
   return { success: true };

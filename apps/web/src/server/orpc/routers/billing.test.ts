@@ -35,6 +35,8 @@ var setActiveOrganizationMock: ReturnType<typeof vi.fn>;
 var createInvitationMock: ReturnType<typeof vi.fn>;
 var cancelInvitationMock: ReturnType<typeof vi.fn>;
 var cancelWorkspaceInvitationMock: ReturnType<typeof vi.fn>;
+var removeWorkspaceMemberMock: ReturnType<typeof vi.fn>;
+var updateWorkspaceMemberRoleMock: ReturnType<typeof vi.fn>;
 
 vi.mock("../middleware", () => ({
   protectedProcedure: createProcedureStub(),
@@ -94,9 +96,17 @@ vi.mock("@bap/core/server/billing/service", () => ({
     openBillingPortalForOwnerMock = vi.fn<VitestProcedure>();
     return openBillingPortalForOwnerMock;
   })(),
+  removeWorkspaceMember: (() => {
+    removeWorkspaceMemberMock = vi.fn<VitestProcedure>();
+    return removeWorkspaceMemberMock;
+  })(),
   setActiveWorkspace: (() => {
     setActiveWorkspaceMock = vi.fn<VitestProcedure>();
     return setActiveWorkspaceMock;
+  })(),
+  updateWorkspaceMemberRole: (() => {
+    updateWorkspaceMemberRoleMock = vi.fn<VitestProcedure>();
+    return updateWorkspaceMemberRoleMock;
   })(),
 }));
 
@@ -567,6 +577,51 @@ describe("billingRouter", () => {
     });
     expect(createWorkspaceInvitationsMock).not.toHaveBeenCalled();
     expect(result).toEqual(["alice@example.com"]);
+  });
+
+  it("updates a Workspace Membership role for workspace admins", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValueOnce({ role: "admin" });
+    updateWorkspaceMemberRoleMock.mockResolvedValueOnce({
+      email: "alice@example.com",
+      role: "admin",
+    });
+
+    await expect(
+      billingRouterAny.setMemberRole({
+        input: { workspaceId: "ws-1", email: "alice@example.com", role: "admin" },
+        context: createContext(),
+      }),
+    ).resolves.toEqual({ email: "alice@example.com", role: "admin" });
+    expect(updateWorkspaceMemberRoleMock).toHaveBeenCalledWith(
+      "ws-1",
+      "alice@example.com",
+      "admin",
+    );
+  });
+
+  it("removes a Workspace Membership for workspace admins", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValueOnce({ role: "admin" });
+    removeWorkspaceMemberMock.mockResolvedValueOnce({ email: "alice@example.com" });
+
+    await expect(
+      billingRouterAny.removeMember({
+        input: { workspaceId: "ws-1", email: "alice@example.com" },
+        context: createContext(),
+      }),
+    ).resolves.toEqual({ email: "alice@example.com" });
+    expect(removeWorkspaceMemberMock).toHaveBeenCalledWith("ws-1", "alice@example.com");
+  });
+
+  it("rejects Workspace Membership mutation for ordinary members", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValueOnce({ role: "member" });
+
+    await expect(
+      billingRouterAny.setMemberRole({
+        input: { workspaceId: "ws-1", email: "alice@example.com", role: "admin" },
+        context: createContext(),
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", message: "Workspace admin required" });
+    expect(updateWorkspaceMemberRoleMock).not.toHaveBeenCalled();
   });
 
   it("cancels Better Auth invitations for workspace admins", async () => {

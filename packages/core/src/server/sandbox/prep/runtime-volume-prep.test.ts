@@ -7,8 +7,32 @@ import {
   canReuseRuntimeVolumeMounts,
   prepareRuntimeVolumesForSandbox,
   resolveRuntimeVolumeMountEndpointUrl,
+  RuntimeVolumeSetupError,
 } from "./runtime-volume-prep";
 import type { SandboxHandle } from "../core/types";
+
+function createAuthoringPlan() {
+  return buildRuntimeVolumeMountPlan({
+    workspaceId: "workspace-1",
+    userId: "user-1",
+    skillScope: { type: "authoring" },
+    visibleSkillNames: [],
+  });
+}
+
+function createTestSandbox(
+  provider: SandboxHandle["provider"],
+  execResult?: { exitCode: number; stdout: string; stderr: string },
+): SandboxHandle {
+  return {
+    provider,
+    sandboxId: "sandbox-1",
+    exec: vi.fn().mockResolvedValue(execResult),
+    writeFile: vi.fn(),
+    readFile: vi.fn(),
+    ensureDir: vi.fn(),
+  };
+}
 
 describe("runtime-volume-prep", () => {
   it("builds authoring scope with owned skills, shared skills, and exact coworker docs", () => {
@@ -65,7 +89,9 @@ describe("runtime-volume-prep", () => {
       "/runtime/selected-skills/owned/research",
     ]);
     expect(command).toContain("chmod 0555");
-    expect(command).toContain("/runtime/selected-skills/owned=RW:/runtime/selected-skills/shared=RO");
+    expect(command).toContain(
+      "/runtime/selected-skills/owned=RW:/runtime/selected-skills/shared=RO",
+    );
   });
 
   it("keeps selected shared-only skills read-only", () => {
@@ -119,16 +145,18 @@ describe("runtime-volume-prep", () => {
     const command = buildRuntimeVolumeSetupCommand(plan);
 
     expect(command).toContain("is_runtime_volume_mountpoint() {");
-    expect(command).toContain(
-      'findmnt -rn -o TARGET | grep -Fx -- "$mount_path" >/dev/null 2>&1',
-    );
-    expect(command).toContain("stop_opencode_server_if_skills_mounted() {");
+    expect(command).toContain('findmnt -rn -o TARGET | grep -Fx -- "$mount_path" >/dev/null 2>&1');
+    expect(command).toContain("stop_opencode_server_if_runtime_volumes_mounted() {");
     expect(command).toContain('pkill -f "opencode serve .*--port 4096" 2>/dev/null || true');
     expect(command).toContain('pkill -f "mergerfs .* $mount_path" 2>/dev/null || true');
     expect(command).toContain("print_unmount_diagnostics() {");
-    expect(command).toContain('findmnt -rn -o TARGET,FSTYPE,SOURCE,OPTIONS | grep -F -- "$mount_path"');
+    expect(command).toContain(
+      'findmnt -rn -o TARGET,FSTYPE,SOURCE,OPTIONS | grep -F -- "$mount_path"',
+    );
     expect(command).toContain("grep -F -e opencode -e mergerfs -e s3fs -e fuse");
-    expect(command).toContain('RUNTIME_VOLUME_MOUNT_SIGNATURE_FILE="/tmp/bap-runtime-volume-mount.signature"');
+    expect(command).toContain(
+      'RUNTIME_VOLUME_MOUNT_SIGNATURE_FILE="/tmp/bap-runtime-volume-mount.signature"',
+    );
     expect(command).toContain("RUNTIME_VOLUME_CAN_REUSE_SIGNED=1");
     expect(command).toContain("runtime_volume_mount_signature() {");
     expect(command).toContain("credentialAccessKeyId=%s");
@@ -146,8 +174,13 @@ describe("runtime-volume-prep", () => {
     expect(command).toContain('is_runtime_volume_mountpoint "$mount_path" || return 0');
     expect(command).toContain('print_unmount_diagnostics "$mount_path"');
     expect(command).toContain('printf "runtime_volume_unmount_failed: %s\\n" "$mount_path" >&2');
-    expect(command).toContain("stop_opencode_server_if_skills_mounted '/app/.opencode/skills'");
+    expect(command).toContain("stop_opencode_server_if_runtime_volumes_mounted");
+    expect(command).toContain("has_managed_runtime_volume_mounts() {");
+    expect(command).toContain("done < <(findmnt -rn -o TARGET)");
     expect(command).toContain('unmount_if_mounted "$mount_path"');
+    expect(command.indexOf("stop_opencode_server_if_runtime_volumes_mounted\n")).toBeLessThan(
+      command.indexOf("reset_runtime_volume_mounts\n"),
+    );
   });
 
   it("reuses mounts only for signed plans with the same credential-scoped signature", () => {
@@ -217,9 +250,7 @@ describe("runtime-volume-prep", () => {
 
     const readOnlyChangedPlan = {
       ...plan,
-      roots: plan.roots.map((root, index) =>
-        index === 0 ? { ...root, readOnly: true } : root,
-      ),
+      roots: plan.roots.map((root, index) => (index === 0 ? { ...root, readOnly: true } : root)),
     };
     expect(
       canReuseRuntimeVolumeMountSignature({
@@ -291,26 +322,32 @@ describe("runtime-volume-prep", () => {
   });
 
   it("fails fast for unsupported sandbox providers", async () => {
-    const sandbox: SandboxHandle = {
-      provider: "e2b",
-      sandboxId: "sandbox-1",
-      exec: vi.fn(),
-      writeFile: vi.fn(),
-      readFile: vi.fn(),
-      ensureDir: vi.fn(),
-    };
+    const sandbox = createTestSandbox("e2b");
 
     await expect(
-      prepareRuntimeVolumesForSandbox({
-        sandbox,
-        plan: buildRuntimeVolumeMountPlan({
-          workspaceId: "workspace-1",
-          userId: "user-1",
-          skillScope: { type: "authoring" },
-          visibleSkillNames: [],
-        }),
-      }),
-    ).rejects.toThrow("runtime_volume_provider_unsupported");
+      prepareRuntimeVolumesForSandbox({ sandbox, plan: createAuthoringPlan() }),
+    ).rejects.toMatchObject({
+      name: "RuntimeVolumeSetupError",
+      message: "Runtime Volumes require a Daytona sandbox.",
+      reason: "runtime_volume_provider_unsupported",
+    });
     expect(sandbox.exec).not.toHaveBeenCalled();
+  });
+
+  it("keeps raw sandbox diagnostics out of Runtime Volume errors", async () => {
+    const sandbox = createTestSandbox("daytona", {
+      exitCode: 1,
+      stdout: "",
+      stderr: "runtime_volume_unmount_failed: /home/user/coworker-documents secret-detail",
+    });
+
+    await expect(
+      prepareRuntimeVolumesForSandbox({ sandbox, plan: createAuthoringPlan() }),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<RuntimeVolumeSetupError>>({
+        message: "Runtime Volume setup failed.",
+        reason: "runtime_volume_unmount_failed",
+      }),
+    );
   });
 });

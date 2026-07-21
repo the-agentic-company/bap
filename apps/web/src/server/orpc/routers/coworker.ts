@@ -23,6 +23,7 @@ export const coworkerRouter = {
   getImpersonationTarget: coworkerImpersonationProcedures.getImpersonationTarget,
   create: coworkerProfileProcedures.create,
   update: coworkerProfileProcedures.update,
+  setStatus: coworkerProfileProcedures.setStatus,
   edit: coworkerBuilderProcedures.edit,
   uploadDocument: coworkerDocumentProcedures.uploadDocument,
   updateDocument: coworkerDocumentProcedures.updateDocument,

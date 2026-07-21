@@ -1,4 +1,5 @@
 import { signHostedMcpAccessToken } from "@bap/core/server/hosted-mcp-oauth";
+import { signManagedMcpToken } from "@bap/core/server/managed-mcp-auth";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type VitestProcedure = Extract<
@@ -6,13 +7,10 @@ type VitestProcedure = Extract<
   (...args: never[]) => unknown
 >;
 
-const { findFirstMock, getRequestSessionMock, resolveSessionPrincipalWorkspaceIdMock } = vi.hoisted(
-  () => ({
-    findFirstMock: vi.fn<VitestProcedure>(),
-    getRequestSessionMock: vi.fn<VitestProcedure>(),
-    resolveSessionPrincipalWorkspaceIdMock: vi.fn<VitestProcedure>(),
-  }),
-);
+const { findFirstMock, getRequestSessionMock } = vi.hoisted(() => ({
+  findFirstMock: vi.fn<VitestProcedure>(),
+  getRequestSessionMock: vi.fn<VitestProcedure>(),
+}));
 
 vi.mock("@bap/db/client", () => ({
   db: {
@@ -26,10 +24,6 @@ vi.mock("@bap/db/client", () => ({
 
 vi.mock("@/server/session-auth", () => ({
   getRequestSession: getRequestSessionMock,
-}));
-
-vi.mock("@/server/session-principal-workspace", () => ({
-  resolveSessionPrincipalWorkspaceId: resolveSessionPrincipalWorkspaceIdMock,
 }));
 
 import { createORPCContext } from "./context";
@@ -57,10 +51,11 @@ async function buildHostedToken(
   });
 }
 
-function buildHeaders(token: string): Headers {
+function buildHeaders(token: string, workspaceId?: string): Headers {
   return new Headers({
     authorization: `Bearer ${token}`,
     "x-bap-public-origin": "https://mcp.heybap.com",
+    ...(workspaceId !== undefined ? { "x-bap-workspace-id": workspaceId } : {}),
   });
 }
 
@@ -74,16 +69,14 @@ afterEach(() => {
 });
 
 describe("createORPCContext", () => {
-  it("keeps hosted MCP tokens scoped to the active allowed workspace", async () => {
+  it("uses the explicit request workspace for hosted MCP tokens", async () => {
     getRequestSessionMock.mockResolvedValueOnce(null);
-    resolveSessionPrincipalWorkspaceIdMock.mockResolvedValueOnce(null);
     findFirstMock.mockResolvedValueOnce({
       id: "user-1",
-      activeWorkspaceId: "ws-2",
     });
 
     const context = await createORPCContext({
-      headers: buildHeaders(await buildHostedToken()),
+      headers: buildHeaders(await buildHostedToken(), "ws-2"),
     });
 
     expect(context.authSource).toBe("hosted_mcp");
@@ -95,19 +88,87 @@ describe("createORPCContext", () => {
     });
   });
 
-  it("rejects hosted MCP tokens when the active workspace is outside the allowed set", async () => {
+  it("rejects an explicit request workspace outside the hosted MCP grant", async () => {
     getRequestSessionMock.mockResolvedValueOnce(null);
     findFirstMock.mockResolvedValueOnce({
       id: "user-1",
-      activeWorkspaceId: "ws-3",
     });
 
     const context = await createORPCContext({
-      headers: buildHeaders(await buildHostedToken()),
+      headers: buildHeaders(await buildHostedToken(), "ws-3"),
     });
 
     expect(context.authSource).toBe("anonymous");
     expect(context.workspaceId).toBeNull();
     expect(context.hostedMcp).toBeNull();
+  });
+
+  it("rejects a whitespace-only hosted MCP workspace selector", async () => {
+    getRequestSessionMock.mockResolvedValueOnce(null);
+    findFirstMock.mockResolvedValueOnce({ id: "user-1" });
+
+    const context = await createORPCContext({
+      headers: buildHeaders(await buildHostedToken(), "   "),
+    });
+
+    expect(context.authSource).toBe("anonymous");
+    expect(context.workspaceId).toBeNull();
+    expect(context.hostedMcp).toBeNull();
+  });
+
+  it("uses the token workspace when a global hosted MCP tool has no request workspace", async () => {
+    getRequestSessionMock.mockResolvedValueOnce(null);
+    findFirstMock.mockResolvedValueOnce({ id: "user-1" });
+
+    const context = await createORPCContext({
+      headers: buildHeaders(await buildHostedToken()),
+    });
+
+    expect(context.authSource).toBe("hosted_mcp");
+    expect(context.workspaceId).toBe("ws-1");
+  });
+
+  it("rejects a managed MCP request scoped outside its Generation workspace", async () => {
+    getRequestSessionMock.mockResolvedValueOnce(null);
+    findFirstMock.mockResolvedValueOnce({ id: "user-1" });
+    const token = signManagedMcpToken(
+      {
+        userId: "user-1",
+        workspaceId: "ws-1",
+        internalKey: "bap",
+        spawnDepth: 0,
+        exp: Math.floor(Date.now() / 1000) + 600,
+      },
+      SECRET,
+    );
+
+    const context = await createORPCContext({
+      headers: buildHeaders(token, "ws-2"),
+    });
+
+    expect(context.authSource).toBe("anonymous");
+    expect(context.workspaceId).toBeNull();
+  });
+
+  it("rejects a whitespace-only managed MCP workspace selector", async () => {
+    getRequestSessionMock.mockResolvedValueOnce(null);
+    findFirstMock.mockResolvedValueOnce({ id: "user-1" });
+    const token = signManagedMcpToken(
+      {
+        userId: "user-1",
+        workspaceId: "ws-1",
+        internalKey: "bap",
+        spawnDepth: 0,
+        exp: Math.floor(Date.now() / 1000) + 600,
+      },
+      SECRET,
+    );
+
+    const context = await createORPCContext({
+      headers: buildHeaders(token, "   "),
+    });
+
+    expect(context.authSource).toBe("anonymous");
+    expect(context.workspaceId).toBeNull();
   });
 });

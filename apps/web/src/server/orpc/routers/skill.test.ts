@@ -131,6 +131,7 @@ function createContext() {
 
   return {
     user: { id: "user-1" },
+    workspaceId: "ws-active",
     db: {
       query: {
         skill: {
@@ -240,6 +241,7 @@ describe("skillRouter", () => {
         canEdit: false,
       }),
     ]);
+    expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-active");
   });
 
   it("gets a shared skill for read-only access", async () => {

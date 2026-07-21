@@ -244,6 +244,15 @@ export function useUpdateCoworker() {
   });
 }
 
+export function useSetCoworkerStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { id: string; status: "on" | "off" }) => client.coworker.setStatus(input),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["coworker"] }),
+  });
+}
+
 export function useDeleteCoworker() {
   const queryClient = useQueryClient();
 
@@ -326,10 +335,11 @@ export function useTriggerCoworker() {
         remoteUserId: string;
       };
     }) => client.coworker.trigger(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworker"] });
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-    },
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["coworker"] }),
+        queryClient.invalidateQueries({ queryKey: ["inbox"] }),
+      ]),
   });
 }
 

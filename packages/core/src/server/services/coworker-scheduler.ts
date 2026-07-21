@@ -2,10 +2,7 @@ import type { RepeatOptions } from "bullmq";
 import { and, eq } from "drizzle-orm";
 import { db } from "@bap/db/client";
 import { coworker } from "@bap/db/schema";
-import {
-  SCHEDULED_COWORKER_JOB_NAME,
-  getQueue,
-} from "../queues/queue-client";
+import { SCHEDULED_COWORKER_JOB_NAME, getQueue } from "../queues/queue-client";
 
 type CoworkerSchedule =
   | { type: "interval"; intervalMinutes: number }
@@ -17,6 +14,10 @@ type CoworkerScheduleRow = Pick<
   typeof coworker.$inferSelect,
   "id" | "triggerType" | "status" | "schedule"
 >;
+
+function scheduleRowSignature(row: CoworkerScheduleRow | undefined): string {
+  return JSON.stringify(row ? [row.status, row.triggerType, row.schedule] : null);
+}
 
 function parseTime(time: string): { hour: number; minute: number } {
   const [hourStr, minuteStr] = time.split(":");
@@ -153,6 +154,40 @@ export async function syncCoworkerScheduleJob(row: CoworkerScheduleRow): Promise
   }
 
   await removeCoworkerScheduleJob(row.id);
+}
+
+export async function reconcileCoworkerScheduleJob(coworkerId: string): Promise<void> {
+  while (true) {
+    const row = await db.query.coworker.findFirst({
+      where: eq(coworker.id, coworkerId),
+      columns: {
+        id: true,
+        status: true,
+        triggerType: true,
+        schedule: true,
+      },
+    });
+
+    if (!row) {
+      await removeCoworkerScheduleJob(coworkerId);
+      return;
+    }
+
+    await syncCoworkerScheduleJob(row);
+
+    const current = await db.query.coworker.findFirst({
+      where: eq(coworker.id, coworkerId),
+      columns: {
+        id: true,
+        status: true,
+        triggerType: true,
+        schedule: true,
+      },
+    });
+    if (scheduleRowSignature(current) === scheduleRowSignature(row)) {
+      return;
+    }
+  }
 }
 
 export async function reconcileScheduledCoworkerJobs(): Promise<{

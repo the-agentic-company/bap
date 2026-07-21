@@ -25,22 +25,26 @@ describe("createMcpClient", () => {
   });
 
   it("forwards the hosted MCP issuer to the Bap API client", () => {
-    const state = createMcpClient({
-      authInfo: {
-        token: "hosted-token",
-        clientId: "client-1",
-        scopes: ["bap"],
-        extra: {
-          audience: "bap",
-          authType: "hosted_oauth",
-          issuer: "https://mcp.heybap.com/",
+    const state = createMcpClient(
+      {
+        authInfo: {
+          token: "hosted-token",
+          clientId: "client-1",
+          scopes: ["bap"],
+          extra: {
+            audience: "bap",
+            authType: "hosted_oauth",
+            issuer: "https://mcp.heybap.com/",
+          },
         },
-      },
-    } as never);
+      } as never,
+      "ws-2",
+    );
 
     expect(state.status).toBe("ready");
     expect(mockedCreateRpcClient).toHaveBeenCalledWith("https://app.example.com", "hosted-token", {
       "X-Bap-Public-Origin": "https://mcp.heybap.com/",
+      "X-Bap-Workspace-Id": "ws-2",
     });
   });
 

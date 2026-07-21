@@ -6,6 +6,7 @@ import {
   deleteCoworkerDocumentMock,
   generateCoworkerMetadataOnFirstPromptFillMock,
   getPresignedDownloadUrlMock,
+  reconcileCoworkerScheduleJobMock,
   resetCoworkerRouterTestHarness,
   syncCoworkerScheduleJobMock,
   updateCoworkerDocumentMock,
@@ -402,6 +403,107 @@ describe("coworkerRouter", () => {
     });
 
     expect(result).toEqual({ success: true });
+  });
+
+  it("allows a Workspace member to turn another member's coworker off", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "user-2",
+      workspaceId: "ws-1",
+      sharedAt: new Date("2026-07-15T12:00:00.000Z"),
+      name: "Shared Coworker",
+      status: "on",
+      triggerType: "manual",
+      schedule: null,
+    });
+    context.mocks.updateReturningMock.mockResolvedValue([
+      {
+        id: "wf-1",
+        status: "off",
+        triggerType: "manual",
+        schedule: null,
+      },
+    ]);
+
+    const result = await coworkerRouterAny.setStatus({
+      input: { id: "wf-1", status: "off" },
+      context,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(context.mocks.updateSetMock).toHaveBeenCalledWith({ status: "off" });
+    expect(reconcileCoworkerScheduleJobMock).toHaveBeenCalledWith("wf-1");
+  });
+
+  it("allows a Workspace member to turn another member's coworker on", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "user-2",
+      workspaceId: "ws-1",
+      sharedAt: new Date("2026-07-15T12:00:00.000Z"),
+      name: "Shared Coworker",
+      status: "off",
+      disabledReason: null,
+      triggerType: "manual",
+      schedule: null,
+    });
+    context.db.query.coworkerRun.findMany.mockResolvedValue([]);
+    context.mocks.updateReturningMock.mockResolvedValue([
+      {
+        id: "wf-1",
+        status: "on",
+        triggerType: "manual",
+        schedule: null,
+      },
+    ]);
+
+    const result = await coworkerRouterAny.setStatus({
+      input: { id: "wf-1", status: "on" },
+      context,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(context.mocks.updateSetMock).toHaveBeenCalledWith({ status: "on" });
+    expect(context.db.query.coworkerRun.findMany).toHaveBeenCalledOnce();
+  });
+
+  it("does not allow a Workspace member to change a private coworker owned by someone else", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue(null);
+
+    await expect(
+      coworkerRouterAny.setStatus({
+        input: { id: "wf-private", status: "off" },
+        context,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    expect(context.db.update).not.toHaveBeenCalled();
+  });
+
+  it("rechecks shared access when writing a coworker status", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "user-2",
+      workspaceId: "ws-1",
+      sharedAt: new Date("2026-07-15T12:00:00.000Z"),
+      status: "on",
+      triggerType: "manual",
+      schedule: null,
+    });
+    context.mocks.updateReturningMock.mockResolvedValue([]);
+
+    await expect(
+      coworkerRouterAny.setStatus({
+        input: { id: "wf-1", status: "off" },
+        context,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    expect(reconcileCoworkerScheduleJobMock).not.toHaveBeenCalled();
   });
 
   it("requires reset before ordinary enable for a backlog-disabled coworker", async () => {

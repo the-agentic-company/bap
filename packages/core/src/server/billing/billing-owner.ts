@@ -1,13 +1,10 @@
 import { eq } from "drizzle-orm";
-import {
-  type BillingOwnerType,
-  type BillingPlanId,
-} from "../../lib/billing-plans";
+import { type BillingOwnerType, type BillingPlanId } from "../../lib/billing-plans";
 import { db } from "@bap/db/client";
 import { conversation, user, workspaceMember, workspace } from "@bap/db/schema";
 import { getAutumnClient } from "./autumn";
 import { buildWorkspaceImageUrl } from "./workspace-image";
-import { ensureWorkspaceForUser, getWorkspaceForUser } from "./workspace-lifecycle";
+import { ensureWorkspaceForUser } from "./workspace-lifecycle";
 
 export type BillingOwner = {
   ownerType: BillingOwnerType;
