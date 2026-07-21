@@ -6,6 +6,7 @@ import {
   deriveAppointmentEndDate,
   extractAppointmentTypes,
   extractClientAppointments,
+  extractClientAppointmentsTotal,
   findDuplicateAppointment,
   normalizeAppointmentTypeLabel,
   resolveAppointmentType,
@@ -94,6 +95,16 @@ describe("findDuplicateAppointment", () => {
       findDuplicateAppointment(existing, "2026-07-29T09:00:00.000Z", "Visite Sell-out"),
     ).toBeUndefined();
   });
+
+  it("does not match when the existing appointment type is missing", () => {
+    expect(
+      findDuplicateAppointment(
+        [{ id: 3, startDate: "2026-07-29T09:00:00.000Z" }],
+        "2026-07-29T09:00:00.000Z",
+        "Visite Argumentée",
+      ),
+    ).toBeUndefined();
+  });
 });
 
 describe("addBapAppointmentCommentMarker", () => {
@@ -106,9 +117,9 @@ describe("addBapAppointmentCommentMarker", () => {
     expect(addBapAppointmentCommentMarker("Point stock")).toBe(
       `Point stock\n\n${BAP_APPOINTMENT_COMMENT_MARKER}`,
     );
-    expect(
-      addBapAppointmentCommentMarker(`Point stock\n\n${BAP_APPOINTMENT_COMMENT_MARKER}`),
-    ).toBe(`Point stock\n\n${BAP_APPOINTMENT_COMMENT_MARKER}`);
+    expect(addBapAppointmentCommentMarker(`Point stock\n\n${BAP_APPOINTMENT_COMMENT_MARKER}`)).toBe(
+      `Point stock\n\n${BAP_APPOINTMENT_COMMENT_MARKER}`,
+    );
   });
 });
 
@@ -157,5 +168,11 @@ describe("extractors", () => {
       extractClientAppointments({ total: 1, data: [{ id: 1, startDate: "x", eventType: "y" }] }),
     ).toHaveLength(1);
     expect(extractClientAppointments({})).toEqual([]);
+  });
+
+  it("reads a valid client appointment total", () => {
+    expect(extractClientAppointmentsTotal({ total: 2, data: [] })).toBe(2);
+    expect(extractClientAppointmentsTotal({ total: -1, data: [] })).toBeUndefined();
+    expect(extractClientAppointmentsTotal({ total: "2", data: [] })).toBeUndefined();
   });
 });

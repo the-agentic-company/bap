@@ -1,12 +1,17 @@
 import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
 import { toMcpToolResult } from "../../../../shared/tool-result";
-import { requestGalien, requestGalienForCurrentUserBodyField } from "../lib/galien-client";
+import {
+  requestGalien,
+  requestGalienForCurrentUserBodyField,
+  type GalienCredentials,
+} from "../lib/galien-client";
 import { getManagedGalienToolCredentials } from "../lib/galien-auth";
 import { galienIsoDateTimeSchema, validateGalienToolParams } from "../lib/tool-helpers";
 
 export const BAP_APPOINTMENT_COMMENT_MARKER = "(made by Bap)";
 export const DEFAULT_APPOINTMENT_DURATION_MINUTES = 60;
+export const APPOINTMENT_DUPLICATE_CHECK_PAGE_SIZE = 100;
 
 export const schema = {
   clientId: z.number().int().describe("Galien client/pharmacy id, for example 14."),
@@ -28,7 +33,9 @@ export const schema = {
     .number()
     .int()
     .optional()
-    .describe("Galien appointment type id, for example 2 for Visite Argumentée. Provide this or appointmentType."),
+    .describe(
+      "Galien appointment type id, for example 2 for Visite Argumentée. Provide this or appointmentType.",
+    ),
   appointmentType: z
     .string()
     .optional()
@@ -78,6 +85,11 @@ export function extractAppointmentTypes(payload: unknown): GalienAppointmentType
 
 export function extractClientAppointments(payload: unknown): GalienClientAppointment[] {
   return extractDataArray(payload).map((item) => item as GalienClientAppointment);
+}
+
+export function extractClientAppointmentsTotal(payload: unknown): number | undefined {
+  const total = (payload as { total?: unknown } | null | undefined)?.total;
+  return typeof total === "number" && Number.isInteger(total) && total >= 0 ? total : undefined;
 }
 
 export function normalizeAppointmentTypeLabel(label: string): string {
@@ -153,9 +165,45 @@ export function findDuplicateAppointment(
     const sameStart = new Date(appointment.startDate).getTime() === startMs;
     const sameType = appointment.eventType
       ? normalizeAppointmentTypeLabel(appointment.eventType) === normalizedType
-      : true;
+      : false;
     return sameStart && sameType;
   });
+}
+
+export async function listAllClientAppointmentsForDay(
+  clientId: number,
+  day: string,
+  credentials?: GalienCredentials,
+): Promise<GalienClientAppointment[]> {
+  const appointments: GalienClientAppointment[] = [];
+
+  while (true) {
+    const result = await requestGalien(
+      {
+        method: "GET",
+        path: "/api/v1/clients/{clientId}/appointments",
+        pathParams: { clientId },
+        query: {
+          startDate: day,
+          endDate: day,
+          size: APPOINTMENT_DUPLICATE_CHECK_PAGE_SIZE,
+          offset: appointments.length,
+        },
+      },
+      credentials,
+    );
+    const page = extractClientAppointments(result.data);
+    const total = extractClientAppointmentsTotal(result.data);
+    appointments.push(...page);
+
+    if (page.length === 0 || (total !== undefined && appointments.length >= total)) {
+      return appointments;
+    }
+
+    if (total === undefined && page.length < APPOINTMENT_DUPLICATE_CHECK_PAGE_SIZE) {
+      return appointments;
+    }
+  }
 }
 
 export function buildAppointmentCreateBody(params: {
@@ -171,12 +219,17 @@ export function buildAppointmentCreateBody(params: {
     startDate: params.startDate,
     endDate: params.endDate,
     appointmentTypeId: params.appointmentTypeId,
-    ...(typeof params.contactPersonId === "number" ? { contactPersonId: params.contactPersonId } : {}),
+    ...(typeof params.contactPersonId === "number"
+      ? { contactPersonId: params.contactPersonId }
+      : {}),
     comment: addBapAppointmentCommentMarker(params.comment),
   };
 }
 
-export default async function createAppointment(params: InferSchema<typeof schema>, extra?: ToolExtraArguments) {
+export default async function createAppointment(
+  params: InferSchema<typeof schema>,
+  extra?: ToolExtraArguments,
+) {
   const validatedParams = validateGalienToolParams(schema, params);
   const credentials = await getManagedGalienToolCredentials(extra);
 
@@ -198,17 +251,13 @@ export default async function createAppointment(params: InferSchema<typeof schem
   // Galien exposes no appointment deletion through this MCP, so guard against
   // duplicate appointments if the same report is sent more than once.
   const day = toGalienDateOnly(validatedParams.startDate);
-  const existingResult = await requestGalien(
-    {
-      method: "GET",
-      path: "/api/v1/clients/{clientId}/appointments",
-      pathParams: { clientId: validatedParams.clientId },
-      query: { startDate: day, endDate: day },
-    },
+  const existingAppointments = await listAllClientAppointmentsForDay(
+    validatedParams.clientId,
+    day,
     credentials,
   );
   const duplicate = findDuplicateAppointment(
-    extractClientAppointments(existingResult.data),
+    existingAppointments,
     validatedParams.startDate,
     resolvedType.eventType,
   );

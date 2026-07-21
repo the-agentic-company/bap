@@ -12,7 +12,10 @@ const EXTRA = {
 } as never;
 
 function json(payload: unknown, status = 200): Response {
-  return new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } });
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 }
 function reqMethod(init?: { method?: string }): string {
   return (init?.method ?? "GET").toUpperCase();
@@ -22,16 +25,53 @@ function reqBody(init?: { body?: unknown }): unknown {
 }
 
 type RecordedCall = { url: string; method: string; body: unknown };
-type Route = { match: (url: string, method: string) => boolean; res: () => Response };
+type Route = {
+  match: (url: string, method: string) => boolean;
+  res: (url: string, method: string) => Response;
+};
 
-function stubGalien(existing: unknown[]): RecordedCall[] {
+function stubGalien(
+  existing: unknown[],
+  appointmentPages?: Record<number, unknown[]>,
+): RecordedCall[] {
   const calls: RecordedCall[] = [];
+  const appointmentTotal = appointmentPages
+    ? Object.values(appointmentPages).reduce((total, page) => total + page.length, 0)
+    : existing.length;
   const routes: Route[] = [
-    { match: (u) => u === CREDS_URL, res: () => json({ username: "u@example.com", password: "pw", targetEnv: "preprod", apiBaseUrl: BASE }) },
-    { match: (u) => u.endsWith("/api/v1/tokens/login"), res: () => new Response("[]", { status: 200, headers: { authorization: BEARER } }) },
-    { match: (u) => u.includes("/api/v1/appointment-types"), res: () => json({ data: [{ id: 2, eventType: "Visite Argumentée" }, { id: 4, eventType: "Visite Sell-out" }] }) },
-    { match: (u, m) => u.endsWith("/api/v1/appointments") && m === "POST", res: () => json({ id: 999 }, 201) },
-    { match: (u) => u.includes("/appointments"), res: () => json({ total: existing.length, data: existing }) },
+    {
+      match: (u) => u === CREDS_URL,
+      res: () =>
+        json({ username: "u@example.com", password: "pw", targetEnv: "preprod", apiBaseUrl: BASE }),
+    },
+    {
+      match: (u) => u.endsWith("/api/v1/tokens/login"),
+      res: () => new Response("[]", { status: 200, headers: { authorization: BEARER } }),
+    },
+    {
+      match: (u) => u.includes("/api/v1/appointment-types"),
+      res: () =>
+        json({
+          data: [
+            { id: 2, eventType: "Visite Argumentée" },
+            { id: 4, eventType: "Visite Sell-out" },
+          ],
+        }),
+    },
+    {
+      match: (u, m) => u.endsWith("/api/v1/appointments") && m === "POST",
+      res: () => json({ id: 999 }, 201),
+    },
+    {
+      match: (u) => u.includes("/appointments"),
+      res: (u) => {
+        const offset = Number(new URL(u).searchParams.get("offset") ?? 0);
+        return json({
+          total: appointmentTotal,
+          data: appointmentPages?.[offset] ?? existing,
+        });
+      },
+    },
   ];
   vi.stubEnv("APP_SERVER_URL", "https://bap.example");
   vi.stubEnv("APP_SERVER_SECRET", "server-secret");
@@ -45,7 +85,7 @@ function stubGalien(existing: unknown[]): RecordedCall[] {
       if (!route) {
         throw new Error(`unexpected fetch ${method} ${url}`);
       }
-      return route.res();
+      return route.res(url, method);
     }),
   );
   return calls;
@@ -73,7 +113,9 @@ describe("appointment.create (integration)", () => {
       EXTRA,
     );
 
-    const post = calls.find((call) => call.method === "POST" && call.url.endsWith("/api/v1/appointments"));
+    const post = calls.find(
+      (call) => call.method === "POST" && call.url.endsWith("/api/v1/appointments"),
+    );
     expect(post).toBeDefined();
     expect(post?.body).toMatchObject({
       clientId: 14,
@@ -87,7 +129,9 @@ describe("appointment.create (integration)", () => {
   });
 
   it("does not post when an identical appointment already exists", async () => {
-    const calls = stubGalien([{ id: 1, startDate: "2026-07-29T09:00:00.000Z", eventType: "Visite argumentée" }]);
+    const calls = stubGalien([
+      { id: 1, startDate: "2026-07-29T09:00:00.000Z", eventType: "Visite argumentée" },
+    ]);
 
     await createAppointment(
       {
@@ -99,6 +143,60 @@ describe("appointment.create (integration)", () => {
       EXTRA,
     );
 
-    expect(calls.some((call) => call.method === "POST" && call.url.endsWith("/api/v1/appointments"))).toBe(false);
+    expect(
+      calls.some((call) => call.method === "POST" && call.url.endsWith("/api/v1/appointments")),
+    ).toBe(false);
+  });
+
+  it("checks subsequent appointment pages before creating", async () => {
+    const calls = stubGalien([], {
+      0: [
+        {
+          id: 1,
+          startDate: "2026-07-29T08:00:00.000Z",
+          eventType: "Visite Argumentée",
+        },
+      ],
+      1: [
+        {
+          id: 2,
+          startDate: "2026-07-29T09:00:00.000Z",
+          eventType: "Visite Argumentée",
+        },
+      ],
+    });
+
+    await createAppointment(
+      {
+        clientId: 14,
+        startDate: "2026-07-29T09:00:00.000Z",
+        appointmentType: "Visite Argumentée",
+        durationMinutes: 60,
+      },
+      EXTRA,
+    );
+
+    expect(calls.some((call) => new URL(call.url).searchParams.get("offset") === "1")).toBe(true);
+    expect(
+      calls.some((call) => call.method === "POST" && call.url.endsWith("/api/v1/appointments")),
+    ).toBe(false);
+  });
+
+  it("creates when a same-time appointment has no type", async () => {
+    const calls = stubGalien([{ id: 1, startDate: "2026-07-29T09:00:00.000Z" }]);
+
+    await createAppointment(
+      {
+        clientId: 14,
+        startDate: "2026-07-29T09:00:00.000Z",
+        appointmentType: "Visite Argumentée",
+        durationMinutes: 60,
+      },
+      EXTRA,
+    );
+
+    expect(
+      calls.some((call) => call.method === "POST" && call.url.endsWith("/api/v1/appointments")),
+    ).toBe(true);
   });
 });
