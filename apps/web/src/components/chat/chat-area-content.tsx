@@ -579,7 +579,7 @@ export function ChatAreaContent({
               isRecording={isRecording}
               isProcessing={isProcessingVoice}
               error={voiceError}
-              recordingLabel={interimTranscript || t("Listening… tap the mic to stop")}
+              recordingLabel={t("Listening… tap the mic to stop")}
             />
           )}
           {normalizedQueuedMessages.length > 0 && (
@@ -634,6 +634,7 @@ export function ChatAreaContent({
             onStartRecording={handleStartRecording}
             onStopRecording={stopRecordingAndTranscribe}
             voiceInteractionMode="toggle"
+            interimTranscript={interimTranscript}
             prefillRequest={inputPrefillRequest}
             conversationId={draftConversationId}
             placeholder="Send a message..."

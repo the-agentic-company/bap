@@ -5,7 +5,7 @@ import { useTranscribe } from "@/orpc/hooks/voice";
 import type { InputPrefillRequest } from "./chat-area-content";
 
 // How often to refresh the interim transcript while recording.
-const INTERIM_POLL_INTERVAL_MS = 2500;
+const INTERIM_POLL_INTERVAL_MS = 1500;
 
 export function useChatAreaVoice({
   isStreaming,

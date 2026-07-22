@@ -15,6 +15,12 @@ import { PromptBar } from "./prompt-bar";
 
 void jestDomVitest;
 
+const VOICE_FINAL_PREFILL = {
+  id: "voice-final-1",
+  text: "hello world.",
+  mode: "append" as const,
+};
+
 const heroRichAnimatedPlaceholders: PromptSegment[][] = [
   [
     { type: "text", content: "Every hour, triage new " },
@@ -199,6 +205,45 @@ describe("PromptBar", () => {
     fireEvent.click(stopButton);
     expect(onStopRecording).toHaveBeenCalledTimes(1);
     expect(onStartRecording).toHaveBeenCalledTimes(1);
+  });
+
+  it("streams the interim transcript into the composer and commits the final", () => {
+    const onSubmit = vi.fn<VitestProcedure>().mockResolvedValue(true);
+
+    const { rerender } = render(
+      <PromptBar onSubmit={onSubmit} isRecording interimTranscript="" />,
+    );
+    const input = screen.getByRole("textbox");
+    expect(input).toHaveValue("");
+
+    // Interim previews grow and replace the prior interim (not append).
+    rerender(<PromptBar onSubmit={onSubmit} isRecording interimTranscript="hello" />);
+    expect(input).toHaveValue("hello");
+    rerender(<PromptBar onSubmit={onSubmit} isRecording interimTranscript="hello world" />);
+    expect(input).toHaveValue("hello world");
+
+    // Recording stops: interim clears and the final transcript commits via
+    // prefillRequest, replacing the interim rather than doubling it.
+    rerender(
+      <PromptBar
+        onSubmit={onSubmit}
+        isRecording={false}
+        interimTranscript=""
+        prefillRequest={VOICE_FINAL_PREFILL}
+      />,
+    );
+    expect(input).toHaveValue("hello world.");
+  });
+
+  it("keeps pre-existing composer text when an interim transcript arrives", () => {
+    const onSubmit = vi.fn<VitestProcedure>().mockResolvedValue(true);
+
+    const { rerender } = render(<PromptBar onSubmit={onSubmit} isRecording interimTranscript="" />);
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "Note:" } });
+
+    rerender(<PromptBar onSubmit={onSubmit} isRecording interimTranscript="call the client" />);
+    expect(input).toHaveValue("Note: call the client");
   });
 
   it("reserves two lines of height for the hero rich placeholder", () => {

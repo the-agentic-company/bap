@@ -17,7 +17,7 @@ interface UseVoiceRecordingReturn {
 // Emit a buffered chunk on this cadence (ms) so a partial snapshot is
 // available during recording. Without a timeslice, MediaRecorder only emits
 // once, at stop, and live transcription would have nothing to work with.
-const RECORDER_TIMESLICE_MS = 1000;
+const RECORDER_TIMESLICE_MS = 500;
 
 export function useVoiceRecording(): UseVoiceRecordingReturn {
   const [isRecording, setIsRecording] = useState(false);
