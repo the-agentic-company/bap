@@ -630,6 +630,7 @@ export function ChatAreaContent({
             isRecording={isRecording}
             onStartRecording={handleStartRecording}
             onStopRecording={stopRecordingAndTranscribe}
+            voiceInteractionMode="toggle"
             prefillRequest={inputPrefillRequest}
             conversationId={draftConversationId}
             placeholder="Send a message..."

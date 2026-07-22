@@ -13,6 +13,10 @@ export function useChatAreaVoice({
 }) {
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const isRecordingRef = useRef(false);
+  // Tracks whether the current recording was started via the mod+k hold-to-talk shortcut.
+  // Only keyboard-initiated recordings are stopped on key release; a click-to-toggle
+  // recording (mic button) must survive unrelated key presses.
+  const keyboardInitiatedRef = useRef(false);
   const { isRecording, error: voiceError, startRecording, stopRecording } = useVoiceRecording();
   const { mutateAsync: transcribe } = useTranscribe();
 
@@ -21,6 +25,7 @@ export function useChatAreaVoice({
       return;
     }
     isRecordingRef.current = false;
+    keyboardInitiatedRef.current = false;
 
     const audioBlob = await stopRecording();
     if (!audioBlob || audioBlob.size === 0) {
@@ -49,23 +54,32 @@ export function useChatAreaVoice({
     }
   }, [setInputPrefillRequest, stopRecording, transcribe]);
 
-  const handleStartRecording = useCallback(() => {
-    if (!isRecordingRef.current && !isStreaming && !isProcessingVoice) {
-      isRecordingRef.current = true;
-      startRecording();
-    }
-  }, [isProcessingVoice, isStreaming, startRecording]);
+  const handleStartRecording = useCallback(
+    (fromKeyboard = false) => {
+      if (!isRecordingRef.current && !isStreaming && !isProcessingVoice) {
+        isRecordingRef.current = true;
+        keyboardInitiatedRef.current = fromKeyboard;
+        startRecording();
+      }
+    },
+    [isProcessingVoice, isStreaming, startRecording],
+  );
+
+  const handleHotkeyStartRecording = useCallback(
+    () => handleStartRecording(true),
+    [handleStartRecording],
+  );
 
   useHotkeys(
     "mod+k",
-    handleStartRecording,
+    handleHotkeyStartRecording,
     {
       keydown: true,
       keyup: false,
       preventDefault: true,
       enableOnFormTags: true,
     },
-    [handleStartRecording],
+    [handleHotkeyStartRecording],
   );
 
   useEffect(() => {
@@ -81,7 +95,7 @@ export function useChatAreaVoice({
         event.key === "Meta" ||
         event.key === "Control";
 
-      if (isHotkeyRelease) {
+      if (isHotkeyRelease && keyboardInitiatedRef.current) {
         stopRecordingAndTranscribe();
       }
     };

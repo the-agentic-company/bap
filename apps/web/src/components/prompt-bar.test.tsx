@@ -160,6 +160,47 @@ describe("PromptBar", () => {
     ).toEqual(["Debug tools", "Start voice recording", "Send message"]);
   });
 
+  it("toggles voice recording on click when voiceInteractionMode is toggle", () => {
+    const onStartRecording = vi.fn<VitestProcedure>();
+    const onStopRecording = vi.fn<VitestProcedure>();
+
+    const { rerender } = render(
+      <PromptBar
+        onSubmit={vi.fn<VitestProcedure>()}
+        onStartRecording={onStartRecording}
+        onStopRecording={onStopRecording}
+        voiceInteractionMode="toggle"
+      />,
+    );
+
+    const micButton = screen.getByRole("button", { name: "Start voice recording" });
+    expect(micButton).toHaveAttribute("aria-pressed", "false");
+
+    // First click starts recording (no need to hold).
+    fireEvent.click(micButton);
+    expect(onStartRecording).toHaveBeenCalledTimes(1);
+    expect(onStopRecording).not.toHaveBeenCalled();
+
+    // Parent flips isRecording; the same button becomes a stop control.
+    rerender(
+      <PromptBar
+        onSubmit={vi.fn<VitestProcedure>()}
+        onStartRecording={onStartRecording}
+        onStopRecording={onStopRecording}
+        voiceInteractionMode="toggle"
+        isRecording
+      />,
+    );
+
+    const stopButton = screen.getByRole("button", { name: "Stop voice recording" });
+    expect(stopButton).toHaveAttribute("aria-pressed", "true");
+
+    // Second click stops recording.
+    fireEvent.click(stopButton);
+    expect(onStopRecording).toHaveBeenCalledTimes(1);
+    expect(onStartRecording).toHaveBeenCalledTimes(1);
+  });
+
   it("reserves two lines of height for the hero rich placeholder", () => {
     const { container } = render(
       <PromptBar
