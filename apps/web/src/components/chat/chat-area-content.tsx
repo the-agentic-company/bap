@@ -265,6 +265,7 @@ export function ChatAreaContent({
   handleToggleDiscover,
   initElapsedLabel,
   inputPrefillRequest,
+  interimTranscript,
   isApproving,
   isDiscoverOpen,
   isEmptyChat,
@@ -311,6 +312,7 @@ export function ChatAreaContent({
   handleToggleDiscover: () => void;
   initElapsedLabel: string | null;
   inputPrefillRequest: InputPrefillRequest | null;
+  interimTranscript: string;
   isApproving: boolean;
   isDiscoverOpen: boolean;
   isEmptyChat: boolean;
@@ -577,6 +579,7 @@ export function ChatAreaContent({
               isRecording={isRecording}
               isProcessing={isProcessingVoice}
               error={voiceError}
+              recordingLabel={interimTranscript || t("Listening… tap the mic to stop")}
             />
           )}
           {normalizedQueuedMessages.length > 0 && (

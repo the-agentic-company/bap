@@ -5,7 +5,19 @@ interface UseVoiceRecordingReturn {
   error: string | null;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<Blob | null>;
+  /**
+   * Snapshot of the audio captured so far while still recording, or null if
+   * nothing has been buffered yet. Used for live (interim) transcription:
+   * the blob always includes the initial container chunk, so it stays
+   * decodable. Returns a fresh Blob on each call and does not stop recording.
+   */
+  getPartialAudio: () => Blob | null;
 }
+
+// Emit a buffered chunk on this cadence (ms) so a partial snapshot is
+// available during recording. Without a timeslice, MediaRecorder only emits
+// once, at stop, and live transcription would have nothing to work with.
+const RECORDER_TIMESLICE_MS = 1000;
 
 export function useVoiceRecording(): UseVoiceRecordingReturn {
   const [isRecording, setIsRecording] = useState(false);
@@ -51,7 +63,7 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
         }
       });
 
-      mediaRecorder.start();
+      mediaRecorder.start(RECORDER_TIMESLICE_MS);
       setIsRecording(true);
     } catch (err) {
       if (err instanceof Error) {
@@ -100,11 +112,21 @@ export function useVoiceRecording(): UseVoiceRecordingReturn {
     });
   }, []);
 
+  const getPartialAudio = useCallback((): Blob | null => {
+    const mediaRecorder = mediaRecorderRef.current;
+    if (!mediaRecorder || audioChunksRef.current.length === 0) {
+      return null;
+    }
+    const mimeType = mediaRecorder.mimeType || "audio/webm";
+    return new Blob(audioChunksRef.current, { type: mimeType });
+  }, []);
+
   return {
     isRecording,
     error,
     startRecording,
     stopRecording,
+    getPartialAudio,
   };
 }
 
