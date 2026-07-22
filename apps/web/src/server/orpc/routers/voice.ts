@@ -90,8 +90,13 @@ async function transcribeWithNova3(input: z.infer<typeof transcribeInputSchema>)
   }
 
   const audioBuffer = Buffer.from(input.audio, "base64");
+  // Use nova-3's multilingual mode rather than single-language auto-detection.
+  // `detect_language` picks one language per request and is unreliable on the
+  // short partial clips the live transcript sends (e.g. accented English gets
+  // mis-detected as French), whereas `language=multi` transcribes mixed/either
+  // language natively.
   const response = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-3&detect_language=true&smart_format=true",
+    "https://api.deepgram.com/v1/listen?model=nova-3&language=multi&smart_format=true",
     {
       method: "POST",
       headers: {
