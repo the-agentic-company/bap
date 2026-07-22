@@ -117,6 +117,7 @@ export function useChatAreaVoice({
           const result = await transcribe({
             audio: base64Audio,
             mimeType: partial.type || "audio/webm",
+            multilingual: true,
           });
           // Ignore results that land after recording stopped (the final
           // transcription owns the committed text at that point).

@@ -3,7 +3,14 @@ import { client } from "../client";
 
 export function useTranscribe() {
   return useMutation({
-    mutationFn: ({ audio, mimeType }: { audio: string; mimeType: string }) =>
-      client.voice.transcribe({ audio, mimeType }),
+    mutationFn: ({
+      audio,
+      mimeType,
+      multilingual,
+    }: {
+      audio: string;
+      mimeType: string;
+      multilingual?: boolean;
+    }) => client.voice.transcribe({ audio, mimeType, multilingual }),
   });
 }

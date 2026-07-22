@@ -8,7 +8,12 @@ const mocks = vi.hoisted(() => ({
   startRecording: vi.fn<() => Promise<void>>(),
   stopRecording: vi.fn<() => Promise<Blob | null>>(),
   getPartialAudio: vi.fn<() => Blob | null>(),
-  transcribe: vi.fn<(input: { audio: string; mimeType: string }) => Promise<{ text: string }>>(),
+  transcribe:
+    vi.fn<
+      (input: { audio: string; mimeType: string; multilingual?: boolean }) => Promise<{
+        text: string;
+      }>
+    >(),
   blobToBase64: vi.fn<(blob: Blob) => Promise<string>>(),
 }));
 
@@ -67,7 +72,11 @@ describe("useChatAreaVoice interim transcription", () => {
       await vi.advanceTimersByTimeAsync(2600);
     });
 
-    expect(mocks.transcribe).toHaveBeenCalledWith({ audio: "base64-audio", mimeType: "audio/webm" });
+    expect(mocks.transcribe).toHaveBeenCalledWith({
+      audio: "base64-audio",
+      mimeType: "audio/webm",
+      multilingual: true,
+    });
     expect(result.current.interimTranscript).toBe("hello there");
   });
 
