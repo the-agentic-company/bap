@@ -75,4 +75,42 @@ describe("IntegrationPermissionsPlugin", () => {
       }),
     );
   });
+
+  it("requests write approval when a Slack account option precedes send", async () => {
+    process.env.SLACK_ACCESS_TOKEN = "slack-token";
+    process.env.APP_URL = "https://heybap.com";
+    vi.doMock("../lib/runtime-context", () => ({
+      readRuntimeContext: vi.fn().mockResolvedValue({
+        runtimeId: "runtime-1",
+        turnSeq: 2,
+        callbackToken: "callback-token",
+      }),
+    }));
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ status: "accepted" }), { status: 200 }),
+    );
+
+    const { IntegrationPermissionsPlugin } = await import("./integration-permissions");
+    const plugin = await IntegrationPermissionsPlugin();
+
+    await expect(
+      plugin["tool.execute.before"](
+        { tool: "bash", toolCallID: "call-456" },
+        {
+          args: {
+            command: 'slack --account baptiste-2 send -c C123 -t "hi" --as bot',
+          },
+        },
+      ),
+    ).resolves.toBeUndefined();
+
+    const createBody = JSON.parse(String(vi.mocked(global.fetch).mock.calls[0]?.[1]?.body));
+    expect(createBody).toEqual(
+      expect.objectContaining({
+        kind: "plugin_write",
+        integration: "slack",
+        operation: "send",
+      }),
+    );
+  });
 });
