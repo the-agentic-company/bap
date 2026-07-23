@@ -559,6 +559,23 @@ export async function adminRemoveWorkspaceMember(workspaceId: string, targetEmai
   return { email: targetUser.email };
 }
 
+export async function adminDeleteWorkspace(workspaceId: string) {
+  const target = await db.query.workspace.findFirst({
+    where: eq(workspace.id, workspaceId),
+    columns: { id: true, name: true },
+  });
+
+  if (!target) {
+    throw new Error("Workspace not found");
+  }
+
+  // All rows referencing the workspace cascade or set-null on delete
+  // (members, invitations, coworkers, conversations, skills, MCP servers, ...).
+  await db.delete(workspace).where(eq(workspace.id, workspaceId));
+
+  return { id: target.id, name: target.name };
+}
+
 async function getWorkspaceMembershipByEmail(workspaceId: string, targetEmail: string) {
   const normalizedEmail = targetEmail.trim().toLowerCase();
   const targetUser = await db.query.user.findFirst({

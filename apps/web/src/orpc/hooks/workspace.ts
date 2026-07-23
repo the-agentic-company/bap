@@ -83,6 +83,18 @@ export function useAdminRemoveWorkspaceMember() {
   });
 }
 
+export function useAdminDeleteWorkspace() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { workspaceId: string }) =>
+      client.billing.adminDeleteWorkspace(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
+    },
+  });
+}
+
 export function useAdminCreateWorkspace() {
   const queryClient = useQueryClient();
 
