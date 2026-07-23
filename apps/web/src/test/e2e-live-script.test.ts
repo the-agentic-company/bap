@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildRecordModeEnv } from "../../scripts/e2e-live";
+import { buildCliLiveRetryArgs, buildRecordModeEnv } from "../../scripts/e2e-live";
 
 describe("buildRecordModeEnv", () => {
   test("uses the running worktree server by default", () => {
@@ -38,5 +38,16 @@ describe("buildRecordModeEnv", () => {
 
     expect(env.PLAYWRIGHT_SKIP_WEBSERVER).toBeUndefined();
     expect(env.APP_SERVER_URL).toBeUndefined();
+  });
+});
+
+describe("buildCliLiveRetryArgs", () => {
+  test("retries one isolated live-test failure by default", () => {
+    expect(buildCliLiveRetryArgs({})).toEqual(["--retry", "1"]);
+  });
+
+  test("allows release environments to override or disable retries", () => {
+    expect(buildCliLiveRetryArgs({ E2E_CLI_LIVE_RETRY_COUNT: "2" })).toEqual(["--retry", "2"]);
+    expect(buildCliLiveRetryArgs({ E2E_CLI_LIVE_RETRY_COUNT: "0" })).toEqual([]);
   });
 });
