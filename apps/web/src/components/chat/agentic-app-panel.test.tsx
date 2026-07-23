@@ -64,6 +64,15 @@ function engageViaClick(iframe: HTMLIFrameElement) {
   fireEvent.blur(window);
 }
 
+// Simulate a genuine tablet tap: the touch lands inside the cross-origin iframe, so the parent
+// never sees a pointer gesture — only a `touchstart` on the iframe element — immediately
+// followed by focus entering the iframe (window blur).
+function engageViaTouch(iframe: HTMLIFrameElement) {
+  fireEvent.touchStart(iframe);
+  focusIframe(iframe);
+  fireEvent.blur(window);
+}
+
 function dispatchPrompt(source: Window | null, prompt: unknown = "Send the weekly email") {
   window.dispatchEvent(
     new MessageEvent("message", {
@@ -170,6 +179,19 @@ describe("AgenticAppPanel prompt listener", () => {
       reason: null,
       file_id: "file-1",
     });
+  });
+
+  it("sends an engaged, focused prompt after a touch tap and acks sent", async () => {
+    const { postMessageSpy, onSendPrompt, iframe } = renderPanel();
+    engageViaTouch(iframe);
+    dispatchPrompt(iframe.contentWindow);
+    await waitFor(() => {
+      expect(postMessageSpy).toHaveBeenCalledWith(
+        { type: AGENTIC_APP_PROMPT_RESULT_TYPE, version: 1, status: "sent" },
+        "*",
+      );
+    });
+    expect(onSendPrompt).toHaveBeenCalledExactlyOnceWith("Send the weekly email");
   });
 
   it("rejects a malformed version 1 envelope as invalid", () => {

@@ -6,6 +6,12 @@ import { optionalAuthProcedure } from "../middleware";
 const transcribeInputSchema = z.object({
   audio: z.string(), // Base64 encoded audio data
   mimeType: z.string().default("audio/webm"),
+  // Live interim previews send short partial clips where single-language
+  // auto-detection is unreliable (e.g. accented English mis-detected as
+  // French). They opt into nova-3's multilingual mode. The final, full-clip
+  // transcription keeps the original detect_language behavior, which already
+  // works well across languages.
+  multilingual: z.boolean().default(false),
 });
 
 const transcribeOutputSchema = z.object({
@@ -90,8 +96,12 @@ async function transcribeWithNova3(input: z.infer<typeof transcribeInputSchema>)
   }
 
   const audioBuffer = Buffer.from(input.audio, "base64");
+  // `detect_language=true` (the original, proven config) transcribes full clips
+  // well across languages. `language=multi` is nova-3's multilingual mode, used
+  // only for the short live snapshots where per-request detection is unreliable.
+  const languageParam = input.multilingual ? "language=multi" : "detect_language=true";
   const response = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-3&detect_language=true&smart_format=true",
+    `https://api.deepgram.com/v1/listen?model=nova-3&${languageParam}&smart_format=true`,
     {
       method: "POST",
       headers: {

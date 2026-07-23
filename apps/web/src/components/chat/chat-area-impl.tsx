@@ -188,6 +188,7 @@ export function ChatAreaImpl({
 
   const {
     handleStartRecording,
+    interimTranscript,
     isProcessingVoice,
     isRecording,
     stopRecordingAndTranscribe,
@@ -345,6 +346,7 @@ export function ChatAreaImpl({
     handleToggleDiscover,
     initElapsedLabel,
     inputPrefillRequest,
+    interimTranscript,
     isApproving,
     isDiscoverOpen,
     isEmptyChat,

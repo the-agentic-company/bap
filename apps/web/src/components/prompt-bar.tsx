@@ -56,6 +56,10 @@ type PromptBarProps = {
   onStartRecording?: () => void;
   onStopRecording?: () => void;
   voiceInteractionMode?: "press-to-talk" | "toggle";
+  // Live (interim) transcript shown in the composer while recording. It is
+  // written over a captured base text and reconciled when the final
+  // transcription commits via prefillRequest.
+  interimTranscript?: string;
 
   conversationId?: string;
   prefillRequest?: { id: string; text: string; mode?: "replace" | "append" } | null;
@@ -177,6 +181,7 @@ export function PromptBar({
   onStartRecording,
   onStopRecording,
   voiceInteractionMode = "press-to-talk",
+  interimTranscript = "",
   conversationId,
   prefillRequest,
   renderSkills,
@@ -190,6 +195,9 @@ export function PromptBar({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
+  // Text present when the current voice session began; the live interim is
+  // rendered as `base + interim`. Null when no voice session is in progress.
+  const voiceBaseRef = useRef<string | null>(null);
   const [attachments, setAttachments] = useState<AttachmentUploadState[]>([]);
   const attachmentsRef = useRef<AttachmentUploadState[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -239,9 +247,17 @@ export function PromptBar({
       return;
     }
     setText((prev) => {
+      // If a voice session wrote an interim preview into the composer, discard
+      // that transient text and append the final transcript to the real base
+      // instead — this commits the voice session.
+      let baseline = prev;
+      if (prefillRequest.mode === "append" && voiceBaseRef.current !== null) {
+        baseline = voiceBaseRef.current;
+        voiceBaseRef.current = null;
+      }
       const next =
         prefillRequest.mode === "append"
-          ? `${prev}${prev && !/\s$/.test(prev) ? " " : ""}${prefillRequest.text}`
+          ? `${baseline}${baseline && !/\s$/.test(baseline) ? " " : ""}${prefillRequest.text}`
           : prefillRequest.text;
       requestAnimationFrame(() => {
         textareaRef.current?.focus();
@@ -250,6 +266,36 @@ export function PromptBar({
       return next;
     });
   }, [prefillRequest]);
+
+  // ── Live interim transcript ──
+  // Reset the anchor whenever a new recording starts so the base text is
+  // recaptured fresh for each voice session.
+  useEffect(() => {
+    if (isRecording) {
+      voiceBaseRef.current = null;
+    }
+  }, [isRecording]);
+
+  // Render the interim transcript into the composer as it grows, over the text
+  // that was present when the session began (so pre-existing input is kept).
+  useEffect(() => {
+    const interim = interimTranscript.trim();
+    if (!interim) {
+      return;
+    }
+    setText((prev) => {
+      if (voiceBaseRef.current === null) {
+        voiceBaseRef.current = prev;
+      }
+      const base = voiceBaseRef.current;
+      const next = `${base}${base && !/\s$/.test(base) ? " " : ""}${interim}`;
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+        textareaRef.current?.setSelectionRange(next.length, next.length);
+      });
+      return next;
+    });
+  }, [interimTranscript]);
 
   // ── Plain placeholder animation ──
   const [placeholderText, setPlaceholderText] = useState("");
