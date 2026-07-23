@@ -74,6 +74,7 @@ export function AgenticAppPanel({ outputFile, onClose, onSendPrompt }: Props) {
       className="bg-background flex min-h-0 flex-1 flex-col"
       onPointerDownCapture={recordGesture}
       onPointerMoveCapture={recordGesture}
+      onTouchStartCapture={recordGesture}
       onKeyDownCapture={recordGesture}
     >
       <div className="border-border/70 flex h-11 shrink-0 items-center gap-2 border-b px-3">
@@ -152,6 +153,7 @@ export function AgenticAppPanel({ outputFile, onClose, onSendPrompt }: Props) {
             onLoad={handleIframeLoad}
             onPointerDownCapture={recordGesture}
             onPointerMoveCapture={recordGesture}
+            onTouchStartCapture={recordGesture}
             onKeyDownCapture={recordGesture}
           />
         )}
