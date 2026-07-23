@@ -190,6 +190,7 @@ const INTEGRATION_NAMES: Record<string, string> = {
 };
 
 const INTERNAL_DISPLAY_ONLY_INTEGRATIONS = new Set(["agent-browser"]);
+const GLOBAL_OPTION_FLAGS_WITH_VALUE = new Set(["--account"]);
 
 // Custom integration permissions loaded from env var
 let customPermissions: Record<string, { read: string[]; write: string[] }> = {};
@@ -223,6 +224,25 @@ function extractCommandCandidate(command: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function removeLeadingGlobalOptions(parts: string[]): string[] {
+  let cursor = 1;
+  while (cursor < parts.length) {
+    const part = parts[cursor];
+    if (!part || part === "--") {
+      cursor += 1;
+      break;
+    }
+    if (!part.startsWith("-")) {
+      break;
+    }
+
+    const [flag] = part.split("=", 1);
+    cursor += flag && GLOBAL_OPTION_FLAGS_WITH_VALUE.has(flag) && !part.includes("=") ? 2 : 1;
+  }
+
+  return [parts[0], ...parts.slice(cursor)];
+}
+
 /**
  * Parse a Bash command to extract integration and operation
  */
@@ -231,7 +251,7 @@ function parseBashCommand(command: string): { integration: string; operation: st
   if (!trimmed) {
     return null;
   }
-  const parts = trimmed.split(/\s+/);
+  const parts = removeLeadingGlobalOptions(trimmed.split(/\s+/));
 
   const cliName = parts[0];
   let integration = CLI_TO_INTEGRATION[cliName];

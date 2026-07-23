@@ -304,6 +304,8 @@ jobs:
 
   staging-verify:
     needs:
+      - staging-db
+      - staging-daytona
       - staging-render
     uses: ./.github/workflows/verify-deployment.yml
     with:

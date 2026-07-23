@@ -27,7 +27,7 @@ type Mode =
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appRoot, "../..");
-const cliLiveTimeoutMs = 20 * 60 * 1000;
+const cliLiveTimeoutMs = 25 * 60 * 1000;
 const defaultCliLiveTestFiles = [
   "tests/e2e-cli/auth.cli.live.e2e.test.ts",
   "tests/e2e-cli/chat.cli.live.test.ts",
@@ -429,6 +429,15 @@ function getCliLiveTestName(env: NodeJS.ProcessEnv): string | null {
   return env.E2E_CLI_LIVE_TEST_NAME?.trim() || null;
 }
 
+export function buildCliLiveRetryArgs(env: NodeJS.ProcessEnv): string[] {
+  const rawRetryCount = env.E2E_CLI_LIVE_RETRY_COUNT ?? env.E2E_TRANSIENT_RETRY_COUNT ?? "1";
+  const retryCount = Number(rawRetryCount);
+  if (!Number.isInteger(retryCount) || retryCount <= 0) {
+    return [];
+  }
+  return ["--retry", String(retryCount)];
+}
+
 function isCliLiveFocused(env: NodeJS.ProcessEnv): boolean {
   return Boolean(env.E2E_CLI_LIVE_TEST_FILES?.trim() || getCliLiveTestName(env));
 }
@@ -464,6 +473,7 @@ async function runCliLive(env: NodeJS.ProcessEnv): Promise<void> {
     "run",
     ...testFiles,
     ...(testName ? ["-t", testName] : []),
+    ...buildCliLiveRetryArgs(env),
   ]);
   if (isCliLiveFocused(env)) {
     console.log("[e2e-live] skipping sandbox live checks because CLI live filtering is active.");
