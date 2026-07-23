@@ -6,6 +6,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { WorkspaceAvatar } from "@/components/workspace-avatar";
 import { clientEditionCapabilities } from "@/lib/edition";
 import { useBillingOverview, useSwitchWorkspace } from "@/orpc/hooks/billing";
@@ -29,6 +36,8 @@ const EMPTY_WORKSPACE_OPTIONS: Array<{
   imageUrl?: string | null;
   role?: string;
 }> = [];
+
+type InviteRole = "admin" | "member";
 
 const WORKSPACE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const WORKSPACE_IMAGE_MIME_TYPES = ["image/gif", "image/jpeg", "image/png", "image/webp"] as const;
@@ -169,6 +178,7 @@ function WorkspaceSettingsPage() {
   const switchWorkspace = useSwitchWorkspace();
   const workspaceImageInputRef = useRef<HTMLInputElement>(null);
   const [inviteEmailsInput, setInviteEmailsInput] = useState("");
+  const [inviteRole, setInviteRole] = useState<InviteRole>("member");
   const [workspaceNameInput, setWorkspaceNameInput] = useState("");
 
   const activeWorkspaceId = data?.owner.ownerId;
@@ -213,6 +223,10 @@ function WorkspaceSettingsPage() {
 
   const handleInviteEmailsChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setInviteEmailsInput(event.target.value);
+  }, []);
+
+  const handleInviteRoleChange = useCallback((value: string) => {
+    setInviteRole(value as InviteRole);
   }, []);
 
   const handleWorkspaceNameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -313,6 +327,7 @@ function WorkspaceSettingsPage() {
         const result = await inviteMembers.mutateAsync({
           workspaceId: activeWorkspaceId,
           emails: parsedInviteEmails,
+          role: inviteRole,
         });
         const invitedCount = Array.isArray(result)
           ? result.length
@@ -325,11 +340,12 @@ function WorkspaceSettingsPage() {
             : "No invitations were created.",
         );
         setInviteEmailsInput("");
+        setInviteRole("member");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to invite members.");
       }
     },
-    [activeWorkspaceId, inviteMembers, parsedInviteEmails, t],
+    [activeWorkspaceId, inviteMembers, inviteRole, parsedInviteEmails, t],
   );
 
   const handleCancelInvitation = useCallback(
@@ -528,6 +544,23 @@ function WorkspaceSettingsPage() {
                 placeholder={t("alice@example.com, bob@example.com")}
                 disabled={!canInviteMembers || inviteMembers.isPending}
               />
+              <Select
+                value={inviteRole}
+                onValueChange={handleInviteRoleChange}
+                disabled={!canInviteMembers || inviteMembers.isPending}
+              >
+                <SelectTrigger aria-label={t("Role")} className="sm:w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="member">
+                    <T>Member</T>
+                  </SelectItem>
+                  <SelectItem value="admin">
+                    <T>Admin</T>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
               <Button type="submit" disabled={!canInviteMembers || inviteMembers.isPending}>
                 {inviteMembers.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
