@@ -6,7 +6,7 @@ import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = { workspaceId: workspaceIdSchema, runId: z.string().min(1) };
 export const metadata: ToolMetadata = {
-  name: "coworkerRun.cancel",
+  name: "coworkerRun_cancel",
   description: "Cancel a nonterminal Coworker Run.",
   annotations: {
     title: "Cancel coworker run",

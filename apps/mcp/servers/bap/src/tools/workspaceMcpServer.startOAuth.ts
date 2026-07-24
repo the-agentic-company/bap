@@ -10,7 +10,7 @@ export const schema = {
   redirectUrl: z.string().url(),
 };
 export const metadata: ToolMetadata = {
-  name: "workspaceMcpServer.startOAuth",
+  name: "workspaceMcpServer_startOAuth",
   description:
     "Start OAuth reauthorization. A successful callback replaces the previous credential.",
   annotations: {

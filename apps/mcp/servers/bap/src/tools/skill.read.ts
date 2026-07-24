@@ -5,7 +5,7 @@ import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = { workspaceId: workspaceIdSchema, query: skillReadQuerySchema };
 export const metadata: ToolMetadata = {
-  name: "skill.read",
+  name: "skill_read",
   description: "List or get skills.",
   annotations: { title: "Read skills", readOnlyHint: true, idempotentHint: true },
 };

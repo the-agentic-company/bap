@@ -62,11 +62,11 @@ const values = z
     customIntegrationIds: z
       .array(z.string())
       .optional()
-      .describe("Connected Account IDs from connectedAccount.read."),
+      .describe("Connected Account IDs from connectedAccount_read."),
     workspaceMcpServerIds: z
       .array(z.string())
       .optional()
-      .describe("Workspace MCP Server IDs from workspaceMcpServer.list."),
+      .describe("Workspace MCP Server IDs from workspaceMcpServer_list."),
     skillSlugs: z
       .array(z.string())
       .optional()
@@ -78,7 +78,7 @@ const values = z
   .strict();
 export const schema = { workspaceId: workspaceIdSchema, id: z.string().optional(), values };
 export const metadata: ToolMetadata = {
-  name: "coworker.save",
+  name: "coworker_save",
   description:
     "Create or partially update a Coworker, including status, favorite state, and Coworker Folder placement.",
   annotations: { title: "Save coworker", readOnlyHint: false, idempotentHint: false },

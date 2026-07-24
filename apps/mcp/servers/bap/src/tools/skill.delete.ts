@@ -6,7 +6,7 @@ import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = { workspaceId: workspaceIdSchema, id: z.string().min(1) };
 export const metadata: ToolMetadata = {
-  name: "skill.delete",
+  name: "skill_delete",
   description: "Delete a skill.",
   annotations: {
     title: "Delete skill",

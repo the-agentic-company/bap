@@ -29,7 +29,7 @@ const values = z
       .enum(["none", "api_key", "bearer", "oauth2"])
       .optional()
       .describe(
-        'Auth mode. "api_key" and "bearer" require a follow-up workspaceMcpServer.setCredential to set the secret; "oauth2" uses workspaceMcpServer.startOAuth.',
+        'Auth mode. "api_key" and "bearer" require a follow-up workspaceMcpServer_setCredential to set the secret; "oauth2" uses workspaceMcpServer_startOAuth.',
       ),
     authHeaderName: z.string().nullable().optional(),
     authQueryParam: z.string().nullable().optional(),
@@ -42,7 +42,7 @@ const values = z
   .strict();
 export const schema = { workspaceId: workspaceIdSchema, id: z.string().optional(), values };
 export const metadata: ToolMetadata = {
-  name: "workspaceMcpServer.save",
+  name: "workspaceMcpServer_save",
   description: "Create or partially update a Workspace MCP Server, including enabled state.",
   annotations: { title: "Save workspace MCP server", readOnlyHint: false, idempotentHint: false },
 };

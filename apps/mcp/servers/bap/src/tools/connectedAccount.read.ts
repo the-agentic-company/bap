@@ -10,7 +10,7 @@ const query = z.discriminatedUnion("type", [
 ]);
 export const schema = { workspaceId: workspaceIdSchema, query };
 export const metadata: ToolMetadata = {
-  name: "connectedAccount.read",
+  name: "connectedAccount_read",
   description: "List or get Connected Accounts in a Workspace.",
   annotations: { title: "Read connected accounts", readOnlyHint: true, idempotentHint: true },
 };

@@ -37,7 +37,7 @@ export const schema = {
   operation,
 };
 export const metadata: ToolMetadata = {
-  name: "coworkerDocument.save",
+  name: "coworkerDocument_save",
   description: "Create or update persistent Coworker Documents.",
   annotations: { title: "Save coworker document", readOnlyHint: false, idempotentHint: false },
 };

@@ -13,13 +13,13 @@ export const schema = {
     .int()
     .positive()
     .describe(
-      "Exact size of the file in bytes (max 1 GB). Must match the uploaded bytes or attachment.completeUpload fails.",
+      "Exact size of the file in bytes (max 1 GB). Must match the uploaded bytes or attachment_completeUpload fails.",
     ),
 };
 export const metadata: ToolMetadata = {
-  name: "attachment.prepareUpload",
+  name: "attachment_prepareUpload",
   description:
-    "Prepare a direct attachment upload and return a signed upload URL. Complete it with attachment.completeUpload.",
+    "Prepare a direct attachment upload and return a signed upload URL. Complete it with attachment_completeUpload.",
   annotations: {
     title: "Prepare attachment upload",
     readOnlyHint: false,

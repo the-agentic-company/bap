@@ -5,7 +5,7 @@ import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = { workspaceId: workspaceIdSchema };
 export const metadata: ToolMetadata = {
-  name: "workspaceMember.list",
+  name: "workspaceMember_list",
   description: "List Workspace Memberships and pending Workspace Invitations.",
   annotations: { title: "List workspace members", readOnlyHint: true, idempotentHint: true },
 };

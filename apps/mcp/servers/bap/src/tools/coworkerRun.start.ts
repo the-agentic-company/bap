@@ -29,7 +29,7 @@ const request = z.discriminatedUnion("mode", [
 ]);
 export const schema = { workspaceId: workspaceIdSchema, request };
 export const metadata: ToolMetadata = {
-  name: "coworkerRun.start",
+  name: "coworkerRun_start",
   description:
     "Start a Coworker Run with optional input and attachments, or provide requested input to an existing run.",
   annotations: { title: "Start coworker run", readOnlyHint: false, idempotentHint: false },

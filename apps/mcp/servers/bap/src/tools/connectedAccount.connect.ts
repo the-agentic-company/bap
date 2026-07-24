@@ -16,7 +16,7 @@ export const schema = {
   connectedAccountId: z.string().optional(),
 };
 export const metadata: ToolMetadata = {
-  name: "connectedAccount.connect",
+  name: "connectedAccount_connect",
   description:
     'Start a Connected Account authorization flow for an integration provider such as "google_gmail". Returns an authUrl that the user must open in a browser to grant consent; no credentials are entered through this tool.',
   annotations: {

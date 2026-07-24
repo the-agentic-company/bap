@@ -28,7 +28,7 @@ const values = z
   .strict();
 export const schema = { workspaceId: workspaceIdSchema, id: z.string().optional(), values };
 export const metadata: ToolMetadata = {
-  name: "skill.save",
+  name: "skill_save",
   description: "Create a skill from files or partially update skill metadata and visibility.",
   annotations: { title: "Save skill", readOnlyHint: false, idempotentHint: false },
 };

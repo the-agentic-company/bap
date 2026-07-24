@@ -9,7 +9,7 @@ export const schema = {
   detail: detailSchema,
 };
 export const metadata: ToolMetadata = {
-  name: "coworker.read",
+  name: "coworker_read",
   description: "List, get, or export Coworkers.",
   annotations: { title: "Read coworkers", readOnlyHint: true, idempotentHint: true },
 };

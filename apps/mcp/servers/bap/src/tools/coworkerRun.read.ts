@@ -36,7 +36,7 @@ const query = z.discriminatedUnion("type", [
 ]);
 export const schema = { workspaceId: workspaceIdSchema, query, detail: detailSchema };
 export const metadata: ToolMetadata = {
-  name: "coworkerRun.read",
+  name: "coworkerRun_read",
   description: "List Coworker Runs, read run logs, or download a Sandbox File owned by a run.",
   annotations: { title: "Read coworker runs", readOnlyHint: true, idempotentHint: true },
 };

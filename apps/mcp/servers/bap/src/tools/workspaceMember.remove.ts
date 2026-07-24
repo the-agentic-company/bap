@@ -6,7 +6,7 @@ import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = { workspaceId: workspaceIdSchema, email: z.string().email() };
 export const metadata: ToolMetadata = {
-  name: "workspaceMember.remove",
+  name: "workspaceMember_remove",
   description: "Remove a Workspace Membership.",
   annotations: {
     title: "Remove workspace member",

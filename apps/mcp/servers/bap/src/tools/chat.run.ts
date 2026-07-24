@@ -24,7 +24,7 @@ export const schema = {
 };
 
 export const metadata: ToolMetadata = {
-  name: "chat.run",
+  name: "chat_run",
   description:
     "Run a Bap chat turn and return a structured result. The message may be empty when at least one ready attachment is provided.",
   annotations: {
