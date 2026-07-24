@@ -8,7 +8,13 @@ export const schema = {
   workspaceId: workspaceIdSchema,
   filename: z.string().min(1).max(256),
   mimeType: z.string().min(1),
-  sizeBytes: z.number().int().positive(),
+  sizeBytes: z
+    .number()
+    .int()
+    .positive()
+    .describe(
+      "Exact size of the file in bytes (max 1 GB). Must match the uploaded bytes or attachment.completeUpload fails.",
+    ),
 };
 export const metadata: ToolMetadata = {
   name: "attachment.prepareUpload",

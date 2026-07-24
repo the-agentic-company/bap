@@ -4,7 +4,15 @@ import { workspaceIdSchema } from "../lib/contract-schemas";
 import { handleAttachmentCompleteUpload } from "../lib/handlers";
 import { executeBapTool } from "../lib/tool-runtime";
 
-export const schema = { workspaceId: workspaceIdSchema, attachmentId: z.string().min(1) };
+export const schema = {
+  workspaceId: workspaceIdSchema,
+  attachmentId: z
+    .string()
+    .min(1)
+    .describe(
+      "The attachmentId returned by attachment.prepareUpload. This tool returns a new ready attachmentId to use in chat.run or coworkerRun.start.",
+    ),
+};
 export const metadata: ToolMetadata = {
   name: "attachment.completeUpload",
   description: "Complete a prepared attachment upload and return a ready attachment ID.",

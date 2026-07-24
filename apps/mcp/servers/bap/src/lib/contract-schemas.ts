@@ -1,4 +1,5 @@
 import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@bap/core/lib/coworker-tool-policy";
+import { MODEL_PROVIDER_IDS } from "@bap/core/lib/model-reference";
 import { z } from "zod";
 
 export const workspaceIdSchema = z.string().trim().min(1).describe("Workspace ID");
@@ -10,6 +11,12 @@ export const integrationTypeSchema = z
   .min(1)
   .describe(
     `Integration provider slug. Use the exact value, for example "google_gmail" for Gmail. Known values: ${COWORKER_AVAILABLE_INTEGRATION_TYPES.join(", ")}.`,
+  );
+
+export const modelReferenceSchema = z
+  .string()
+  .describe(
+    `Model reference in "provider/model" form, for example "openai/gpt-5.4". Provider is one of: ${MODEL_PROVIDER_IDS.join(", ")}.`,
   );
 
 export const coworkerReadQuerySchema = z.discriminatedUnion("type", [

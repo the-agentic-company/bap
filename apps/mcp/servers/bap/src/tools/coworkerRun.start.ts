@@ -12,7 +12,7 @@ const request = z.discriminatedUnion("mode", [
   z
     .object({
       mode: z.literal("new"),
-      coworkerReference: z.string().min(1),
+      coworkerReference: z.string().min(1).describe("Coworker ID or @username."),
       input: z.string().optional(),
       payload: z.record(z.string(), z.unknown()).optional(),
       attachments: z.array(attachmentReferenceSchema).optional(),

@@ -33,7 +33,7 @@ const operation = z.discriminatedUnion("type", [
 ]);
 export const schema = {
   workspaceId: workspaceIdSchema,
-  coworkerReference: z.string().min(1),
+  coworkerReference: z.string().min(1).describe("Coworker ID or @username."),
   operation,
 };
 export const metadata: ToolMetadata = {

@@ -11,11 +11,14 @@ const values = z
         z.object({
           path: z.string().min(1),
           mimeType: z.string().optional(),
-          contentBase64: z.string().min(1),
+          contentBase64: z.string().min(1).describe("File contents encoded as base64."),
         }),
       )
       .min(1)
-      .optional(),
+      .optional()
+      .describe(
+        'Skill files for creation. Must include a root "SKILL.md" whose YAML frontmatter has a "name" and a non-empty "description".',
+      ),
     displayName: z.string().optional(),
     description: z.string().optional(),
     icon: z.string().nullable().optional(),

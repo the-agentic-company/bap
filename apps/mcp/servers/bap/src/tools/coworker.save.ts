@@ -1,23 +1,39 @@
+import { COWORKER_TOOL_ACCESS_MODES } from "@bap/core/lib/coworker-tool-policy";
 import { z } from "zod";
 import type { InferSchema, ToolExtraArguments, ToolMetadata } from "xmcp";
-import { workspaceIdSchema } from "../lib/contract-schemas";
+import {
+  integrationTypeSchema,
+  modelReferenceSchema,
+  workspaceIdSchema,
+} from "../lib/contract-schemas";
 import { handleCoworkerSave } from "../lib/handlers";
 import { executeBapTool } from "../lib/tool-runtime";
 
+const scheduleTime = z
+  .string()
+  .describe('Time of day in 24h zero-padded "HH:MM", for example "09:30".');
+const scheduleTimezone = z
+  .string()
+  .optional()
+  .describe('IANA timezone name, for example "Europe/Paris". Defaults to UTC.');
+
 const schedule = z.union([
   z.object({ type: z.literal("interval"), intervalMinutes: z.number().min(60).max(10080) }),
-  z.object({ type: z.literal("daily"), time: z.string(), timezone: z.string().optional() }),
+  z.object({ type: z.literal("daily"), time: scheduleTime, timezone: scheduleTimezone }),
   z.object({
     type: z.literal("weekly"),
-    time: z.string(),
-    daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1),
-    timezone: z.string().optional(),
+    time: scheduleTime,
+    daysOfWeek: z
+      .array(z.number().int().min(0).max(6))
+      .min(1)
+      .describe("Days of week to run, 0 = Sunday through 6 = Saturday."),
+    timezone: scheduleTimezone,
   }),
   z.object({
     type: z.literal("monthly"),
-    time: z.string(),
+    time: scheduleTime,
     dayOfMonth: z.number().int().min(1).max(31),
-    timezone: z.string().optional(),
+    timezone: scheduleTimezone,
   }),
   z.null(),
 ]);
@@ -29,16 +45,32 @@ const values = z
     status: z.enum(["on", "off"]).optional(),
     favorite: z.boolean().optional(),
     folderId: z.string().nullable().optional(),
-    trigger: z.string().min(1).max(128).optional(),
+    trigger: z
+      .string()
+      .min(1)
+      .max(128)
+      .optional()
+      .describe(
+        'One of "manual", "schedule", "email", "webhook". Use "schedule" (with schedule set) to enable cron runs.',
+      ),
     prompt: z.string().max(20000).optional(),
     autoApprove: z.boolean().optional(),
-    model: z.string().optional(),
+    model: modelReferenceSchema.optional(),
     authSource: z.enum(["user", "shared"]).nullable().optional(),
-    toolAccessMode: z.string().optional(),
-    integrationTypes: z.array(z.string()).optional(),
-    customIntegrationIds: z.array(z.string()).optional(),
-    workspaceMcpServerIds: z.array(z.string()).optional(),
-    skillSlugs: z.array(z.string()).optional(),
+    toolAccessMode: z.enum(COWORKER_TOOL_ACCESS_MODES).optional(),
+    integrationTypes: z.array(integrationTypeSchema).optional(),
+    customIntegrationIds: z
+      .array(z.string())
+      .optional()
+      .describe("Connected Account IDs from connectedAccount.read."),
+    workspaceMcpServerIds: z
+      .array(z.string())
+      .optional()
+      .describe("Workspace MCP Server IDs from workspaceMcpServer.list."),
+    skillSlugs: z
+      .array(z.string())
+      .optional()
+      .describe('Lowercase skill slugs from the skill catalog; prefix custom skills with "custom:".'),
     schedule: schedule.optional(),
     requiresUserInput: z.boolean().optional(),
     userInputPrompt: z.string().max(1000).nullable().optional(),

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { type InferSchema, type ToolExtraArguments, type ToolMetadata } from "xmcp";
 import {
   attachmentReferenceSchema,
+  modelReferenceSchema,
   toFileAttachments,
   workspaceIdSchema,
 } from "../lib/contract-schemas";
@@ -12,7 +13,7 @@ export const schema = {
   workspaceId: workspaceIdSchema.describe("Workspace ID for this chat turn"),
   message: z.string().describe("The prompt to send to Bap chat"),
   conversationId: z.string().optional().describe("Existing conversation ID to continue"),
-  model: z.string().optional().describe("Model reference to use"),
+  model: modelReferenceSchema.optional(),
   authSource: z.enum(["user", "shared"]).optional().describe("Model auth source"),
   sandbox: z.enum(["e2b", "daytona", "docker"]).optional().describe("Sandbox provider"),
   autoApprove: z.boolean().optional().describe("Auto-approve tool calls"),
