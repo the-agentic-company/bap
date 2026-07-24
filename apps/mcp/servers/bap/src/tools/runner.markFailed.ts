@@ -15,7 +15,7 @@ export const schema = {
 };
 
 export const metadata: ToolMetadata = {
-  name: "runner.markFailed",
+  name: "runner_markFailed",
   description:
     "Mark the current coworker runner's own run as failed. Only runner-scoped Bap MCP tokens can use this tool.",
   annotations: {

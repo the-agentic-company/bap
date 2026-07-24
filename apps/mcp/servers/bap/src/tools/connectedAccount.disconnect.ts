@@ -6,7 +6,7 @@ import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = { workspaceId: workspaceIdSchema, connectedAccountId: z.string().min(1) };
 export const metadata: ToolMetadata = {
-  name: "connectedAccount.disconnect",
+  name: "connectedAccount_disconnect",
   description: "Disconnect a Connected Account.",
   annotations: {
     title: "Disconnect account",

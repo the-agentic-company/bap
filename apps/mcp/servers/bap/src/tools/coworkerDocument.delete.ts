@@ -10,7 +10,7 @@ export const schema = {
   documentId: z.string().min(1),
 };
 export const metadata: ToolMetadata = {
-  name: "coworkerDocument.delete",
+  name: "coworkerDocument_delete",
   description: "Delete a Coworker Document.",
   annotations: {
     title: "Delete coworker document",

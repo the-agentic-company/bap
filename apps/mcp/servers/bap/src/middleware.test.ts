@@ -8,10 +8,10 @@ describe("Bap MCP capability discovery", () => {
       id: 1,
       result: {
         tools: [
-          { name: "workspace.list" },
-          { name: "coworker.read" },
-          { name: "workspaceMember.save" },
-          { name: "workspaceMcpServer.setCredential" },
+          { name: "workspace_list" },
+          { name: "coworker_read" },
+          { name: "workspaceMember_save" },
+          { name: "workspaceMcpServer_setCredential" },
         ],
       },
     };
@@ -19,19 +19,19 @@ describe("Bap MCP capability discovery", () => {
     expect(filterManagedToolsListPayload(payload, "chat")).toEqual({
       jsonrpc: "2.0",
       id: 1,
-      result: { tools: [{ name: "workspace.list" }, { name: "coworker.read" }] },
+      result: { tools: [{ name: "workspace_list" }, { name: "coworker_read" }] },
     });
   });
 
   it("shows only runner.markFailed to a Coworker runner", () => {
     const payload = {
       result: {
-        tools: [{ name: "coworker.read" }, { name: "runner.markFailed" }],
+        tools: [{ name: "coworker_read" }, { name: "runner_markFailed" }],
       },
     };
 
     expect(filterManagedToolsListPayload(payload, "coworker_runner")).toEqual({
-      result: { tools: [{ name: "runner.markFailed" }] },
+      result: { tools: [{ name: "runner_markFailed" }] },
     });
   });
 });

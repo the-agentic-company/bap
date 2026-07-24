@@ -1,16 +1,16 @@
 import { z } from "zod";
 import type { InferSchema, ToolExtraArguments, ToolMetadata } from "xmcp";
-import { workspaceIdSchema } from "../lib/contract-schemas";
+import { integrationTypeSchema, workspaceIdSchema } from "../lib/contract-schemas";
 import { handleConnectedAccountRead } from "../lib/handlers";
 import { executeBapTool } from "../lib/tool-runtime";
 
 const query = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("list"), integrationType: z.string().optional() }).strict(),
+  z.object({ type: z.literal("list"), integrationType: integrationTypeSchema.optional() }).strict(),
   z.object({ type: z.literal("get"), connectedAccountId: z.string().min(1) }).strict(),
 ]);
 export const schema = { workspaceId: workspaceIdSchema, query };
 export const metadata: ToolMetadata = {
-  name: "connectedAccount.read",
+  name: "connectedAccount_read",
   description: "List or get Connected Accounts in a Workspace.",
   annotations: { title: "Read connected accounts", readOnlyHint: true, idempotentHint: true },
 };

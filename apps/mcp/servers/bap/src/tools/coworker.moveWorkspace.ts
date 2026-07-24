@@ -10,7 +10,7 @@ export const schema = {
 };
 
 export const metadata: ToolMetadata = {
-  name: "coworker.moveWorkspace",
+  name: "coworker_moveWorkspace",
   description: "Move a coworker to another workspace where the authenticated user is a member",
   annotations: {
     title: "Move coworker to workspace",

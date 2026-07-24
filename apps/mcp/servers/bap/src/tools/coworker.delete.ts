@@ -9,7 +9,7 @@ export const schema = {
 };
 
 export const metadata: ToolMetadata = {
-  name: "coworker.delete",
+  name: "coworker_delete",
   description: "Delete an existing coworker",
   annotations: {
     title: "Delete coworker",

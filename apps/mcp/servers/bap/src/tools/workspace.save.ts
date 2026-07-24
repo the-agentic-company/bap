@@ -8,7 +8,7 @@ export const schema = {
   values: z.object({ name: z.string().trim().min(2).max(80) }).strict(),
 };
 export const metadata: ToolMetadata = {
-  name: "workspace.save",
+  name: "workspace_save",
   description: "Create a Workspace, or rename the explicitly identified Workspace.",
   annotations: { title: "Save workspace", readOnlyHint: false, idempotentHint: false },
 };

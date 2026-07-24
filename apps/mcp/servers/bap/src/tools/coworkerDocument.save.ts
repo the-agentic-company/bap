@@ -40,11 +40,11 @@ const operation = z.discriminatedUnion("type", [
 ]);
 export const schema = {
   workspaceId: workspaceIdSchema,
-  coworkerReference: z.string().min(1),
+  coworkerReference: z.string().min(1).describe("Coworker ID or @username."),
   operation,
 };
 export const metadata: ToolMetadata = {
-  name: "coworkerDocument.save",
+  name: "coworkerDocument_save",
   description:
     "Create or update persistent Coworker Documents. Provide small files inline via contentBase64, or large files via fileAssetId obtained from attachment.prepareUpload then attachment.completeUpload to avoid the request body size limit.",
   annotations: { title: "Save coworker document", readOnlyHint: false, idempotentHint: false },

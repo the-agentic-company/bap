@@ -6,7 +6,7 @@ import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = { workspaceId: workspaceIdSchema, runId: z.string().min(1) };
 export const metadata: ToolMetadata = {
-  name: "coworkerRun.resume",
+  name: "coworkerRun_resume",
   description: "Resume a paused Coworker Run.",
   annotations: { title: "Resume coworker run", readOnlyHint: false, idempotentHint: false },
 };

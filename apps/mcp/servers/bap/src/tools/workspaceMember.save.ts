@@ -10,7 +10,7 @@ export const schema = {
   role: z.enum(["admin", "member"]),
 };
 export const metadata: ToolMetadata = {
-  name: "workspaceMember.save",
+  name: "workspaceMember_save",
   description: "Invite an email to a Workspace or update an existing Workspace Membership role.",
   annotations: {
     title: "Save workspace member access",

@@ -7,12 +7,17 @@ import { executeBapTool } from "../lib/tool-runtime";
 export const schema = {
   workspaceId: workspaceIdSchema,
   id: z.string().min(1),
-  secret: z.string().min(1),
+  secret: z
+    .string()
+    .min(1)
+    .describe(
+      'Raw API key or bearer token. Only used for servers whose authType is "api_key" or "bearer" (set via workspaceMcpServer_save).',
+    ),
   displayName: z.string().nullable().optional(),
   enabled: z.boolean().optional(),
 };
 export const metadata: ToolMetadata = {
-  name: "workspaceMcpServer.setCredential",
+  name: "workspaceMcpServer_setCredential",
   description: "Set or replace a manual Workspace MCP Authorization secret.",
   annotations: {
     title: "Set workspace MCP credential",
