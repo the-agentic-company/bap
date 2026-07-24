@@ -3,7 +3,6 @@ import { useGT } from "gt-react";
 import { useMemo } from "react";
 import { AuthenticatedAppRootShell } from "@/components/authenticated-app-root-shell";
 import { AnimatedTabs, AnimatedTab } from "@/components/ui/tabs";
-import { useIsAdmin } from "@/hooks/use-is-admin";
 import { clientEditionCapabilities } from "@/lib/edition";
 import { requireSession } from "@/lib/route-guards";
 
@@ -46,7 +45,12 @@ function SettingsLayout() {
   const { sessionContext } = Route.useRouteContext();
   const pathname = useLocation({ select: (location) => location.pathname });
   const activeKey = getActiveKey(pathname);
-  const { isAdmin } = useIsAdmin();
+  // Admin status is resolved server-side in `beforeLoad` (route-guards), so it is known on
+  // the first render. Reading it from the route context instead of the async `useIsAdmin`
+  // hook keeps the tab list stable across renders: a post-mount false→true flip would grow
+  // the animated tab set (3→5) mid-layout-animation and desync Framer Motion's DOM nodes
+  // from React, throwing "removeChild" on the settings shell.
+  const isAdmin = sessionContext.isAdmin;
   const settingsTabs = useMemo(
     () => [
       { key: "general", label: t("General"), href: "/settings" },
