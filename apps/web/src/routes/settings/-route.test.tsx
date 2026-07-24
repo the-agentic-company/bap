@@ -13,10 +13,11 @@ void jestDomVitest;
 
 const mocks = vi.hoisted(() => ({
   pathname: "/settings",
-  useIsAdmin: vi.fn<VitestProcedure>(),
+  isAdmin: false,
 }));
 
 // Replace the TanStack location hook. Outlet renders nothing here; we only assert tab visibility.
+// `isAdmin` is read from the route context (resolved server-side in `beforeLoad`), not a hook.
 vi.mock("@tanstack/react-router", async () => {
   const actual =
     await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
@@ -24,17 +25,15 @@ vi.mock("@tanstack/react-router", async () => {
     ...actual,
     createFileRoute: () => (options: Record<string, unknown>) => ({
       options,
-      useRouteContext: () => ({ sessionContext: { principal: null } }),
+      useRouteContext: () => ({
+        sessionContext: { principal: null, isAdmin: mocks.isAdmin },
+      }),
     }),
     useLocation: ({ select }: { select: (loc: { pathname: string }) => unknown }) =>
       select({ pathname: mocks.pathname }),
     Outlet: () => null,
   };
 });
-
-vi.mock("@/hooks/use-is-admin", () => ({
-  useIsAdmin: () => mocks.useIsAdmin(),
-}));
 
 vi.mock("@/components/authenticated-app-root-shell", () => ({
   AuthenticatedAppRootShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -73,7 +72,7 @@ describe("/settings layout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.pathname = "/settings";
-    mocks.useIsAdmin.mockReturnValue({ isAdmin: false, isLoading: false });
+    mocks.isAdmin = false;
   });
 
   it("hides billing and usage tabs for non-admin users", () => {
@@ -87,7 +86,7 @@ describe("/settings layout", () => {
   });
 
   it("shows billing and usage tabs for admin users", () => {
-    mocks.useIsAdmin.mockReturnValue({ isAdmin: true, isLoading: false });
+    mocks.isAdmin = true;
 
     renderLayout();
 
