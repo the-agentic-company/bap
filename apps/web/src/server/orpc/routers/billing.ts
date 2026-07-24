@@ -1,6 +1,7 @@
 import { BILLING_PLANS, type BillingPlanId } from "@bap/core/lib/billing-plans";
 import {
   addWorkspaceMembers,
+  adminDeleteWorkspace,
   adminJoinWorkspace,
   adminListAllWorkspaces,
   adminRemoveWorkspaceMember,
@@ -653,6 +654,18 @@ const adminRemoveWorkspaceMemberEndpoint = protectedProcedure
     return adminRemoveWorkspaceMember(input.workspaceId, input.email);
   });
 
+const adminDeleteWorkspaceEndpoint = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    assertBillingEnabled();
+    await assertPlatformAdmin(context.user.id, context.db);
+    return adminDeleteWorkspace(input.workspaceId);
+  });
+
 export const billingRouter = {
   overview,
   adminUserOverview,
@@ -660,6 +673,7 @@ export const billingRouter = {
   adminJoinWorkspace: adminJoinWorkspaceEndpoint,
   adminAddWorkspaceMembers,
   adminRemoveWorkspaceMember: adminRemoveWorkspaceMemberEndpoint,
+  adminDeleteWorkspace: adminDeleteWorkspaceEndpoint,
   adminCreateWorkspace,
   adminRenameWorkspace,
   createWorkspace,

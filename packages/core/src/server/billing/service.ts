@@ -26,6 +26,7 @@ export type { BillingOwner } from "./billing-owner";
 export { getExistingBillingOwnerForUser, resolveBillingOwnerForUser } from "./billing-owner";
 export {
   addWorkspaceMembers,
+  adminDeleteWorkspace,
   adminJoinWorkspace,
   adminListAllWorkspaces,
   adminRemoveWorkspaceMember,

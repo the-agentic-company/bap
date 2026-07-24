@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
   UserPlus,
   Users,
   X,
@@ -16,6 +17,16 @@ import {
 import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,6 +34,7 @@ import { useBillingOverview } from "@/orpc/hooks/billing";
 import {
   useAdminAddWorkspaceMembers,
   useAdminCreateWorkspace,
+  useAdminDeleteWorkspace,
   useAdminJoinWorkspace,
   useAdminRemoveWorkspaceMember,
   useAdminRenameWorkspace,
@@ -300,6 +312,8 @@ function WorkspaceCard({
   isAdding,
   onRename,
   isRenaming,
+  onDelete,
+  isDeleting,
 }: {
   workspace: WorkspaceData;
   isMember: boolean;
@@ -311,12 +325,18 @@ function WorkspaceCard({
   isAdding: boolean;
   onRename: (workspaceId: string, name: string) => void;
   isRenaming: boolean;
+  onDelete: (workspace: WorkspaceData) => void;
+  isDeleting: boolean;
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
 
   const handleJoin = useCallback(() => {
     onJoin(workspace.id);
   }, [onJoin, workspace.id]);
+
+  const handleDelete = useCallback(() => {
+    onDelete(workspace);
+  }, [onDelete, workspace]);
 
   const toggleAddForm = useCallback(() => {
     setShowAddForm((prev) => !prev);
@@ -384,6 +404,24 @@ function WorkspaceCard({
               )}
             </Button>
           )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive h-8 w-8"
+                disabled={isDeleting}
+                onClick={handleDelete}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Delete workspace</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -441,7 +479,9 @@ export function AdminWorkspacesPage() {
   const removeMember = useAdminRemoveWorkspaceMember();
   const renameWorkspace = useAdminRenameWorkspace();
   const createWorkspace = useAdminCreateWorkspace();
+  const deleteWorkspace = useAdminDeleteWorkspace();
   const [search, setSearch] = useState("");
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<WorkspaceData | null>(null);
 
   const myWorkspaceIds = useMemo(() => {
     if (!billingOverview?.workspaces) {
@@ -547,6 +587,34 @@ export function AdminWorkspacesPage() {
     [removeMember],
   );
 
+  const handleRequestDelete = useCallback((workspace: WorkspaceData) => {
+    setWorkspaceToDelete(workspace);
+  }, []);
+
+  const handleCancelDelete = useCallback(() => {
+    setWorkspaceToDelete(null);
+  }, []);
+
+  const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setWorkspaceToDelete(null);
+    }
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!workspaceToDelete) {
+      return;
+    }
+    const { id, name } = workspaceToDelete;
+    setWorkspaceToDelete(null);
+    try {
+      await deleteWorkspace.mutateAsync({ workspaceId: id });
+      toast.success(`Deleted workspace "${name}".`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete workspace.");
+    }
+  }, [deleteWorkspace, workspaceToDelete]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -610,10 +678,35 @@ export function AdminWorkspacesPage() {
               isAdding={addMembers.isPending}
               onRename={handleRename}
               isRenaming={renameWorkspace.isPending}
+              onDelete={handleRequestDelete}
+              isDeleting={deleteWorkspace.isPending && workspaceToDelete?.id === ws.id}
             />
           ))}
         </div>
       )}
+
+      <AlertDialog open={workspaceToDelete !== null} onOpenChange={handleDeleteDialogOpenChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete workspace</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete{" "}
+              <span className="font-medium">{workspaceToDelete?.name}</span> and all of its data —
+              members, coworkers, conversations, skills, and MCP servers. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
