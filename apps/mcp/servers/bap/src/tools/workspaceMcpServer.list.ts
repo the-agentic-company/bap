@@ -5,7 +5,7 @@ import { executeBapTool } from "../lib/tool-runtime";
 
 export const schema = { workspaceId: workspaceIdSchema };
 export const metadata: ToolMetadata = {
-  name: "workspaceMcpServer.list",
+  name: "workspaceMcpServer_list",
   description: "List Workspace MCP Servers.",
   annotations: { title: "List workspace MCP servers", readOnlyHint: true, idempotentHint: true },
 };

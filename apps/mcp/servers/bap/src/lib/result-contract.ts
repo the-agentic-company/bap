@@ -25,7 +25,9 @@ function classifyError(error: unknown): BapToolErrorCategory {
   if (includesAny(message, ["forbidden", "unauthorized", "belong"])) return "forbidden";
   if (includesAny(message, ["conflict", "cannot be", "only a"])) return "conflict";
   if (includesAny(message, ["auth", "user input"])) return "user_action_required";
-  if (includesAny(message, ["requires", "must", "include", "supported"])) return "invalid_input";
+  if (includesAny(message, ["requires", "must", "include", "supported", "validation"])) {
+    return "invalid_input";
+  }
   return "upstream_failure";
 }
 

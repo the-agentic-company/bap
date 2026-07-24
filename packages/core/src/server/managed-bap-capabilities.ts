@@ -3,23 +3,23 @@ import type { ManagedMcpSurface } from "./managed-mcp-auth";
 export type ManagedBapCapabilityProfile = ManagedMcpSurface;
 
 const CHAT_AND_BUILDER_TOOLS = [
-  "workspace.list",
-  "connectedAccount.read",
-  "workspaceMcpServer.list",
-  "skill.read",
-  "skill.save",
-  "coworker.read",
-  "coworker.save",
-  "coworkerDocument.save",
-  "coworkerDocument.delete",
-  "coworkerRun.start",
-  "coworkerRun.read",
+  "workspace_list",
+  "connectedAccount_read",
+  "workspaceMcpServer_list",
+  "skill_read",
+  "skill_save",
+  "coworker_read",
+  "coworker_save",
+  "coworkerDocument_save",
+  "coworkerDocument_delete",
+  "coworkerRun_start",
+  "coworkerRun_read",
 ] as const;
 
 export const MANAGED_BAP_TOOL_PROFILES = {
   chat: CHAT_AND_BUILDER_TOOLS,
   coworker_builder: CHAT_AND_BUILDER_TOOLS,
-  coworker_runner: ["runner.markFailed"],
+  coworker_runner: ["runner_markFailed"],
 } as const satisfies Record<ManagedBapCapabilityProfile, readonly string[]>;
 
 const CHAT_AND_BUILDER_RPC_PROCEDURES = [
