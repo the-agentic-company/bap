@@ -1,11 +1,11 @@
 import { z } from "zod";
 import type { InferSchema, ToolExtraArguments, ToolMetadata } from "xmcp";
-import { workspaceIdSchema } from "../lib/contract-schemas";
+import { integrationTypeSchema, workspaceIdSchema } from "../lib/contract-schemas";
 import { handleConnectedAccountRead } from "../lib/handlers";
 import { executeBapTool } from "../lib/tool-runtime";
 
 const query = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("list"), integrationType: z.string().optional() }).strict(),
+  z.object({ type: z.literal("list"), integrationType: integrationTypeSchema.optional() }).strict(),
   z.object({ type: z.literal("get"), connectedAccountId: z.string().min(1) }).strict(),
 ]);
 export const schema = { workspaceId: workspaceIdSchema, query };

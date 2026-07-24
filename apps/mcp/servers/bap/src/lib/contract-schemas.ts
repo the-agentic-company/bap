@@ -1,8 +1,16 @@
+import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@bap/core/lib/coworker-tool-policy";
 import { z } from "zod";
 
 export const workspaceIdSchema = z.string().trim().min(1).describe("Workspace ID");
 
 export const detailSchema = z.enum(["summary", "full"]).default("summary").optional();
+
+export const integrationTypeSchema = z
+  .string()
+  .min(1)
+  .describe(
+    `Integration provider slug. Use the exact value, for example "google_gmail" for Gmail. Known values: ${COWORKER_AVAILABLE_INTEGRATION_TYPES.join(", ")}.`,
+  );
 
 export const coworkerReadQuerySchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("list") }).strict(),

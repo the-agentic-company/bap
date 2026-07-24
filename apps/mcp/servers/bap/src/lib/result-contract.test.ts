@@ -33,4 +33,19 @@ describe("Bap MCP result contract", () => {
     });
     expect(result.error.message).not.toContain("secret-token-value");
   });
+
+  it("classifies backend input validation failures as non-retryable invalid input", () => {
+    const result = buildBapToolError({
+      action: "connectedAccount.connect",
+      workspaceId: "ws-1",
+      error: new Error("Input validation failed"),
+    });
+
+    expect(result).toMatchObject({
+      status: "failed",
+      workspaceId: "ws-1",
+      action: "connectedAccount.connect",
+      error: { category: "invalid_input", retryable: false },
+    });
+  });
 });
