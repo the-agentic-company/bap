@@ -116,4 +116,52 @@ describe("Bap MCP tool contract", () => {
     expect(Object.hasOwn(chatRun, "attachments")).toBe(true);
     expect(Object.hasOwn(chatRun, "fileAttachments")).toBe(false);
   });
+
+  it("accepts a fileAssetId alternative to inline contentBase64 for coworker documents", () => {
+    expect(() =>
+      coworkerDocumentSave.operation.parse({
+        type: "create",
+        files: [{ filename: "big.pdf", mimeType: "application/pdf", fileAssetId: "fa_123" }],
+      }),
+    ).not.toThrow();
+    expect(() =>
+      coworkerDocumentSave.operation.parse({
+        type: "create",
+        files: [{ filename: "small.txt", mimeType: "text/plain", contentBase64: "aGk=" }],
+      }),
+    ).not.toThrow();
+    expect(() =>
+      coworkerDocumentSave.operation.parse({
+        type: "create",
+        files: [
+          {
+            filename: "x.pdf",
+            mimeType: "application/pdf",
+            contentBase64: "aGk=",
+            fileAssetId: "fa_123",
+          },
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      coworkerDocumentSave.operation.parse({
+        type: "create",
+        files: [{ filename: "x.pdf", mimeType: "application/pdf" }],
+      }),
+    ).toThrow();
+    expect(() =>
+      coworkerDocumentSave.operation.parse({
+        type: "update",
+        documentId: "doc_1",
+        values: { replacement: { fileAssetId: "fa_123" } },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      coworkerDocumentSave.operation.parse({
+        type: "update",
+        documentId: "doc_1",
+        values: { replacement: { fileAssetId: "fa_123", contentBase64: "aGk=" } },
+      }),
+    ).toThrow();
+  });
 });

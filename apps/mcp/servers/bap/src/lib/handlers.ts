@@ -465,18 +465,20 @@ export async function handleCoworkerUpdateDocument(params: {
   filename?: string;
   mimeType?: string;
   contentBase64?: string;
+  fileAssetId?: string;
   description?: string | null;
 }) {
   const hasFilename = params.filename !== undefined;
   const hasMimeType = params.mimeType !== undefined;
   const hasContent = params.contentBase64 !== undefined;
+  const hasFileAsset = params.fileAssetId !== undefined;
   const hasDescription = params.description !== undefined;
-  const isFileReplacement = hasContent || hasMimeType;
+  const isFileReplacement = hasContent || hasMimeType || hasFileAsset;
 
   if (!hasFilename && !hasDescription && !isFileReplacement) {
     throw new Error("Document update must include at least one field.");
   }
-  if (isFileReplacement && (!params.filename || !params.mimeType || !params.contentBase64)) {
+  if (!hasFileAsset && isFileReplacement && (!params.filename || !params.mimeType || !params.contentBase64)) {
     throw new Error("File replacement requires filename, mimeType, and contentBase64.");
   }
 
@@ -493,6 +495,7 @@ export async function handleCoworkerUpdateDocument(params: {
     filename: params.filename,
     mimeType: params.mimeType,
     content: params.contentBase64,
+    fileAssetId: params.fileAssetId,
     description: params.description,
   });
 
@@ -530,7 +533,8 @@ export async function handleCoworkerUploadDocument(params: {
   files: Array<{
     filename: string;
     mimeType: string;
-    contentBase64: string;
+    contentBase64?: string;
+    fileAssetId?: string;
     description?: string;
   }>;
 }) {
@@ -543,6 +547,7 @@ export async function handleCoworkerUploadDocument(params: {
         filename: file.filename,
         mimeType: file.mimeType,
         content: file.contentBase64,
+        fileAssetId: file.fileAssetId,
         description: file.description,
       }),
     ),
@@ -831,7 +836,8 @@ export async function handleCoworkerDocumentSave(params: {
         files: Array<{
           filename: string;
           mimeType: string;
-          contentBase64: string;
+          contentBase64?: string;
+          fileAssetId?: string;
           description?: string;
         }>;
       }
@@ -841,7 +847,9 @@ export async function handleCoworkerDocumentSave(params: {
         values: {
           filename?: string;
           description?: string | null;
-          replacement?: { mimeType: string; contentBase64: string };
+          replacement?:
+            | { mimeType: string; contentBase64: string }
+            | { fileAssetId: string };
         };
       };
 }) {
@@ -852,14 +860,16 @@ export async function handleCoworkerDocumentSave(params: {
       files: params.operation.files,
     });
   }
+  const { replacement } = params.operation.values;
   return handleCoworkerUpdateDocument({
     client: params.client,
     reference: params.coworkerReference,
     documentId: params.operation.documentId,
     filename: params.operation.values.filename,
     description: params.operation.values.description,
-    mimeType: params.operation.values.replacement?.mimeType,
-    contentBase64: params.operation.values.replacement?.contentBase64,
+    mimeType: replacement && "mimeType" in replacement ? replacement.mimeType : undefined,
+    contentBase64: replacement && "contentBase64" in replacement ? replacement.contentBase64 : undefined,
+    fileAssetId: replacement && "fileAssetId" in replacement ? replacement.fileAssetId : undefined,
   });
 }
 
