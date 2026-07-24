@@ -8,10 +8,15 @@ const file = z
   .object({
     filename: z.string().min(1).max(256),
     mimeType: z.string().min(1),
-    contentBase64: z.string().min(1),
+    contentBase64: z.string().min(1).optional(),
+    fileAssetId: z.string().min(1).optional(),
     description: z.string().max(1024).optional(),
   })
-  .strict();
+  .strict()
+  .refine((value) => (value.contentBase64 === undefined) !== (value.fileAssetId === undefined), {
+    message:
+      "Provide exactly one of contentBase64 (inline) or fileAssetId (from attachment.prepareUpload then attachment.completeUpload).",
+  });
 const operation = z.discriminatedUnion("type", [
   z.object({ type: z.literal("create"), files: z.array(file).min(1) }).strict(),
   z
@@ -23,8 +28,10 @@ const operation = z.discriminatedUnion("type", [
           filename: z.string().min(1).max(256).optional(),
           description: z.string().max(1024).nullable().optional(),
           replacement: z
-            .object({ mimeType: z.string().min(1), contentBase64: z.string().min(1) })
-            .strict()
+            .union([
+              z.object({ mimeType: z.string().min(1), contentBase64: z.string().min(1) }).strict(),
+              z.object({ fileAssetId: z.string().min(1) }).strict(),
+            ])
             .optional(),
         })
         .strict(),
@@ -38,7 +45,8 @@ export const schema = {
 };
 export const metadata: ToolMetadata = {
   name: "coworkerDocument.save",
-  description: "Create or update persistent Coworker Documents.",
+  description:
+    "Create or update persistent Coworker Documents. Provide small files inline via contentBase64, or large files via fileAssetId obtained from attachment.prepareUpload then attachment.completeUpload to avoid the request body size limit.",
   annotations: { title: "Save coworker document", readOnlyHint: false, idempotentHint: false },
 };
 export default async function tool(params: InferSchema<typeof schema>, extra?: ToolExtraArguments) {

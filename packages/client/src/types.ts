@@ -467,7 +467,8 @@ export type CoworkerDocumentUploadInput = {
   coworkerId: string;
   filename: string;
   mimeType: string;
-  content: string;
+  content?: string;
+  fileAssetId?: string;
   description?: string;
 };
 
@@ -483,6 +484,7 @@ export type CoworkerDocumentUpdateInput = {
   filename?: string;
   mimeType?: string;
   content?: string;
+  fileAssetId?: string;
   description?: string | null;
 };
 
