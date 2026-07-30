@@ -1,5 +1,6 @@
 import { exchangeMcpOAuthAuthorizationCode } from "@bap/core/server/executor/mcp-oauth";
 import {
+  canUserSeeWorkspaceMcpServer,
   computeWorkspaceMcpServerRevisionHash,
   setWorkspaceMcpServerOAuthCredential,
 } from "@bap/core/server/executor/workspace-sources";
@@ -18,6 +19,7 @@ import { auth } from "@/lib/auth";
 import { buildRequestAwareUrl, getRequestAwareOrigin } from "@/lib/request-aware-url";
 import { consumeWorkspaceMcpServerOAuthPending } from "@/server/executor-source-oauth";
 import { fetchDynamicsInstances } from "@/server/integrations/dynamics";
+import { requireActiveWorkspaceAccess } from "@/server/orpc/workspace-access";
 
 /**
  * Framework-neutral handler for `GET /api/oauth/callback`.
@@ -111,6 +113,18 @@ export async function handleOAuthCallback(request: Request): Promise<Response> {
       if (!source || source.kind !== "mcp" || source.authType !== "oauth2") {
         appendWorkspaceMcpServerRedirectParam(redirectUrl, "oauth", "error");
         appendWorkspaceMcpServerRedirectParam(redirectUrl, "oauth_error", "invalid_source");
+        return oauthRedirect(redirectUrl);
+      }
+      try {
+        await requireActiveWorkspaceAccess(sessionData.user.id, source.workspaceId);
+      } catch {
+        appendWorkspaceMcpServerRedirectParam(redirectUrl, "oauth", "error");
+        appendWorkspaceMcpServerRedirectParam(redirectUrl, "oauth_error", "access_revoked");
+        return oauthRedirect(redirectUrl);
+      }
+      if (!canUserSeeWorkspaceMcpServer({ source, userId: sessionData.user.id })) {
+        appendWorkspaceMcpServerRedirectParam(redirectUrl, "oauth", "error");
+        appendWorkspaceMcpServerRedirectParam(redirectUrl, "oauth_error", "access_revoked");
         return oauthRedirect(redirectUrl);
       }
 

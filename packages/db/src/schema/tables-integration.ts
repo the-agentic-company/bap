@@ -27,12 +27,7 @@ import {
   workspaceMcpServerAuthTypeEnum,
   workspaceMcpServerKindEnum,
 } from "./enums";
-import {
-  conversation,
-  fileAsset,
-  user,
-  workspace,
-} from "./tables";
+import { conversation, fileAsset, user, workspace } from "./tables";
 
 export const connectedIdentity = pgTable(
   "connected_identity",
@@ -533,6 +528,9 @@ export const workspaceMcpServer = pgTable(
     authQueryParam: text("auth_query_param"),
     authPrefix: text("auth_prefix"),
     enabled: boolean("enabled").default(true).notNull(),
+    sharedWithWorkspace: boolean("shared_with_workspace").default(true).notNull(),
+    managedWorkspaceWideAccess: boolean("managed_workspace_wide_access").default(false).notNull(),
+    managedTargetEnv: text("managed_target_env"),
     revisionHash: text("revision_hash").notNull(),
     createdByUserId: text("created_by_user_id")
       .notNull()

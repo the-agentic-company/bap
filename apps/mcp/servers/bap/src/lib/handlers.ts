@@ -43,7 +43,7 @@ export async function handleChatRun(params: {
   if (!params.message.trim() && !params.fileAttachments?.length) {
     throw new Error("Chat run requires a message or at least one ready attachment.");
   }
-  const result = await runChatSession({
+  return runChatSession({
     client: params.client,
     input: {
       content: params.message,
@@ -55,8 +55,6 @@ export async function handleChatRun(params: {
       fileAttachments: params.fileAttachments,
     },
   });
-
-  return result;
 }
 
 export async function handleRunnerMarkFailed(params: {
@@ -478,7 +476,11 @@ export async function handleCoworkerUpdateDocument(params: {
   if (!hasFilename && !hasDescription && !isFileReplacement) {
     throw new Error("Document update must include at least one field.");
   }
-  if (!hasFileAsset && isFileReplacement && (!params.filename || !params.mimeType || !params.contentBase64)) {
+  if (
+    !hasFileAsset &&
+    isFileReplacement &&
+    (!params.filename || !params.mimeType || !params.contentBase64)
+  ) {
     throw new Error("File replacement requires filename, mimeType, and contentBase64.");
   }
 
@@ -638,6 +640,17 @@ export async function handleWorkspaceMcpServerSave(params: {
     name: current.name,
     namespace: current.namespace,
     endpoint: current.endpoint,
+    enabled: current.enabled,
+    sharedWithWorkspace: current.sharedWithWorkspace,
+    specUrl: current.specUrl,
+    transport: current.transport,
+    headers: current.headers ?? undefined,
+    queryParams: current.queryParams ?? undefined,
+    defaultHeaders: current.defaultHeaders ?? undefined,
+    authType: current.authType,
+    authHeaderName: current.authHeaderName,
+    authQueryParam: current.authQueryParam,
+    authPrefix: current.authPrefix,
     ...params.values,
   });
   await params.client.workspaceMcpServer.update({ id: params.id, ...input });
@@ -847,9 +860,7 @@ export async function handleCoworkerDocumentSave(params: {
         values: {
           filename?: string;
           description?: string | null;
-          replacement?:
-            | { mimeType: string; contentBase64: string }
-            | { fileAssetId: string };
+          replacement?: { mimeType: string; contentBase64: string } | { fileAssetId: string };
         };
       };
 }) {
@@ -868,7 +879,8 @@ export async function handleCoworkerDocumentSave(params: {
     filename: params.operation.values.filename,
     description: params.operation.values.description,
     mimeType: replacement && "mimeType" in replacement ? replacement.mimeType : undefined,
-    contentBase64: replacement && "contentBase64" in replacement ? replacement.contentBase64 : undefined,
+    contentBase64:
+      replacement && "contentBase64" in replacement ? replacement.contentBase64 : undefined,
     fileAssetId: replacement && "fileAssetId" in replacement ? replacement.fileAssetId : undefined,
   });
 }

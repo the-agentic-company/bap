@@ -407,8 +407,13 @@ export function WorkspaceMcpServerToolCard({
     name: string;
     namespace: string;
     kind: "mcp";
+    internalKey?: string | null;
     endpoint: string;
     enabled: boolean;
+    sharedWithWorkspace: boolean;
+    managedWorkspaceWideAccess: boolean;
+    createdByCurrentUser: boolean;
+    creatorDisplayName: string | null;
     connected: boolean;
     credentialEnabled: boolean;
   };
@@ -489,10 +494,31 @@ export function WorkspaceMcpServerToolCard({
 
         {/* Footer */}
         <div className="mt-auto flex items-center justify-between pt-4">
-          <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium">
-            <Plug className="h-3 w-3" />
-            MCP
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium">
+              <Plug className="h-3 w-3" />
+              MCP
+            </span>
+            <span className="text-muted-foreground text-[10px] font-medium">
+              {source.internalKey === "galien" || source.internalKey === "modulr" ? (
+                source.managedWorkspaceWideAccess ? (
+                  <T>Entire workspace</T>
+                ) : (
+                  <T>Specific people</T>
+                )
+              ) : source.sharedWithWorkspace ? (
+                source.createdByCurrentUser ? (
+                  <T>Shared by you</T>
+                ) : source.creatorDisplayName ? (
+                  `Shared by ${source.creatorDisplayName}`
+                ) : (
+                  <T>Workspace</T>
+                )
+              ) : (
+                <T>Personal</T>
+              )}
+            </span>
+          </div>
           <ArrowUp className="text-muted-foreground/30 group-hover:text-muted-foreground size-3.5 rotate-45 transition-colors" />
         </div>
       </AppLink>

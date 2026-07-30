@@ -124,6 +124,7 @@ export async function handleModulrCredentials(request: Request): Promise<Respons
 
     const connection = await getModulrWorkspaceConnection({
       workspaceId: body.workspaceId,
+      userId: body.userId,
     });
     if (!connection) {
       return Response.json({ message: "Modulr credentials are not connected." }, { status: 404 });

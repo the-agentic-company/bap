@@ -4,10 +4,13 @@ import {
   canUserUseModulrInWorkspace,
   deleteModulrWorkspaceConnection,
   getModulrWorkspaceConnectionStatus,
+  getModulrWorkspaceWideAccess,
   listModulrWorkspaceAccess,
+  MODULR_DEFAULT_BASE_URL,
   normalizeModulrWorkspaceConnection,
   removeModulrWorkspaceAccess,
   setModulrWorkspaceConnection,
+  setModulrWorkspaceWideAccess,
   validateModulrWorkspaceConnection,
 } from "@bap/core/server/modulr/service";
 import { user, workspace } from "@bap/db/schema";
@@ -16,7 +19,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { AuthenticatedContext } from "../middleware";
 import { protectedProcedure } from "../middleware";
-import { requireActiveWorkspaceAccess, requireActiveWorkspaceAdmin } from "../workspace-access";
+import { requireActiveWorkspaceAccess } from "../workspace-access";
 
 async function requireAdmin(context: Pick<AuthenticatedContext, "db" | "user">) {
   const currentUser = await context.db.query.user.findFirst({
@@ -48,7 +51,7 @@ const connectionInput = z.object({
   clientId: z.string().min(1),
   clientSecret: z.string().min(1),
   locale: z.enum(["fr", "en"]).default("fr"),
-  baseUrl: z.string().url().default("https://app.modulr-courtage.fr"),
+  baseUrl: z.literal(MODULR_DEFAULT_BASE_URL).default(MODULR_DEFAULT_BASE_URL),
 });
 
 const status = protectedProcedure.handler(async ({ context }) => {
@@ -61,7 +64,7 @@ const status = protectedProcedure.handler(async ({ context }) => {
 });
 
 const test = protectedProcedure.input(connectionInput).handler(async ({ input, context }) => {
-  const access = await requireActiveWorkspaceAdmin(context.user.id);
+  const access = await requireActiveWorkspaceAccess(context.user.id);
   const allowed = await canUserUseModulrInWorkspace({
     database: context.db,
     userId: context.user.id,
@@ -76,7 +79,7 @@ const test = protectedProcedure.input(connectionInput).handler(async ({ input, c
 });
 
 const connect = protectedProcedure.input(connectionInput).handler(async ({ input, context }) => {
-  const access = await requireActiveWorkspaceAdmin(context.user.id);
+  const access = await requireActiveWorkspaceAccess(context.user.id);
   const allowed = await canUserUseModulrInWorkspace({
     database: context.db,
     userId: context.user.id,
@@ -108,10 +111,11 @@ const connect = protectedProcedure.input(connectionInput).handler(async ({ input
 });
 
 const disconnect = protectedProcedure.handler(async ({ context }) => {
-  const access = await requireActiveWorkspaceAdmin(context.user.id);
+  const access = await requireActiveWorkspaceAccess(context.user.id);
   await deleteModulrWorkspaceConnection({
     database: context.db,
     workspaceId: access.workspace.id,
+    userId: context.user.id,
   });
   return getModulrWorkspaceConnectionStatus({
     database: context.db,
@@ -163,6 +167,45 @@ const adminRemoveAccess = protectedProcedure
     return removed;
   });
 
+const adminGetWorkspaceWideAccess = protectedProcedure
+  .input(z.object({ workspaceId: z.string().min(1) }))
+  .handler(async ({ input, context }) => {
+    await requireAdmin(context);
+    await assertWorkspaceExists(context, input.workspaceId);
+    await listWorkspaceMcpServers({
+      database: context.db,
+      workspaceId: input.workspaceId,
+      userId: context.user.id,
+      includeAllCustomSources: true,
+    });
+    return getModulrWorkspaceWideAccess({
+      database: context.db,
+      workspaceId: input.workspaceId,
+    });
+  });
+
+const adminSetWorkspaceWideAccess = protectedProcedure
+  .input(z.object({ workspaceId: z.string().min(1), enabled: z.boolean() }))
+  .handler(async ({ input, context }) => {
+    await requireAdmin(context);
+    await assertWorkspaceExists(context, input.workspaceId);
+    await listWorkspaceMcpServers({
+      database: context.db,
+      workspaceId: input.workspaceId,
+      userId: context.user.id,
+      includeAllCustomSources: true,
+    });
+    const result = await setModulrWorkspaceWideAccess({
+      database: context.db,
+      workspaceId: input.workspaceId,
+      enabled: input.enabled,
+    });
+    if (!result) {
+      throw new ORPCError("NOT_FOUND", { message: "Modulr MCP Server not found." });
+    }
+    return result;
+  });
+
 export const modulrRouter = {
   status,
   test,
@@ -171,4 +214,6 @@ export const modulrRouter = {
   adminListAccess,
   adminAddAccess,
   adminRemoveAccess,
+  adminGetWorkspaceWideAccess,
+  adminSetWorkspaceWideAccess,
 };

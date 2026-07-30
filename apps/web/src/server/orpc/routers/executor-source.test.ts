@@ -241,7 +241,152 @@ describe("workspaceMcpServerRouter", () => {
     expect(valuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         authType: "oauth2",
+        sharedWithWorkspace: false,
         transport: null,
+      }),
+    );
+  });
+
+  it("creates a Workspace-shared MCP Server when requested", async () => {
+    const context = createContext();
+    context.db.query.workspaceMcpServer.findFirst.mockResolvedValue(null);
+    const returningMock = vi.fn<VitestProcedure>().mockResolvedValue([{ id: "src-shared" }]);
+    const valuesMock = vi.fn<VitestProcedure>(() => ({ returning: returningMock }));
+    context.db.insert.mockReturnValue({ values: valuesMock });
+
+    await workspaceMcpServerRouterAny.create({
+      input: {
+        kind: "mcp",
+        name: "Linear MCP",
+        namespace: "linear-mcp",
+        endpoint: "https://mcp.linear.app/mcp",
+        authType: "oauth2",
+        enabled: true,
+        sharedWithWorkspace: true,
+      },
+      context,
+    });
+
+    expect(valuesMock).toHaveBeenCalledWith(expect.objectContaining({ sharedWithWorkspace: true }));
+  });
+
+  it("does not let another member authorize a personal MCP Server", async () => {
+    const context = createContext();
+    context.db.query.workspaceMcpServer.findFirst.mockResolvedValue({
+      id: "src-private",
+      workspaceId: "ws-1",
+      kind: "mcp",
+      authType: "oauth2",
+      endpoint: "https://mcp.linear.app/mcp",
+      queryParams: null,
+      internalKey: null,
+      sharedWithWorkspace: false,
+      createdByUserId: "another-user",
+    });
+
+    await expect(
+      workspaceMcpServerRouterAny.startOAuth({
+        input: {
+          workspaceMcpServerId: "src-private",
+          redirectUrl: "https://app.example.com/toolbox/sources/src-private",
+        },
+        context,
+      }),
+    ).rejects.toMatchObject({
+      message: "Workspace MCP Server not found.",
+    });
+    expect(startMcpOAuthAuthorizationMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects static credential-like configuration when sharing a new MCP Server", async () => {
+    const context = createContext();
+    context.db.query.workspaceMcpServer.findFirst.mockResolvedValue(null);
+
+    await expect(
+      workspaceMcpServerRouterAny.create({
+        input: {
+          kind: "mcp",
+          name: "Private API",
+          namespace: "private-api",
+          endpoint: "https://mcp.example.com/mcp",
+          authType: "none",
+          enabled: true,
+          sharedWithWorkspace: true,
+          headers: { Authorization: "Bearer shared-secret" },
+        },
+        context,
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("per-user authorization"),
+    });
+    expect(context.db.insert).not.toHaveBeenCalled();
+  });
+
+  it("does not let a member manage another creator's shared MCP Server", async () => {
+    const context = createContext();
+    context.db.query.workspaceMcpServer.findFirst.mockResolvedValue({
+      id: "src-shared",
+      workspaceId: "ws-1",
+      internalKey: null,
+      createdByUserId: "another-user",
+      sharedWithWorkspace: true,
+    });
+
+    await expect(
+      workspaceMcpServerRouterAny.update({
+        input: {
+          id: "src-shared",
+          kind: "mcp",
+          name: "Linear",
+          namespace: "linear",
+          endpoint: "https://mcp.linear.app/mcp",
+          authType: "oauth2",
+          enabled: true,
+          sharedWithWorkspace: true,
+        },
+        context,
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("owner or a Workspace admin"),
+    });
+    expect(context.db.update).not.toHaveBeenCalled();
+  });
+
+  it("preserves supported MCP metadata during an update", async () => {
+    const context = createContext();
+    context.db.query.workspaceMcpServer.findFirst
+      .mockResolvedValueOnce({
+        id: "src-personal",
+        workspaceId: "ws-1",
+        internalKey: null,
+        createdByUserId: "user-1",
+        sharedWithWorkspace: false,
+      })
+      .mockResolvedValueOnce(null);
+    const whereMock = vi.fn<VitestProcedure>().mockResolvedValue(undefined);
+    const setMock = vi.fn<VitestProcedure>(() => ({ where: whereMock }));
+    context.db.update.mockReturnValue({ set: setMock });
+
+    await workspaceMcpServerRouterAny.update({
+      input: {
+        id: "src-personal",
+        kind: "mcp",
+        name: "Internal MCP",
+        namespace: "internal",
+        endpoint: "https://mcp.example.com/mcp",
+        specUrl: "https://mcp.example.com/spec",
+        defaultHeaders: { "X-Client": "bap" },
+        authType: "oauth2",
+        enabled: true,
+        sharedWithWorkspace: false,
+      },
+      context,
+    });
+
+    expect(setMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        specUrl: "https://mcp.example.com/spec",
+        defaultHeaders: { "X-Client": "bap" },
       }),
     );
   });

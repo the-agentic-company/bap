@@ -16,6 +16,8 @@ const getEnabledIntegrationTypesMock = vi.fn<() => Promise<unknown>>();
 const getRemoteIntegrationCredentialsMock = vi.fn<() => Promise<unknown>>();
 const getTokensForIntegrationsMock = vi.fn<() => Promise<unknown>>();
 const userFindFirstMock = vi.fn<() => Promise<unknown>>();
+const canUserUseModulrInWorkspaceMock = vi.fn<() => Promise<unknown>>();
+const getModulrWorkspaceConnectionMock = vi.fn<() => Promise<unknown>>();
 
 vi.mock("@/env", () => ({
   env: {
@@ -64,8 +66,8 @@ vi.mock("@bap/core/server/galien/service", () => ({
 }));
 
 vi.mock("@bap/core/server/modulr/service", () => ({
-  canUserUseModulrInWorkspace: vi.fn<() => Promise<unknown>>(),
-  getModulrWorkspaceConnection: vi.fn<() => Promise<unknown>>(),
+  canUserUseModulrInWorkspace: canUserUseModulrInWorkspaceMock,
+  getModulrWorkspaceConnection: getModulrWorkspaceConnectionMock,
 }));
 
 vi.mock("@bap/db/client", () => ({
@@ -88,7 +90,7 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn<() => unknown>(),
 }));
 
-const { handleRuntimeCredentials } = await import("./mcp-credentials");
+const { handleModulrCredentials, handleRuntimeCredentials } = await import("./mcp-credentials");
 
 function runtimeCredentialsRequest(body: unknown) {
   return new Request("https://app.example.com/api/internal/mcp/runtime-credentials", {
@@ -220,5 +222,38 @@ describe("handleRuntimeCredentials", () => {
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ message: "Admin access required" });
     expect(getRemoteIntegrationCredentialsMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleModulrCredentials", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    canUserUseModulrInWorkspaceMock.mockResolvedValue(true);
+    getModulrWorkspaceConnectionMock.mockResolvedValue({
+      database: "db",
+      clientId: "client",
+      clientSecret: "secret",
+      locale: "fr",
+      baseUrl: "https://modulr.example.com",
+    });
+  });
+
+  it("loads the acting user's own Modulr connection", async () => {
+    const response = await handleModulrCredentials(
+      new Request("https://app.example.com/api/internal/mcp/modulr-credentials", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-secret",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ userId: "user-1", workspaceId: "workspace-1" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(getModulrWorkspaceConnectionMock).toHaveBeenCalledWith({
+      workspaceId: "workspace-1",
+      userId: "user-1",
+    });
   });
 });

@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   useAdminAddGalienAccess,
   useAdminAddModulrAccess,
@@ -18,6 +19,10 @@ import {
   useAdminModulrAccess,
   useAdminRemoveGalienAccess,
   useAdminRemoveModulrAccess,
+  useAdminGalienWorkspaceWideAccess,
+  useAdminModulrWorkspaceWideAccess,
+  useAdminSetGalienWorkspaceWideAccess,
+  useAdminSetModulrWorkspaceWideAccess,
   useAdminUpdateGalienAccessTargetEnv,
   useConnectModulr,
   useDisconnectModulr,
@@ -99,12 +104,18 @@ function McpAccessPanel({
   entries,
   isLoading,
   isPending,
+  workspaceWideEnabled,
+  workspaceWidePending,
+  workspaceWideReady,
+  workspaceWideTargetEnv,
   targetEnv,
   onEmailChange,
   onTargetEnvChange,
   onAdd,
   onRemove,
   onEntryTargetEnvChange,
+  onWorkspaceWideChange,
+  onWorkspaceWideTargetEnvChange,
 }: {
   name: "Galien" | "Modulr";
   workspaceId: string | null;
@@ -112,12 +123,18 @@ function McpAccessPanel({
   entries: Array<{ id: string; email: string; targetEnv?: GalienTargetEnv }>;
   isLoading: boolean;
   isPending: boolean;
+  workspaceWideEnabled: boolean;
+  workspaceWidePending: boolean;
+  workspaceWideReady: boolean;
+  workspaceWideTargetEnv?: GalienTargetEnv;
   targetEnv?: GalienTargetEnv;
   onEmailChange: (value: string) => void;
   onTargetEnvChange?: (value: GalienTargetEnv) => void;
   onAdd: (event: React.FormEvent) => void;
   onRemove: (id: string, email: string) => void;
   onEntryTargetEnvChange?: (id: string, targetEnv: GalienTargetEnv) => void;
+  onWorkspaceWideChange: (enabled: boolean) => void;
+  onWorkspaceWideTargetEnvChange?: (targetEnv: GalienTargetEnv) => void;
 }) {
   const handleEmailChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => onEmailChange(event.target.value),
@@ -129,15 +146,49 @@ function McpAccessPanel({
     },
     [onTargetEnvChange],
   );
+  const handleWorkspaceWideTargetEnvChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onWorkspaceWideTargetEnvChange?.(event.target.value as GalienTargetEnv);
+    },
+    [onWorkspaceWideTargetEnvChange],
+  );
 
   return (
     <div className="space-y-3">
       <div>
         <h4 className="text-sm font-semibold">{name}</h4>
         <p className="text-muted-foreground mt-1 text-xs">
-          Grant {name} MCP access to individual emails in the selected workspace.
+          Grant access to specific people, or make {name} available to every workspace member. Each
+          person connects their own private authorization.
         </p>
       </div>
+      <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+        <div>
+          <p className="text-sm font-medium">Entire workspace</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            All current and future members can find {name} and connect it for themselves.
+          </p>
+          {workspaceWideTargetEnv && onWorkspaceWideTargetEnvChange ? (
+            <select
+              aria-label={`${name} workspace target environment`}
+              value={workspaceWideTargetEnv}
+              onChange={handleWorkspaceWideTargetEnvChange}
+              className="bg-background mt-3 rounded border px-2 py-1 text-xs"
+              disabled={!workspaceWideReady || workspaceWidePending}
+            >
+              <option value="prod">Production</option>
+              <option value="preprod">Preproduction</option>
+            </select>
+          ) : null}
+        </div>
+        <Switch
+          checked={workspaceWideEnabled}
+          disabled={!workspaceId || !workspaceWideReady || workspaceWidePending}
+          onCheckedChange={onWorkspaceWideChange}
+          aria-label={`Share ${name} with the entire workspace`}
+        />
+      </div>
+      <p className="text-muted-foreground text-xs font-medium">Specific people</p>
       <form onSubmit={onAdd} className="flex flex-col gap-3 sm:flex-row">
         <Input
           type="email"
@@ -194,6 +245,8 @@ function AdminMcpPage() {
   const updateGalienAccessTargetEnv = useAdminUpdateGalienAccessTargetEnv();
   const addModulrAccess = useAdminAddModulrAccess();
   const removeModulrAccess = useAdminRemoveModulrAccess();
+  const setGalienWorkspaceWideAccess = useAdminSetGalienWorkspaceWideAccess();
+  const setModulrWorkspaceWideAccess = useAdminSetModulrWorkspaceWideAccess();
   const [form, setForm] = useState<ModulrFormState>(DEFAULT_FORM);
   const [accessWorkspaceId, setAccessWorkspaceId] = useState<string | null>(null);
   const [galienEmail, setGalienEmail] = useState("");
@@ -205,6 +258,10 @@ function AdminMcpPage() {
     useAdminGalienAccess(accessWorkspaceId);
   const { data: modulrAccessEntries, isLoading: isModulrAccessLoading } =
     useAdminModulrAccess(accessWorkspaceId);
+  const { data: galienWorkspaceWideAccess, isFetching: isGalienWorkspaceWideAccessFetching } =
+    useAdminGalienWorkspaceWideAccess(accessWorkspaceId);
+  const { data: modulrWorkspaceWideAccess, isFetching: isModulrWorkspaceWideAccessFetching } =
+    useAdminModulrWorkspaceWideAccess(accessWorkspaceId);
   const visibleGalienAccessEntries = useMemo(
     () => galienAccessEntries ?? [],
     [galienAccessEntries],
@@ -407,6 +464,73 @@ function AdminMcpPage() {
     [accessWorkspaceId, removeModulrAccess],
   );
 
+  const handleGalienWorkspaceWideChange = useCallback(
+    async (enabled: boolean) => {
+      if (!accessWorkspaceId) {
+        return;
+      }
+      try {
+        await setGalienWorkspaceWideAccess.mutateAsync({
+          workspaceId: accessWorkspaceId,
+          enabled,
+          targetEnv: galienWorkspaceWideAccess?.targetEnv ?? "prod",
+        });
+        toast.success(
+          enabled
+            ? "Galien is available to the entire workspace."
+            : "Galien workspace-wide access disabled.",
+        );
+      } catch (error) {
+        console.error("Failed to update Galien workspace access:", error);
+        toast.error("Failed to update Galien workspace access.");
+      }
+    },
+    [accessWorkspaceId, galienWorkspaceWideAccess?.targetEnv, setGalienWorkspaceWideAccess],
+  );
+
+  const handleGalienWorkspaceWideTargetEnvChange = useCallback(
+    async (targetEnv: GalienTargetEnv) => {
+      if (!accessWorkspaceId) {
+        return;
+      }
+      try {
+        await setGalienWorkspaceWideAccess.mutateAsync({
+          workspaceId: accessWorkspaceId,
+          enabled: galienWorkspaceWideAccess?.enabled ?? false,
+          targetEnv,
+        });
+        toast.success("Updated the Galien workspace environment.");
+      } catch (error) {
+        console.error("Failed to update Galien workspace environment:", error);
+        toast.error("Failed to update the Galien workspace environment.");
+      }
+    },
+    [accessWorkspaceId, galienWorkspaceWideAccess?.enabled, setGalienWorkspaceWideAccess],
+  );
+
+  const handleModulrWorkspaceWideChange = useCallback(
+    async (enabled: boolean) => {
+      if (!accessWorkspaceId) {
+        return;
+      }
+      try {
+        await setModulrWorkspaceWideAccess.mutateAsync({
+          workspaceId: accessWorkspaceId,
+          enabled,
+        });
+        toast.success(
+          enabled
+            ? "Modulr is available to the entire workspace."
+            : "Modulr workspace-wide access disabled.",
+        );
+      } catch (error) {
+        console.error("Failed to update Modulr workspace access:", error);
+        toast.error("Failed to update Modulr workspace access.");
+      }
+    },
+    [accessWorkspaceId, setModulrWorkspaceWideAccess],
+  );
+
   const isConnected = Boolean(status?.connected);
   const isAllowed = status?.allowed !== false;
   const isBusy = testConnection.isPending || connectModulr.isPending || disconnectModulr.isPending;
@@ -438,10 +562,11 @@ function AdminMcpPage() {
           <div>
             <h3 className="text-base font-semibold">MCP access</h3>
             <p className="text-muted-foreground mt-1 text-sm">
-              Allow specific users to connect workspace-scoped MCP servers.
+              Share managed MCP servers with specific people or the entire workspace.
             </p>
           </div>
           <select
+            aria-label="Workspace for MCP access"
             value={accessWorkspaceId ?? ""}
             onChange={handleAccessWorkspaceChange}
             className="bg-background min-w-64 rounded-md border px-3 py-2 text-sm"
@@ -463,11 +588,19 @@ function AdminMcpPage() {
             entries={visibleGalienAccessEntries}
             isLoading={isGalienAccessLoading}
             isPending={galienActionPending}
+            workspaceWideEnabled={galienWorkspaceWideAccess?.enabled ?? false}
+            workspaceWidePending={setGalienWorkspaceWideAccess.isPending}
+            workspaceWideReady={
+              Boolean(galienWorkspaceWideAccess) && !isGalienWorkspaceWideAccessFetching
+            }
+            workspaceWideTargetEnv={galienWorkspaceWideAccess?.targetEnv ?? "prod"}
             onEmailChange={setGalienEmail}
             onTargetEnvChange={setGalienTargetEnv}
             onAdd={handleAddGalienAccess}
             onRemove={handleRemoveGalienAccess}
             onEntryTargetEnvChange={handleUpdateGalienAccessTargetEnv}
+            onWorkspaceWideChange={handleGalienWorkspaceWideChange}
+            onWorkspaceWideTargetEnvChange={handleGalienWorkspaceWideTargetEnvChange}
           />
           <McpAccessPanel
             name="Modulr"
@@ -476,9 +609,15 @@ function AdminMcpPage() {
             entries={visibleModulrAccessEntries}
             isLoading={isModulrAccessLoading}
             isPending={modulrActionPending}
+            workspaceWideEnabled={modulrWorkspaceWideAccess?.enabled ?? false}
+            workspaceWidePending={setModulrWorkspaceWideAccess.isPending}
+            workspaceWideReady={
+              Boolean(modulrWorkspaceWideAccess) && !isModulrWorkspaceWideAccessFetching
+            }
             onEmailChange={setModulrEmail}
             onAdd={handleAddModulrAccess}
             onRemove={handleRemoveModulrAccess}
+            onWorkspaceWideChange={handleModulrWorkspaceWideChange}
           />
         </div>
       </div>
@@ -515,8 +654,8 @@ function AdminMcpPage() {
                 )}
               </div>
               <p className="text-muted-foreground mt-1 text-sm">
-                Save the company Modulr API connection used by the `modulr` MCP server to resolve
-                customers and read attached documents.
+                Connect your own private Modulr authorization. Other workspace members connect their
+                credentials separately.
               </p>
               {!isAllowed ? (
                 <p className="text-muted-foreground mt-3 text-xs">
@@ -598,6 +737,7 @@ function AdminMcpPage() {
               onChange={updateField("baseUrl")}
               placeholder="https://app.modulr-courtage.fr"
               autoComplete="off"
+              readOnly
             />
           </label>
         </div>

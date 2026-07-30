@@ -13,7 +13,9 @@ const {
   consumeWorkspaceMcpServerOAuthPendingMock,
   exchangeMcpOAuthAuthorizationCodeMock,
   computeWorkspaceMcpServerRevisionHashMock,
+  canUserSeeWorkspaceMcpServerMock,
   setWorkspaceMcpServerOAuthCredentialMock,
+  requireActiveWorkspaceAccessMock,
   integrationFindFirstMock,
   connectedIdentityFindManyMock,
   connectedIdentityFindFirstMock,
@@ -33,7 +35,9 @@ const {
   const consumeWorkspaceMcpServerOAuthPendingMock = vi.fn<MockFn>();
   const exchangeMcpOAuthAuthorizationCodeMock = vi.fn<MockFn>();
   const computeWorkspaceMcpServerRevisionHashMock = vi.fn<MockFn>(() => "native-hash");
+  const canUserSeeWorkspaceMcpServerMock = vi.fn<MockFn>(() => true);
   const setWorkspaceMcpServerOAuthCredentialMock = vi.fn<MockFn>();
+  const requireActiveWorkspaceAccessMock = vi.fn<MockFn>();
 
   const integrationFindFirstMock = vi.fn<MockFn>();
   const connectedIdentityFindManyMock = vi.fn<MockFn>();
@@ -82,7 +86,9 @@ const {
     consumeWorkspaceMcpServerOAuthPendingMock,
     exchangeMcpOAuthAuthorizationCodeMock,
     computeWorkspaceMcpServerRevisionHashMock,
+    canUserSeeWorkspaceMcpServerMock,
     setWorkspaceMcpServerOAuthCredentialMock,
+    requireActiveWorkspaceAccessMock,
     integrationFindFirstMock,
     connectedIdentityFindManyMock,
     connectedIdentityFindFirstMock,
@@ -117,8 +123,13 @@ vi.mock("@bap/core/server/executor/mcp-oauth", () => ({
 }));
 
 vi.mock("@bap/core/server/executor/workspace-sources", () => ({
+  canUserSeeWorkspaceMcpServer: canUserSeeWorkspaceMcpServerMock,
   computeWorkspaceMcpServerRevisionHash: computeWorkspaceMcpServerRevisionHashMock,
   setWorkspaceMcpServerOAuthCredential: setWorkspaceMcpServerOAuthCredentialMock,
+}));
+
+vi.mock("@/server/orpc/workspace-access", () => ({
+  requireActiveWorkspaceAccess: requireActiveWorkspaceAccessMock,
 }));
 
 vi.mock("@/server/integrations/dynamics", () => ({
@@ -183,6 +194,11 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
       },
     });
     setWorkspaceMcpServerOAuthCredentialMock.mockResolvedValue(undefined);
+    requireActiveWorkspaceAccessMock.mockResolvedValue({
+      workspace: { id: "ws-1" },
+      membership: { role: "member" },
+    });
+    canUserSeeWorkspaceMcpServerMock.mockReturnValue(true);
     integrationFindFirstMock.mockResolvedValue(null);
     connectedIdentityFindManyMock.mockResolvedValue([]);
     connectedIdentityFindFirstMock.mockResolvedValue(null);
@@ -318,6 +334,10 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
     });
     workspaceMcpServerFindFirstMock.mockResolvedValue({
       id: "src-1",
+      workspaceId: "ws-1",
+      internalKey: null,
+      sharedWithWorkspace: true,
+      createdByUserId: "creator-1",
       name: "Linear",
       namespace: "linear",
       endpoint: "https://mcp.linear.app/mcp",
@@ -367,6 +387,83 @@ describe("handleOAuthCallback (GET /api/oauth/callback)", () => {
     expect(getLocation(response)).toBe(
       "https://app.example.com/toolbox/sources/src-1?oauth=success",
     );
+  });
+
+  it("rejects MCP OAuth completion after Workspace access is revoked", async () => {
+    consumeWorkspaceMcpServerOAuthPendingMock.mockResolvedValue({
+      userId: "user-1",
+      workspaceMcpServerId: "src-1",
+      redirectUrl: "https://app.example.com/toolbox/sources/src-1",
+      session: {
+        endpoint: "https://mcp.linear.app/mcp",
+        redirectUrl: "https://app.example.com/api/oauth/callback",
+        codeVerifier: "verifier",
+        resourceMetadataUrl: null,
+        authorizationServerUrl: null,
+        resourceMetadata: null,
+        authorizationServerMetadata: null,
+        clientInformation: null,
+      },
+    });
+    workspaceMcpServerFindFirstMock.mockResolvedValue({
+      id: "src-1",
+      workspaceId: "ws-1",
+      internalKey: null,
+      sharedWithWorkspace: true,
+      createdByUserId: "creator-1",
+      kind: "mcp",
+      authType: "oauth2",
+    });
+    requireActiveWorkspaceAccessMock.mockRejectedValue(new Error("Workspace not found"));
+
+    const response = await handleOAuthCallback(
+      new Request(
+        "https://app.example.com/api/oauth/callback?code=oauth-code&state=executor-state",
+      ),
+    );
+
+    expect(getLocation(response)).toBe(
+      "https://app.example.com/toolbox/sources/src-1?oauth=error&oauth_error=access_revoked",
+    );
+    expect(exchangeMcpOAuthAuthorizationCodeMock).not.toHaveBeenCalled();
+    expect(setWorkspaceMcpServerOAuthCredentialMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects MCP OAuth completion after the server becomes personal to someone else", async () => {
+    consumeWorkspaceMcpServerOAuthPendingMock.mockResolvedValue({
+      userId: "user-1",
+      workspaceMcpServerId: "src-1",
+      redirectUrl: "https://app.example.com/toolbox/sources/src-1",
+      session: {
+        endpoint: "https://mcp.linear.app/mcp",
+        redirectUrl: "https://app.example.com/api/oauth/callback",
+        codeVerifier: "verifier",
+        resourceMetadataUrl: null,
+        authorizationServerUrl: null,
+        resourceMetadata: null,
+        authorizationServerMetadata: null,
+        clientInformation: null,
+      },
+    });
+    workspaceMcpServerFindFirstMock.mockResolvedValue({
+      id: "src-1",
+      workspaceId: "ws-1",
+      internalKey: null,
+      sharedWithWorkspace: false,
+      createdByUserId: "another-user",
+      kind: "mcp",
+      authType: "oauth2",
+    });
+    canUserSeeWorkspaceMcpServerMock.mockReturnValue(false);
+
+    const response = await handleOAuthCallback(
+      new Request(
+        "https://app.example.com/api/oauth/callback?code=oauth-code&state=executor-state",
+      ),
+    );
+
+    expect(getLocation(response)).toContain("oauth_error=access_revoked");
+    expect(exchangeMcpOAuthAuthorizationCodeMock).not.toHaveBeenCalled();
   });
 
   it("redirects with token_exchange_failed when token exchange fails", async () => {

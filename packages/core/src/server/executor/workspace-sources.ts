@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
 import { env } from "../../env";
 import { db } from "@bap/db/client";
-import {
-  workspaceMcpServer,
-  workspaceMcpAuthorization,
-} from "@bap/db/schema";
+import { user, workspaceMcpServer, workspaceMcpAuthorization } from "@bap/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { getValidTokensForUser } from "../integrations/token-refresh";
 import { canUserUseGalienInWorkspace, getGalienAccessStatus } from "../galien/service";
@@ -25,8 +22,7 @@ export type WorkspaceMcpServerKind = "mcp";
 export type WorkspaceMcpServerAuthType = "none" | "api_key" | "bearer" | "oauth2";
 
 type WorkspaceMcpServerRecord = typeof workspaceMcpServer.$inferSelect;
-type WorkspaceMcpServerCredentialRecord =
-  typeof workspaceMcpAuthorization.$inferSelect;
+type WorkspaceMcpServerCredentialRecord = typeof workspaceMcpAuthorization.$inferSelect;
 
 type ManagedWorkspaceMcpServerDefinition = {
   internalKey: "gmail" | "galien" | "modulr";
@@ -105,10 +101,14 @@ export function computeWorkspaceMcpServerRevisionHash(input: {
     .digest("hex");
 }
 
-function hasStoredCredentialSecret(
-  source: WorkspaceMcpServerRecord,
-  credential: WorkspaceMcpServerCredentialRecord | null | undefined,
+export function hasUsableWorkspaceMcpAuthorization(
+  source: Pick<WorkspaceMcpServerRecord, "authType">,
+  credential: Pick<WorkspaceMcpServerCredentialRecord, "accessToken" | "secret"> | null | undefined,
 ): boolean {
+  if (source.authType === "none") {
+    return true;
+  }
+
   if (!credential) {
     return false;
   }
@@ -118,6 +118,30 @@ function hasStoredCredentialSecret(
   }
 
   return Boolean(credential.secret);
+}
+
+export function getWorkspaceMcpAuthorizationUnavailableReason(
+  source: Pick<WorkspaceMcpServerRecord, "authType" | "internalKey">,
+  credential:
+    | Pick<WorkspaceMcpServerCredentialRecord, "accessToken" | "enabled" | "secret">
+    | null
+    | undefined,
+): string | null {
+  if (source.internalKey || source.authType === "none") {
+    return null;
+  }
+
+  if (!credential) {
+    return "Workspace MCP Server authorization is not connected.";
+  }
+
+  if (!credential.enabled) {
+    return "Workspace MCP Server authorization is disabled.";
+  }
+
+  return hasUsableWorkspaceMcpAuthorization(source, credential)
+    ? null
+    : "Workspace MCP Server authorization is not connected.";
 }
 
 function resolveManagedMcpBaseUrl(): string | null {
@@ -168,6 +192,20 @@ function getManagedSourceDefinition(
   };
 }
 
+export function resolveManagedSourceProvisioning<
+  TSource extends Pick<WorkspaceMcpServerRecord, "internalKey" | "namespace">,
+>(
+  existing: TSource[],
+  definition: Pick<ManagedWorkspaceMcpServerDefinition, "internalKey" | "namespace">,
+) {
+  return {
+    current: existing.find((source) => source.internalKey === definition.internalKey) ?? null,
+    hasNamespaceCollision: existing.some(
+      (source) => !source.internalKey && source.namespace === definition.namespace,
+    ),
+  };
+}
+
 async function ensureManagedWorkspaceMcpServers(input: {
   database?: DatabaseLike;
   workspaceId: string;
@@ -176,28 +214,10 @@ async function ensureManagedWorkspaceMcpServers(input: {
   const database = input.database ?? db;
   const definitions: Array<ManagedWorkspaceMcpServerDefinition | null> =
     GMAIL_MANAGED_EXECUTOR_SOURCE_ENABLED ? [getManagedSourceDefinition("gmail")] : [];
-  const modulrDefinition = getManagedSourceDefinition(MODULR_INTERNAL_KEY);
-  if (
-    modulrDefinition &&
-    (await canUserUseModulrInWorkspace({
-      database,
-      userId: input.userId,
-      workspaceId: input.workspaceId,
-    }))
-  ) {
-    definitions.push(modulrDefinition);
-  }
-  const galienDefinition = getManagedSourceDefinition("galien");
-  if (
-    galienDefinition &&
-    (await canUserUseGalienInWorkspace({
-      database,
-      userId: input.userId,
-      workspaceId: input.workspaceId,
-    }))
-  ) {
-    definitions.push(galienDefinition);
-  }
+  definitions.push(
+    getManagedSourceDefinition(MODULR_INTERNAL_KEY),
+    getManagedSourceDefinition("galien"),
+  );
 
   const activeDefinitions = definitions.filter(
     (definition): definition is NonNullable<typeof definition> => Boolean(definition),
@@ -211,9 +231,9 @@ async function ensureManagedWorkspaceMcpServers(input: {
   });
 
   for (const definition of activeDefinitions) {
-    const current = existing.find(
-      (source) =>
-        source.internalKey === definition.internalKey || source.namespace === definition.namespace,
+    const { current, hasNamespaceCollision } = resolveManagedSourceProvisioning(
+      existing,
+      definition,
     );
 
     const enabled =
@@ -238,6 +258,9 @@ async function ensureManagedWorkspaceMcpServers(input: {
     });
 
     if (!current) {
+      if (hasNamespaceCollision) {
+        continue;
+      }
       await database.insert(workspaceMcpServer).values({
         workspaceId: input.workspaceId,
         kind: definition.kind,
@@ -255,6 +278,8 @@ async function ensureManagedWorkspaceMcpServers(input: {
         authQueryParam: null,
         authPrefix: null,
         enabled: true,
+        sharedWithWorkspace: false,
+        managedWorkspaceWideAccess: false,
         revisionHash,
         createdByUserId: input.userId,
         updatedByUserId: input.userId,
@@ -345,7 +370,10 @@ async function isManagedSourceVisibleForUser(input: {
   userId?: string;
 }) {
   if (!input.source.internalKey) {
-    return true;
+    return canUserSeeWorkspaceMcpServer({
+      source: input.source,
+      userId: input.userId,
+    });
   }
 
   if (input.source.internalKey === "galien") {
@@ -375,6 +403,18 @@ async function isManagedSourceVisibleForUser(input: {
   }
 
   return true;
+}
+
+export function canUserSeeWorkspaceMcpServer(input: {
+  source: Pick<WorkspaceMcpServerRecord, "internalKey" | "sharedWithWorkspace" | "createdByUserId">;
+  userId?: string;
+}) {
+  return (
+    Boolean(input.source.internalKey) ||
+    input.source.sharedWithWorkspace !== false ||
+    !input.userId ||
+    input.source.createdByUserId === input.userId
+  );
 }
 
 function shouldRefreshOauthCredential(expiresAt: Date | null): boolean {
@@ -459,10 +499,7 @@ async function upsertWorkspaceMcpServerOAuthCredential(input: {
       enabled: input.enabled ?? true,
     })
     .onConflictDoUpdate({
-      target: [
-        workspaceMcpAuthorization.userId,
-        workspaceMcpAuthorization.workspaceMcpServerId,
-      ],
+      target: [workspaceMcpAuthorization.userId, workspaceMcpAuthorization.workspaceMcpServerId],
       set: {
         secret: null,
         accessToken: encrypt(input.accessToken),
@@ -601,6 +638,9 @@ async function buildWorkspaceMcpRuntimeServer(input: {
       env.APP_SERVER_SECRET,
     )}`;
   } else if (input.source.authType === "oauth2") {
+    if (!input.credential?.enabled) {
+      throw new Error("Workspace MCP Server authorization is disabled.");
+    }
     const hydrated = await getHydratedWorkspaceMcpServerOauthCredential({
       database: input.database,
       source: input.source,
@@ -642,6 +682,7 @@ export async function listWorkspaceMcpServers(input: {
   database?: DatabaseLike;
   workspaceId: string;
   userId?: string;
+  includeAllCustomSources?: boolean;
 }) {
   const database = input.database ?? db;
   if (input.userId) {
@@ -666,10 +707,24 @@ export async function listWorkspaceMcpServers(input: {
   const credentialBySourceId = new Map(
     credentials.map((credential) => [credential.workspaceMcpServerId, credential]),
   );
+  const creatorIds = [
+    ...new Set(
+      sources.filter((source) => !source.internalKey).map((source) => source.createdByUserId),
+    ),
+  ];
+  const creators =
+    creatorIds.length > 0
+      ? await database.query.user.findMany({
+          where: inArray(user.id, creatorIds),
+          columns: { id: true, name: true, email: true },
+        })
+      : [];
+  const creatorById = new Map(creators.map((creator) => [creator.id, creator]));
 
   const visibleSources = (
     await Promise.all(
       sources.map(async (source) =>
+        (input.includeAllCustomSources && !source.internalKey) ||
         (await isManagedSourceVisibleForUser({
           database,
           source,
@@ -686,11 +741,19 @@ export async function listWorkspaceMcpServers(input: {
       const credential = credentialBySourceId.get(source.id);
       const connected = source.internalKey
         ? await isManagedSourceConnected({ database, source, userId: input.userId })
-        : hasStoredCredentialSecret(source, credential);
+        : hasUsableWorkspaceMcpAuthorization(source, credential);
+      const creator = creatorById.get(source.createdByUserId);
       return {
         ...source,
+        canManage:
+          !source.internalKey && (!input.userId || source.createdByUserId === input.userId),
+        createdByCurrentUser: source.createdByUserId === input.userId,
+        creatorDisplayName: creator?.name ?? creator?.email ?? null,
         connected,
-        credentialEnabled: source.internalKey ? connected : (credential?.enabled ?? false),
+        credentialEnabled:
+          source.internalKey || source.authType === "none"
+            ? connected
+            : (credential?.enabled ?? false),
         credentialDisplayName: credential?.displayName ?? null,
         credentialUpdatedAt: credential?.updatedAt ?? null,
       };
@@ -802,6 +865,20 @@ export async function resolveWorkspaceMcpServersForGeneration(input: {
       });
       continue;
     }
+    const credential = credentialBySourceId.get(source.id);
+    const authorizationUnavailableReason = getWorkspaceMcpAuthorizationUnavailableReason(
+      source,
+      credential,
+    );
+    if (authorizationUnavailableReason) {
+      unavailableServers.push({
+        id: source.id,
+        name: source.name,
+        namespace: source.namespace,
+        reason: authorizationUnavailableReason,
+      });
+      continue;
+    }
     try {
       requestedServers.push({
         id: source.id,
@@ -810,7 +887,7 @@ export async function resolveWorkspaceMcpServersForGeneration(input: {
         server: await buildWorkspaceMcpRuntimeServer({
           database,
           source,
-          credential: credentialBySourceId.get(source.id),
+          credential,
           userId: input.userId,
           remoteIntegrationSource: input.remoteIntegrationSource,
         }),
@@ -856,10 +933,7 @@ export async function setWorkspaceMcpServerCredential(input: {
       enabled: input.enabled ?? true,
     })
     .onConflictDoUpdate({
-      target: [
-        workspaceMcpAuthorization.userId,
-        workspaceMcpAuthorization.workspaceMcpServerId,
-      ],
+      target: [workspaceMcpAuthorization.userId, workspaceMcpAuthorization.workspaceMcpServerId],
       set: {
         secret: encrypt(normalizedSecret),
         accessToken: null,

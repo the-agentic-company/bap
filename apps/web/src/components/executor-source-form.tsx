@@ -40,6 +40,12 @@ export type WorkspaceMcpServerListItem = {
   internalKey?: string | null;
   endpoint: string;
   enabled: boolean;
+  sharedWithWorkspace: boolean;
+  managedWorkspaceWideAccess: boolean;
+  managedTargetEnv: string | null;
+  canManage: boolean;
+  createdByCurrentUser: boolean;
+  creatorDisplayName: string | null;
   connected: boolean;
   credentialEnabled: boolean;
   credentialDisplayName: string | null;
@@ -69,6 +75,7 @@ export type WorkspaceMcpServerMutationInput = {
   authQueryParam?: string | null;
   authPrefix?: string | null;
   enabled?: boolean;
+  sharedWithWorkspace?: boolean;
 };
 
 type BuildMutationInputOptions = {

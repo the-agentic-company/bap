@@ -16,6 +16,7 @@ const {
   decodeGalienCurrentUserFromBearerToken,
   GalienCredentialValidationError,
   getGalienApiBaseUrl,
+  getGalienWorkspaceAccessForUser,
   normalizeGalienAccessEmail,
   parseGalienTargetEnv,
   validateGalienCredentials,
@@ -31,6 +32,83 @@ describe("Galien service helpers", () => {
 
   it("normalizes access emails", () => {
     expect(normalizeGalienAccessEmail("  USER@Example.COM ")).toBe("user@example.com");
+  });
+
+  it.each([
+    {
+      label: "a specific-user grant",
+      userGrant: { id: "grant-1", targetEnv: "preprod" },
+      workspaceWide: false,
+      expectedScope: "user",
+      expectedEnv: "preprod",
+    },
+    {
+      label: "workspace-wide access",
+      userGrant: null,
+      workspaceWide: true,
+      expectedScope: "workspace",
+      expectedEnv: "prod",
+    },
+  ])(
+    "allows a workspace member through $label",
+    async ({ userGrant, workspaceWide, expectedScope, expectedEnv }) => {
+      const database = {
+        query: {
+          workspaceMember: {
+            findFirst: vi.fn().mockResolvedValue({ user: { email: "User@Example.com" } }),
+          },
+          galienWorkspaceAccess: {
+            findFirst: vi.fn().mockResolvedValue(userGrant),
+          },
+          workspaceMcpServer: {
+            findFirst: vi.fn().mockResolvedValue({
+              id: "galien-source",
+              managedWorkspaceWideAccess: workspaceWide,
+              managedTargetEnv: "prod",
+            }),
+          },
+        },
+      };
+
+      await expect(
+        getGalienWorkspaceAccessForUser({
+          database: database as never,
+          workspaceId: "workspace-1",
+          userId: "user-1",
+        }),
+      ).resolves.toMatchObject({
+        accessScope: expectedScope,
+        targetEnv: expectedEnv,
+      });
+    },
+  );
+
+  it("denies a member with neither a user grant nor workspace-wide access", async () => {
+    const database = {
+      query: {
+        workspaceMember: {
+          findFirst: vi.fn().mockResolvedValue({ user: { email: "user@example.com" } }),
+        },
+        galienWorkspaceAccess: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+        workspaceMcpServer: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: "galien-source",
+            managedWorkspaceWideAccess: false,
+            managedTargetEnv: "prod",
+          }),
+        },
+      },
+    };
+
+    await expect(
+      getGalienWorkspaceAccessForUser({
+        database: database as never,
+        workspaceId: "workspace-1",
+        userId: "user-1",
+      }),
+    ).resolves.toBeNull();
   });
 
   it("resolves Galien target environment API base URLs", () => {

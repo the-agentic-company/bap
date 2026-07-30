@@ -1,5 +1,11 @@
 import { db } from "@bap/db/client";
-import { galienCredential, galienWorkspaceAccess, user, workspaceMember } from "@bap/db/schema";
+import {
+  galienCredential,
+  galienWorkspaceAccess,
+  user,
+  workspaceMcpServer,
+  workspaceMember,
+} from "@bap/db/schema";
 import { and, eq } from "drizzle-orm";
 import { decrypt, encrypt } from "../utils/encryption";
 
@@ -8,6 +14,7 @@ const GALIEN_API_BASE_URLS = {
   preprod: "https://api.frontline.galien.preprod.webhelpmedica.com",
 } as const;
 const GALIEN_LOGIN_PATH = "/api/v1/tokens/login";
+export const GALIEN_INTERNAL_KEY = "galien";
 
 type DatabaseLike = typeof db;
 export type GalienTargetEnv = keyof typeof GALIEN_API_BASE_URLS;
@@ -204,12 +211,36 @@ export async function getGalienWorkspaceAccessForUser(input: {
     ),
   });
 
-  return access
-    ? {
-        ...access,
-        targetEnv: parseGalienTargetEnv(access.targetEnv),
-      }
-    : null;
+  if (access) {
+    return {
+      ...access,
+      targetEnv: parseGalienTargetEnv(access.targetEnv),
+      accessScope: "user" as const,
+    };
+  }
+
+  const source = await database.query.workspaceMcpServer.findFirst({
+    where: and(
+      eq(workspaceMcpServer.workspaceId, input.workspaceId),
+      eq(workspaceMcpServer.internalKey, GALIEN_INTERNAL_KEY),
+    ),
+    columns: {
+      id: true,
+      managedWorkspaceWideAccess: true,
+      managedTargetEnv: true,
+    },
+  });
+  if (!source?.managedWorkspaceWideAccess) {
+    return null;
+  }
+
+  return {
+    id: source.id,
+    workspaceId: input.workspaceId,
+    email: normalizedEmail,
+    targetEnv: parseGalienTargetEnv(source.managedTargetEnv),
+    accessScope: "workspace" as const,
+  };
 }
 
 export async function canUserUseGalienInWorkspace(input: {
@@ -290,6 +321,60 @@ export async function removeGalienWorkspaceAccess(input: { database?: DatabaseLi
     .where(eq(galienWorkspaceAccess.id, input.id))
     .returning();
   return entry ?? null;
+}
+
+export async function getGalienWorkspaceWideAccess(input: {
+  database?: DatabaseLike;
+  workspaceId: string;
+}) {
+  const database = input.database ?? db;
+  const source = await database.query.workspaceMcpServer.findFirst({
+    where: and(
+      eq(workspaceMcpServer.workspaceId, input.workspaceId),
+      eq(workspaceMcpServer.internalKey, GALIEN_INTERNAL_KEY),
+    ),
+    columns: {
+      managedWorkspaceWideAccess: true,
+      managedTargetEnv: true,
+    },
+  });
+
+  return {
+    enabled: source?.managedWorkspaceWideAccess ?? false,
+    targetEnv: parseGalienTargetEnv(source?.managedTargetEnv),
+  };
+}
+
+export async function setGalienWorkspaceWideAccess(input: {
+  database?: DatabaseLike;
+  workspaceId: string;
+  enabled: boolean;
+  targetEnv: GalienTargetEnv;
+}) {
+  const database = input.database ?? db;
+  const [source] = await database
+    .update(workspaceMcpServer)
+    .set({
+      managedWorkspaceWideAccess: input.enabled,
+      managedTargetEnv: input.targetEnv,
+    })
+    .where(
+      and(
+        eq(workspaceMcpServer.workspaceId, input.workspaceId),
+        eq(workspaceMcpServer.internalKey, GALIEN_INTERNAL_KEY),
+      ),
+    )
+    .returning({
+      managedWorkspaceWideAccess: workspaceMcpServer.managedWorkspaceWideAccess,
+      managedTargetEnv: workspaceMcpServer.managedTargetEnv,
+    });
+
+  return source
+    ? {
+        enabled: source.managedWorkspaceWideAccess,
+        targetEnv: parseGalienTargetEnv(source.managedTargetEnv),
+      }
+    : null;
 }
 
 export async function getGalienCredentialStatus(input: {

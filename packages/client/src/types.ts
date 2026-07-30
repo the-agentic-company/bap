@@ -117,6 +117,7 @@ export type WorkspaceMcpServerInput = {
   authQueryParam?: string | null;
   authPrefix?: string | null;
   enabled?: boolean;
+  sharedWithWorkspace?: boolean;
 };
 
 export type WorkspaceMcpServerSummary = {
@@ -124,9 +125,20 @@ export type WorkspaceMcpServerSummary = {
   name: string;
   namespace: string;
   endpoint: string;
-  kind: string;
-  authType: string;
+  kind: "mcp";
+  authType: WorkspaceMcpServerAuthType;
   enabled: boolean;
+  sharedWithWorkspace: boolean;
+  managedWorkspaceWideAccess: boolean;
+  managedTargetEnv: string | null;
+  specUrl: string | null;
+  transport: string | null;
+  headers: Record<string, string> | null;
+  queryParams: Record<string, string> | null;
+  defaultHeaders: Record<string, string> | null;
+  authHeaderName: string | null;
+  authQueryParam: string | null;
+  authPrefix: string | null;
   [key: string]: unknown;
 };
 

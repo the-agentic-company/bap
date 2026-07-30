@@ -5,7 +5,7 @@ import {
   workspaceMcpAuthorization,
   workspaceMember,
 } from "@bap/db/schema";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { decrypt, encrypt } from "../utils/encryption";
 
 type DatabaseLike = typeof db;
@@ -57,12 +57,13 @@ function normalizeLocale(value: unknown): "fr" | "en" {
 function normalizeBaseUrl(value: unknown): string {
   const raw = typeof value === "string" && value.trim() ? value.trim() : MODULR_DEFAULT_BASE_URL;
   const url = new URL(raw);
+  if (url.origin !== MODULR_DEFAULT_BASE_URL) {
+    throw new Error(`Modulr base URL must be ${MODULR_DEFAULT_BASE_URL}.`);
+  }
   return url.origin;
 }
 
-export function normalizeModulrWorkspaceConnection(
-  input: unknown,
-): ModulrWorkspaceConnection {
+export function normalizeModulrWorkspaceConnection(input: unknown): ModulrWorkspaceConnection {
   assertObject(input);
   const database = typeof input.database === "string" ? input.database.trim() : "";
   const clientId = typeof input.clientId === "string" ? input.clientId.trim() : "";
@@ -102,20 +103,21 @@ function readModulrTokenPayload(payload: unknown): {
   accessToken: string | null;
   expiresIn: number | null;
 } {
-  const root = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
-  const data = root.data && typeof root.data === "object"
-    ? root.data as Record<string, unknown>
-    : {};
-  const accessToken = typeof root.access_token === "string"
-    ? root.access_token.trim()
-    : typeof data.access_token === "string"
-      ? data.access_token.trim()
-      : "";
-  const expiresIn = typeof root.expires_in === "number"
-    ? root.expires_in
-    : typeof data.expires_in === "number"
-      ? data.expires_in
-      : null;
+  const root = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const data =
+    root.data && typeof root.data === "object" ? (root.data as Record<string, unknown>) : {};
+  const accessToken =
+    typeof root.access_token === "string"
+      ? root.access_token.trim()
+      : typeof data.access_token === "string"
+        ? data.access_token.trim()
+        : "";
+  const expiresIn =
+    typeof root.expires_in === "number"
+      ? root.expires_in
+      : typeof data.expires_in === "number"
+        ? data.expires_in
+        : null;
 
   return {
     accessToken: accessToken || null,
@@ -164,10 +166,7 @@ export async function validateModulrWorkspaceConnection(
   };
 }
 
-async function findModulrManagedSource(input: {
-  database?: DatabaseLike;
-  workspaceId: string;
-}) {
+async function findModulrManagedSource(input: { database?: DatabaseLike; workspaceId: string }) {
   const database = input.database ?? db;
   return database.query.workspaceMcpServer.findFirst({
     where: and(
@@ -180,6 +179,7 @@ async function findModulrManagedSource(input: {
 async function findModulrCredential(input: {
   database?: DatabaseLike;
   workspaceId: string;
+  userId: string;
 }) {
   const database = input.database ?? db;
   const source = await findModulrManagedSource(input);
@@ -190,9 +190,9 @@ async function findModulrCredential(input: {
   const credential = await database.query.workspaceMcpAuthorization.findFirst({
     where: and(
       eq(workspaceMcpAuthorization.workspaceMcpServerId, source.id),
+      eq(workspaceMcpAuthorization.userId, input.userId),
       eq(workspaceMcpAuthorization.enabled, true),
     ),
-    orderBy: (record) => [desc(record.updatedAt)],
   });
 
   return { source, credential };
@@ -201,6 +201,7 @@ async function findModulrCredential(input: {
 export async function getModulrWorkspaceConnection(input: {
   database?: DatabaseLike;
   workspaceId: string;
+  userId: string;
 }): Promise<ModulrWorkspaceConnection | null> {
   const { credential } = await findModulrCredential(input);
   if (!credential?.secret) {
@@ -235,6 +236,11 @@ export async function canUserUseModulrInWorkspace(input: {
     : "";
   if (!normalizedEmail) {
     return false;
+  }
+
+  const source = await findModulrManagedSource(input);
+  if (source?.managedWorkspaceWideAccess) {
+    return true;
   }
 
   const allowed = await database.query.modulrWorkspaceAccess.findFirst({
@@ -289,16 +295,42 @@ export async function addModulrWorkspaceAccess(input: {
   return entry;
 }
 
-export async function removeModulrWorkspaceAccess(input: {
-  database?: DatabaseLike;
-  id: string;
-}) {
+export async function removeModulrWorkspaceAccess(input: { database?: DatabaseLike; id: string }) {
   const database = input.database ?? db;
   const [entry] = await database
     .delete(modulrWorkspaceAccess)
     .where(eq(modulrWorkspaceAccess.id, input.id))
     .returning();
   return entry ?? null;
+}
+
+export async function getModulrWorkspaceWideAccess(input: {
+  database?: DatabaseLike;
+  workspaceId: string;
+}) {
+  const source = await findModulrManagedSource(input);
+  return { enabled: source?.managedWorkspaceWideAccess ?? false };
+}
+
+export async function setModulrWorkspaceWideAccess(input: {
+  database?: DatabaseLike;
+  workspaceId: string;
+  enabled: boolean;
+}) {
+  const database = input.database ?? db;
+  const [source] = await database
+    .update(workspaceMcpServer)
+    .set({ managedWorkspaceWideAccess: input.enabled })
+    .where(
+      and(
+        eq(workspaceMcpServer.workspaceId, input.workspaceId),
+        eq(workspaceMcpServer.internalKey, MODULR_INTERNAL_KEY),
+      ),
+    )
+    .returning({
+      managedWorkspaceWideAccess: workspaceMcpServer.managedWorkspaceWideAccess,
+    });
+  return source ? { enabled: source.managedWorkspaceWideAccess } : null;
 }
 
 export async function getModulrWorkspaceConnectionStatus(input: {
@@ -369,10 +401,7 @@ export async function setModulrWorkspaceConnection(input: {
       enabled: true,
     })
     .onConflictDoUpdate({
-      target: [
-        workspaceMcpAuthorization.userId,
-        workspaceMcpAuthorization.workspaceMcpServerId,
-      ],
+      target: [workspaceMcpAuthorization.userId, workspaceMcpAuthorization.workspaceMcpServerId],
       set: {
         secret: encrypt(JSON.stringify(connection)),
         accessToken: null,
@@ -384,20 +413,12 @@ export async function setModulrWorkspaceConnection(input: {
         updatedAt: new Date(),
       },
     });
-
-  await database
-    .delete(workspaceMcpAuthorization)
-    .where(
-      and(
-        eq(workspaceMcpAuthorization.workspaceMcpServerId, source.id),
-        ne(workspaceMcpAuthorization.userId, input.userId),
-      ),
-    );
 }
 
 export async function deleteModulrWorkspaceConnection(input: {
   database?: DatabaseLike;
   workspaceId: string;
+  userId: string;
 }) {
   const database = input.database ?? db;
   const source = await findModulrManagedSource({
@@ -410,5 +431,10 @@ export async function deleteModulrWorkspaceConnection(input: {
 
   await database
     .delete(workspaceMcpAuthorization)
-    .where(eq(workspaceMcpAuthorization.workspaceMcpServerId, source.id));
+    .where(
+      and(
+        eq(workspaceMcpAuthorization.workspaceMcpServerId, source.id),
+        eq(workspaceMcpAuthorization.userId, input.userId),
+      ),
+    );
 }

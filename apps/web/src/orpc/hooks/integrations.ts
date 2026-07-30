@@ -85,8 +85,9 @@ type ModulrConnectionInput = {
   clientId: string;
   clientSecret: string;
   locale: "fr" | "en";
-  baseUrl: string;
 };
+
+const MODULR_BASE_URL = "https://app.modulr-courtage.fr" as const;
 
 export function useModulrStatus() {
   return useQuery({
@@ -97,7 +98,8 @@ export function useModulrStatus() {
 
 export function useTestModulrConnection() {
   return useMutation({
-    mutationFn: (input: ModulrConnectionInput) => client.modulr.test(input),
+    mutationFn: (input: ModulrConnectionInput) =>
+      client.modulr.test({ ...input, baseUrl: MODULR_BASE_URL }),
   });
 }
 
@@ -105,7 +107,8 @@ export function useConnectModulr() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: ModulrConnectionInput) => client.modulr.connect(input),
+    mutationFn: (input: ModulrConnectionInput) =>
+      client.modulr.connect({ ...input, baseUrl: MODULR_BASE_URL }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
       queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
@@ -161,6 +164,30 @@ export function useAdminRemoveModulrAccess() {
   });
 }
 
+export function useAdminModulrWorkspaceWideAccess(workspaceId: string | null) {
+  return useQuery({
+    queryKey: ["modulr", "admin-workspace-wide-access", workspaceId],
+    queryFn: () => client.modulr.adminGetWorkspaceWideAccess({ workspaceId: workspaceId! }),
+    enabled: Boolean(workspaceId),
+  });
+}
+
+export function useAdminSetModulrWorkspaceWideAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { workspaceId: string; enabled: boolean }) =>
+      client.modulr.adminSetWorkspaceWideAccess(input),
+    onSuccess: (_data, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["modulr", "admin-workspace-wide-access", input.workspaceId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["modulr", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
+    },
+  });
+}
+
 export function useAdminGalienAccess(workspaceId: string | null) {
   return useQuery({
     queryKey: ["galien", "admin-access", workspaceId],
@@ -205,6 +232,30 @@ export function useAdminRemoveGalienAccess() {
       client.galien.adminRemoveAccess({ id: input.id }),
     onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ["galien", "admin-access", input.workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["galien", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
+    },
+  });
+}
+
+export function useAdminGalienWorkspaceWideAccess(workspaceId: string | null) {
+  return useQuery({
+    queryKey: ["galien", "admin-workspace-wide-access", workspaceId],
+    queryFn: () => client.galien.adminGetWorkspaceWideAccess({ workspaceId: workspaceId! }),
+    enabled: Boolean(workspaceId),
+  });
+}
+
+export function useAdminSetGalienWorkspaceWideAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { workspaceId: string; enabled: boolean; targetEnv: "prod" | "preprod" }) =>
+      client.galien.adminSetWorkspaceWideAccess(input),
+    onSuccess: (_data, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["galien", "admin-workspace-wide-access", input.workspaceId],
+      });
       queryClient.invalidateQueries({ queryKey: ["galien", "status"] });
       queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
     },

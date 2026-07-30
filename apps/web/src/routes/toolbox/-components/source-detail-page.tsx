@@ -1,11 +1,11 @@
+import type { ChangeEvent } from "react";
 import {
   useNavigate,
   useParams as useTanStackParams,
   useRouterState,
 } from "@tanstack/react-router";
-import type { ChangeEvent } from "react";
 import { T, useGT } from "gt-react";
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { WorkspaceMcpServerListItem } from "@/components/executor-source-form";
@@ -24,6 +24,7 @@ import {
   useDisconnectWorkspaceMcpServerCredential,
 } from "@/orpc/hooks/workspace-mcp-servers";
 import { AppLink } from "../-lib/app-link";
+import { ManagedModulrConnection } from "./managed-modulr-connection";
 
 export function SourceDetailPage() {
   const t = useGT();
@@ -54,18 +55,12 @@ export function SourceDetailPage() {
   const [galienUsername, setGalienUsername] = useState("");
   const [galienPassword, setGalienPassword] = useState("");
   const isManagedSource = Boolean(source?.internalKey);
+  const canManageSource = Boolean(source?.canManage);
   const isGalienSource = source?.internalKey === "galien";
+  const isModulrSource = source?.internalKey === "modulr";
   const managedSourceAction = useMemo(() => {
     if (!source?.internalKey) {
       return null;
-    }
-
-    if (source.internalKey === "modulr") {
-      return {
-        href: "/internal/mcp",
-        connectedLabel: "Manage Modulr connection",
-        disconnectedLabel: "Configure Modulr",
-      };
     }
 
     if (source.internalKey === "gmail") {
@@ -150,6 +145,7 @@ export function SourceDetailPage() {
           authQueryParam: source.authQueryParam,
           authPrefix: source.authPrefix,
           enabled,
+          sharedWithWorkspace: source.sharedWithWorkspace,
         });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to update source.");
@@ -158,11 +154,50 @@ export function SourceDetailPage() {
     [source, updateSource],
   );
 
+  const handleToggleWorkspaceSharing = useCallback(
+    async (sharedWithWorkspace: boolean) => {
+      if (!source) {
+        return;
+      }
+      try {
+        await updateSource.mutateAsync({
+          id: source.id,
+          kind: source.kind,
+          name: source.name,
+          namespace: source.namespace,
+          endpoint: source.endpoint,
+          specUrl: source.specUrl,
+          transport: source.transport,
+          headers: source.headers ?? undefined,
+          queryParams: source.queryParams ?? undefined,
+          defaultHeaders: source.defaultHeaders ?? undefined,
+          authType: source.authType,
+          authHeaderName: source.authHeaderName,
+          authQueryParam: source.authQueryParam,
+          authPrefix: source.authPrefix,
+          enabled: source.enabled,
+          sharedWithWorkspace,
+        });
+        toast.success(
+          sharedWithWorkspace
+            ? t("MCP Server shared with the workspace.")
+            : t("MCP Server is now personal."),
+        );
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to update sharing.");
+      }
+    },
+    [source, t, updateSource],
+  );
+
   const handleDelete = useCallback(async () => {
     if (!source) {
       return;
     }
-    if (!confirm(`Delete "${source.name}"? This cannot be undone.`)) {
+    const confirmation = source.sharedWithWorkspace
+      ? `Delete "${source.name}" for the workspace? This removes every member's authorization and cannot be undone.`
+      : `Delete "${source.name}"? This cannot be undone.`;
+    if (!confirm(confirmation)) {
       return;
     }
     try {
@@ -308,7 +343,7 @@ export function SourceDetailPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:ml-6">
-            {isWorkspaceAdmin ? (
+            {(isManagedSource ? isWorkspaceAdmin : canManageSource) ? (
               <div className="mr-2 flex items-center gap-2">
                 <span className="text-muted-foreground text-xs font-medium">
                   <T>Enabled</T>
@@ -321,7 +356,7 @@ export function SourceDetailPage() {
               </div>
             ) : null}
 
-            {!isManagedSource && isWorkspaceAdmin ? (
+            {!isManagedSource && canManageSource ? (
               <>
                 <Button
                   variant="ghost"
@@ -341,6 +376,64 @@ export function SourceDetailPage() {
             ) : null}
           </div>
         </div>
+
+        {!isManagedSource ? (
+          <div className="border-border mt-6 flex items-start justify-between gap-6 border-t pt-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="bg-muted mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
+                <Users className="text-muted-foreground size-4" />
+              </div>
+              <div>
+                <label htmlFor="share-source-with-workspace" className="text-sm font-medium">
+                  <T>Share with workspace</T>
+                </label>
+                <p className="text-muted-foreground mt-1 max-w-lg text-xs leading-relaxed">
+                  {source.sharedWithWorkspace ? (
+                    source.createdByCurrentUser ? (
+                      <T>
+                        Every workspace member can find this MCP Server and connect their own
+                        authorization.
+                      </T>
+                    ) : (
+                      <>
+                        {source.creatorDisplayName
+                          ? `Shared by ${source.creatorDisplayName}. `
+                          : null}
+                        <T>Every workspace member can connect their own authorization.</T>
+                      </>
+                    )
+                  ) : (
+                    <T>Only you can see and use this MCP Server.</T>
+                  )}
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="share-source-with-workspace"
+              checked={source.sharedWithWorkspace}
+              disabled={!canManageSource || updateSource.isPending}
+              onCheckedChange={handleToggleWorkspaceSharing}
+              aria-label={t("Share with workspace")}
+            />
+          </div>
+        ) : source.internalKey === "galien" || source.internalKey === "modulr" ? (
+          <div className="border-border mt-6 flex items-start gap-3 border-t pt-5">
+            <div className="bg-muted mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
+              <Users className="text-muted-foreground size-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">
+                {source.managedWorkspaceWideAccess
+                  ? "Available to the entire workspace"
+                  : "Available to specific people"}
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Access shares this MCP Server, not anyone's authorization. Every member connects
+                their own credentials.
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6">
           {isGalienSource ? (
@@ -398,6 +491,8 @@ export function SourceDetailPage() {
                 ) : null}
               </div>
             </div>
+          ) : isModulrSource ? (
+            <ManagedModulrConnection />
           ) : source.internalKey ? (
             <div className="mt-5 flex items-center gap-3">
               <Button asChild variant="outline">

@@ -4,13 +4,16 @@ import {
   GalienCredentialValidationError,
   type GalienTargetEnv,
   getGalienAccessStatus,
+  getGalienWorkspaceWideAccess,
   getGalienWorkspaceAccessForUser,
   listGalienWorkspaceAccess,
   parseGalienTargetEnv,
   removeGalienWorkspaceAccess,
   setGalienCredential,
+  setGalienWorkspaceWideAccess,
   updateGalienWorkspaceAccessTargetEnv,
 } from "@bap/core/server/galien/service";
+import { listWorkspaceMcpServers } from "@bap/core/server/executor/workspace-sources";
 import { user, workspace } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
@@ -179,6 +182,52 @@ const adminRemoveAccess = protectedProcedure
     return removed;
   });
 
+const adminGetWorkspaceWideAccess = protectedProcedure
+  .input(z.object({ workspaceId: z.string().min(1) }))
+  .handler(async ({ input, context }) => {
+    await requireAdmin(context);
+    await assertWorkspaceExists(context, input.workspaceId);
+    await listWorkspaceMcpServers({
+      database: context.db,
+      workspaceId: input.workspaceId,
+      userId: context.user.id,
+      includeAllCustomSources: true,
+    });
+    return getGalienWorkspaceWideAccess({
+      database: context.db,
+      workspaceId: input.workspaceId,
+    });
+  });
+
+const adminSetWorkspaceWideAccess = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string().min(1),
+      enabled: z.boolean(),
+      targetEnv: z.enum(["prod", "preprod"]).default("prod"),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    await requireAdmin(context);
+    await assertWorkspaceExists(context, input.workspaceId);
+    await listWorkspaceMcpServers({
+      database: context.db,
+      workspaceId: input.workspaceId,
+      userId: context.user.id,
+      includeAllCustomSources: true,
+    });
+    const result = await setGalienWorkspaceWideAccess({
+      database: context.db,
+      workspaceId: input.workspaceId,
+      enabled: input.enabled,
+      targetEnv: input.targetEnv,
+    });
+    if (!result) {
+      throw new ORPCError("NOT_FOUND", { message: "Galien MCP Server not found." });
+    }
+    return result;
+  });
+
 export const galienRouter = {
   status,
   connect,
@@ -187,4 +236,6 @@ export const galienRouter = {
   adminAddAccess,
   adminUpdateAccessTargetEnv,
   adminRemoveAccess,
+  adminGetWorkspaceWideAccess,
+  adminSetWorkspaceWideAccess,
 };

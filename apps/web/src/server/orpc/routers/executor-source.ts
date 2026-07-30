@@ -15,7 +15,7 @@ import { z } from "zod";
 import { storeWorkspaceMcpServerOAuthPending } from "@/server/executor-source-oauth";
 import type { AuthenticatedContext } from "../middleware";
 import { protectedProcedure } from "../middleware";
-import { requireActiveWorkspaceAccess, requireActiveWorkspaceAdmin } from "../workspace-access";
+import { requireActiveWorkspaceAccess } from "../workspace-access";
 
 const stringMapSchema = z.record(z.string(), z.string()).default({});
 const workspaceMcpServerKindSchema = z.enum(["mcp"]);
@@ -45,6 +45,7 @@ const workspaceMcpServerBaseSchema = z.object({
   authQueryParam: z.string().max(120).nullish(),
   authPrefix: z.string().max(120).nullish(),
   enabled: z.boolean().default(true),
+  sharedWithWorkspace: z.boolean().optional(),
 });
 
 function validateWorkspaceMcpServerInput(
@@ -179,6 +180,86 @@ function assertManualCredentialSource(
   }
 }
 
+function assertWorkspaceMcpServerVisibleToUser(
+  source: Pick<
+    typeof workspaceMcpServer.$inferSelect,
+    "internalKey" | "sharedWithWorkspace" | "createdByUserId"
+  >,
+  userId: string,
+) {
+  if (
+    !source.internalKey &&
+    source.sharedWithWorkspace === false &&
+    source.createdByUserId !== userId
+  ) {
+    throw new ORPCError("NOT_FOUND", { message: "Workspace MCP Server not found." });
+  }
+}
+
+function canManageWorkspaceMcpServer(input: {
+  source: Pick<typeof workspaceMcpServer.$inferSelect, "createdByUserId">;
+  userId: string;
+  membershipRole: string;
+}) {
+  return (
+    input.source.createdByUserId === input.userId ||
+    input.membershipRole === "admin" ||
+    input.membershipRole === "owner"
+  );
+}
+
+function assertCanManageWorkspaceMcpServer(input: {
+  source: Pick<typeof workspaceMcpServer.$inferSelect, "createdByUserId">;
+  userId: string;
+  membershipRole: string;
+}) {
+  if (!canManageWorkspaceMcpServer(input)) {
+    throw new ORPCError("FORBIDDEN", {
+      message: "Only this MCP Server's owner or a Workspace admin can manage it.",
+    });
+  }
+}
+
+function assertSafeWorkspaceSharing(input: {
+  sharedWithWorkspace: boolean;
+  headers?: Record<string, string>;
+  queryParams?: Record<string, string>;
+  defaultHeaders?: Record<string, string>;
+  previous?: Pick<
+    typeof workspaceMcpServer.$inferSelect,
+    "sharedWithWorkspace" | "headers" | "queryParams" | "defaultHeaders"
+  >;
+}) {
+  if (!input.sharedWithWorkspace) {
+    return;
+  }
+
+  const nextStaticConfig = {
+    headers: normalizeStringMap(input.headers),
+    queryParams: normalizeStringMap(input.queryParams),
+    defaultHeaders: normalizeStringMap(input.defaultHeaders),
+  };
+  const hasStaticConfig = Object.values(nextStaticConfig).some(Boolean);
+  if (!hasStaticConfig) {
+    return;
+  }
+
+  const preservesExistingSharedConfig =
+    input.previous?.sharedWithWorkspace === true &&
+    JSON.stringify(nextStaticConfig) ===
+      JSON.stringify({
+        headers: input.previous.headers,
+        queryParams: input.previous.queryParams,
+        defaultHeaders: input.previous.defaultHeaders,
+      });
+  if (!preservesExistingSharedConfig) {
+    throw new ORPCError("BAD_REQUEST", {
+      message:
+        "Workspace-shared MCP Servers cannot include static headers or query parameters. Use per-user authorization instead.",
+    });
+  }
+}
+
 const list = protectedProcedure.handler(async ({ context }) => {
   const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
   const sources = await listWorkspaceMcpServers({
@@ -186,6 +267,13 @@ const list = protectedProcedure.handler(async ({ context }) => {
     workspaceId: access.workspace.id,
     userId: context.user.id,
   });
+  for (const source of sources) {
+    source.canManage =
+      !source.internalKey &&
+      (source.createdByUserId === context.user.id ||
+        access.membership.role === "admin" ||
+        access.membership.role === "owner");
+  }
 
   return {
     workspaceId: access.workspace.id,
@@ -202,7 +290,11 @@ const adminList = protectedProcedure
       database: context.db,
       workspaceId: selectedWorkspace.id,
       userId: context.user.id,
+      includeAllCustomSources: true,
     });
+    for (const source of sources) {
+      source.canManage = !source.internalKey;
+    }
 
     return {
       workspaceId: selectedWorkspace.id,
@@ -232,6 +324,7 @@ const startOAuth = protectedProcedure
         message: "Workspace MCP Server not found.",
       });
     }
+    assertWorkspaceMcpServerVisibleToUser(source, context.user.id);
 
     if (source.kind !== "mcp" || source.authType !== "oauth2") {
       throw new ORPCError("BAD_REQUEST", {
@@ -277,6 +370,12 @@ const create = protectedProcedure
         message: `Workspace MCP Server namespace "${namespace}" already exists in this workspace.`,
       });
     }
+    assertSafeWorkspaceSharing({
+      sharedWithWorkspace: input.sharedWithWorkspace ?? false,
+      headers: input.headers,
+      queryParams: input.queryParams,
+      defaultHeaders: input.defaultHeaders,
+    });
 
     const revisionHash = computeWorkspaceMcpServerRevisionHash({
       kind: input.kind,
@@ -301,14 +400,15 @@ const create = protectedProcedure
         name: input.name.trim(),
         namespace,
         endpoint: input.endpoint.trim(),
-        specUrl: null,
+        specUrl: input.specUrl?.trim() ?? null,
         transport: input.transport?.trim() ?? null,
         headers: normalizeStringMap(input.headers),
         queryParams: normalizeStringMap(input.queryParams),
-        defaultHeaders: null,
+        defaultHeaders: normalizeStringMap(input.defaultHeaders),
         authType: input.authType,
         ...normalizeAuthSettings(input),
         enabled: input.enabled,
+        sharedWithWorkspace: input.sharedWithWorkspace ?? false,
         revisionHash,
         createdByUserId: context.user.id,
         updatedByUserId: context.user.id,
@@ -335,6 +435,12 @@ const adminCreate = protectedProcedure
         message: `Workspace MCP Server namespace "${namespace}" already exists in this workspace.`,
       });
     }
+    assertSafeWorkspaceSharing({
+      sharedWithWorkspace: input.sharedWithWorkspace ?? true,
+      headers: input.headers,
+      queryParams: input.queryParams,
+      defaultHeaders: input.defaultHeaders,
+    });
 
     const revisionHash = computeWorkspaceMcpServerRevisionHash({
       kind: input.kind,
@@ -359,14 +465,15 @@ const adminCreate = protectedProcedure
         name: input.name.trim(),
         namespace,
         endpoint: input.endpoint.trim(),
-        specUrl: null,
+        specUrl: input.specUrl?.trim() ?? null,
         transport: input.transport?.trim() ?? null,
         headers: normalizeStringMap(input.headers),
         queryParams: normalizeStringMap(input.queryParams),
-        defaultHeaders: null,
+        defaultHeaders: normalizeStringMap(input.defaultHeaders),
         authType: input.authType,
         ...normalizeAuthSettings(input),
         enabled: input.enabled,
+        sharedWithWorkspace: input.sharedWithWorkspace ?? true,
         revisionHash,
         createdByUserId: context.user.id,
         updatedByUserId: context.user.id,
@@ -379,7 +486,7 @@ const adminCreate = protectedProcedure
 const update = protectedProcedure
   .input(workspaceMcpServerUpdateInputSchema)
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAdmin(context.user.id, context.workspaceId);
+    const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const current = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
         eq(workspaceMcpServer.id, input.id),
@@ -393,6 +500,11 @@ const update = protectedProcedure
       });
     }
     assertMutableWorkspaceMcpServer(current);
+    assertCanManageWorkspaceMcpServer({
+      source: current,
+      userId: context.user.id,
+      membershipRole: access.membership.role,
+    });
 
     const namespace = normalizeExecutorNamespace(input.namespace);
     const duplicate = await context.db.query.workspaceMcpServer.findFirst({
@@ -407,6 +519,13 @@ const update = protectedProcedure
         message: `Workspace MCP Server namespace "${namespace}" already exists in this workspace.`,
       });
     }
+    assertSafeWorkspaceSharing({
+      sharedWithWorkspace: input.sharedWithWorkspace ?? current.sharedWithWorkspace,
+      headers: input.headers,
+      queryParams: input.queryParams,
+      defaultHeaders: input.defaultHeaders,
+      previous: current,
+    });
 
     const revisionHash = computeWorkspaceMcpServerRevisionHash({
       kind: input.kind,
@@ -430,14 +549,15 @@ const update = protectedProcedure
         name: input.name.trim(),
         namespace,
         endpoint: input.endpoint.trim(),
-        specUrl: null,
+        specUrl: input.specUrl?.trim() ?? null,
         transport: input.transport?.trim() ?? null,
         headers: normalizeStringMap(input.headers),
         queryParams: normalizeStringMap(input.queryParams),
-        defaultHeaders: null,
+        defaultHeaders: normalizeStringMap(input.defaultHeaders),
         authType: input.authType,
         ...normalizeAuthSettings(input),
         enabled: input.enabled,
+        sharedWithWorkspace: input.sharedWithWorkspace ?? current.sharedWithWorkspace,
         revisionHash,
         updatedByUserId: context.user.id,
       })
@@ -477,6 +597,13 @@ const adminUpdate = protectedProcedure
         message: `Workspace MCP Server namespace "${namespace}" already exists in this workspace.`,
       });
     }
+    assertSafeWorkspaceSharing({
+      sharedWithWorkspace: input.sharedWithWorkspace ?? current.sharedWithWorkspace,
+      headers: input.headers,
+      queryParams: input.queryParams,
+      defaultHeaders: input.defaultHeaders,
+      previous: current,
+    });
 
     const revisionHash = computeWorkspaceMcpServerRevisionHash({
       kind: input.kind,
@@ -500,14 +627,15 @@ const adminUpdate = protectedProcedure
         name: input.name.trim(),
         namespace,
         endpoint: input.endpoint.trim(),
-        specUrl: null,
+        specUrl: input.specUrl?.trim() ?? null,
         transport: input.transport?.trim() ?? null,
         headers: normalizeStringMap(input.headers),
         queryParams: normalizeStringMap(input.queryParams),
-        defaultHeaders: null,
+        defaultHeaders: normalizeStringMap(input.defaultHeaders),
         authType: input.authType,
         ...normalizeAuthSettings(input),
         enabled: input.enabled,
+        sharedWithWorkspace: input.sharedWithWorkspace ?? current.sharedWithWorkspace,
         revisionHash,
         updatedByUserId: context.user.id,
       })
@@ -519,7 +647,7 @@ const adminUpdate = protectedProcedure
 const remove = protectedProcedure
   .input(z.object({ id: z.string() }))
   .handler(async ({ input, context }) => {
-    const access = await requireActiveWorkspaceAdmin(context.user.id, context.workspaceId);
+    const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
     const current = await context.db.query.workspaceMcpServer.findFirst({
       where: and(
         eq(workspaceMcpServer.id, input.id),
@@ -532,6 +660,11 @@ const remove = protectedProcedure
       });
     }
     assertMutableWorkspaceMcpServer(current);
+    assertCanManageWorkspaceMcpServer({
+      source: current,
+      userId: context.user.id,
+      membershipRole: access.membership.role,
+    });
     const deleted = await context.db
       .delete(workspaceMcpServer)
       .where(
@@ -609,6 +742,7 @@ const setCredential = protectedProcedure
         message: "Workspace MCP Server not found.",
       });
     }
+    assertWorkspaceMcpServerVisibleToUser(source, context.user.id);
     assertManualCredentialSource(source);
 
     if (source.authType === "oauth2") {
@@ -677,6 +811,7 @@ const disconnectCredential = protectedProcedure
         message: "Workspace MCP Server not found.",
       });
     }
+    assertWorkspaceMcpServerVisibleToUser(source, context.user.id);
     assertManualCredentialSource(source);
 
     await context.db
@@ -735,6 +870,7 @@ const toggleCredential = protectedProcedure
         message: "Workspace MCP Server not found.",
       });
     }
+    assertWorkspaceMcpServerVisibleToUser(source, context.user.id);
     assertManualCredentialSource(source);
 
     const updated = await context.db
