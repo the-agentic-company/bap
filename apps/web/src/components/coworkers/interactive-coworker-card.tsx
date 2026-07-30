@@ -2,18 +2,7 @@
 
 import { Link, useNavigate } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import {
-  Circle,
-  Download,
-  Ellipsis,
-  Loader2,
-  Move,
-  PenLine,
-  Play,
-  Share2,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { Circle, Download, Ellipsis, Loader2, Move, Share2, Star, Trash2 } from "lucide-react";
 import { startTransition, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent } from "@/components/animate-ui/components/radix/sheet";
@@ -36,8 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { normalizeGenerationError } from "@/lib/generation-errors";
-import { getCoworkerEditHrefById, getCoworkerPublicShareHref } from "@/lib/coworker-routes";
+import { getCoworkerPublicShareHref } from "@/lib/coworker-routes";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import {
   COWORKER_AVAILABLE_INTEGRATION_TYPES,
@@ -50,7 +38,6 @@ import {
   useDeleteCoworker,
   useExportCoworkerDefinition,
   useShareCoworker,
-  useTriggerCoworker,
   useUnshareCoworker,
   useUpdateCoworker,
 } from "@/orpc/hooks/coworkers";
@@ -218,14 +205,12 @@ export function InteractiveCoworkerCard({
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { data: integrations } = useIntegrationList();
-  const triggerCoworker = useTriggerCoworker();
   const updateCoworker = useUpdateCoworker();
   const deleteCoworkerMutation = useDeleteCoworker();
   const shareCoworker = useShareCoworker();
   const unshareCoworker = useUnshareCoworker();
   const exportCoworkerDefinition = useExportCoworkerDefinition();
 
-  const [isRunning, setIsRunning] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUpdatingShare, setIsUpdatingShare] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -260,20 +245,6 @@ export function InteractiveCoworkerCard({
     }
   }, [onClick, navigate, coworker]);
 
-  const handleEditClick = useCallback(
-    (event: React.MouseEvent<HTMLAnchorElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      startTransition(() => {
-        void navigate({
-          to: "/agents/edit/$id",
-          params: { id: coworker.id },
-        });
-      });
-    },
-    [coworker, navigate],
-  );
-
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key !== "Enter" && e.key !== " ") {
@@ -283,28 +254,6 @@ export function InteractiveCoworkerCard({
       handleOpen();
     },
     [handleOpen],
-  );
-
-  const handleRun = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsRunning(true);
-      try {
-        const result = await triggerCoworker.mutateAsync({ id: coworker.id, payload: {} });
-        toast.success(result.generationId ? "Run started." : "Needs your input.");
-        if (result?.runId) {
-          void navigate({ to: "/agents/runs/$id", params: { id: result.runId } });
-          return;
-        }
-        void navigate({ to: "/agents/runs" });
-      } catch (error) {
-        toast.error(normalizeGenerationError(error, "start_rpc").message);
-      } finally {
-        setIsRunning(false);
-      }
-    },
-    [triggerCoworker, coworker.id, navigate],
   );
 
   const handleToggleStatus = useCallback(
@@ -572,6 +521,7 @@ export function InteractiveCoworkerCard({
   );
   const cardActions = (
     <>
+      {actionsMenu}
       <button
         type="button"
         onClick={handleFavoriteClick}
@@ -579,14 +529,13 @@ export function InteractiveCoworkerCard({
         className={cn(
           "hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-50",
           coworker.isPinned
-            ? "text-brand"
+            ? "text-yellow-500"
             : "text-muted-foreground/30 hover:text-foreground group-hover:text-muted-foreground",
         )}
         title={coworker.isPinned ? t("Remove favorite") : t("Add favorite")}
       >
         <Star className={cn("size-3.5", coworker.isPinned && "fill-current")} />
       </button>
-      {actionsMenu}
     </>
   );
 
@@ -684,38 +633,6 @@ export function InteractiveCoworkerCard({
     )
   ) : undefined;
 
-  // oxlint-disable-next-line react-perf/jsx-no-jsx-as-prop -- slot pattern
-  const footer = (
-    <div className="mt-auto flex items-center justify-between pt-3">
-      <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium">
-        {nounLabel}
-      </span>
-      <div className="flex items-center gap-0.5">
-        <a
-          href={getCoworkerEditHrefById(coworker)}
-          onClick={handleEditClick}
-          className="text-muted-foreground/30 hover:text-foreground group-hover:text-muted-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors"
-          title={t("Edit coworker")}
-        >
-          <PenLine className="size-3.5" />
-        </a>
-        <button
-          type="button"
-          onClick={handleRun}
-          disabled={isRunning || isDeleting}
-          className="text-muted-foreground/30 hover:text-foreground group-hover:text-muted-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-50"
-          title={t("Run coworker")}
-        >
-          {isRunning ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Play className="size-3.5" />
-          )}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <div
@@ -737,7 +654,7 @@ export function InteractiveCoworkerCard({
           actionsSlot={cardActions}
           badgesSlot={toolBadges}
           runsSlot={runsSection}
-          footerSlot={footer}
+          footerSlot={false}
         />
       </div>
 

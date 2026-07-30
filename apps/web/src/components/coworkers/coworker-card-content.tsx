@@ -1,5 +1,4 @@
 import { T } from "gt-react";
-import { Star } from "lucide-react";
 import type { CoworkerSchedule } from "@/orpc/hooks/coworkers";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
@@ -92,8 +91,7 @@ export function CoworkerCardContent({
             className="shrink-0 rounded-full"
           />
           <div className="min-w-0 space-y-1">
-            <p className="flex items-center gap-1 truncate text-sm leading-tight font-medium">
-              {coworker.isPinned && <Star className="text-brand size-3 shrink-0 fill-current" />}
+            <p className="truncate text-sm leading-tight font-medium">
               {getCoworkerDisplayName(coworker.name)}
             </p>
             {coworker.username ? (
