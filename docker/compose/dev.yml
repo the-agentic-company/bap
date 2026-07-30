@@ -39,6 +39,7 @@ services:
       - "${BAP_ZERO_CACHE_PORT:-4848}:4848"
     stop_grace_period: 10m
     environment:
+      ZERO_APP_ID: ${ZERO_APP_ID:-bap_main}
       ZERO_UPSTREAM_DB: postgresql://postgres:${DATABASE_PASSWORD:-${DB_PASSWORD:-}}@database:5432/${BAP_POSTGRES_DB:-bap}
       ZERO_CVR_DB: postgresql://postgres:${DATABASE_PASSWORD:-${DB_PASSWORD:-}}@database:5432/${BAP_POSTGRES_DB:-bap}
       ZERO_CHANGE_DB: postgresql://postgres:${DATABASE_PASSWORD:-${DB_PASSWORD:-}}@database:5432/${BAP_POSTGRES_DB:-bap}
@@ -64,10 +65,8 @@ services:
     image: alpine/socat:1.8.0.3
     command:
       - TCP-LISTEN:3000,bind=127.0.0.1,fork,reuseaddr
-      - TCP:bap-host.local:${PORT:-3000}
+      - TCP:host.docker.internal:${PORT:-3000}
     network_mode: "service:zero-cache"
-    extra_hosts:
-      - "bap-host.local:host-gateway"
     depends_on:
       zero-cache:
         condition: service_started

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  buildZeroAppId,
   buildZeroCacheComposeFileContent,
   buildZeroCacheComposeEnv,
   buildZeroCacheServiceName,
@@ -44,6 +45,7 @@ describe("worktree zero cache docker config", () => {
 
     expect(buildZeroQueryUrl(instance)).toBe("http://host.docker.internal:3707/api/zero/query");
     expect(buildZeroCacheUrl(instance)).toBe("http://127.0.0.1:5807");
+    expect(buildZeroAppId(instance)).toBe("bap_1234abcd");
     expect(buildZeroCacheServiceName(instance)).toBe("zero-cache-bap-1234abcd");
     expect(buildZeroCacheVolumeName(instance)).toBe("bap-1234abcd_zero_cache_data");
   });
@@ -66,6 +68,7 @@ describe("worktree zero cache docker config", () => {
         BAP_POSTGRES_DB: "bap_bap_1234abcd",
         BAP_ZERO_CACHE_PORT: "5807",
         BAP_ZERO_CACHE_VOLUME: "bap-1234abcd_zero_cache_data",
+        ZERO_APP_ID: "bap_1234abcd",
         VITE_ZERO_CACHE_URL: "http://127.0.0.1:5807",
         VITE_ZERO_QUERY_URL: "http://host.docker.internal:3707/api/zero/query",
       });
@@ -109,6 +112,7 @@ describe("worktree zero cache docker config", () => {
 
       expect(content).toContain("  zero-cache-bap-1234abcd:\n");
       expect(content).toContain('      - "5807:4848"\n');
+      expect(content).toContain('      ZERO_APP_ID: "bap_1234abcd"\n');
       expect(content).toContain('ZERO_UPSTREAM_DB: "postgresql://postgres:');
       expect(content).toContain("@host.docker.internal:");
       expect(content).toContain('/bap_bap_1234abcd"\n');

@@ -274,6 +274,10 @@ export function buildZeroCacheServiceName(metadata: InstanceMetadata): string {
   return `zero-cache-${metadata.instanceId}`.replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
 }
 
+export function buildZeroAppId(metadata: InstanceMetadata): string {
+  return metadata.instanceId.replace(/[^a-z0-9_]/gi, "_").toLowerCase();
+}
+
 export function buildZeroCacheComposeFilePath(metadata: InstanceMetadata): string {
   return join(runtimeDir(metadata.instanceRoot), "zero-cache.compose.yml");
 }
@@ -315,6 +319,7 @@ export function buildZeroCacheComposeFileContent(metadata: InstanceMetadata): st
     `      - ${yamlString(`${metadata.zeroCachePort}:4848`)}`,
     "    stop_grace_period: 10m",
     "    environment:",
+    `      ZERO_APP_ID: ${yamlString(buildZeroAppId(metadata))}`,
     `      ZERO_UPSTREAM_DB: ${yamlString(databaseUrl)}`,
     `      ZERO_CVR_DB: ${yamlString(databaseUrl)}`,
     `      ZERO_CHANGE_DB: ${yamlString(databaseUrl)}`,
@@ -353,6 +358,7 @@ export function buildZeroCacheComposeEnv(metadata: InstanceMetadata): NodeJS.Pro
     BAP_POSTGRES_DB: metadata.databaseName,
     BAP_ZERO_CACHE_PORT: String(metadata.zeroCachePort),
     BAP_ZERO_CACHE_VOLUME: buildZeroCacheVolumeName(metadata),
+    ZERO_APP_ID: buildZeroAppId(metadata),
     VITE_ZERO_CACHE_URL: buildZeroCacheUrl(metadata),
     VITE_ZERO_QUERY_URL: buildZeroQueryUrl(metadata),
   };
@@ -370,6 +376,7 @@ export function isZeroCacheConfiguredForMetadata(metadata: InstanceMetadata): bo
 
   const expectedDatabaseUrl = buildZeroPostgresUrl(metadata);
   return (
+    containerEnv.ZERO_APP_ID === buildZeroAppId(metadata) &&
     containerEnv.ZERO_QUERY_URL === buildZeroQueryUrl(metadata) &&
     containerEnv.ZERO_UPSTREAM_DB === expectedDatabaseUrl &&
     containerEnv.ZERO_CVR_DB === expectedDatabaseUrl &&
