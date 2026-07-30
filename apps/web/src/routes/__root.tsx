@@ -12,6 +12,7 @@ import {
 import { RootErrorBoundary } from "@/components/root-error-boundary";
 import { RootNotFound } from "@/components/root-not-found";
 import { env } from "@/env";
+import { installBrowserTranslationDomCompatibility } from "@/lib/browser-translation-compat";
 // Local font assets set the "Geist" / "Geist Mono" font-family names that Tailwind resolves
 // via the --font-geist-sans / --font-geist-mono CSS variables in globals.css.
 // oxlint-disable no-unassigned-import
@@ -53,6 +54,8 @@ const CRITICAL_MOUNT_STYLE = `
 }
 `;
 const CRITICAL_MOUNT_STYLE_HTML = { __html: CRITICAL_MOUNT_STYLE };
+
+installBrowserTranslationDomCompatibility();
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
@@ -101,9 +104,9 @@ function RootComponent() {
   );
 }
 
-function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+export function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang={getInitialAppLocale()}>
+    <html lang={getInitialAppLocale()} translate="yes" suppressHydrationWarning>
       {/* TanStack Start owns the full document; a real <head> element is required here. */}
       <head>
         <style dangerouslySetInnerHTML={CRITICAL_MOUNT_STYLE_HTML} />
