@@ -132,7 +132,7 @@ export const coworkerRunStatusEnum = pgEnum("coworker_run_status", [
   "error",
   "cancelled",
 ]);
-export type CoworkerDisabledReason = "run_backlog_limit";
+export type CoworkerDisabledReason = "run_backlog_limit" | "automation_owner_required";
 export type SloReplayJourney = "chat" | "coworker_builder" | "coworker_run";
 export type SloReplayStatus = "pending" | "running" | "completed" | "error" | "setup_failed";
 export const coworkerEmailAliasStatusEnum = pgEnum("coworker_email_alias_status", [

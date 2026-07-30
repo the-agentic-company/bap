@@ -1,7 +1,10 @@
 import { isSelfHostedEdition } from "@bap/core/server/edition";
+import { db } from "@bap/db/client";
+import { user as userTable, workspace } from "@bap/db/schema";
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { eq } from "drizzle-orm";
 import { getRequestSession } from "@/server/session-auth";
 import { resolveSessionPrincipalWorkspaceId } from "@/server/session-principal-workspace";
 import { isWorktreeAutoLoginConfigured } from "@/lib/worktree-auto-login";
@@ -28,12 +31,14 @@ export interface SessionPrincipal {
   image: string | null;
   name: string | null;
   role: string | null;
+  twoFactorEnabled?: boolean;
 }
 
 export interface SessionContext {
   principal: SessionPrincipal | null;
   edition: "cloud" | "selfhost";
   isAdmin: boolean;
+  requiresTwoFactorSetup: boolean;
   worktreeAutoLoginConfigured: boolean;
 }
 
@@ -60,6 +65,8 @@ export const fetchSessionContext = createServerFn({ method: "GET" }).handler(
     const user = sessionData?.user ?? null;
     const session = sessionData?.session ?? null;
     let activeWorkspaceId: string | null = null;
+    let twoFactorEnabled = false;
+    let activeWorkspaceRequiresTwoFactor = false;
     if (user && session) {
       try {
         activeWorkspaceId = await resolveSessionPrincipalWorkspaceId(
@@ -75,6 +82,21 @@ export const fetchSessionContext = createServerFn({ method: "GET" }).handler(
         }
         throw error;
       }
+
+      const [dbUser, activeWorkspace] = await Promise.all([
+        db.query.user.findFirst({
+          where: eq(userTable.id, user.id),
+          columns: { twoFactorEnabled: true },
+        }),
+        activeWorkspaceId
+          ? db.query.workspace.findFirst({
+              where: eq(workspace.id, activeWorkspaceId),
+              columns: { requiresTwoFactor: true },
+            })
+          : null,
+      ]);
+      twoFactorEnabled = dbUser?.twoFactorEnabled === true;
+      activeWorkspaceRequiresTwoFactor = activeWorkspace?.requiresTwoFactor === true;
     }
     const principal: SessionPrincipal | null =
       user && session
@@ -85,6 +107,7 @@ export const fetchSessionContext = createServerFn({ method: "GET" }).handler(
             image: user.image ?? null,
             name: user.name ?? null,
             role: (user as { role?: string | null }).role ?? null,
+            twoFactorEnabled,
           }
         : null;
 
@@ -92,6 +115,8 @@ export const fetchSessionContext = createServerFn({ method: "GET" }).handler(
       principal,
       edition: selfHost ? "selfhost" : "cloud",
       isAdmin: principal?.role === "admin",
+      requiresTwoFactorSetup:
+        activeWorkspaceRequiresTwoFactor && principal?.twoFactorEnabled !== true,
       worktreeAutoLoginConfigured: isWorktreeAutoLoginConfigured(),
     };
   },
@@ -114,6 +139,12 @@ function buildWorktreeAutoLoginRedirect(callbackUrl: string): never {
   });
 }
 
+function buildTwoFactorSetupRedirect(callbackUrl: string): never {
+  throw redirect({
+    href: `/two-factor/setup?callbackUrl=${encodeURIComponent(callbackUrl)}`,
+  });
+}
+
 /**
  * Require any signed-in session. Unauthenticated requests are redirected to login with a
  * `callbackUrl` so the original destination is restored after sign-in (or routed through
@@ -122,6 +153,9 @@ function buildWorktreeAutoLoginRedirect(callbackUrl: string): never {
 export async function requireSession(callbackUrl: string): Promise<SessionContext> {
   const context = await fetchSessionContext();
   if (context.principal) {
+    if (context.requiresTwoFactorSetup) {
+      buildTwoFactorSetupRedirect(callbackUrl);
+    }
     return context;
   }
 

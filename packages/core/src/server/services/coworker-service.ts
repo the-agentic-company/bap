@@ -11,6 +11,7 @@ import {
   coworker,
   coworkerRun,
   coworkerRunEvent,
+  workspaceMember,
   workspaceMcpServer,
 } from "@bap/db/schema";
 import {
@@ -35,6 +36,8 @@ import {
 } from "./coworker-run-policy";
 import { emitPreGenerationCoworkerRunFailureSloEvent } from "./slo-journey";
 import { isUserFileAttachment, type UserFileAttachment } from "./generation/attachments";
+import { decideCoworkerAccess } from "./coworker-access-policy";
+import { resolveCoworkerExecutionIdentity } from "./coworker-execution-identity";
 
 type CoworkerFileAttachment = UserFileAttachment;
 
@@ -299,6 +302,7 @@ export async function reconcileStaleCoworkerRunsForCoworkers(coworkerIds: string
 async function resolveCoworkerExecutionOptions(params: {
   wf: CoworkerRecord;
   run: CoworkerRunRecord;
+  executionUserId: string;
   remoteIntegrationSource?: RemoteIntegrationSource;
   autoApprove?: boolean;
   syntheticKind?: "slo_replay";
@@ -313,7 +317,7 @@ async function resolveCoworkerExecutionOptions(params: {
   const toolAccessMode = normalizeCoworkerToolAccessMode(wf.toolAccessMode, wf.allowedIntegrations);
   let allowedIntegrations =
     toolAccessMode === "all"
-      ? await getEnabledIntegrationTypes(wf.ownerId)
+      ? await getEnabledIntegrationTypes(params.executionUserId)
       : (wf.allowedIntegrations ?? []).filter(
           (value): value is IntegrationType => typeof value === "string",
         );
@@ -322,7 +326,7 @@ async function resolveCoworkerExecutionOptions(params: {
       ? (
           await db.query.customIntegrationCredential.findMany({
             where: and(
-              eq(customIntegrationCredential.userId, wf.ownerId),
+              eq(customIntegrationCredential.userId, params.executionUserId),
               eq(customIntegrationCredential.enabled, true),
             ),
             with: {
@@ -381,7 +385,7 @@ async function resolveCoworkerExecutionOptions(params: {
       event: "COWORKER_REMOTE_INTEGRATION_SOURCE_SELECTED",
       ...{
         source: "coworker-service",
-        userId: wf.ownerId,
+        userId: params.executionUserId,
       },
       ...{
         coworkerId: wf.id,
@@ -423,6 +427,7 @@ async function resolveCoworkerExecutionOptions(params: {
 async function startGenerationForCoworkerRun(params: {
   wf: CoworkerRecord;
   run: CoworkerRunRecord;
+  executionUserId: string;
   content: string;
   conversationId?: string;
   existingUserMessageId?: string;
@@ -435,6 +440,7 @@ async function startGenerationForCoworkerRun(params: {
   const options = await resolveCoworkerExecutionOptions({
     wf: params.wf,
     run: params.run,
+    executionUserId: params.executionUserId,
     remoteIntegrationSource: params.remoteIntegrationSource,
   });
 
@@ -446,7 +452,7 @@ async function startGenerationForCoworkerRun(params: {
     content: params.content,
     model: params.wf.model,
     authSource: params.wf.authSource,
-    userId: params.wf.ownerId,
+    userId: params.executionUserId,
     workspaceId: params.wf.workspaceId ?? null,
     autoApprove: params.autoApprove ?? params.wf.autoApprove,
     allowedIntegrations: options.allowedIntegrations,
@@ -495,14 +501,70 @@ export async function triggerCoworkerRun(params: {
   const trustedUserInput = normalizeTrustedUserInput(params.trustedUserInput);
 
   const wf = await db.query.coworker.findFirst({
-    where: params.userId
-      ? and(eq(coworker.id, params.coworkerId), eq(coworker.ownerId, params.userId))
-      : eq(coworker.id, params.coworkerId),
+    where: eq(coworker.id, params.coworkerId),
   });
 
   if (!wf) {
     throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
   }
+
+  const candidateExecutionUserId =
+    params.startKind === "user_intent"
+      ? (params.userId ?? null)
+      : (wf.automationOwnerUserId ?? null);
+  const executionMembership =
+    candidateExecutionUserId && wf.workspaceId
+      ? await db.query.workspaceMember.findFirst({
+          where: and(
+            eq(workspaceMember.userId, candidateExecutionUserId),
+            eq(workspaceMember.organizationId, wf.workspaceId),
+          ),
+          columns: { role: true },
+        })
+      : null;
+  if (params.startKind === "user_intent" && candidateExecutionUserId) {
+    const access = decideCoworkerAccess({
+      action: "run_manual",
+      actorUserId: candidateExecutionUserId,
+      workspaceRole: executionMembership?.role ?? null,
+      isActiveWorkspaceMember: Boolean(executionMembership),
+      visibility: wf.visibility === "workspace" || wf.sharedAt ? "workspace" : "private",
+      createdByUserId: wf.createdByUserId ?? wf.ownerId,
+    });
+    if (!access.allowed) {
+      throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+    }
+  }
+  const identity = resolveCoworkerExecutionIdentity({
+    startKind: params.startKind,
+    initiatingUserId: params.userId ?? null,
+    automationOwner: wf.automationOwnerUserId
+      ? {
+          userId: wf.automationOwnerUserId,
+          consentedAt: wf.automationOwnerConsentedAt,
+          isActiveWorkspaceMember: Boolean(executionMembership),
+        }
+      : null,
+  });
+  if (!identity.ok) {
+    if (params.startKind === "external_trigger") {
+      await db
+        .update(coworker)
+        .set({
+          status: "off",
+          disabledReason: "automation_owner_required",
+          disabledAt: new Date(),
+        })
+        .where(eq(coworker.id, wf.id));
+    }
+    throw new ORPCError("BAD_REQUEST", {
+      message:
+        params.startKind === "external_trigger"
+          ? "Coworker automation owner is missing, inactive, or has not consented."
+          : "A Workspace member must initiate this Coworker run.",
+    });
+  }
+  const executionUserId = identity.executionUserId;
 
   if (isDisabledCoworkerTriggerType(wf.triggerType)) {
     throw new ORPCError("BAD_REQUEST", {
@@ -587,7 +649,7 @@ export async function triggerCoworkerRun(params: {
     const [conv] = await db
       .insert(conversation)
       .values({
-        userId: wf.ownerId,
+        userId: executionUserId,
         workspaceId: wf.workspaceId ?? null,
         title: userInputPrompt ?? "Needs your input",
         type: "coworker",
@@ -601,7 +663,10 @@ export async function triggerCoworkerRun(params: {
       .insert(coworkerRun)
       .values({
         coworkerId: wf.id,
-        ownerId: wf.ownerId,
+        ownerId: executionUserId,
+        initiatedByUserId: params.userId ?? null,
+        executionUserId,
+        startKind: params.startKind,
         workspaceId: wf.workspaceId,
         status: "needs_user_input",
         triggerPayload: sanitizeJsonForPostgres(pendingPayload),
@@ -642,7 +707,10 @@ export async function triggerCoworkerRun(params: {
     .insert(coworkerRun)
     .values({
       coworkerId: wf.id,
-      ownerId: wf.ownerId,
+      ownerId: executionUserId,
+      initiatedByUserId: params.userId ?? null,
+      executionUserId,
+      startKind: params.startKind,
       workspaceId: wf.workspaceId,
       status: "running",
       triggerPayload: sanitizeJsonForPostgres(runPayload),
@@ -663,6 +731,7 @@ export async function triggerCoworkerRun(params: {
     const startResult = await startGenerationForCoworkerRun({
       wf,
       run,
+      executionUserId,
       content: buildCoworkerModelInput({
         coworkerPrompt: wf.prompt,
         triggerPayload: runPayload,
@@ -702,7 +771,7 @@ export async function triggerCoworkerRun(params: {
       await emitPreGenerationCoworkerRunFailureSloEvent({
         coworkerRunId: run.id,
         coworkerId: wf.id,
-        ownerId: wf.ownerId,
+        ownerId: executionUserId,
         workspaceId: wf.workspaceId,
         syntheticKind: params.syntheticKind,
         normalizedErrorCode: "start_generation_failed",
@@ -829,10 +898,13 @@ export async function startPendingCoworkerRun(params: {
     payload: sanitizeJsonForPostgres(runPayload),
   });
 
+  const executionUserId = pendingRun.executionUserId ?? pendingRun.ownerId;
+  if (!executionUserId) throw new Error("Coworker Run has no execution user.");
   try {
     const startResult = await startGenerationForCoworkerRun({
       wf: pendingRun.coworker,
       run: claimedRun,
+      executionUserId,
       conversationId: params.conversationId,
       existingUserMessageId: modelInputMessage.id,
       content: modelInput,

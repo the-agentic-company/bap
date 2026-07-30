@@ -1,6 +1,8 @@
 import type { Session, User } from "better-auth";
 import { recordUserActiveToday } from "@bap/core/server/services/user-telemetry";
+import { user as userTable, workspace } from "@bap/db/schema";
 import { os, ORPCError } from "@orpc/server";
+import { eq } from "drizzle-orm";
 import type { ORPCContext } from "./context";
 
 // Base procedure with context
@@ -32,6 +34,26 @@ export const protectedProcedure = baseProcedure.use(async ({ context, next }) =>
   if (!context.user || !context.session) {
     console.error("[Auth Middleware] No user or session found");
     throw new ORPCError("UNAUTHORIZED", { message: "You must be logged in" });
+  }
+
+  if (context.authSource === "session" && context.workspaceId) {
+    const [dbUser, activeWorkspace] = await Promise.all([
+      context.db.query.user.findFirst({
+        where: eq(userTable.id, context.user.id),
+        columns: { twoFactorEnabled: true },
+      }),
+      context.db.query.workspace.findFirst({
+        where: eq(workspace.id, context.workspaceId),
+        columns: { requiresTwoFactor: true },
+      }),
+    ]);
+
+    if (activeWorkspace?.requiresTwoFactor && dbUser?.twoFactorEnabled !== true) {
+      throw new ORPCError("FORBIDDEN", {
+        message: "Two-factor authentication is required by this Workspace.",
+        data: { code: "TWO_FACTOR_SETUP_REQUIRED" },
+      });
+    }
   }
 
   try {

@@ -16,6 +16,7 @@ const coworkerFindFirstMock = vi.fn();
 const coworkerRunFindManyMock = vi.fn();
 const coworkerRunFindFirstMock = vi.fn();
 const workspaceMcpServerFindManyMock = vi.fn();
+const workspaceMemberFindFirstMock = vi.fn();
 const getEnabledIntegrationTypesMock = vi.fn();
 const getRemoteIntegrationCredentialsMock = vi.fn();
 const emitPreGenerationCoworkerRunFailureSloEventMock = vi.fn();
@@ -44,6 +45,9 @@ const dbMock = {
     },
     customIntegrationCredential: {
       findMany: vi.fn(),
+    },
+    workspaceMember: {
+      findFirst: workspaceMemberFindFirstMock,
     },
   },
   insert: insertMock,
@@ -94,12 +98,10 @@ vi.mock("./slo-journey", () => ({
 
 let triggerCoworkerRun: typeof import("./coworker-service").triggerCoworkerRun;
 let startPendingCoworkerRun: typeof import("./coworker-service").startPendingCoworkerRun;
-let resetCoworkerRunsAndEnable: typeof import("./coworker-run-reset").resetCoworkerRunsAndEnable;
 
 describe("triggerCoworkerRun", () => {
   beforeAll(async () => {
     ({ triggerCoworkerRun, startPendingCoworkerRun } = await import("./coworker-service"));
-    ({ resetCoworkerRunsAndEnable } = await import("./coworker-run-reset"));
   });
 
   beforeEach(() => {
@@ -109,6 +111,10 @@ describe("triggerCoworkerRun", () => {
     coworkerFindFirstMock.mockResolvedValue({
       id: "wf-1",
       ownerId: "user-1",
+      createdByUserId: "user-1",
+      visibility: "private",
+      automationOwnerUserId: "user-1",
+      automationOwnerConsentedAt: new Date("2026-02-01T00:00:00.000Z"),
       workspaceId: "ws-1",
       status: "on",
       triggerType: "manual",
@@ -123,6 +129,7 @@ describe("triggerCoworkerRun", () => {
       requiresUserInput: false,
       userInputPrompt: null,
     });
+    workspaceMemberFindFirstMock.mockResolvedValue({ role: "member" });
     coworkerRunFindManyMock.mockResolvedValue([]);
     coworkerRunFindFirstMock.mockResolvedValue(null);
     workspaceMcpServerFindManyMock.mockResolvedValue([]);
@@ -227,7 +234,12 @@ describe("triggerCoworkerRun", () => {
     });
 
     await expect(
-      triggerCoworkerRun({ coworkerId: "wf-1", startKind: "user_intent", triggerPayload: {} }),
+      triggerCoworkerRun({
+        coworkerId: "wf-1",
+        startKind: "user_intent",
+        triggerPayload: {},
+        userId: "user-1",
+      }),
     ).resolves.toEqual({
       coworkerId: "wf-1",
       runId: "run-1",
@@ -269,6 +281,8 @@ describe("triggerCoworkerRun", () => {
       workspaceId: "ws-1",
       status: "on",
       triggerType: "gmail.new_email",
+      automationOwnerUserId: "user-1",
+      automationOwnerConsentedAt: new Date("2026-02-01T00:00:00.000Z"),
       autoApprove: true,
       toolAccessMode: "all",
       allowedIntegrations: [],
@@ -355,6 +369,8 @@ describe("triggerCoworkerRun", () => {
       workspaceId: "ws-1",
       status: "on",
       triggerType: "schedule",
+      automationOwnerUserId: "user-1",
+      automationOwnerConsentedAt: new Date("2026-02-01T00:00:00.000Z"),
       autoApprove: true,
       toolAccessMode: "all",
       allowedIntegrations: [],
@@ -497,6 +513,8 @@ describe("triggerCoworkerRun", () => {
       workspaceId: "ws-1",
       status: "on",
       triggerType: "schedule",
+      automationOwnerUserId: "user-1",
+      automationOwnerConsentedAt: new Date("2026-02-01T00:00:00.000Z"),
       autoApprove: true,
       toolAccessMode: "all",
       allowedIntegrations: [],
@@ -566,6 +584,8 @@ describe("triggerCoworkerRun", () => {
     coworkerFindFirstMock.mockResolvedValue({
       id: "wf-1",
       ownerId: "user-1",
+      createdByUserId: "user-1",
+      visibility: "private",
       workspaceId: "ws-1",
       status: "on",
       triggerType: "manual",
@@ -814,6 +834,9 @@ describe("triggerCoworkerRun", () => {
     coworkerFindFirstMock.mockResolvedValue({
       id: "wf-1",
       ownerId: "user-1",
+      createdByUserId: "user-1",
+      visibility: "private",
+      workspaceId: "ws-1",
       status: "on",
       autoApprove: true,
       allowedIntegrations: ["slack"],
@@ -934,67 +957,4 @@ describe("triggerCoworkerRun", () => {
     );
   });
 
-  it("resets all non-terminal coworker runs and enables the coworker", async () => {
-    coworkerRunFindManyMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
-      { id: "run-needs-input", status: "needs_user_input", generationId: null, generation: null },
-      {
-        id: "run-running",
-        status: "running",
-        generationId: "gen-running",
-        generation: { id: "gen-running", status: "running", completedAt: null },
-      },
-      {
-        id: "run-paused",
-        status: "paused",
-        generationId: "gen-paused",
-        generation: { id: "gen-paused", status: "paused", completedAt: null },
-      },
-    ]);
-
-    const resetParams = { coworkerId: "wf-1", resetByUserId: "user-reset", workspaceId: "ws-1" };
-    const result = await resetCoworkerRunsAndEnable(resetParams);
-
-    expect(result).toEqual({
-      coworkerId: "wf-1",
-      totalAffectedRuns: 3,
-      cancelledRunCount: 1,
-      cancellingRunCount: 2,
-    });
-    expect(updateSetMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "cancelled",
-        finishedAt: expect.any(Date),
-        errorMessage: "Cancelled by coworker run reset.",
-      }),
-    );
-    expect(updateSetMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "cancelling",
-        errorMessage: "Cancellation requested by coworker run reset.",
-      }),
-    );
-    expect(updateSetMock).toHaveBeenCalledWith(
-      expect.objectContaining({ cancelRequestedAt: expect.any(Date) }),
-    );
-    expect(cancelInterruptsForGenerationMock).toHaveBeenCalledWith("gen-running");
-    expect(cancelInterruptsForGenerationMock).toHaveBeenCalledWith("gen-paused");
-    expect(updateSetMock).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "on", disabledReason: null, disabledAt: null }),
-    );
-    const statuses = updateSetMock.mock.calls.map(
-      ([value]) => (value as { status?: string }).status,
-    );
-    expect(statuses.indexOf("on")).toBeGreaterThan(statuses.indexOf("cancelling"));
-    expect(insertValuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        coworkerRunId: "run-needs-input",
-        type: "reset_requested",
-        payload: expect.objectContaining({
-          resetByUserId: "user-reset",
-          previousStatus: "needs_user_input",
-          nextStatus: "cancelled",
-        }),
-      }),
-    );
-  });
 });

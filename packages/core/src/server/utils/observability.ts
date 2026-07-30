@@ -80,6 +80,7 @@ export type CanonicalServiceEventInput = {
 };
 
 export type ClientObservationInput = {
+  level?: LogLevel;
   eventId: string;
   eventType: string;
   attributes?: Record<string, CanonicalValue>;
@@ -134,6 +135,7 @@ const FORBIDDEN_FIELD_PATTERNS = [
 const SAFE_FIELD_PREFIXES = ["app.phase."] as const;
 const MAX_SAFE_ARRAY_ITEMS = 25;
 const MAX_SAFE_STRING_LENGTH = 512;
+const MAX_ERROR_STACK_LENGTH = 8_192;
 
 const globalState = globalThis as typeof globalThis & {
   __appObservabilityState?: ObservabilityRuntimeState;
@@ -290,9 +292,10 @@ function normalizeCanonicalValue(path: string, value: CanonicalValue): unknown {
     return value;
   }
   if (typeof value === "string") {
-    return value.length > MAX_SAFE_STRING_LENGTH
-      ? `${value.slice(0, MAX_SAFE_STRING_LENGTH)}…`
-      : value;
+    const maxLength = path.endsWith(".error.stack")
+      ? MAX_ERROR_STACK_LENGTH
+      : MAX_SAFE_STRING_LENGTH;
+    return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
   }
   if (value instanceof Date) {
     return value.toISOString();
@@ -796,7 +799,7 @@ export function emitClientObservation(input: ClientObservationInput): void {
   runWithTelemetrySpan("app.client_observation", payload, input.context?.traceId, () => {
     const activeIds = getActiveSpanIds();
     emitStructuredLog(
-      "info",
+      input.level ?? "info",
       {
         ...payload,
         ...((input.context?.traceId ?? activeIds.traceId)

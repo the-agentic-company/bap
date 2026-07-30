@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { INVITE_ONLY_LOGIN_ERROR } from "@/lib/admin-emails";
 import { authClient } from "@/lib/auth-client";
 
-type Step = "initial" | "magic-link-sent" | "password" | "password-reset-sent";
+type Step = "initial" | "magic-link-sent" | "password" | "password-reset-sent" | "two-factor";
 type PasswordStepMode = "sign-in" | "create";
 type PasswordEmailMode = "create" | "reset";
 type InitialScreen = "login" | "getting-started";
@@ -129,6 +129,8 @@ export function CloudLoginClient({
   const [step, setStep] = useState<Step>("initial");
   const [passwordStepMode, setPasswordStepMode] = useState<PasswordStepMode | null>(null);
   const [passwordEmailMode, setPasswordEmailMode] = useState<PasswordEmailMode>("create");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [useBackupCode, setUseBackupCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [lastMethod, setLastMethod] = useState<string | null>(null);
@@ -150,11 +152,13 @@ export function CloudLoginClient({
         ? passwordStepMode === "create"
           ? "Sign up"
           : "Log in"
-        : step === "magic-link-sent"
-          ? "Check your inbox"
-          : passwordEmailMode === "create"
-            ? "Create your password"
-            : "Reset your password";
+        : step === "two-factor"
+          ? "Two-factor authentication"
+          : step === "magic-link-sent"
+            ? "Check your inbox"
+            : passwordEmailMode === "create"
+              ? "Create your password"
+              : "Reset your password";
 
   const description =
     step === "initial"
@@ -165,11 +169,15 @@ export function CloudLoginClient({
         ? passwordStepMode === "create"
           ? "Create a password to finish setting up your Bap account."
           : "Enter your password to continue."
-        : step === "magic-link-sent"
-          ? "Open the link we sent to continue."
-          : passwordEmailMode === "create"
-            ? "We sent a password setup link to finish creating your account."
-            : "We sent a password reset link so you can sign back in.";
+        : step === "two-factor"
+          ? useBackupCode
+            ? "Enter one of your recovery codes."
+            : "Enter the code from your authenticator app."
+          : step === "magic-link-sent"
+            ? "Open the link we sent to continue."
+            : passwordEmailMode === "create"
+              ? "We sent a password setup link to finish creating your account."
+              : "We sent a password reset link so you can sign back in.";
 
   const requestMagicLink = useCallback(async () => {
     if (!email) {
@@ -209,7 +217,7 @@ export function CloudLoginClient({
       setSubmitting(true);
       setError(null);
 
-      const { error: signInError } = await authClient.signIn.email({
+      const { data, error: signInError } = await authClient.signIn.email({
         email: normalizeEmail(email),
         password,
         callbackURL: callbackUrl,
@@ -229,9 +237,46 @@ export function CloudLoginClient({
         return;
       }
 
+      if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        setSubmitting(false);
+        setStep("two-factor");
+        return;
+      }
+
       void navigate({ href: callbackUrl });
     },
     [callbackUrl, email, password, navigate],
+  );
+
+  const verifyTwoFactor = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setSubmitting(true);
+      setError(null);
+
+      const result = useBackupCode
+        ? await authClient.twoFactor.verifyBackupCode({
+            code: twoFactorCode.trim(),
+            trustDevice: false,
+          })
+        : await authClient.twoFactor.verifyTotp({
+            code: twoFactorCode.trim(),
+            trustDevice: false,
+          });
+
+      if (result.error) {
+        setSubmitting(false);
+        setError(
+          useBackupCode
+            ? "That recovery code is invalid."
+            : "That authenticator code is invalid or expired.",
+        );
+        return;
+      }
+
+      void navigate({ href: callbackUrl });
+    },
+    [callbackUrl, navigate, twoFactorCode, useBackupCode],
   );
 
   const requestPasswordSetup = useCallback(
@@ -354,6 +399,8 @@ export function CloudLoginClient({
     setPassword("");
     setPasswordStepMode(null);
     setPasswordEmailMode("create");
+    setTwoFactorCode("");
+    setUseBackupCode(false);
     setError(null);
     setSubmitting(false);
   }, []);
@@ -364,6 +411,16 @@ export function CloudLoginClient({
 
   const handlePasswordChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(event.target.value);
+  }, []);
+
+  const handleTwoFactorCodeChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setTwoFactorCode(event.target.value);
+  }, []);
+
+  const handleToggleTwoFactorMethod = useCallback(() => {
+    setUseBackupCode((current) => !current);
+    setTwoFactorCode("");
+    setError(null);
   }, []);
 
   return (
@@ -585,6 +642,46 @@ export function CloudLoginClient({
                 <T>Back to login</T>
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {step === "two-factor" && (
+          <motion.div
+            key="two-factor"
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={stepTransition}
+          >
+            <form onSubmit={verifyTwoFactor} className="space-y-3">
+              <Input
+                id="two-factor-code"
+                type="text"
+                inputMode={useBackupCode ? "text" : "numeric"}
+                autoComplete={useBackupCode ? "off" : "one-time-code"}
+                placeholder={useBackupCode ? t("Recovery code") : t("6-digit code")}
+                aria-label={useBackupCode ? t("Recovery code") : t("Authenticator code")}
+                value={twoFactorCode}
+                onChange={handleTwoFactorCodeChange}
+                required
+                autoFocus
+              />
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!twoFactorCode.trim() || submitting}
+              >
+                {submitting ? "Verifying..." : "Verify"}
+              </Button>
+              <button
+                type="button"
+                onClick={handleToggleTwoFactorMethod}
+                className="text-muted-foreground hover:text-foreground w-full text-sm underline underline-offset-4 transition-colors"
+              >
+                {useBackupCode ? "Use authenticator code" : "Use a recovery code"}
+              </button>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>

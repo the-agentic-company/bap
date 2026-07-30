@@ -41,6 +41,7 @@ export {
   listWorkspacesForUser,
   removeWorkspaceMember,
   renameWorkspace,
+  setWorkspaceTwoFactorRequirement,
   requireActiveWorkspaceForUser,
   setActiveWorkspace,
   updateWorkspaceMemberRole,

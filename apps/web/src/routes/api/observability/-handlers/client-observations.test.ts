@@ -165,6 +165,17 @@ describe("client observation intake", () => {
     expect(emitClientObservationMock).not.toHaveBeenCalled();
   });
 
+  it("rejects root errors without their required diagnostic context", async () => {
+    const response = await handleClientObservations(
+      request({
+        observations: [{ eventId: "root-error-123456", eventType: "ui.root_error" }],
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(emitClientObservationMock).not.toHaveBeenCalled();
+  });
+
   it("verifies Generation access before forwarding", async () => {
     generationFindFirstMock.mockResolvedValue({
       id: "gen-1",
@@ -213,6 +224,46 @@ describe("client observation intake", () => {
           generationId: "gen-1",
           conversationId: "conv-1",
           userId: "user-1",
+        }),
+      }),
+    );
+  });
+
+  it("retains root UI errors with deployment context and redacted diagnostics", async () => {
+    const response = await handleClientObservations(
+      request({
+        observations: [
+          {
+            eventId: "root-error-123456",
+            eventType: "ui.root_error",
+            routePath: "/settings/workspace",
+            visibleErrorCode: "root_error",
+            errorName: "NotFoundError",
+            errorMessage: "removeChild failed token=super-secret",
+            errorStack: "NotFoundError at https://heybap.com/assets/app.js?token=super-secret:1:1",
+            clientBuildCommitSha: "client-commit",
+            browserLanguage: "fr-FR",
+            documentLanguage: "fr",
+            browserTranslationActive: true,
+            userAgent: "Test Browser/1.0",
+          },
+        ],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(emitClientObservationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: "error",
+        eventId: "root-error-123456",
+        eventType: "ui.root_error",
+        attributes: expect.objectContaining({
+          "bap.client.route": "/settings/workspace",
+          "bap.client.build_commit_sha": "client-commit",
+          "bap.client.browser_translation_active": true,
+          "bap.error.type": "NotFoundError",
+          "bap.error.message": "removeChild failed token=[REDACTED]",
+          "bap.error.stack": "NotFoundError at https://heybap.com/assets/app.js",
         }),
       }),
     );

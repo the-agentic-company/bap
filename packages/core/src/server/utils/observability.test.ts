@@ -359,6 +359,23 @@ describe("semantic log emission", () => {
       }),
     );
   });
+
+  it("preserves bounded client error stacks and emits root errors at error level", () => {
+    const records = captureLogs();
+    const stack = `NotFoundError: removeChild failed\n${"at component (app.js:1:1)\n".repeat(80)}`;
+
+    emitClientObservation({
+      level: "error",
+      eventId: "client-root-error-1",
+      eventType: "ui.root_error",
+      attributes: {
+        "bap.error.stack": stack,
+      },
+    });
+
+    expect(records[0]?.level).toBe("error");
+    expect(records[0]?.record["bap.error.stack"]).toBe(stack);
+  });
 });
 
 describe("createTraceId", () => {

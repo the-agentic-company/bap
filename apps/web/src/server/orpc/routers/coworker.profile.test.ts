@@ -405,6 +405,149 @@ describe("coworkerRouter", () => {
     expect(result).toEqual({ success: true });
   });
 
+  it("lets a Workspace member edit the canonical shared coworker and records a revision", async () => {
+    const context = createContext();
+    context.db.query.user.findFirst.mockResolvedValue({
+      role: "member",
+      name: "Member One",
+      image: "member-one.png",
+    });
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-shared",
+      ownerId: "user-2",
+      createdByUserId: "user-2",
+      workspaceId: "ws-1",
+      visibility: "workspace",
+      sharedAt: new Date("2026-07-15T12:00:00.000Z"),
+      configurationRevision: 3,
+      name: "Shared Coworker",
+      description: null,
+      username: "shared",
+      status: "on",
+      triggerType: "manual",
+      prompt: "Shared prompt",
+      model: DEFAULT_MODEL,
+      authSource: null,
+      autoApprove: true,
+      toolAccessMode: "all",
+      allowedIntegrations: ["slack"],
+      allowedCustomIntegrations: [],
+      allowedWorkspaceMcpServerIds: [],
+      allowedSkillSlugs: [],
+      requiresUserInput: false,
+      userInputPrompt: null,
+      schedule: null,
+      folderId: null,
+    });
+    context.mocks.updateReturningMock.mockResolvedValue([{ id: "wf-shared" }]);
+
+    const result = await coworkerRouterAny.update({
+      input: {
+        id: "wf-shared",
+        name: "Shared Coworker Updated",
+        expectedRevision: 3,
+      },
+      context,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(context.mocks.updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Shared Coworker Updated",
+        configurationRevision: 4,
+      }),
+    );
+    expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coworkerId: "wf-shared",
+        revision: 4,
+        actorUserId: "user-1",
+        actorNameSnapshot: "Member One",
+        origin: "direct",
+        changedFields: ["name"],
+      }),
+    );
+  });
+
+  it("does not let an ordinary member make another creator's shared coworker private", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-shared",
+      ownerId: "user-2",
+      createdByUserId: "user-2",
+      workspaceId: "ws-1",
+      visibility: "workspace",
+      sharedAt: new Date("2026-07-15T12:00:00.000Z"),
+      configurationRevision: 1,
+      name: "Shared Coworker",
+      description: null,
+      username: null,
+      status: "on",
+      triggerType: "manual",
+      prompt: "Shared prompt",
+      model: DEFAULT_MODEL,
+      authSource: null,
+      autoApprove: true,
+      toolAccessMode: "all",
+      allowedIntegrations: [],
+      allowedCustomIntegrations: [],
+      allowedWorkspaceMcpServerIds: [],
+      allowedSkillSlugs: [],
+      requiresUserInput: false,
+      userInputPrompt: null,
+      schedule: null,
+      folderId: null,
+    });
+
+    await expect(
+      coworkerRouterAny.update({
+        input: {
+          id: "wf-shared",
+          visibility: "private",
+          expectedRevision: 1,
+        },
+        context,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    expect(context.db.update).not.toHaveBeenCalled();
+  });
+
+  it("stores pin and hide state as a per-member shared-coworker preference", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-shared",
+      ownerId: "user-2",
+      createdByUserId: "user-2",
+      workspaceId: "ws-1",
+      visibility: "workspace",
+      sharedAt: new Date("2026-07-15T12:00:00.000Z"),
+    });
+
+    const result = await coworkerRouterAny.update({
+      input: {
+        id: "wf-shared",
+        isPinned: true,
+        isHidden: true,
+      },
+      context,
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(context.mocks.insertValuesMock).toHaveBeenCalledWith({
+      coworkerId: "wf-shared",
+      userId: "user-1",
+      isPinned: true,
+      isHidden: true,
+    });
+    expect(context.mocks.insertOnConflictDoUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        set: expect.objectContaining({ isPinned: true, isHidden: true }),
+      }),
+    );
+    expect(context.db.update).not.toHaveBeenCalled();
+  });
+
   it("allows a Workspace member to turn another member's coworker off", async () => {
     const context = createContext();
     context.db.query.coworker.findFirst.mockResolvedValue({
@@ -781,7 +924,7 @@ describe("coworkerRouter", () => {
     );
   });
 
-  it("returns NOT_FOUND when update returning payload is empty", async () => {
+  it("returns CONFLICT when the revision compare-and-swap update loses a race", async () => {
     const context = createContext();
     context.db.query.coworker.findFirst.mockResolvedValue({
       id: "wf-1",
@@ -802,7 +945,10 @@ describe("coworkerRouter", () => {
         input: { id: "wf-1", name: "Renamed" },
         context,
       }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Coworker changed since this edit was prepared",
+    });
   });
 
   it("does not sync scheduler when update changes only non-schedule fields", async () => {

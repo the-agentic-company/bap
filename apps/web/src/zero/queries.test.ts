@@ -104,7 +104,7 @@ describe("Zero queries", () => {
     expect(hasRelatedTable(messageRelation?.subquery.related, "sandboxFile")).toBe(true);
   });
 
-  it("keeps coworker inventory scoped to the active workspace", () => {
+  it("keeps coworker inventory scoped to the active workspace and visible collaborators", () => {
     const request = zeroQueries.coworkerInventory.coworkers();
     const query = request.query.fn({
       args: request.args,
@@ -112,8 +112,13 @@ describe("Zero queries", () => {
     }) as unknown as QueryWithAst;
     const conditions = whereConditions(query);
 
-    expect(hasSimpleCondition(conditions, "ownerId", "=", queryContext.userId)).toBe(true);
+    expect(hasNestedSimpleCondition(conditions, "ownerId", "=", queryContext.userId)).toBe(true);
+    expect(hasNestedSimpleCondition(conditions, "createdByUserId", "=", queryContext.userId)).toBe(
+      true,
+    );
+    expect(hasNestedSimpleCondition(conditions, "visibility", "=", "workspace")).toBe(true);
     expect(hasSimpleCondition(conditions, "workspaceId", "=", queryContext.workspaceId)).toBe(true);
+    expect(hasRelatedTable(query.ast.related, "coworkerMemberPreference")).toBe(true);
   });
 
   it("keeps coworker folders scoped to owned or workspace-visible folders", () => {

@@ -87,8 +87,7 @@ export function useAdminDeleteWorkspace() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: { workspaceId: string }) =>
-      client.billing.adminDeleteWorkspace(input),
+    mutationFn: (input: { workspaceId: string }) => client.billing.adminDeleteWorkspace(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["billing"] });
     },
@@ -166,6 +165,22 @@ export function useRenameWorkspace() {
       queryClient.invalidateQueries({ queryKey: ["billing"] });
       queryClient.invalidateQueries({ queryKey: ["user", "me"] });
       queryClient.invalidateQueries({ queryKey: ["billing", "members"] });
+    },
+  });
+}
+
+export function useSetWorkspaceTwoFactorRequirement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { workspaceId: string; required: boolean }) =>
+      client.billing.setTwoFactorRequirement(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
+      queryClient.invalidateQueries({ queryKey: ["billing", "members"] });
+      queryClient.invalidateQueries({
+        queryKey: ["billing", "admin-workspaces"],
+      });
     },
   });
 }

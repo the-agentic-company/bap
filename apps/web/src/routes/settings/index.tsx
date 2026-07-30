@@ -6,6 +6,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { toast } from "sonner";
 import { useAppLocale } from "@/components/general-translation-provider";
 import { AppImage } from "@/components/app-image";
+import { TwoFactorEnrollment } from "@/components/auth/two-factor-enrollment";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { authClient } from "@/lib/auth-client";
+import { useBillingOverview } from "@/orpc/hooks/billing";
 import {
   useCurrentUser,
   useRemoveUserImage,
@@ -119,6 +121,7 @@ function SettingsPage() {
   const [timezoneInput, setTimezoneInput] = useState("");
   const profileImageInputRef = useRef<HTMLInputElement>(null);
   const { data: currentUser } = useCurrentUser();
+  const { data: billingOverview } = useBillingOverview();
   const setUserTimezone = useSetUserTimezone();
   const updateUserImage = useUpdateUserImage();
   const removeUserImage = useRemoveUserImage();
@@ -330,6 +333,9 @@ function SettingsPage() {
   const savedTimezone = currentUser?.timezone ?? "";
   const timezoneDiffers =
     Boolean(savedTimezone) && Boolean(browserTimezone) && savedTimezone !== browserTimezone;
+  const twoFactorRequired =
+    billingOverview?.workspaces.some((workspace) => workspace.requiresTwoFactor === true) ?? false;
+  const twoFactorEnabled = "twoFactorEnabled" in user && user.twoFactorEnabled === true;
 
   if (status === "loading") {
     return (
@@ -517,6 +523,18 @@ function SettingsPage() {
           )}
         </Button>
       </form>
+
+      <section className="mt-8 rounded-lg border p-5">
+        <div className="mb-4">
+          <h3 className="text-sm font-medium">
+            <T>Two-factor authentication</T>
+          </h3>
+          <p className="text-muted-foreground mt-1 text-sm">
+            <T>Protect password sign-ins with an authenticator app.</T>
+          </p>
+        </div>
+        <TwoFactorEnrollment initiallyEnabled={twoFactorEnabled} required={twoFactorRequired} />
+      </section>
     </div>
   );
 }

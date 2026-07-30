@@ -40,6 +40,17 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
   return {
     id: String(row.id),
     name: typeof row.name === "string" ? row.name : "",
+    ownerId: typeof row.ownerId === "string" ? row.ownerId : null,
+    createdByUserId:
+      typeof row.createdByUserId === "string"
+        ? row.createdByUserId
+        : typeof row.ownerId === "string"
+          ? row.ownerId
+          : null,
+    createdByNameSnapshot:
+      typeof row.createdByNameSnapshot === "string" ? row.createdByNameSnapshot : null,
+    createdByAvatarSnapshot:
+      typeof row.createdByAvatarSnapshot === "string" ? row.createdByAvatarSnapshot : null,
     username: typeof row.username === "string" ? row.username : null,
     description: typeof row.description === "string" ? row.description : null,
     folderId: typeof row.folderId === "string" ? row.folderId : null,
@@ -72,19 +83,33 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
           coworkerId:
             typeof runRecord.coworkerId === "string" ? runRecord.coworkerId : String(row.id),
           status: typeof runRecord.status === "string" ? runRecord.status : "unknown",
-          failureKind:
-            typeof runRecord.failureKind === "string" ? runRecord.failureKind : null,
+          failureKind: typeof runRecord.failureKind === "string" ? runRecord.failureKind : null,
           generationId: typeof runRecord.generationId === "string" ? runRecord.generationId : null,
           conversationId:
             typeof runRecord.conversationId === "string" ? runRecord.conversationId : null,
           startedAt: serializeDate(runRecord.startedAt) ?? new Date(0),
           finishedAt: serializeDate(runRecord.finishedAt),
           errorMessage: null,
-          source: "manual" as const,
+          source:
+            runRecord.startKind === "external_trigger" ? ("trigger" as const) : ("manual" as const),
+          startKind:
+            runRecord.startKind === "external_trigger" ? "external_trigger" : "user_intent",
+          initiatedByUserId:
+            typeof runRecord.initiatedByUserId === "string" ? runRecord.initiatedByUserId : null,
+          executionUserId:
+            typeof runRecord.executionUserId === "string" ? runRecord.executionUserId : null,
         },
       ];
     }),
     isPinned: row.isPinned === true,
+    isHidden: row.isHidden === true,
+    preferencePosition: typeof row.preferencePosition === "number" ? row.preferencePosition : null,
+    visibility: row.visibility === "workspace" ? "workspace" : "private",
+    automationOwnerUserId:
+      typeof row.automationOwnerUserId === "string" ? row.automationOwnerUserId : null,
+    automationOwnerConsentedAt: serializeDate(row.automationOwnerConsentedAt),
+    configurationRevision:
+      typeof row.configurationRevision === "number" ? row.configurationRevision : 0,
     sharedAt: serializeDate(row.sharedAt),
     updatedAt: serializeDate(row.updatedAt) ?? new Date(0),
     lastRunStatus: typeof row.lastRunStatus === "string" ? row.lastRunStatus : "",

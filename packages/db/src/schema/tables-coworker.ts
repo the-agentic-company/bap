@@ -83,8 +83,17 @@ export const coworker = pgTable(
     ownerId: text("owner_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    createdByUserId: text("created_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdByNameSnapshot: text("created_by_name_snapshot"),
+    createdByAvatarSnapshot: text("created_by_avatar_snapshot"),
     workspaceId: text("workspace_id").references(() => workspace.id, { onDelete: "set null" }),
     folderId: text("folder_id").references(() => coworkerFolder.id, { onDelete: "set null" }),
+    visibility: text("visibility")
+      .$type<"private" | "workspace">()
+      .default("private")
+      .notNull(),
     status: coworkerStatusEnum("status").default("on").notNull(),
     disabledReason: text("disabled_reason").$type<CoworkerDisabledReason>(),
     disabledAt: timestamp("disabled_at"),
@@ -110,6 +119,17 @@ export const coworker = pgTable(
     }),
     isPinned: boolean("is_pinned").default(false).notNull(),
     sharedAt: timestamp("shared_at"),
+    publishedAt: timestamp("published_at"),
+    automationOwnerUserId: text("automation_owner_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    automationOwnerConsentedAt: timestamp("automation_owner_consented_at"),
+    proposedAutomationOwnerUserId: text("proposed_automation_owner_user_id").references(
+      () => user.id,
+      { onDelete: "set null" },
+    ),
+    proposedAutomationOwnerAt: timestamp("proposed_automation_owner_at"),
+    configurationRevision: integer("configuration_revision").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -118,10 +138,14 @@ export const coworker = pgTable(
   },
   (table) => [
     index("coworker_owner_id_idx").on(table.ownerId),
+    index("coworker_created_by_user_id_idx").on(table.createdByUserId),
+    index("coworker_automation_owner_user_id_idx").on(table.automationOwnerUserId),
     index("coworker_workspace_id_idx").on(table.workspaceId),
     index("coworker_folder_id_idx").on(table.folderId),
+    index("coworker_visibility_idx").on(table.visibility),
     index("coworker_status_idx").on(table.status),
     index("coworker_shared_at_idx").on(table.sharedAt),
+    index("coworker_published_at_idx").on(table.publishedAt),
     uniqueIndex("coworker_username_idx").on(table.username),
   ],
 );
@@ -136,6 +160,16 @@ export const coworkerRun = pgTable(
       .notNull()
       .references(() => coworker.id, { onDelete: "cascade" }),
     ownerId: text("owner_id").references(() => user.id, { onDelete: "cascade" }),
+    initiatedByUserId: text("initiated_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    executionUserId: text("execution_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    startKind: text("start_kind")
+      .$type<"user_intent" | "external_trigger">()
+      .default("user_intent")
+      .notNull(),
     workspaceId: text("workspace_id").references(() => workspace.id, { onDelete: "cascade" }),
     status: coworkerRunStatusEnum("status").default("running").notNull(),
     triggerPayload: jsonb("trigger_payload").notNull(),
@@ -158,11 +192,135 @@ export const coworkerRun = pgTable(
   (table) => [
     index("coworker_run_coworker_id_idx").on(table.coworkerId),
     index("coworker_run_owner_id_idx").on(table.ownerId),
+    index("coworker_run_initiated_by_user_id_idx").on(table.initiatedByUserId),
+    index("coworker_run_execution_user_id_idx").on(table.executionUserId),
+    index("coworker_run_start_kind_idx").on(table.startKind),
     index("coworker_run_workspace_id_idx").on(table.workspaceId),
     index("coworker_run_status_idx").on(table.status),
     index("coworker_run_started_at_idx").on(table.startedAt),
     index("coworker_run_conversation_id_idx").on(table.conversationId),
     index("coworker_run_synthetic_kind_idx").on(table.syntheticKind),
+  ],
+);
+
+export const coworkerRevision = pgTable(
+  "coworker_revision",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    coworkerId: text("coworker_id")
+      .notNull()
+      .references(() => coworker.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    baseRevision: integer("base_revision").notNull(),
+    actorUserId: text("actor_user_id").references(() => user.id, { onDelete: "set null" }),
+    actorNameSnapshot: text("actor_name_snapshot"),
+    actorAvatarSnapshot: text("actor_avatar_snapshot"),
+    origin: text("origin")
+      .$type<"direct" | "builder_chat" | "runtime" | "restore" | "migration">()
+      .notNull(),
+    changedFields: text("changed_fields").array().notNull().default([]),
+    changes: jsonb("changes").$type<Record<string, { before: unknown; after: unknown }>>().notNull(),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("coworker_revision_coworker_revision_idx").on(
+      table.coworkerId,
+      table.revision,
+    ),
+    index("coworker_revision_coworker_created_at_idx").on(table.coworkerId, table.createdAt),
+    index("coworker_revision_actor_user_id_idx").on(table.actorUserId),
+  ],
+);
+
+export const coworkerHistoryEvent = pgTable(
+  "coworker_history_event",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    coworkerId: text("coworker_id")
+      .notNull()
+      .references(() => coworker.id, { onDelete: "cascade" }),
+    actorUserId: text("actor_user_id").references(() => user.id, { onDelete: "set null" }),
+    actorNameSnapshot: text("actor_name_snapshot"),
+    actorAvatarSnapshot: text("actor_avatar_snapshot"),
+    origin: text("origin")
+      .$type<"direct" | "builder_chat" | "runtime" | "run" | "migration">()
+      .notNull(),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("coworker_history_event_coworker_created_at_idx").on(
+      table.coworkerId,
+      table.createdAt,
+    ),
+    index("coworker_history_event_actor_user_id_idx").on(table.actorUserId),
+  ],
+);
+
+export const coworkerBuilderChat = pgTable(
+  "coworker_builder_chat",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    coworkerId: text("coworker_id")
+      .notNull()
+      .references(() => coworker.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("coworker_builder_chat_coworker_user_idx").on(
+      table.coworkerId,
+      table.userId,
+    ),
+    uniqueIndex("coworker_builder_chat_conversation_idx").on(table.conversationId),
+    index("coworker_builder_chat_user_id_idx").on(table.userId),
+  ],
+);
+
+export const coworkerMemberPreference = pgTable(
+  "coworker_member_preference",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    coworkerId: text("coworker_id")
+      .notNull()
+      .references(() => coworker.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    isPinned: boolean("is_pinned").default(false).notNull(),
+    isHidden: boolean("is_hidden").default(false).notNull(),
+    position: integer("position"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("coworker_member_preference_coworker_user_idx").on(
+      table.coworkerId,
+      table.userId,
+    ),
+    index("coworker_member_preference_user_id_idx").on(table.userId),
   ],
 );
 

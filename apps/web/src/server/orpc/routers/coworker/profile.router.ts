@@ -13,7 +13,8 @@ import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
 import {
   requireAccessibleCoworkerInActiveWorkspace,
-  requireOwnedCoworkerInActiveWorkspace,
+  requireCoworkerActionInActiveWorkspace,
+  requireEditableCoworkerInActiveWorkspace,
 } from "./access";
 import {
   createCoworkerProfile,
@@ -39,6 +40,7 @@ const create = protectedProcedure
       allowedWorkspaceMcpServerIds: z.array(z.string()).default([]),
       allowedSkillSlugs: z.array(z.string()).default([]),
       folderId: z.string().nullable().optional(),
+      visibility: z.enum(["private", "workspace"]).optional(),
       schedule: scheduleSchema.nullish(),
       requiresUserInput: z.boolean().optional(),
       userInputPrompt: userInputPromptSchema,
@@ -69,6 +71,7 @@ const update = protectedProcedure
       authSource: providerAuthSourceSchema.nullish(),
       autoApprove: z.boolean().optional(),
       isPinned: z.boolean().optional(),
+      isHidden: z.boolean().optional(),
       toolAccessMode: toolAccessModeSchema.optional(),
       allowedIntegrations: z.array(integrationTypeSchema).optional(),
       allowedCustomIntegrations: z.array(z.string()).optional(),
@@ -77,28 +80,33 @@ const update = protectedProcedure
       schedule: scheduleSchema.nullish(),
       requiresUserInput: z.boolean().optional(),
       userInputPrompt: userInputPromptSchema,
+      visibility: z.enum(["private", "workspace"]).optional(),
+      expectedRevision: z.number().int().nonnegative().optional(),
     }),
   )
   .handler(async ({ input, context }) => {
-    const { coworker: existing, workspaceId } = await requireOwnedCoworkerInActiveWorkspace(
-      context,
-      input.id,
-    );
+    const {
+      coworker: existing,
+      workspaceId,
+      membershipRole,
+    } = await requireEditableCoworkerInActiveWorkspace(context, input.id);
 
     return updateCoworkerProfile({
       context,
       workspaceId,
       existing,
       payload: input,
+      membershipRole,
     });
   });
 
 const del = protectedProcedure
   .input(z.object({ id: z.string() }))
   .handler(async ({ input, context }) => {
-    const { coworker: existing, workspaceId } = await requireOwnedCoworkerInActiveWorkspace(
+    const { coworker: existing, workspaceId } = await requireCoworkerActionInActiveWorkspace(
       context,
       input.id,
+      "delete",
     );
 
     return deleteCoworkerProfile({

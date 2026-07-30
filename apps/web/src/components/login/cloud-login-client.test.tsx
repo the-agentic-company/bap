@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   signInSocial: vi.fn<VitestProcedure>(),
   getLastUsedLoginMethod: vi.fn<VitestProcedure>(),
   fetchMock: vi.fn<VitestProcedure>(),
+  verifyTotp: vi.fn<VitestProcedure>(),
+  verifyBackupCode: vi.fn<VitestProcedure>(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -32,6 +34,10 @@ vi.mock("@/lib/auth-client", () => ({
       social: mocks.signInSocial,
     },
     getLastUsedLoginMethod: mocks.getLastUsedLoginMethod,
+    twoFactor: {
+      verifyTotp: mocks.verifyTotp,
+      verifyBackupCode: mocks.verifyBackupCode,
+    },
   },
 }));
 
@@ -59,6 +65,8 @@ describe("CloudLoginClient", () => {
     mocks.signInMagicLink.mockResolvedValue({});
     mocks.signInEmail.mockResolvedValue({});
     mocks.signInSocial.mockResolvedValue({});
+    mocks.verifyTotp.mockResolvedValue({ data: { token: "session" } });
+    mocks.verifyBackupCode.mockResolvedValue({ data: { token: "session" } });
     mocks.fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ approved: true }), {
         status: 200,
@@ -205,6 +213,48 @@ describe("CloudLoginClient", () => {
 
     expect(screen.getByRole("heading", { name: "Create your password" })).toBeInTheDocument();
     expect(screen.getByText("Password setup link sent")).toBeInTheDocument();
+  });
+
+  it("verifies the authenticator code before completing password sign-in", async () => {
+    mocks.fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ approved: true, hasPassword: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    mocks.signInEmail.mockResolvedValue({
+      data: { twoFactorRedirect: true, twoFactorMethods: ["totp"] },
+    });
+
+    render(<CloudLoginClient callbackUrl="/chat" />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "pilot@heybap.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Password" }));
+    await screen.findByPlaceholderText("Enter your password");
+    fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
+      target: { value: "hunter2hunter2" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Sign in" }).closest("form")!);
+
+    expect(
+      await screen.findByRole("heading", { name: "Two-factor authentication" }),
+    ).toBeInTheDocument();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Authenticator code"), {
+      target: { value: "123456" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Verify" }).closest("form")!);
+
+    await waitFor(() => {
+      expect(mocks.verifyTotp).toHaveBeenCalledWith({
+        code: "123456",
+        trustDevice: false,
+      });
+      expect(mocks.navigate).toHaveBeenCalledWith({ href: "/chat" });
+    });
   });
 
   it("sends a magic link", async () => {

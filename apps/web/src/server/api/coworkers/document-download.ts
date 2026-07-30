@@ -2,7 +2,7 @@ import { getFileAssetDownloadUrl } from "@bap/core/server/services/file-asset-se
 import { getPresignedDownloadUrl } from "@bap/core/server/storage/s3-client";
 import { db } from "@bap/db/client";
 import { coworker, coworkerDocument } from "@bap/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { requireActiveWorkspaceAccess } from "@/server/orpc/workspace-access";
 
@@ -42,8 +42,12 @@ export async function downloadCoworkerDocument(
   const coworkerRow = await db.query.coworker.findFirst({
     where: and(
       eq(coworker.id, existingDocument.coworkerId),
-      eq(coworker.ownerId, sessionData.user.id),
       eq(coworker.workspaceId, activeWorkspace.workspace.id),
+      or(
+        eq(coworker.visibility, "workspace"),
+        eq(coworker.createdByUserId, sessionData.user.id),
+        eq(coworker.ownerId, sessionData.user.id),
+      ),
     ),
     columns: {
       id: true,

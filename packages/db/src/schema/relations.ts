@@ -10,9 +10,13 @@ import {
   conversationRuntime,
   conversationSessionSnapshot,
   coworker,
+  coworkerBuilderChat,
   coworkerDocument,
   coworkerEmailAlias,
   coworkerFolder,
+  coworkerHistoryEvent,
+  coworkerMemberPreference,
+  coworkerRevision,
   coworkerRun,
   coworkerRunEvent,
   customIntegration,
@@ -54,6 +58,7 @@ import {
   workspaceMcpServer,
   workspaceMember,
   invitation,
+  twoFactor,
 } from "./tables";
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -78,6 +83,7 @@ export const userRelations = relations(user, ({ many }) => ({
   sharedProviderAuthsManaged: many(sharedProviderAuth),
   cloudAccountLinks: many(cloudAccountLink),
   devices: many(device),
+  twoFactors: many(twoFactor),
   customIntegrations: many(customIntegration),
   customIntegrationCredentials: many(customIntegrationCredential),
   workspaceMcpServersCreated: many(workspaceMcpServer, {
@@ -102,6 +108,13 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+  user: one(user, {
+    fields: [twoFactor.userId],
     references: [user.id],
   }),
 }));
@@ -349,6 +362,21 @@ export const conversationQueuedMessageRelations = relations(
 
 export const coworkerRelations = relations(coworker, ({ one, many }) => ({
   owner: one(user, { fields: [coworker.ownerId], references: [user.id] }),
+  createdBy: one(user, {
+    fields: [coworker.createdByUserId],
+    references: [user.id],
+    relationName: "coworkerCreatedBy",
+  }),
+  automationOwner: one(user, {
+    fields: [coworker.automationOwnerUserId],
+    references: [user.id],
+    relationName: "coworkerAutomationOwner",
+  }),
+  proposedAutomationOwner: one(user, {
+    fields: [coworker.proposedAutomationOwnerUserId],
+    references: [user.id],
+    relationName: "coworkerProposedAutomationOwner",
+  }),
   workspace: one(workspace, {
     fields: [coworker.workspaceId],
     references: [workspace.id],
@@ -359,6 +387,10 @@ export const coworkerRelations = relations(coworker, ({ one, many }) => ({
   }),
   runs: many(coworkerRun),
   documents: many(coworkerDocument),
+  revisions: many(coworkerRevision),
+  historyEvents: many(coworkerHistoryEvent),
+  builderChats: many(coworkerBuilderChat),
+  memberPreferences: many(coworkerMemberPreference),
   emailAliases: many(coworkerEmailAlias),
   runtimeVolumes: many(runtimeVolume),
 }));
@@ -390,6 +422,16 @@ export const coworkerRunRelations = relations(coworkerRun, ({ one, many }) => ({
     fields: [coworkerRun.ownerId],
     references: [user.id],
   }),
+  initiator: one(user, {
+    fields: [coworkerRun.initiatedByUserId],
+    references: [user.id],
+    relationName: "coworkerRunInitiator",
+  }),
+  executionUser: one(user, {
+    fields: [coworkerRun.executionUserId],
+    references: [user.id],
+    relationName: "coworkerRunExecutionUser",
+  }),
   workspace: one(workspace, {
     fields: [coworkerRun.workspaceId],
     references: [workspace.id],
@@ -403,6 +445,54 @@ export const coworkerRunRelations = relations(coworkerRun, ({ one, many }) => ({
     references: [conversation.id],
   }),
   events: many(coworkerRunEvent),
+}));
+
+export const coworkerRevisionRelations = relations(coworkerRevision, ({ one }) => ({
+  coworker: one(coworker, {
+    fields: [coworkerRevision.coworkerId],
+    references: [coworker.id],
+  }),
+  actor: one(user, {
+    fields: [coworkerRevision.actorUserId],
+    references: [user.id],
+  }),
+}));
+
+export const coworkerHistoryEventRelations = relations(coworkerHistoryEvent, ({ one }) => ({
+  coworker: one(coworker, {
+    fields: [coworkerHistoryEvent.coworkerId],
+    references: [coworker.id],
+  }),
+  actor: one(user, {
+    fields: [coworkerHistoryEvent.actorUserId],
+    references: [user.id],
+  }),
+}));
+
+export const coworkerBuilderChatRelations = relations(coworkerBuilderChat, ({ one }) => ({
+  coworker: one(coworker, {
+    fields: [coworkerBuilderChat.coworkerId],
+    references: [coworker.id],
+  }),
+  user: one(user, {
+    fields: [coworkerBuilderChat.userId],
+    references: [user.id],
+  }),
+  conversation: one(conversation, {
+    fields: [coworkerBuilderChat.conversationId],
+    references: [conversation.id],
+  }),
+}));
+
+export const coworkerMemberPreferenceRelations = relations(coworkerMemberPreference, ({ one }) => ({
+  coworker: one(coworker, {
+    fields: [coworkerMemberPreference.coworkerId],
+    references: [coworker.id],
+  }),
+  user: one(user, {
+    fields: [coworkerMemberPreference.userId],
+    references: [user.id],
+  }),
 }));
 
 export const coworkerDocumentRelations = relations(coworkerDocument, ({ one }) => ({
@@ -612,26 +702,23 @@ export const customIntegrationCredentialRelations = relations(
   }),
 );
 
-export const workspaceMcpServerRelations = relations(
-  workspaceMcpServer,
-  ({ one, many }) => ({
-    workspace: one(workspace, {
-      fields: [workspaceMcpServer.workspaceId],
-      references: [workspace.id],
-    }),
-    createdByUser: one(user, {
-      relationName: "workspaceMcpServerCreatedByUser",
-      fields: [workspaceMcpServer.createdByUserId],
-      references: [user.id],
-    }),
-    updatedByUser: one(user, {
-      relationName: "workspaceMcpServerUpdatedByUser",
-      fields: [workspaceMcpServer.updatedByUserId],
-      references: [user.id],
-    }),
-    credentials: many(workspaceMcpAuthorization),
+export const workspaceMcpServerRelations = relations(workspaceMcpServer, ({ one, many }) => ({
+  workspace: one(workspace, {
+    fields: [workspaceMcpServer.workspaceId],
+    references: [workspace.id],
   }),
-);
+  createdByUser: one(user, {
+    relationName: "workspaceMcpServerCreatedByUser",
+    fields: [workspaceMcpServer.createdByUserId],
+    references: [user.id],
+  }),
+  updatedByUser: one(user, {
+    relationName: "workspaceMcpServerUpdatedByUser",
+    fields: [workspaceMcpServer.updatedByUserId],
+    references: [user.id],
+  }),
+  credentials: many(workspaceMcpAuthorization),
+}));
 
 export const workspaceMcpAuthorizationRelations = relations(
   workspaceMcpAuthorization,

@@ -1,15 +1,22 @@
 import { isSelfHostedEdition } from "@bap/core/server/edition";
 import { trackSignupFromSession } from "@bap/core/server/services/user-telemetry";
 import { db } from "@bap/db/client";
-import { authSchema, user as userTable } from "@bap/db/schema";
+import { authSchema, user as userTable, workspace, workspaceMember } from "@bap/db/schema";
 import { autumn } from "autumn-js/better-auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware, APIError } from "better-auth/api";
-import { admin, bearer, lastLoginMethod, magicLink, organization } from "better-auth/plugins";
+import {
+  admin,
+  bearer,
+  lastLoginMethod,
+  magicLink,
+  organization,
+  twoFactor,
+} from "better-auth/plugins";
 import { defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Resend } from "resend";
 import { env } from "@/env";
 import { INVITE_ONLY_LOGIN_ERROR, shouldGrantAdminRole } from "@/lib/admin-emails";
@@ -149,6 +156,28 @@ export const auth = betterAuth({
   trustedOrigins: getTrustedOrigins(),
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/two-factor/disable") {
+        const userId = ctx.context.session?.user.id;
+        if (!userId) {
+          return;
+        }
+
+        const [requiredWorkspaceMembership] = await db
+          .select({ id: workspaceMember.id })
+          .from(workspaceMember)
+          .innerJoin(workspace, eq(workspace.id, workspaceMember.organizationId))
+          .where(and(eq(workspaceMember.userId, userId), eq(workspace.requiresTwoFactor, true)))
+          .limit(1);
+
+        if (requiredWorkspaceMembership) {
+          throw new APIError("FORBIDDEN", {
+            code: "TWO_FACTOR_REQUIRED_BY_WORKSPACE",
+            message: "Two-factor authentication is required by one or more of your Workspaces.",
+          });
+        }
+        return;
+      }
+
       if (ctx.path !== "/sign-in/magic-link" && ctx.path !== "/sign-in/email") {
         return;
       }
@@ -210,6 +239,9 @@ export const auth = betterAuth({
         }
       },
     }),
+    twoFactor({
+      issuer: "Bap",
+    }),
     organization({
       disableOrganizationDeletion: true,
       teams: {
@@ -263,6 +295,12 @@ export const auth = betterAuth({
             imageMimeType: {
               type: "string",
               required: false,
+              input: false,
+            },
+            requiresTwoFactor: {
+              type: "boolean",
+              required: false,
+              defaultValue: false,
               input: false,
             },
             updatedAt: {

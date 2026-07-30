@@ -22,6 +22,7 @@ import {
   removeWorkspaceMember,
   renameWorkspace,
   setActiveWorkspace,
+  setWorkspaceTwoFactorRequirement,
   updateWorkspaceMemberRole,
 } from "@bap/core/server/billing/service";
 import {
@@ -543,6 +544,22 @@ const rename = protectedProcedure
     return renameWorkspace(input.workspaceId, input.name);
   });
 
+const setTwoFactorRequirement = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+      required: z.boolean(),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    await requireHostedMcpWorkspaceAdmin({
+      context,
+      workspaceId: input.workspaceId,
+    });
+
+    return setWorkspaceTwoFactorRequirement(input.workspaceId, input.required);
+  });
+
 const updateImage = protectedProcedure
   .input(
     z.object({
@@ -689,6 +706,7 @@ export const billingRouter = {
   setMemberRole,
   removeMember,
   rename,
+  setTwoFactorRequirement,
   updateImage,
   removeImage,
 };

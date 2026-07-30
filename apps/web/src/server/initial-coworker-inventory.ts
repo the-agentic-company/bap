@@ -3,7 +3,13 @@ import {
   normalizeCoworkerToolAccessMode,
 } from "@bap/core/lib/coworker-tool-policy";
 import { db } from "@bap/db/client";
-import { coworker, coworkerFolder, coworkerRun, generation } from "@bap/db/schema";
+import {
+  coworker,
+  coworkerFolder,
+  coworkerMemberPreference,
+  coworkerRun,
+  generation,
+} from "@bap/db/schema";
 import { and, count, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
 const INITIAL_COWORKER_LIMIT = 500;
@@ -13,8 +19,13 @@ export async function queryInitialCoworkerInventory(params: {
   workspaceId: string;
 }) {
   const where = and(
-    eq(coworker.ownerId, params.userId),
     eq(coworker.workspaceId, params.workspaceId),
+    or(
+      eq(coworker.ownerId, params.userId),
+      eq(coworker.createdByUserId, params.userId),
+      eq(coworker.visibility, "workspace"),
+      isNotNull(coworker.sharedAt),
+    ),
   );
   const folderWhere = and(
     eq(coworkerFolder.workspaceId, params.workspaceId),
@@ -24,11 +35,11 @@ export async function queryInitialCoworkerInventory(params: {
   const [sharedRow] = await db
     .select({ value: count() })
     .from(coworker)
-    .where(and(where, isNotNull(coworker.sharedAt)));
+    .where(and(where, or(eq(coworker.visibility, "workspace"), isNotNull(coworker.sharedAt))));
   const [rows, folders] = await Promise.all([
     db.query.coworker.findMany({
       where,
-      orderBy: [desc(coworker.isPinned), desc(coworker.updatedAt), desc(coworker.id)],
+      orderBy: [desc(coworker.updatedAt), desc(coworker.id)],
       limit: INITIAL_COWORKER_LIMIT,
     }),
     db.query.coworkerFolder.findMany({
@@ -37,6 +48,18 @@ export async function queryInitialCoworkerInventory(params: {
     }),
   ]);
   const coworkerIds = rows.map((row) => row.id);
+  const preferences =
+    coworkerIds.length > 0
+      ? await db.query.coworkerMemberPreference.findMany({
+          where: and(
+            eq(coworkerMemberPreference.userId, params.userId),
+            inArray(coworkerMemberPreference.coworkerId, coworkerIds),
+          ),
+        })
+      : [];
+  const preferenceByCoworkerId = new Map(
+    preferences.map((preference) => [preference.coworkerId, preference]),
+  );
   const rankedRuns =
     coworkerIds.length > 0
       ? db
@@ -94,6 +117,7 @@ export async function queryInitialCoworkerInventory(params: {
     totalCount: totalRow?.value ?? rows.length,
     folders,
     coworkers: rows.map((row) => {
+      const preference = preferenceByCoworkerId.get(row.id);
       const lastRun = lastRunsByCoworkerId.get(row.id);
       const toolAccessMode = normalizeCoworkerToolAccessMode(
         row.toolAccessMode,
@@ -102,6 +126,10 @@ export async function queryInitialCoworkerInventory(params: {
 
       return {
         id: row.id,
+        ownerId: row.ownerId,
+        createdByUserId: row.createdByUserId ?? row.ownerId,
+        createdByNameSnapshot: row.createdByNameSnapshot,
+        createdByAvatarSnapshot: row.createdByAvatarSnapshot,
         name: row.name,
         description: row.description,
         username: row.username,
@@ -122,7 +150,13 @@ export async function queryInitialCoworkerInventory(params: {
         schedule: row.schedule,
         requiresUserInput: row.requiresUserInput,
         userInputPrompt: row.userInputPrompt,
-        isPinned: row.isPinned,
+        isPinned: preference?.isPinned ?? row.isPinned,
+        isHidden: preference?.isHidden ?? false,
+        preferencePosition: preference?.position ?? null,
+        visibility: row.visibility === "workspace" || row.sharedAt ? "workspace" : "private",
+        automationOwnerUserId: row.automationOwnerUserId,
+        automationOwnerConsentedAt: row.automationOwnerConsentedAt,
+        configurationRevision: row.configurationRevision,
         sharedAt: row.sharedAt,
         updatedAt: row.updatedAt,
         lastRunStatus: lastRun?.status ?? null,

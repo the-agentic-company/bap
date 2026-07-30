@@ -10,11 +10,18 @@ type ZeroRunLike = {
   readonly conversationId?: string | null;
   readonly startedAt: number | string | Date;
   readonly finishedAt?: number | string | Date | null;
+  readonly startKind?: "user_intent" | "external_trigger";
+  readonly initiatedByUserId?: string | null;
+  readonly executionUserId?: string | null;
 };
 
 type ZeroCoworkerLike = {
   readonly id: string;
   readonly name: string;
+  readonly ownerId?: string | null;
+  readonly createdByUserId?: string | null;
+  readonly createdByNameSnapshot?: string | null;
+  readonly createdByAvatarSnapshot?: string | null;
   readonly description?: string | null;
   readonly username?: string | null;
   readonly folderId?: string | null;
@@ -35,8 +42,17 @@ type ZeroCoworkerLike = {
   readonly toolAccessMode?: "all" | "selected" | null;
   readonly isPinned: boolean;
   readonly sharedAt?: number | string | Date | null;
+  readonly visibility?: "private" | "workspace";
+  readonly automationOwnerUserId?: string | null;
+  readonly automationOwnerConsentedAt?: number | string | Date | null;
+  readonly configurationRevision?: number;
   readonly updatedAt: number | string | Date;
   readonly runs?: readonly ZeroRunLike[];
+  readonly preferences?: readonly {
+    readonly isPinned: boolean;
+    readonly isHidden: boolean;
+    readonly position?: number | null;
+  }[];
 };
 
 type ZeroFolderLike = {
@@ -73,13 +89,17 @@ export function mapZeroCoworkerRun(run: ZeroRunLike) {
     startedAt: asDate(run.startedAt),
     finishedAt: dateOrNull(run.finishedAt),
     errorMessage: null,
-    source: "manual" as const,
+    source: run.startKind === "external_trigger" ? ("trigger" as const) : ("manual" as const),
+    startKind: run.startKind ?? "user_intent",
+    initiatedByUserId: run.initiatedByUserId ?? null,
+    executionUserId: run.executionUserId ?? null,
   };
 }
 
 export function mapZeroCoworkerList(coworkers: readonly ZeroCoworkerLike[]) {
   return coworkers
     .map((coworker) => {
+      const preference = coworker.preferences?.[0];
       const recentRuns = (coworker.runs ?? [])
         .toSorted(
           (left, right) => asDate(right.startedAt).getTime() - asDate(left.startedAt).getTime(),
@@ -91,6 +111,10 @@ export function mapZeroCoworkerList(coworkers: readonly ZeroCoworkerLike[]) {
       return {
         id: coworker.id,
         name: coworker.name,
+        ownerId: coworker.ownerId ?? null,
+        createdByUserId: coworker.createdByUserId ?? coworker.ownerId ?? null,
+        createdByNameSnapshot: coworker.createdByNameSnapshot ?? null,
+        createdByAvatarSnapshot: coworker.createdByAvatarSnapshot ?? null,
         description: coworker.description ?? null,
         username: coworker.username ?? null,
         folderId: coworker.folderId ?? null,
@@ -110,7 +134,13 @@ export function mapZeroCoworkerList(coworkers: readonly ZeroCoworkerLike[]) {
         schedule: coworker.schedule ?? null,
         requiresUserInput: coworker.requiresUserInput,
         userInputPrompt: coworker.userInputPrompt ?? null,
-        isPinned: coworker.isPinned,
+        isPinned: preference?.isPinned ?? coworker.isPinned,
+        isHidden: preference?.isHidden ?? false,
+        preferencePosition: preference?.position ?? null,
+        visibility: coworker.visibility ?? (coworker.sharedAt ? "workspace" : "private"),
+        automationOwnerUserId: coworker.automationOwnerUserId ?? null,
+        automationOwnerConsentedAt: dateOrNull(coworker.automationOwnerConsentedAt),
+        configurationRevision: coworker.configurationRevision ?? 0,
         sharedAt: dateOrNull(coworker.sharedAt),
         updatedAt: asDate(coworker.updatedAt),
         lastRunStatus: lastRun?.status ?? null,

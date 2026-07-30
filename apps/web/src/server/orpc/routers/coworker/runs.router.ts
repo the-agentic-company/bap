@@ -7,10 +7,7 @@ import { z } from "zod";
 import { requireAppAdminActor } from "../../app-admin-access";
 import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
-import {
-  requireAccessibleCoworkerInActiveWorkspace,
-  requireOwnedCoworkerInActiveWorkspace,
-} from "./access";
+import { requireAccessibleCoworkerInActiveWorkspace } from "./access";
 import {
   getCoworkerRunView,
   listCoworkerRunViews,
@@ -98,7 +95,7 @@ const listRuns = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    const { coworker: wf, workspaceId } = await requireOwnedCoworkerInActiveWorkspace(
+    const { coworker: wf, workspaceId } = await requireAccessibleCoworkerInActiveWorkspace(
       context,
       input.coworkerId,
     );

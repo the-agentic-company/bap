@@ -1,4 +1,8 @@
-import { clientObservationSchema } from "@bap/core/lib/client-observation";
+import {
+  clientObservationSchema,
+  sanitizeClientDiagnosticText,
+  sanitizeClientRoutePath,
+} from "@bap/core/lib/client-observation";
 import { buildRedisOptions } from "@bap/core/server/redis/connection-options";
 import { emitClientObservation } from "@bap/core/server/utils/observability";
 import { db } from "@bap/db/client";
@@ -98,6 +102,7 @@ function shouldRetainObservation(observation: z.infer<typeof clientObservationSc
     observation.eventType === "generation.visible_error" ||
     observation.eventType === "generation.stream.reconnected" ||
     observation.eventType === "generation.stream.done" ||
+    observation.eventType === "ui.root_error" ||
     observation.closeReason === "error" ||
     observation.visibleErrorCode
   ) {
@@ -248,6 +253,7 @@ export async function handleClientObservations(request: Request): Promise<Respon
     const { observation, resolvedConversationId, resolvedTraceId } = verified;
 
     emitClientObservation({
+      level: observation.eventType === "ui.root_error" ? "error" : "info",
       eventId: observation.eventId,
       eventType: observation.eventType,
       timestamp: observation.occurredAt ? new Date(observation.occurredAt) : undefined,
@@ -273,6 +279,21 @@ export async function handleClientObservations(request: Request): Promise<Respon
         "bap.client.close_reason": observation.closeReason,
         "bap.client.page_visibility": observation.pageVisibility,
         "bap.client.online": observation.online,
+        "bap.client.route": observation.routePath
+          ? sanitizeClientRoutePath(observation.routePath)
+          : undefined,
+        "bap.client.build_commit_sha": observation.clientBuildCommitSha,
+        "bap.client.browser_language": observation.browserLanguage,
+        "bap.client.document_language": observation.documentLanguage,
+        "bap.client.browser_translation_active": observation.browserTranslationActive,
+        "user_agent.original": observation.userAgent,
+        "bap.error.type": observation.errorName,
+        "bap.error.message": observation.errorMessage
+          ? sanitizeClientDiagnosticText(observation.errorMessage, 1_024)
+          : undefined,
+        "bap.error.stack": observation.errorStack
+          ? sanitizeClientDiagnosticText(observation.errorStack, 8_192)
+          : undefined,
       },
     });
   }

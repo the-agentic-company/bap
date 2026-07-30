@@ -95,6 +95,7 @@ export async function handleCoworkerDocumentUpload(request: Request): Promise<Re
       mimeType: parsed.data.mimeType,
       contentBase64: parsed.data.content,
       description: parsed.data.description,
+      origin: "runtime",
     });
 
     return Response.json({ document });

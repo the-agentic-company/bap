@@ -109,8 +109,12 @@ export const coworkerTable = table("coworker")
     id: string(),
     name: string(),
     ownerId: string().from("owner_id"),
+    createdByUserId: string().from("created_by_user_id").optional(),
+    createdByNameSnapshot: string().from("created_by_name_snapshot").optional(),
+    createdByAvatarSnapshot: string().from("created_by_avatar_snapshot").optional(),
     workspaceId: string().from("workspace_id").optional(),
     folderId: string().from("folder_id").optional(),
+    visibility: string<"private" | "workspace">(),
     status: string<"on" | "off">(),
     disabledReason: string<"run_backlog_limit">().from("disabled_reason").optional(),
     disabledAt: number().from("disabled_at").optional(),
@@ -125,6 +129,10 @@ export const coworkerTable = table("coworker")
     toolAccessMode: string<"all" | "selected">().from("tool_access_mode").optional(),
     isPinned: boolean().from("is_pinned"),
     sharedAt: number().from("shared_at").optional(),
+    automationOwnerUserId: string().from("automation_owner_user_id").optional(),
+    automationOwnerConsentedAt: number().from("automation_owner_consented_at").optional(),
+    proposedAutomationOwnerUserId: string().from("proposed_automation_owner_user_id").optional(),
+    configurationRevision: number().from("configuration_revision"),
     createdAt: number().from("created_at"),
     updatedAt: number().from("updated_at"),
   })
@@ -136,6 +144,9 @@ export const coworkerRunTable = table("coworkerRun")
     id: string(),
     coworkerId: string().from("coworker_id"),
     ownerId: string().from("owner_id").optional(),
+    initiatedByUserId: string().from("initiated_by_user_id").optional(),
+    executionUserId: string().from("execution_user_id").optional(),
+    startKind: string<"user_intent" | "external_trigger">().from("start_kind"),
     workspaceId: string().from("workspace_id").optional(),
     status: string(),
     failureKind: string().from("failure_kind").optional(),
@@ -144,6 +155,20 @@ export const coworkerRunTable = table("coworkerRun")
     startedAt: number().from("started_at"),
     finishedAt: number().from("finished_at").optional(),
     syntheticKind: string().from("synthetic_kind").optional(),
+  })
+  .primaryKey("id");
+
+export const coworkerMemberPreferenceTable = table("coworkerMemberPreference")
+  .from("coworker_member_preference")
+  .columns({
+    id: string(),
+    coworkerId: string().from("coworker_id"),
+    userId: string().from("user_id"),
+    isPinned: boolean().from("is_pinned"),
+    isHidden: boolean().from("is_hidden"),
+    position: number().optional(),
+    createdAt: number().from("created_at"),
+    updatedAt: number().from("updated_at"),
   })
   .primaryKey("id");
 
@@ -210,6 +235,11 @@ const coworkerRelationships = relationships(coworkerTable, ({ many, one }) => ({
     destField: ["coworkerId"],
     destSchema: coworkerRunTable,
   }),
+  preferences: many({
+    sourceField: ["id"],
+    destField: ["coworkerId"],
+    destSchema: coworkerMemberPreferenceTable,
+  }),
   workspaceMembers: many({
     sourceField: ["workspaceId"],
     destField: ["workspaceId"],
@@ -248,6 +278,7 @@ export const schema = createSchema({
     coworkerFolderTable,
     coworkerTable,
     coworkerRunTable,
+    coworkerMemberPreferenceTable,
   ],
   relationships: [
     conversationRelationships,
@@ -270,3 +301,4 @@ export type ZeroSandboxFileRow = QueryRowType<typeof zql.sandboxFile>;
 export type ZeroCoworkerRow = QueryRowType<typeof zql.coworker>;
 export type ZeroCoworkerRunRow = QueryRowType<typeof zql.coworkerRun>;
 export type ZeroCoworkerFolderRow = QueryRowType<typeof zql.coworkerFolder>;
+export type ZeroCoworkerMemberPreferenceRow = QueryRowType<typeof zql.coworkerMemberPreference>;

@@ -83,6 +83,9 @@ describe("Zero coworker data adapters", () => {
       finishedAt: new Date(1781130300000),
       errorMessage: null,
       source: "manual",
+      startKind: "user_intent",
+      initiatedByUserId: null,
+      executionUserId: null,
     });
   });
 

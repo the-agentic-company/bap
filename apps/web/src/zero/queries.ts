@@ -44,9 +44,15 @@ function accessibleRecentChatConversations(ctx: ZeroQueryContext) {
 
 function accessibleCoworkers(ctx: ZeroQueryContext) {
   return zql.coworker
-    .where("ownerId", ctx.userId)
     .where("workspaceId", ctx.workspaceId)
-    .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId));
+    .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
+    .where(({ cmp, or }) =>
+      or(
+        cmp("ownerId", ctx.userId),
+        cmp("createdByUserId", ctx.userId),
+        cmp("visibility", "workspace"),
+      ),
+    );
 }
 
 function accessibleCoworkerFolders(ctx: ZeroQueryContext) {
@@ -86,21 +92,19 @@ export const zeroQueries = defineQueries({
       accessibleCoworkers(ctx)
         .related("runs", (runs) =>
           runs
-            .where("ownerId", ctx.userId)
             .where("workspaceId", ctx.workspaceId)
             .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
             .where("syntheticKind", "IS", null)
             .orderBy("startedAt", "desc")
             .limit(COWORKER_RUNS_PER_COWORKER_LIMIT),
         )
-        .orderBy("isPinned", "desc")
+        .related("preferences", (preferences) => preferences.where("userId", ctx.userId))
         .orderBy("updatedAt", "desc")
         .limit(COWORKER_LIMIT),
     ),
     runsByCoworker: defineQuery(coworkerRunsInput, ({ args, ctx }) =>
       zql.coworkerRun
         .where("coworkerId", args.coworkerId)
-        .where("ownerId", ctx.userId)
         .where("workspaceId", ctx.workspaceId)
         .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
         .where("syntheticKind", "IS", null)

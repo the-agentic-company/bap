@@ -6,6 +6,7 @@ import {
   lastLoginMethodClient,
   magicLinkClient,
   organizationClient,
+  twoFactorClient,
 } from "better-auth/client/plugins";
 import type { auth } from "@/lib/auth";
 import { env } from "@/env";
@@ -23,6 +24,7 @@ export const authClient = createAuthClient({
   plugins: [
     inferAdditionalFields<typeof auth>(),
     magicLinkClient(),
+    twoFactorClient(),
     lastLoginMethodClient(),
     deviceAuthorizationClient(),
     organizationClient({
@@ -51,6 +53,12 @@ export const authClient = createAuthClient({
             imageMimeType: {
               type: "string",
               required: false,
+              input: false,
+            },
+            requiresTwoFactor: {
+              type: "boolean",
+              required: false,
+              defaultValue: false,
               input: false,
             },
             updatedAt: {

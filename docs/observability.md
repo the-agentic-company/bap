@@ -480,6 +480,24 @@ curl -s http://127.0.0.1:9428/select/logsql/query \
   -d 'limit=20'
 ```
 
+Root browser errors are retained as error-level Client Observations. Query them by
+route and compare the client bundle commit with the server deployment commit to
+distinguish a frontend failure from rolling-deployment version skew:
+
+```bash
+curl -s http://127.0.0.1:9428/select/logsql/query \
+  -d 'query=event.kind:client_observation app.client_observation.type:"ui.root_error"' \
+  -d 'limit=100'
+```
+
+The diagnostic fields include `bap.client.route`, `bap.error.type`,
+`bap.error.message`, `bap.error.stack`, browser/document language,
+`bap.client.browser_translation_active`, and `user_agent.original`.
+`bap.client.build_commit_sha` identifies the JavaScript bundle that observed the
+failure, while `app.deployment.commit_sha` identifies the server deployment that
+accepted it. Error messages and stacks are bounded and have URL query strings and
+credential-like assignments removed before ingestion.
+
 Traces:
 
 ```bash

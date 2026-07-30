@@ -3,6 +3,7 @@ import {
   createFileAssetFromBuffer,
   type ReadyFileAsset,
 } from "@bap/core/server/services/file-asset-service";
+import { decideCoworkerAccess } from "@bap/core/server/services/coworker-access-policy";
 import {
   buildCoworkerDocumentsRuntimeVolumePrefix,
   buildRuntimeVolumeObjectKey,
@@ -13,12 +14,85 @@ import {
 } from "@bap/core/server/services/runtime-volume-service";
 import { downloadFromS3 } from "@bap/core/server/storage/s3-client";
 import { db } from "@bap/db/client";
-import { coworker, coworkerDocument } from "@bap/db/schema";
+import {
+  coworker,
+  coworkerDocument,
+  coworkerHistoryEvent,
+  user,
+  workspaceMember,
+} from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, count, eq } from "drizzle-orm";
 import { validateFileUpload } from "@/server/storage/validation";
 
 type Database = typeof db;
+
+async function requireEditableCoworkerForDocument(input: {
+  database: Database;
+  coworkerId: string;
+  userId: string;
+}) {
+  const coworkerRow = await input.database.query.coworker.findFirst({
+    where: eq(coworker.id, input.coworkerId),
+    columns: {
+      id: true,
+      ownerId: true,
+      createdByUserId: true,
+      visibility: true,
+      sharedAt: true,
+      workspaceId: true,
+    },
+  });
+  if (!coworkerRow?.workspaceId) {
+    throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+  }
+  const [membership, actor] = await Promise.all([
+    input.database.query.workspaceMember.findFirst({
+      where: and(
+        eq(workspaceMember.organizationId, coworkerRow.workspaceId),
+        eq(workspaceMember.userId, input.userId),
+      ),
+      columns: { role: true },
+    }),
+    input.database.query.user.findFirst({
+      where: eq(user.id, input.userId),
+      columns: { name: true, image: true },
+    }),
+  ]);
+  const decision = decideCoworkerAccess({
+    action: "edit",
+    actorUserId: input.userId,
+    workspaceRole: membership?.role ?? null,
+    isActiveWorkspaceMember: Boolean(membership),
+    visibility:
+      coworkerRow.visibility === "workspace" || coworkerRow.sharedAt ? "workspace" : "private",
+    createdByUserId: coworkerRow.createdByUserId ?? coworkerRow.ownerId,
+  });
+  if (!decision.allowed) {
+    throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+  }
+  return { coworker: coworkerRow, actor };
+}
+
+async function recordCoworkerDocumentEvent(input: {
+  database: Database;
+  coworkerId: string;
+  userId: string;
+  actor: { name: string | null; image: string | null } | null | undefined;
+  origin?: "direct" | "runtime";
+  type: "document_added" | "document_updated" | "document_removed";
+  payload: Record<string, unknown>;
+}) {
+  await input.database.insert(coworkerHistoryEvent).values({
+    coworkerId: input.coworkerId,
+    actorUserId: input.userId,
+    actorNameSnapshot: input.actor?.name ?? null,
+    actorAvatarSnapshot: input.actor?.image ?? null,
+    origin: input.origin ?? "direct",
+    type: input.type,
+    payload: input.payload,
+  });
+}
 
 async function refreshCoworkerDocumentsRuntimeVolumeProjection(input: {
   workspaceId: string;
@@ -44,6 +118,7 @@ export async function uploadCoworkerDocument(params: {
   contentBase64?: string;
   fileAssetId?: string;
   description?: string | undefined;
+  origin?: "direct" | "runtime";
 }): Promise<{
   id: string;
   fileAssetId: string;
@@ -51,17 +126,8 @@ export async function uploadCoworkerDocument(params: {
   mimeType: string;
   sizeBytes: number;
 }> {
-  const existingCoworker = await params.database.query.coworker.findFirst({
-    where: and(eq(coworker.id, params.coworkerId), eq(coworker.ownerId, params.userId)),
-    columns: {
-      id: true,
-      workspaceId: true,
-    },
-  });
-
-  if (!existingCoworker) {
-    throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
-  }
+  const access = await requireEditableCoworkerForDocument(params);
+  const existingCoworker = access.coworker;
   if (!existingCoworker.workspaceId) {
     throw new ORPCError("BAD_REQUEST", { message: "Coworker workspace not found" });
   }
@@ -108,6 +174,20 @@ export async function uploadCoworkerDocument(params: {
     workspaceId: existingCoworker.workspaceId,
     coworkerId: params.coworkerId,
   });
+  await recordCoworkerDocumentEvent({
+    database: params.database,
+    coworkerId: params.coworkerId,
+    userId: params.userId,
+    actor: access.actor,
+    origin: params.origin,
+    type: "document_added",
+    payload: {
+      documentId: document.id,
+      filename: document.filename,
+      mimeType: document.mimeType,
+      sizeBytes: document.sizeBytes,
+    },
+  });
 
   return {
     id: document.id,
@@ -127,6 +207,7 @@ export async function updateCoworkerDocument(params: {
   contentBase64?: string | undefined;
   fileAssetId?: string | undefined;
   description?: string | null | undefined;
+  origin?: "direct" | "runtime";
 }): Promise<{
   id: string;
   fileAssetId: string | null;
@@ -190,17 +271,12 @@ export async function updateCoworkerDocument(params: {
     throw new ORPCError("NOT_FOUND", { message: "Document not found" });
   }
 
-  const existingCoworker = await params.database.query.coworker.findFirst({
-    where: and(eq(coworker.id, existingDocument.coworkerId), eq(coworker.ownerId, params.userId)),
-    columns: {
-      id: true,
-      workspaceId: true,
-    },
+  const access = await requireEditableCoworkerForDocument({
+    database: params.database,
+    coworkerId: existingDocument.coworkerId,
+    userId: params.userId,
   });
-
-  if (!existingCoworker) {
-    throw new ORPCError("NOT_FOUND", { message: "Document not found" });
-  }
+  const existingCoworker = access.coworker;
   if ((hasFilename || isFileReplacement) && !existingCoworker.workspaceId) {
     throw new ORPCError("BAD_REQUEST", { message: "Coworker workspace not found" });
   }
@@ -259,7 +335,6 @@ export async function updateCoworkerDocument(params: {
     updates.storageKey = buildRuntimeVolumeObjectKey(storagePrefix, nextFilename);
     deletePreviousRuntimeFile = existingDocument.filename !== nextFilename;
   }
-
   let updatedDocument: typeof coworkerDocument.$inferSelect | undefined;
   [updatedDocument] = await params.database
     .update(coworkerDocument)
@@ -286,6 +361,29 @@ export async function updateCoworkerDocument(params: {
       coworkerId: existingDocument.coworkerId,
     });
   }
+  await recordCoworkerDocumentEvent({
+    database: params.database,
+    coworkerId: existingDocument.coworkerId,
+    userId: params.userId,
+    actor: access.actor,
+    origin: params.origin,
+    type: "document_updated",
+    payload: {
+      documentId: updatedDocument.id,
+      before: {
+        filename: existingDocument.filename,
+        mimeType: existingDocument.mimeType,
+        sizeBytes: existingDocument.sizeBytes,
+        description: existingDocument.description,
+      },
+      after: {
+        filename: updatedDocument.filename,
+        mimeType: updatedDocument.mimeType,
+        sizeBytes: updatedDocument.sizeBytes,
+        description: updatedDocument.description,
+      },
+    },
+  });
 
   return {
     id: updatedDocument.id,
@@ -333,6 +431,7 @@ export async function deleteCoworkerDocument(params: {
   database: Database;
   userId: string;
   documentId: string;
+  origin?: "direct" | "runtime";
 }): Promise<{ success: true; filename: string }> {
   const existingDocument = await params.database.query.coworkerDocument.findFirst({
     where: eq(coworkerDocument.id, params.documentId),
@@ -347,17 +446,12 @@ export async function deleteCoworkerDocument(params: {
     throw new ORPCError("NOT_FOUND", { message: "Document not found" });
   }
 
-  const existingCoworker = await params.database.query.coworker.findFirst({
-    where: and(eq(coworker.id, existingDocument.coworkerId), eq(coworker.ownerId, params.userId)),
-    columns: {
-      id: true,
-      workspaceId: true,
-    },
+  const access = await requireEditableCoworkerForDocument({
+    database: params.database,
+    coworkerId: existingDocument.coworkerId,
+    userId: params.userId,
   });
-
-  if (!existingCoworker) {
-    throw new ORPCError("NOT_FOUND", { message: "Document not found" });
-  }
+  const existingCoworker = access.coworker;
 
   if (existingCoworker.workspaceId) {
     await deleteRuntimeVolumeFile({
@@ -368,6 +462,18 @@ export async function deleteCoworkerDocument(params: {
       relativePath: existingDocument.filename,
     }).catch(() => undefined);
   }
+  await recordCoworkerDocumentEvent({
+    database: params.database,
+    coworkerId: existingDocument.coworkerId,
+    userId: params.userId,
+    actor: access.actor,
+    origin: params.origin,
+    type: "document_removed",
+    payload: {
+      documentId: existingDocument.id,
+      filename: existingDocument.filename,
+    },
+  });
   await params.database
     .delete(coworkerDocument)
     .where(eq(coworkerDocument.id, existingDocument.id));

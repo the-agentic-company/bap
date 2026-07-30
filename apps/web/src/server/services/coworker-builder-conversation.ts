@@ -1,31 +1,9 @@
-import { conversation, coworker } from "@bap/db/schema";
+import { conversation, coworkerBuilderChat } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 
-type BuilderConversationDatabase = {
-  query: {
-    conversation: {
-      findFirst: (args: unknown) => Promise<{
-        id: string;
-        autoApprove: boolean;
-        workspaceId: string | null;
-        userId: string;
-        type: string;
-      } | null>;
-    };
-  };
-  insert: (table: typeof conversation) => {
-    values: (values: typeof conversation.$inferInsert) => {
-      returning: (fields: { id: typeof conversation.id }) => Promise<Array<{ id: string }>>;
-    };
-  };
-  update: (table: typeof conversation | typeof coworker) => {
-    set: (values: unknown) => {
-      where: (clause: unknown) => Promise<unknown> | { returning?: unknown };
-    };
-  };
-};
+type BuilderConversationDatabase = typeof import("@bap/db/client").db;
 
 export async function getOrCreateCoworkerBuilderConversation(input: {
   database: BuilderConversationDatabase;
@@ -40,10 +18,18 @@ export async function getOrCreateCoworkerBuilderConversation(input: {
   };
 }): Promise<{ conversationId: string }> {
   const wf = input.coworker;
+  const association = await input.database.query.coworkerBuilderChat.findFirst({
+    where: and(
+      eq(coworkerBuilderChat.coworkerId, wf.id),
+      eq(coworkerBuilderChat.userId, input.userId),
+    ),
+    columns: { conversationId: true },
+  });
+  const associatedConversationId = association?.conversationId ?? wf.builderConversationId;
 
-  if (wf.builderConversationId) {
+  if (associatedConversationId) {
     const existing = await input.database.query.conversation.findFirst({
-      where: eq(conversation.id, wf.builderConversationId),
+      where: eq(conversation.id, associatedConversationId),
       columns: {
         id: true,
         autoApprove: true,
@@ -71,6 +57,13 @@ export async function getOrCreateCoworkerBuilderConversation(input: {
         existing.workspaceId === input.workspaceId &&
         existing.type === "coworker"
       ) {
+        if (!association) {
+          await input.database.insert(coworkerBuilderChat).values({
+            coworkerId: wf.id,
+            userId: input.userId,
+            conversationId: existing.id,
+          });
+        }
         return { conversationId: existing.id };
       }
     }
@@ -95,16 +88,11 @@ export async function getOrCreateCoworkerBuilderConversation(input: {
     });
   }
 
-  await input.database
-    .update(coworker)
-    .set({ builderConversationId: created.id })
-    .where(
-      and(
-        eq(coworker.id, wf.id),
-        eq(coworker.ownerId, input.userId),
-        eq(coworker.workspaceId, input.workspaceId),
-      ),
-    );
+  await input.database.insert(coworkerBuilderChat).values({
+    coworkerId: wf.id,
+    userId: input.userId,
+    conversationId: created.id,
+  });
 
   return { conversationId: created.id };
 }

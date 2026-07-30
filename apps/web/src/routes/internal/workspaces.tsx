@@ -59,6 +59,7 @@ type WorkspaceData = {
   billingPlanId: string;
   createdAt: string | Date | null;
   coworkerCount: number;
+  requiresTwoFactor: boolean;
   members: WorkspaceMember[];
 };
 
@@ -357,6 +358,11 @@ function WorkspaceCard({
             <span className="text-muted-foreground bg-muted/60 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase">
               {workspace.billingPlanId}
             </span>
+            {workspace.requiresTwoFactor ? (
+              <span className="bg-emerald-500/10 text-emerald-700 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase">
+                2FA required
+              </span>
+            ) : null}
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground bg-muted/60 flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium">

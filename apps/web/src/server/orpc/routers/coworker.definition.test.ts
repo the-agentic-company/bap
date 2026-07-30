@@ -210,10 +210,10 @@ describe("coworkerRouter", () => {
 
     expect(generateCoworkerMetadataOnFirstPromptFillMock).toHaveBeenCalled();
     expect(context.mocks.updateSetMock).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        name: expect.any(String),
-        description: expect.any(String),
-        username: expect.any(String),
+      expect.objectContaining({
+        name: "Existing",
+        description: "Existing description",
+        username: "existing",
       }),
     );
   });
@@ -311,6 +311,9 @@ describe("coworkerRouter", () => {
     const context = createContext();
     context.db.query.coworker.findFirst.mockResolvedValue({
       id: "wf-1",
+      ownerId: "user-1",
+      workspaceId: "ws-1",
+      visibility: "private",
       name: "Coworker",
       builderConversationId: null,
     });
@@ -331,10 +334,48 @@ describe("coworkerRouter", () => {
     );
   });
 
+  it("creates a private Builder Chat association for a member editing a shared coworker", async () => {
+    const context = createContext();
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-shared",
+      ownerId: "user-2",
+      createdByUserId: "user-2",
+      workspaceId: "ws-1",
+      visibility: "workspace",
+      name: "Shared Coworker",
+      builderConversationId: null,
+      model: DEFAULT_MODEL,
+      authSource: null,
+    });
+    context.mocks.insertReturningMock.mockResolvedValue([{ id: "conv-member-1" }]);
+
+    const result = await coworkerRouterAny.getOrCreateBuilderConversation({
+      input: { id: "wf-shared" },
+      context,
+    });
+
+    expect(result).toEqual({ conversationId: "conv-member-1" });
+    expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        type: "coworker",
+        autoApprove: false,
+      }),
+    );
+    expect(context.mocks.insertValuesMock).toHaveBeenCalledWith({
+      coworkerId: "wf-shared",
+      userId: "user-1",
+      conversationId: "conv-member-1",
+    });
+  });
+
   it("forces existing builder conversations to disable auto-approve", async () => {
     const context = createContext();
     context.db.query.coworker.findFirst.mockResolvedValue({
       id: "wf-1",
+      ownerId: "user-1",
+      workspaceId: "ws-1",
+      visibility: "private",
       name: "Coworker",
       builderConversationId: "conv-builder-1",
     });

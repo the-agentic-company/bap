@@ -9,7 +9,7 @@ import {
   normalizeCoworkerToolAccessMode,
   type CoworkerToolAccessMode,
 } from "../../lib/coworker-tool-policy";
-import { coworker } from "@bap/db/schema";
+import { coworker, coworkerBuilderChat } from "@bap/db/schema";
 import { generateCoworkerMetadataOnFirstPromptFill } from "./coworker-metadata";
 import { syncCoworkerScheduleJob } from "./coworker-scheduler";
 import { logger } from "../utils/observability";
@@ -217,34 +217,40 @@ export async function resolveCoworkerBuilderContextByConversation(params: {
 }): Promise<CoworkerBuilderContext | null> {
   const database = params.database as {
     query: {
-      coworker: {
+      coworkerBuilderChat: {
         findFirst: (args: unknown) => Promise<unknown>;
       };
     };
   };
-  const rowUnknown = await database.query.coworker.findFirst({
+  const associationUnknown = await database.query.coworkerBuilderChat.findFirst({
     where: and(
-      eq(coworker.ownerId, params.userId),
-      eq(coworker.builderConversationId, params.conversationId),
+      eq(coworkerBuilderChat.userId, params.userId),
+      eq(coworkerBuilderChat.conversationId, params.conversationId),
     ),
-    columns: {
-      id: true,
-      prompt: true,
-      model: true,
-      toolAccessMode: true,
-      triggerType: true,
-      schedule: true,
-      allowedIntegrations: true,
-      requiresUserInput: true,
-      userInputPrompt: true,
-      updatedAt: true,
+    with: {
+      coworker: {
+        columns: {
+          id: true,
+          prompt: true,
+          model: true,
+          toolAccessMode: true,
+          triggerType: true,
+          schedule: true,
+          allowedIntegrations: true,
+          requiresUserInput: true,
+          userInputPrompt: true,
+          updatedAt: true,
+        },
+      },
     },
   });
 
-  if (!rowUnknown) {
+  if (!associationUnknown || typeof associationUnknown !== "object") {
     return null;
   }
-  const row = coworkerBuilderContextRowSchema.parse(rowUnknown);
+  const row = coworkerBuilderContextRowSchema.parse(
+    (associationUnknown as { coworker?: unknown }).coworker,
+  );
 
   return toBuilderContext({
     id: row.id,
@@ -451,7 +457,7 @@ export async function applyCoworkerEdit(params: {
   };
 
   const existingUnknown = await database.query.coworker.findFirst({
-    where: and(eq(coworker.id, params.coworkerId), eq(coworker.ownerId, params.userId)),
+    where: eq(coworker.id, params.coworkerId),
     columns: {
       id: true,
       ownerId: true,
@@ -639,7 +645,6 @@ export async function applyCoworkerEdit(params: {
     .where(
       and(
         eq(coworker.id, existing.id),
-        eq(coworker.ownerId, params.userId),
         eq(coworker.updatedAt, new Date(params.baseUpdatedAt)),
       ),
     )
@@ -661,7 +666,7 @@ export async function applyCoworkerEdit(params: {
 
   if (!updated) {
     const latestUnknown = await database.query.coworker.findFirst({
-      where: and(eq(coworker.id, existing.id), eq(coworker.ownerId, params.userId)),
+      where: eq(coworker.id, existing.id),
       columns: {
         id: true,
         prompt: true,
@@ -698,7 +703,7 @@ export async function applyCoworkerEdit(params: {
   }
 
   const verifiedUnknown = await database.query.coworker.findFirst({
-    where: and(eq(coworker.id, updated.id), eq(coworker.ownerId, params.userId)),
+    where: eq(coworker.id, updated.id),
     columns: {
       id: true,
       name: true,

@@ -2,9 +2,10 @@ import {
   reconcileStaleCoworkerRunsForCoworker,
   reconcileStaleCoworkerRunsForCoworkers,
 } from "@bap/core/server/services/coworker-service";
+import { decideCoworkerRunContentAccess } from "@bap/core/server/services/coworker-run-visibility";
 import { generation, coworker, coworkerRun, coworkerRunEvent } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, desc, eq, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import { z } from "zod";
 
 type RunViewContext = {
@@ -60,6 +61,18 @@ function resolveRunFailureKind(input: {
   );
 }
 
+function accessibleCoworkerFilter(input: { userId: string; workspaceId: string }) {
+  return and(
+    eq(coworker.workspaceId, input.workspaceId),
+    or(
+      eq(coworker.visibility, "workspace"),
+      eq(coworker.createdByUserId, input.userId),
+      // Compatibility for rows that have not yet been backfilled.
+      eq(coworker.ownerId, input.userId),
+    ),
+  );
+}
+
 export async function getCoworkerRunView(input: {
   context: RunViewContext;
   workspaceId: string;
@@ -67,7 +80,6 @@ export async function getCoworkerRunView(input: {
 }) {
   const runFilter = and(
     eq(coworkerRun.id, input.runId),
-    eq(coworkerRun.ownerId, input.context.user.id),
     eq(coworkerRun.workspaceId, input.workspaceId),
     isNull(coworkerRun.syntheticKind),
   );
@@ -93,13 +105,19 @@ export async function getCoworkerRunView(input: {
   const wf = await input.context.db.query.coworker.findFirst({
     where: and(
       eq(coworker.id, run.coworkerId),
-      eq(coworker.ownerId, input.context.user.id),
-      eq(coworker.workspaceId, input.workspaceId),
+      accessibleCoworkerFilter({
+        userId: input.context.user.id,
+        workspaceId: input.workspaceId,
+      }),
     ),
     columns: {
       id: true,
       name: true,
       username: true,
+      visibility: true,
+      sharedAt: true,
+      createdByUserId: true,
+      ownerId: true,
     },
   });
 
@@ -107,20 +125,33 @@ export async function getCoworkerRunView(input: {
     throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
   }
 
-  const events = await input.context.db.query.coworkerRunEvent.findMany({
-    where: eq(coworkerRunEvent.coworkerRunId, run.id),
-    orderBy: (evt, { asc }) => [asc(evt.createdAt)],
+  const visibility = decideCoworkerRunContentAccess({
+    actorUserId: input.context.user.id,
+    isActiveWorkspaceMember: true,
+    coworkerVisibility: wf.visibility === "workspace" || wf.sharedAt ? "workspace" : "private",
+    coworkerCreatedByUserId: wf.createdByUserId ?? wf.ownerId,
+    workspaceRole: null,
+    startKind: run.startKind,
+    initiatedByUserId: run.initiatedByUserId,
   });
-  const gen = run.generationId
-    ? await input.context.db.query.generation.findFirst({
-        where: eq(generation.id, run.generationId),
-        columns: {
-          conversationId: true,
-          debugInfo: true,
-          failureKind: true,
-        },
+  const canReadContent = visibility.allowed;
+  const events = canReadContent
+    ? await input.context.db.query.coworkerRunEvent.findMany({
+        where: eq(coworkerRunEvent.coworkerRunId, run.id),
+        orderBy: (evt, { asc }) => [asc(evt.createdAt)],
       })
-    : null;
+    : [];
+  const gen =
+    canReadContent && run.generationId
+      ? await input.context.db.query.generation.findFirst({
+          where: eq(generation.id, run.generationId),
+          columns: {
+            conversationId: true,
+            debugInfo: true,
+            failureKind: true,
+          },
+        })
+      : null;
 
   return {
     id: run.id,
@@ -128,19 +159,25 @@ export async function getCoworkerRunView(input: {
     coworkerName: wf.name,
     coworkerUsername: wf.username,
     status: run.status,
-    triggerPayload: run.triggerPayload,
+    startKind: run.startKind,
+    initiatedByUserId: run.initiatedByUserId,
+    executionUserId: run.executionUserId,
+    contentVisible: canReadContent,
+    triggerPayload: canReadContent ? run.triggerPayload : null,
     generationId: run.generationId,
-    conversationId: run.conversationId ?? gen?.conversationId ?? null,
+    conversationId: canReadContent ? (run.conversationId ?? gen?.conversationId ?? null) : null,
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
-    errorMessage: run.errorMessage,
-    failureKind: resolveRunFailureKind({
-      runFailureKind: run.failureKind,
-      runDebugInfo: run.debugInfo,
-      generationFailureKind: gen?.failureKind,
-      generationDebugInfo: gen?.debugInfo,
-    }),
-    debugInfo: run.debugInfo ?? gen?.debugInfo ?? null,
+    errorMessage: canReadContent ? run.errorMessage : null,
+    failureKind: canReadContent
+      ? resolveRunFailureKind({
+          runFailureKind: run.failureKind,
+          runDebugInfo: run.debugInfo,
+          generationFailureKind: gen?.failureKind,
+          generationDebugInfo: gen?.debugInfo,
+        })
+      : null,
+    debugInfo: canReadContent ? (run.debugInfo ?? gen?.debugInfo ?? null) : null,
     events: events.map((evt) => ({
       id: evt.id,
       type: evt.type,
@@ -161,7 +198,6 @@ export async function listCoworkerRunViews(input: {
   const runs = await input.context.db.query.coworkerRun.findMany({
     where: and(
       eq(coworkerRun.coworkerId, input.coworkerId),
-      eq(coworkerRun.ownerId, input.context.user.id),
       eq(coworkerRun.workspaceId, input.workspaceId),
       isNull(coworkerRun.syntheticKind),
     ),
@@ -174,6 +210,9 @@ export async function listCoworkerRunViews(input: {
     status: run.status,
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
+    startKind: run.startKind,
+    initiatedByUserId: run.initiatedByUserId,
+    executionUserId: run.executionUserId,
     errorMessage: run.errorMessage,
     failureKind: run.failureKind,
   }));
@@ -188,10 +227,21 @@ export async function listWorkspaceCoworkerRunViews(input: {
   coworkerId?: string;
 }) {
   const cursor = decodeRunCursor(input.cursor);
+  const accessibleCoworkers = await input.context.db.query.coworker.findMany({
+    where: accessibleCoworkerFilter({
+      userId: input.context.user.id,
+      workspaceId: input.workspaceId,
+    }),
+    columns: { id: true },
+  });
+  const accessibleCoworkerIds = accessibleCoworkers.map((item) => item.id);
+  if (accessibleCoworkerIds.length === 0) {
+    return { runs: [], nextCursor: undefined };
+  }
   const runs = await input.context.db.query.coworkerRun.findMany({
     where: and(
-      eq(coworkerRun.ownerId, input.context.user.id),
       eq(coworkerRun.workspaceId, input.workspaceId),
+      inArray(coworkerRun.coworkerId, accessibleCoworkerIds),
       isNull(coworkerRun.syntheticKind),
       ...(input.status ? [eq(coworkerRun.status, input.status)] : []),
       ...(input.coworkerId ? [eq(coworkerRun.coworkerId, input.coworkerId)] : []),
@@ -237,12 +287,9 @@ export async function listWorkspaceCoworkerRunViews(input: {
       status: run.status,
       startedAt: run.startedAt,
       finishedAt: run.finishedAt,
-      errorMessage: run.errorMessage,
-      failureKind: resolveRunFailureKind({
-        runFailureKind: run.failureKind,
-        generationFailureKind: run.generation?.failureKind,
-      }),
-      conversationId: run.conversationId ?? run.generation?.conversationId ?? null,
+      startKind: run.startKind,
+      initiatedByUserId: run.initiatedByUserId,
+      executionUserId: run.executionUserId,
       coworkerId: run.coworker?.id ?? null,
       coworkerName: run.coworker?.name?.trim() || "Untitled",
     })),

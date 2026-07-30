@@ -46,6 +46,7 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   onboardedAt: timestamp("onboarded_at"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
 });
 
 export const session = pgTable(
@@ -241,6 +242,7 @@ export const organization = pgTable(
     autumnCustomerId: text("autumn_customer_id"),
     imageStorageKey: text("image_storage_key"),
     imageMimeType: text("image_mime_type"),
+    requiresTwoFactor: boolean("requires_two_factor").default(false).notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
@@ -250,6 +252,23 @@ export const organization = pgTable(
 );
 
 export const workspace = organization;
+
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    verified: boolean("verified").default(true),
+  },
+  (table) => [
+    index("twoFactor_secret_idx").on(table.secret),
+    index("twoFactor_userId_idx").on(table.userId),
+  ],
+);
 
 export const member = pgTable(
   "member",
@@ -571,5 +590,6 @@ export const authSchema = {
   organization,
   member,
   invitation,
+  twoFactor,
   deviceCode,
 };

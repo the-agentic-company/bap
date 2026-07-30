@@ -8,6 +8,11 @@ import {
   COWORKER_RUN_BACKLOG_LIMIT,
   COWORKER_RUN_BACKLOG_STATUSES,
 } from "@bap/core/server/services/coworker-run-policy";
+import {
+  applyCanonicalCoworkerChange,
+  type CoworkerConfigurationPatch,
+} from "@bap/core/server/services/coworker-change-service";
+import { createDrizzleCoworkerChangeRepository } from "@bap/core/server/services/coworker-change-repository";
 import { parseModelReference } from "@bap/core/lib/model-reference";
 import {
   normalizeModelAuthSource,
@@ -22,7 +27,13 @@ import {
   syncCoworkerScheduleJob,
 } from "@bap/core/server/services/coworker-scheduler";
 import type { IntegrationType } from "@bap/core/server/oauth/config";
-import { coworker, coworkerFolder, coworkerRun, user } from "@bap/db/schema";
+import {
+  coworker,
+  coworkerFolder,
+  coworkerMemberPreference,
+  coworkerRun,
+  user,
+} from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { resolveSelectedWorkspaceMcpServerIds } from "@/server/services/coworker-toolbox";
@@ -126,9 +137,14 @@ async function resolveCreateFolderSharing(input: {
   workspaceId: string;
   userId: string;
   folderId: string | null;
+  requestedVisibility: "private" | "workspace";
 }) {
   if (!input.folderId) {
-    return { folderId: null, sharedAt: null };
+    return {
+      folderId: null,
+      sharedAt: input.requestedVisibility === "workspace" ? new Date() : null,
+      visibility: input.requestedVisibility,
+    };
   }
 
   const folders = await input.context.db.query.coworkerFolder.findMany({
@@ -160,6 +176,7 @@ async function resolveCreateFolderSharing(input: {
   return {
     folderId: input.folderId,
     sharedAt: current.visibility === "workspace" ? new Date() : null,
+    visibility: current.visibility,
   };
 }
 
@@ -209,6 +226,7 @@ type CoworkerCreateInput = {
   allowedWorkspaceMcpServerIds: string[];
   allowedSkillSlugs: string[];
   folderId?: string | null;
+  visibility?: "private" | "workspace";
   schedule?: typeof coworker.$inferInsert.schedule;
   requiresUserInput?: boolean;
   userInputPrompt?: string | null;
@@ -226,7 +244,7 @@ export async function createCoworkerProfile(input: {
   const coworkerId = crypto.randomUUID();
   const dbUser = await input.context.db.query.user.findFirst({
     where: eq(user.id, input.context.user.id),
-    columns: { role: true },
+    columns: { role: true, name: true, image: true },
   });
   assertModelAllowedForRole(input.payload.model, dbUser?.role);
   const resolvedAuthSource = resolveCoworkerAuthSource(
@@ -256,6 +274,7 @@ export async function createCoworkerProfile(input: {
     workspaceId: input.workspaceId,
     userId: input.context.user.id,
     folderId: input.payload.folderId ?? null,
+    requestedVisibility: input.payload.visibility ?? "private",
   });
 
   const [created] = await input.context.db
@@ -266,9 +285,15 @@ export async function createCoworkerProfile(input: {
       description: descriptionToSave,
       username: usernameToSave,
       ownerId: input.context.user.id,
+      createdByUserId: input.context.user.id,
+      createdByNameSnapshot: dbUser?.name ?? null,
+      createdByAvatarSnapshot: dbUser?.image ?? null,
       workspaceId: input.workspaceId,
       folderId: initialFolder.folderId,
       sharedAt: initialFolder.sharedAt,
+      visibility: initialFolder.visibility,
+      automationOwnerUserId: input.context.user.id,
+      automationOwnerConsentedAt: new Date(),
       status: "on",
       triggerType: input.payload.triggerType,
       prompt: input.payload.prompt,
@@ -310,7 +335,9 @@ type CoworkerUpdateInput = Partial<CoworkerCreateInput> & {
   id: string;
   status?: "on" | "off";
   isPinned?: boolean;
+  isHidden?: boolean;
   schedule?: typeof coworker.$inferInsert.schedule | null;
+  expectedRevision?: number;
 };
 
 async function resolveUpdatedWorkspaceMcpServerIds(input: {
@@ -355,6 +382,7 @@ export async function updateCoworkerProfile(input: {
   workspaceId: string;
   existing: typeof coworker.$inferSelect;
   payload: CoworkerUpdateInput;
+  membershipRole: string | null;
 }) {
   const { existing } = input;
   if (input.payload.model !== undefined) {
@@ -366,6 +394,11 @@ export async function updateCoworkerProfile(input: {
   }
 
   const updates: Partial<typeof coworker.$inferInsert> = {};
+  if (input.payload.visibility !== undefined && existing.folderId) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Folder-contained coworker visibility is controlled by its folder.",
+    });
+  }
   const nextPrompt = input.payload.prompt ?? existing.prompt;
   const nextName =
     input.payload.name !== undefined ? input.payload.name.trim() : (existing.name ?? "");
@@ -431,9 +464,6 @@ export async function updateCoworkerProfile(input: {
   if (input.payload.autoApprove !== undefined) {
     updates.autoApprove = input.payload.autoApprove;
   }
-  if (input.payload.isPinned !== undefined) {
-    updates.isPinned = input.payload.isPinned;
-  }
   if (input.payload.toolAccessMode !== undefined) {
     updates.toolAccessMode = input.payload.toolAccessMode;
   }
@@ -457,6 +487,9 @@ export async function updateCoworkerProfile(input: {
   }
   if (input.payload.userInputPrompt !== undefined) {
     updates.userInputPrompt = nextUserInputPrompt;
+  }
+  if (input.payload.visibility !== undefined) {
+    updates.visibility = input.payload.visibility;
   }
 
   const metadataUpdates = await generateCoworkerMetadataOnFirstPromptFill({
@@ -492,25 +525,86 @@ export async function updateCoworkerProfile(input: {
   });
   Object.assign(updates, metadataUpdates);
 
-  const result = await input.context.db
-    .update(coworker)
-    .set(updates)
-    .where(
-      and(
-        eq(coworker.id, input.payload.id),
-        eq(coworker.ownerId, input.context.user.id),
-        eq(coworker.workspaceId, input.workspaceId),
-      ),
-    )
-    .returning({
-      id: coworker.id,
-      status: coworker.status,
-      triggerType: coworker.triggerType,
-      schedule: coworker.schedule,
-    });
+  const canonicalFieldNames = new Set([
+    "name",
+    "description",
+    "username",
+    "status",
+    "triggerType",
+    "prompt",
+    "model",
+    "authSource",
+    "autoApprove",
+    "toolAccessMode",
+    "allowedIntegrations",
+    "allowedCustomIntegrations",
+    "allowedWorkspaceMcpServerIds",
+    "allowedSkillSlugs",
+    "schedule",
+    "requiresUserInput",
+    "userInputPrompt",
+    "visibility",
+  ]);
+  const canonicalChanges = Object.fromEntries(
+    Object.entries(updates).filter(([field]) => canonicalFieldNames.has(field)),
+  ) as CoworkerConfigurationPatch;
+  let changedConfiguration:
+    | Extract<Awaited<ReturnType<typeof applyCanonicalCoworkerChange>>, { kind: "applied" }>
+    | undefined;
 
-  if (result.length === 0) {
-    throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+  if (Object.keys(canonicalChanges).length > 0) {
+    const actor = await input.context.db.query.user.findFirst({
+      where: eq(user.id, input.context.user.id),
+      columns: { name: true, image: true },
+    });
+    const changeResult = await applyCanonicalCoworkerChange({
+      repository: createDrizzleCoworkerChangeRepository(input.context.db),
+      coworkerId: existing.id,
+      actor: {
+        userId: input.context.user.id,
+        name: actor?.name ?? null,
+        avatar: actor?.image ?? null,
+        workspaceRole: input.membershipRole,
+        isActiveWorkspaceMember: true,
+      },
+      origin: "direct",
+      expectedRevision: input.payload.expectedRevision ?? existing.configurationRevision ?? 0,
+      changes: canonicalChanges,
+    });
+    if (changeResult.kind === "not_found") {
+      throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+    }
+    if (changeResult.kind === "forbidden") {
+      throw new ORPCError("FORBIDDEN", { message: "Coworker action is not allowed" });
+    }
+    if (changeResult.kind === "conflict") {
+      throw new ORPCError("CONFLICT", {
+        message: "Coworker changed since this edit was prepared",
+        data: changeResult,
+      });
+    }
+    if (changeResult.kind === "applied") {
+      changedConfiguration = changeResult;
+    }
+  }
+
+  if (input.payload.isPinned !== undefined || input.payload.isHidden !== undefined) {
+    await input.context.db
+      .insert(coworkerMemberPreference)
+      .values({
+        coworkerId: existing.id,
+        userId: input.context.user.id,
+        isPinned: input.payload.isPinned ?? false,
+        isHidden: input.payload.isHidden ?? false,
+      })
+      .onConflictDoUpdate({
+        target: [coworkerMemberPreference.coworkerId, coworkerMemberPreference.userId],
+        set: {
+          ...(input.payload.isPinned !== undefined ? { isPinned: input.payload.isPinned } : {}),
+          ...(input.payload.isHidden !== undefined ? { isHidden: input.payload.isHidden } : {}),
+          updatedAt: new Date(),
+        },
+      });
   }
 
   const shouldSyncSchedule =
@@ -520,7 +614,13 @@ export async function updateCoworkerProfile(input: {
 
   if (shouldSyncSchedule) {
     try {
-      await syncCoworkerScheduleJob(result[0]!);
+      const configuration = changedConfiguration?.coworker.configuration;
+      await syncCoworkerScheduleJob({
+        id: existing.id,
+        status: configuration?.status ?? existing.status,
+        triggerType: configuration?.triggerType ?? existing.triggerType,
+        schedule: configuration?.schedule ?? existing.schedule,
+      });
     } catch (error) {
       console.error(
         `[coworker] failed to sync scheduler after update (${input.payload.id})`,

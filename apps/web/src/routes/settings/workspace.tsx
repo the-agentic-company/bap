@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -21,6 +22,7 @@ import {
   useInviteWorkspaceMembers,
   useRemoveWorkspaceImage,
   useRenameWorkspace,
+  useSetWorkspaceTwoFactorRequirement,
   useUpdateWorkspaceImage,
   useWorkspaceMembers,
 } from "@/orpc/hooks/workspace";
@@ -35,6 +37,7 @@ const EMPTY_WORKSPACE_OPTIONS: Array<{
   name: string;
   imageUrl?: string | null;
   role?: string;
+  requiresTwoFactor?: boolean;
 }> = [];
 
 type InviteRole = "admin" | "member";
@@ -173,6 +176,7 @@ function WorkspaceSettingsPage() {
   const inviteMembers = useInviteWorkspaceMembers();
   const cancelInvitation = useCancelWorkspaceInvitation();
   const renameWorkspace = useRenameWorkspace();
+  const setTwoFactorRequirement = useSetWorkspaceTwoFactorRequirement();
   const updateWorkspaceImage = useUpdateWorkspaceImage();
   const removeWorkspaceImage = useRemoveWorkspaceImage();
   const switchWorkspace = useSwitchWorkspace();
@@ -186,6 +190,7 @@ function WorkspaceSettingsPage() {
   const activeWorkspace = workspaceOptions.find((workspace) => workspace.id === activeWorkspaceId);
   const activeWorkspaceName = activeWorkspace?.name ?? "Workspace";
   const activeWorkspaceImageUrl = activeWorkspace?.imageUrl ?? null;
+  const requiresTwoFactor = activeWorkspace?.requiresTwoFactor === true;
   const { data: membersData, isLoading: membersLoading } = useWorkspaceMembers(activeWorkspaceId);
 
   const canInviteMembers =
@@ -310,6 +315,36 @@ function WorkspaceSettingsPage() {
     [activeWorkspaceId, renameWorkspace, workspaceNameInput, t],
   );
 
+  const handleTwoFactorRequirementChange = useCallback(
+    async (required: boolean) => {
+      if (!activeWorkspaceId) {
+        return;
+      }
+
+      try {
+        await setTwoFactorRequirement.mutateAsync({
+          workspaceId: activeWorkspaceId,
+          required,
+        });
+        toast.success(
+          required
+            ? t("Two-factor authentication is now required.")
+            : t("Two-factor authentication is now optional."),
+        );
+        if (required) {
+          void navigate({
+            href: "/two-factor/setup?callbackUrl=%2Fsettings%2Fworkspace",
+          });
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to update the security policy.",
+        );
+      }
+    },
+    [activeWorkspaceId, navigate, setTwoFactorRequirement, t],
+  );
+
   const handleInviteSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -413,6 +448,32 @@ function WorkspaceSettingsPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="rounded-lg border p-5">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h3 className="text-sm font-medium">
+              <T>Two-factor authentication</T>
+            </h3>
+            <p className="text-muted-foreground mt-1 text-sm">
+              <T>
+                Require every member to enable an authenticator app before using this Workspace.
+              </T>
+            </p>
+          </div>
+          <Switch
+            aria-label={t("Require two-factor authentication")}
+            checked={requiresTwoFactor}
+            disabled={!canInviteMembers || setTwoFactorRequirement.isPending}
+            onCheckedChange={handleTwoFactorRequirementChange}
+          />
+        </div>
+        {!canInviteMembers ? (
+          <p className="text-muted-foreground mt-3 text-sm">
+            <T>Workspace admin access is required to change this policy.</T>
+          </p>
+        ) : null}
+      </section>
 
       <section className="rounded-lg border p-5">
         <div>
@@ -601,7 +662,20 @@ function WorkspaceSettingsPage() {
                   <p className="truncate text-sm font-medium">{member.name}</p>
                   <p className="text-muted-foreground truncate text-sm">{member.email}</p>
                 </div>
-                <span className="text-muted-foreground text-xs capitalize">{member.role}</span>
+                <div className="ml-3 flex shrink-0 items-center gap-2">
+                  {requiresTwoFactor ? (
+                    <span
+                      className={
+                        member.twoFactorEnabled
+                          ? "text-emerald-700 text-xs"
+                          : "text-amber-700 text-xs"
+                      }
+                    >
+                      {member.twoFactorEnabled ? "2FA on" : "Setup required"}
+                    </span>
+                  ) : null}
+                  <span className="text-muted-foreground text-xs capitalize">{member.role}</span>
+                </div>
               </div>
             ))
           ) : (

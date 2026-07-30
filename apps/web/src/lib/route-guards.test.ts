@@ -17,6 +17,8 @@ const {
   isSelfHostedEditionMock,
   redirectMock,
   resolveSessionPrincipalWorkspaceIdMock,
+  userFindFirstMock,
+  workspaceFindFirstMock,
 } = vi.hoisted(() => ({
   getRequestMock: vi.fn<() => Request>(),
   getRequestSessionMock: vi.fn<() => Promise<unknown>>(),
@@ -24,6 +26,17 @@ const {
   redirectMock: vi.fn<(options: unknown) => never>(),
   resolveSessionPrincipalWorkspaceIdMock:
     vi.fn<(userId: string, activeOrganizationId?: string | null) => Promise<string>>(),
+  userFindFirstMock: vi.fn<() => Promise<unknown>>(),
+  workspaceFindFirstMock: vi.fn<() => Promise<unknown>>(),
+}));
+
+vi.mock("@bap/db/client", () => ({
+  db: {
+    query: {
+      user: { findFirst: userFindFirstMock },
+      workspace: { findFirst: workspaceFindFirstMock },
+    },
+  },
 }));
 
 vi.mock("@/server/session-principal-workspace", () => ({
@@ -80,6 +93,8 @@ describe("route guards", () => {
     getRequestMock.mockReturnValue(new Request("http://localhost:3000/chat"));
     getRequestSessionMock.mockResolvedValue(null);
     resolveSessionPrincipalWorkspaceIdMock.mockResolvedValue("workspace-1");
+    userFindFirstMock.mockResolvedValue({ twoFactorEnabled: false });
+    workspaceFindFirstMock.mockResolvedValue({ requiresTwoFactor: false });
     isSelfHostedEditionMock.mockReturnValue(false);
     redirectMock.mockImplementation((options: unknown) => {
       throw options;
@@ -97,9 +112,11 @@ describe("route guards", () => {
         image: null,
         name: null,
         role: "admin",
+        twoFactorEnabled: false,
       },
       edition: "cloud",
       isAdmin: true,
+      requiresTwoFactorSetup: false,
       worktreeAutoLoginConfigured: false,
     });
     expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1", null);
@@ -153,6 +170,26 @@ describe("route guards", () => {
         userId: "user-1",
         activeWorkspaceId: "workspace-1",
       },
+    });
+  });
+
+  it("redirects members to setup when their active Workspace requires two-factor auth", async () => {
+    mockSession();
+    workspaceFindFirstMock.mockResolvedValue({ requiresTwoFactor: true });
+
+    await expect(requireSession("/chat")).rejects.toEqual({
+      href: "/two-factor/setup?callbackUrl=%2Fchat",
+    });
+  });
+
+  it("allows enrolled members into a Workspace that requires two-factor auth", async () => {
+    mockSession();
+    userFindFirstMock.mockResolvedValue({ twoFactorEnabled: true });
+    workspaceFindFirstMock.mockResolvedValue({ requiresTwoFactor: true });
+
+    await expect(requireSession("/chat")).resolves.toMatchObject({
+      requiresTwoFactorSetup: false,
+      principal: { twoFactorEnabled: true },
     });
   });
 

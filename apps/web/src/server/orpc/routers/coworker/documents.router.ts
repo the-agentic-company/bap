@@ -3,7 +3,7 @@ import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../../middleware";
-import { requireOwnedCoworkerInActiveWorkspace } from "./access";
+import { requireEditableCoworkerInActiveWorkspace } from "./access";
 import {
   deleteCoworkerDocument,
   updateCoworkerDocument,
@@ -22,7 +22,7 @@ const uploadDocument = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    await requireOwnedCoworkerInActiveWorkspace(context, input.coworkerId);
+    await requireEditableCoworkerInActiveWorkspace(context, input.coworkerId);
     return uploadCoworkerDocument({
       database: context.db as typeof import("@bap/db/client").db,
       userId: context.user.id,
@@ -47,7 +47,7 @@ const deleteDocument = protectedProcedure
       throw new ORPCError("NOT_FOUND", { message: "Document not found" });
     }
 
-    await requireOwnedCoworkerInActiveWorkspace(context, existingDocument.coworkerId);
+    await requireEditableCoworkerInActiveWorkspace(context, existingDocument.coworkerId);
     return deleteCoworkerDocument({
       database: context.db as typeof import("@bap/db/client").db,
       userId: context.user.id,
@@ -76,7 +76,7 @@ const updateDocument = protectedProcedure
       throw new ORPCError("NOT_FOUND", { message: "Document not found" });
     }
 
-    await requireOwnedCoworkerInActiveWorkspace(context, existingDocument.coworkerId);
+    await requireEditableCoworkerInActiveWorkspace(context, existingDocument.coworkerId);
     return updateCoworkerDocument({
       database: context.db as typeof import("@bap/db/client").db,
       userId: context.user.id,
@@ -106,7 +106,7 @@ const getDocumentUrl = protectedProcedure
       throw new ORPCError("NOT_FOUND", { message: "Document not found" });
     }
 
-    await requireOwnedCoworkerInActiveWorkspace(context, existingDocument.coworkerId);
+    await requireEditableCoworkerInActiveWorkspace(context, existingDocument.coworkerId);
     return {
       url: `/api/coworkers/documents/${encodeURIComponent(input.id)}/download`,
       filename: existingDocument.filename,

@@ -159,7 +159,11 @@ export const DEFAULT_MODEL = "openai/gpt-5.5";
 
 export function createContext() {
   const insertReturningMock = vi.fn<VitestProcedure>();
-  const insertValuesMock = vi.fn<VitestProcedure>(() => ({ returning: insertReturningMock }));
+  const insertOnConflictDoUpdateMock = vi.fn<VitestProcedure>();
+  const insertValuesMock = vi.fn<VitestProcedure>(() => ({
+    returning: insertReturningMock,
+    onConflictDoUpdate: insertOnConflictDoUpdateMock,
+  }));
   const insertMock = vi.fn<VitestProcedure>(() => ({ values: insertValuesMock }));
 
   const updateReturningMock = vi.fn<VitestProcedure>();
@@ -214,6 +218,12 @@ export function createContext() {
         coworkerRunEvent: {
           findMany: vi.fn<VitestProcedure>(),
         },
+        coworkerRevision: {
+          findMany: vi.fn<VitestProcedure>(),
+        },
+        coworkerBuilderChat: {
+          findFirst: vi.fn<VitestProcedure>(),
+        },
         sandboxFile: {
           findMany: vi.fn<VitestProcedure>(),
         },
@@ -242,6 +252,7 @@ export function createContext() {
     mocks: {
       insertReturningMock,
       insertValuesMock,
+      insertOnConflictDoUpdateMock,
       updateSetMock,
       updateReturningMock,
       deleteMock,
@@ -256,6 +267,8 @@ export function createContext() {
   context.db.query.coworker.findMany.mockResolvedValue([]);
   context.db.query.coworkerRun.findMany.mockResolvedValue([]);
   context.db.query.coworkerRunEvent.findMany.mockResolvedValue([]);
+  context.db.query.coworkerRevision.findMany.mockResolvedValue([]);
+  context.db.query.coworkerBuilderChat.findFirst.mockResolvedValue(null);
   context.db.query.coworker.findFirst.mockResolvedValue({
     id: "wf-1",
     ownerId: "user-1",

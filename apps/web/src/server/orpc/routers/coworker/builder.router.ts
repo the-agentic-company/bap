@@ -6,7 +6,7 @@ import {
   coworkerBuilderEditSchema,
 } from "@bap/core/server/services/coworker-builder-service";
 import { protectedProcedure } from "../../middleware";
-import { requireOwnedCoworkerInActiveWorkspace } from "./access";
+import { requireEditableCoworkerInActiveWorkspace } from "./access";
 import { getOrCreateCoworkerBuilderConversation } from "@/server/services/coworker-builder-conversation";
 
 const edit = protectedProcedure
@@ -18,7 +18,7 @@ const edit = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    await requireOwnedCoworkerInActiveWorkspace(context, input.coworkerId);
+    await requireEditableCoworkerInActiveWorkspace(context, input.coworkerId);
     const dbUser = await context.db.query.user.findFirst({
       where: eq(user.id, context.user.id),
       columns: { role: true },
@@ -37,16 +37,14 @@ const edit = protectedProcedure
 const getOrCreateBuilderConversation = protectedProcedure
   .input(z.object({ id: z.string() }))
   .handler(async ({ input, context }) => {
-    const { coworker: ownedCoworker, workspaceId } = await requireOwnedCoworkerInActiveWorkspace(
-      context,
-      input.id,
-    );
+    const { coworker: editableCoworker, workspaceId } =
+      await requireEditableCoworkerInActiveWorkspace(context, input.id);
     const wf = {
-      id: ownedCoworker.id,
-      name: ownedCoworker.name,
-      builderConversationId: ownedCoworker.builderConversationId,
-      model: ownedCoworker.model,
-      authSource: ownedCoworker.authSource,
+      id: editableCoworker.id,
+      name: editableCoworker.name,
+      builderConversationId: editableCoworker.builderConversationId,
+      model: editableCoworker.model,
+      authSource: editableCoworker.authSource,
     };
 
     return getOrCreateCoworkerBuilderConversation({

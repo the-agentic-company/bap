@@ -136,6 +136,30 @@ _Avoid_: agent definition, coworker definition, agent markdown
 A user-configured agent that can start a **Coworker Run** from a manual, scheduled, email, or webhook trigger.
 _Avoid_: bot, automation, worker
 
+**Coworker Visibility**:
+The access boundary of one **Coworker**, either `private` or `workspace`. A top-level Coworker stores its own Coworker Visibility; a folder-contained Coworker inherits the visibility of its top-level **Coworker Folder**. Workspace visibility grants live access to active **Workspace Members** and is distinct from public publication or making a cross-Workspace copy.
+_Avoid_: installed, shared timestamp, public
+
+**Workspace-shared Coworker**:
+One canonical **Coworker** with workspace **Coworker Visibility** that active Workspace members can discover, open, edit, and manually run without creating copies. Its behavior-affecting configuration and **Coworker Revision History** update for everyone, while Builder Chats, personal preferences, and manual-run content remain per-member.
+_Avoid_: installed coworker, shared copy, team bot
+
+**Coworker Creator**:
+The immutable provenance identity for a **Coworker**, shown with the creator's name and avatar. Coworker Creator attribution is not the general access authority or the execution identity for a Workspace-shared Coworker and remains after the creator leaves the Workspace.
+_Avoid_: owner
+
+**Coworker Automation Owner**:
+The active, consenting Workspace member whose authorizations automated schedule, email, and webhook **Coworker Runs** use. If no valid Coworker Automation Owner exists, automated triggers pause while manual runs and editing remain available.
+_Avoid_: owner, creator, service account
+
+**Coworker Revision**:
+One immutable record of an accepted change to canonical Coworker configuration, including its actor, origin, changed fields, and a safe restorable configuration snapshot. Restoring an older Coworker Revision creates a new Coworker Revision rather than rewriting history.
+_Avoid_: audit log, autosave copy
+
+**Coworker Revision History**:
+The ordered product history formed by **Coworker Revisions** and attributed Coworker document or lifecycle events. Coworker Revision History explains who changed what on one Coworker; it is not a platform-wide **Audit Trail** and does not provide byte-level Coworker Document restoration.
+_Avoid_: audit trail, run history
+
 **Coworker Folder**:
 An exclusive placement and visibility container for **Coworkers** on the coworkers page. A **Coworker Folder** can contain **Coworkers** and child **Coworker Folders**; a **Coworker** or **Coworker Folder** with no parent appears at the top level of the page. Only top-level **Coworker Folders** choose a visibility boundary; nested **Coworker Folders** and contained **Coworkers** inherit it.
 _Avoid_: tag, label, category
@@ -173,7 +197,7 @@ The visual identity shown for a **Coworker** in Bap surfaces.
 _Avoid_: agent avatar, profile picture, icon
 
 **Builder Chat**:
-A chat attached to one **Coworker** that a **User** uses to iteratively edit that **Coworker**. A **Builder Chat** is distinct from a chat created by running the **Coworker**.
+A private chat attached to one **Coworker** and one **User** that the User uses to iteratively edit that Coworker. Different Workspace members have separate Builder Chats for the same Workspace-shared Coworker; accepted edits update the canonical Coworker and enter its **Coworker Revision History**. A Builder Chat is distinct from a chat created by running the Coworker.
 _Avoid_: coworker builder conversation, builder conversation, editor chat
 
 **File Asset**:

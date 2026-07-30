@@ -1,6 +1,10 @@
 import { coworker, user } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq, isNotNull, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import {
+  decideCoworkerAccess,
+  type CoworkerAction,
+} from "@bap/core/server/services/coworker-access-policy";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
 
 export type CoworkerRouterContext = {
@@ -59,18 +63,47 @@ export async function requireAccessibleCoworkerInActiveWorkspace(
   context: CoworkerRouterContext,
   coworkerId: string,
 ) {
+  return requireCoworkerActionInActiveWorkspace(context, coworkerId, "read");
+}
+
+export async function requireEditableCoworkerInActiveWorkspace(
+  context: CoworkerRouterContext,
+  coworkerId: string,
+) {
+  return requireCoworkerActionInActiveWorkspace(context, coworkerId, "edit");
+}
+
+export async function requireCoworkerActionInActiveWorkspace(
+  context: CoworkerRouterContext,
+  coworkerId: string,
+  action: CoworkerAction,
+) {
   const access = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
   const workspaceId = access.workspace.id;
   const coworkerRow = await context.db.query.coworker.findFirst({
-    where: and(
-      eq(coworker.id, coworkerId),
-      eq(coworker.workspaceId, workspaceId),
-      or(eq(coworker.ownerId, context.user.id), isNotNull(coworker.sharedAt)),
-    ),
+    where: and(eq(coworker.id, coworkerId), eq(coworker.workspaceId, workspaceId)),
   });
 
   if (!coworkerRow) {
     throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+  }
+  const visibility =
+    coworkerRow.visibility === "workspace" || coworkerRow.sharedAt ? "workspace" : "private";
+  const decision = decideCoworkerAccess({
+    action,
+    actorUserId: context.user.id,
+    workspaceRole: access.membership.role,
+    isActiveWorkspaceMember: true,
+    visibility,
+    createdByUserId: coworkerRow.createdByUserId ?? coworkerRow.ownerId,
+    proposedAutomationOwnerUserId: coworkerRow.proposedAutomationOwnerUserId,
+  });
+  if (!decision.allowed) {
+    const hidesPrivateCoworker =
+      decision.reason === "private_coworker" || decision.reason === "workspace_membership_required";
+    throw new ORPCError(hidesPrivateCoworker ? "NOT_FOUND" : "FORBIDDEN", {
+      message: hidesPrivateCoworker ? "Coworker not found" : "Coworker action is not allowed",
+    });
   }
 
   return {

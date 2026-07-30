@@ -70,6 +70,12 @@ function createDatabase() {
       coworker: {
         findFirst: vi.fn<VitestProcedure>(),
       },
+      workspaceMember: {
+        findFirst: vi.fn<VitestProcedure>(),
+      },
+      user: {
+        findFirst: vi.fn<VitestProcedure>(),
+      },
     },
     insert: vi.fn<VitestProcedure>(() => ({
       values: vi.fn<VitestProcedure>(() => ({
@@ -107,7 +113,16 @@ function createDatabase() {
     fileAssetId: null,
     description: "Old description",
   });
-  database.query.coworker.findFirst.mockResolvedValue({ id: "cw-1", workspaceId: "ws-1" });
+  database.query.coworker.findFirst.mockResolvedValue({
+    id: "cw-1",
+    ownerId: "user-1",
+    createdByUserId: "user-1",
+    visibility: "workspace",
+    sharedAt: null,
+    workspaceId: "ws-1",
+  });
+  database.query.workspaceMember.findFirst.mockResolvedValue({ role: "member" });
+  database.query.user.findFirst.mockResolvedValue({ name: "Member One", image: "avatar.png" });
   updateReturningMock.mockResolvedValue([
     {
       id: "doc-1",

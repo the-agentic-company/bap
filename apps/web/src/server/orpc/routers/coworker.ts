@@ -1,4 +1,5 @@
 import { coworkerAdminProcedures } from "./coworker/admin.router";
+import { coworkerAutomationOwnerProcedures } from "./coworker/automation-owner.router";
 import { coworkerBuilderProcedures } from "./coworker/builder.router";
 import { coworkerCatalogProcedures } from "./coworker/catalog.router";
 import { coworkerDashboardProcedures } from "./coworker/dashboard.router";
@@ -10,6 +11,7 @@ import { coworkerImpersonationProcedures } from "./coworker/impersonation.router
 import { coworkerProfileProcedures } from "./coworker/profile.router";
 import { coworkerRemoteIntegrationProcedures } from "./coworker/remote-integrations.router";
 import { coworkerRunProcedures } from "./coworker/runs.router";
+import { coworkerRevisionProcedures } from "./coworker/revisions.router";
 import { coworkerSharingProcedures } from "./coworker/sharing.router";
 import { coworkerTriggerProcedures } from "./coworker/trigger.router";
 import { coworkerWorkspaceMoveProcedures } from "./coworker/workspace-move.router";
@@ -39,6 +41,13 @@ export const coworkerRouter = {
   listRuns: coworkerRunProcedures.listRuns,
   listWorkspaceRuns: coworkerRunProcedures.listWorkspaceRuns,
   resetRunsAndEnable: coworkerRunProcedures.resetRunsAndEnable,
+  listRevisions: coworkerRevisionProcedures.listRevisions,
+  getRevision: coworkerRevisionProcedures.getRevision,
+  restoreRevision: coworkerRevisionProcedures.restoreRevision,
+  getAutomationOwner: coworkerAutomationOwnerProcedures.getAutomationOwner,
+  proposeAutomationOwner: coworkerAutomationOwnerProcedures.proposeAutomationOwner,
+  respondToAutomationOwnerProposal:
+    coworkerAutomationOwnerProcedures.respondToAutomationOwnerProposal,
   getForwardingAlias: coworkerForwardingAliasProcedures.getForwardingAlias,
   createForwardingAlias: coworkerForwardingAliasProcedures.createForwardingAlias,
   disableForwardingAlias: coworkerForwardingAliasProcedures.disableForwardingAlias,

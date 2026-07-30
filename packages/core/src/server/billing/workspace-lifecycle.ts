@@ -58,6 +58,7 @@ async function getWorkspaceForUser(userId: string, workspaceId: string) {
           imageMimeType: true,
           billingPlanId: true,
           autumnCustomerId: true,
+          requiresTwoFactor: true,
           updatedAt: true,
         },
       },
@@ -85,6 +86,7 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
         imageMimeType: true,
         billingPlanId: true,
         autumnCustomerId: true,
+        requiresTwoFactor: true,
         updatedAt: true,
       },
       orderBy: [desc(workspace.createdAt)],
@@ -132,6 +134,7 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
           imageMimeType: true,
           billingPlanId: true,
           autumnCustomerId: true,
+          requiresTwoFactor: true,
           updatedAt: true,
         },
       },
@@ -261,6 +264,7 @@ export async function listWorkspacesForUser(userId: string, activeWorkspaceId?: 
         imageUrl: await buildWorkspaceImageDataUrl(ensuredImage ?? {}),
         role: membership?.role ?? "member",
         billingPlanId: ensured.billingPlanId as BillingPlanId,
+        requiresTwoFactor: ensured.requiresTwoFactor,
         active: true,
       },
     ];
@@ -284,6 +288,7 @@ export async function listWorkspacesForUser(userId: string, activeWorkspaceId?: 
       imageUrl: await buildWorkspaceImageDataUrl(membership.workspace),
       role: membership.role,
       billingPlanId: membership.workspace.billingPlanId as BillingPlanId,
+      requiresTwoFactor: membership.workspace.requiresTwoFactor,
       active: membership.workspace.id === resolvedActiveWorkspaceId,
     })),
   );
@@ -330,6 +335,7 @@ export async function listWorkspaceMembers(workspaceId: string) {
             id: true,
             name: true,
             email: true,
+            twoFactorEnabled: true,
           },
         },
       },
@@ -353,6 +359,7 @@ export async function listWorkspaceMembers(workspaceId: string) {
       name: member.user.name,
       email: member.user.email,
       role: member.role,
+      twoFactorEnabled: member.user.twoFactorEnabled === true,
     })),
     invitations: invitations.map((item) => ({
       id: item.id,
@@ -504,6 +511,7 @@ export async function adminListAllWorkspaces() {
         imageStorageKey: true,
         imageMimeType: true,
         billingPlanId: true,
+        requiresTwoFactor: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -537,6 +545,7 @@ export async function adminListAllWorkspaces() {
     slug: ws.slug,
     imageUrl: buildWorkspaceImageUrl(ws),
     billingPlanId: ws.billingPlanId,
+    requiresTwoFactor: ws.requiresTwoFactor,
     createdAt: ws.createdAt,
     coworkerCount: countMap.get(ws.id) ?? 0,
     members: ws.members.map((m) => ({
@@ -687,6 +696,26 @@ export async function renameWorkspace(workspaceId: string, name: string) {
       id: workspace.id,
       name: workspace.name,
       slug: workspace.slug,
+    });
+
+  if (!updated) {
+    throw new Error("Workspace not found");
+  }
+
+  return updated;
+}
+
+export async function setWorkspaceTwoFactorRequirement(
+  workspaceId: string,
+  requiresTwoFactor: boolean,
+) {
+  const [updated] = await db
+    .update(workspace)
+    .set({ requiresTwoFactor })
+    .where(eq(workspace.id, workspaceId))
+    .returning({
+      id: workspace.id,
+      requiresTwoFactor: workspace.requiresTwoFactor,
     });
 
   if (!updated) {

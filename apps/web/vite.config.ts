@@ -104,6 +104,14 @@ function appGtCompiler(): Plugin {
 }
 
 export default defineConfig(({ isSsrBuild }) => ({
+	define: {
+		"import.meta.env.VITE_CLIENT_BUILD_COMMIT_SHA": JSON.stringify(
+			process.env.RENDER_GIT_COMMIT ??
+				process.env.APP_COMMIT_SHA ??
+				process.env.BAP_COMMIT_SHA ??
+				"development",
+		),
+	},
 	/**
 	 * Only expose client env vars under the `VITE_*` prefix. Unprefixed server env vars
 	 * (DATABASE_URL, secrets, OAuth credentials, etc.) are never bundled to the client.

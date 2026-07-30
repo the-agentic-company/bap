@@ -1,7 +1,7 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   mapZeroCoworkerFolders,
   mapZeroCoworkerList,
@@ -29,6 +29,33 @@ export type CoworkerFolderListData = ReturnType<typeof mapZeroCoworkerFolders>;
 const coworkerListCache = new Map<string, CoworkerListData>();
 const coworkerFolderListCache = new Map<string, CoworkerFolderListData>();
 
+function coworkerUpdatedAtMs(coworker: CoworkerListData[number]): number {
+  const timestamp = coworker.updatedAt.getTime();
+  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+}
+
+function mergeCoworkerLists(...lists: readonly CoworkerListData[]): CoworkerListData {
+  const coworkersById = new Map<string, CoworkerListData[number]>();
+  const coworkerIds: string[] = [];
+
+  for (const list of lists) {
+    for (const coworker of list) {
+      const existing = coworkersById.get(coworker.id);
+      if (!existing) {
+        coworkerIds.push(coworker.id);
+      }
+      if (!existing || coworkerUpdatedAtMs(coworker) >= coworkerUpdatedAtMs(existing)) {
+        coworkersById.set(coworker.id, coworker);
+      }
+    }
+  }
+
+  return coworkerIds.flatMap((id) => {
+    const coworker = coworkersById.get(id);
+    return coworker ? [coworker] : [];
+  });
+}
+
 function getZeroRuntimeCacheKey(runtime: { userId: string | null; workspaceId: string }) {
   return runtime.userId && runtime.workspaceId ? `${runtime.userId}:${runtime.workspaceId}` : null;
 }
@@ -39,6 +66,7 @@ function isActiveCoworkerRunStatus(status: string | null | undefined): boolean {
 
 export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
   const zeroRuntime = useBapZeroRuntime();
+  const completedCacheKeyRef = useRef<string | null>(null);
   const [coworkers, details] = useZeroQuery(
     zeroRuntime.isReady ? zeroQueries.coworkerInventory.coworkers() : null,
   );
@@ -46,20 +74,37 @@ export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
   const initialData = options?.initialData;
   const mappedData = useMemo(() => mapZeroCoworkerList(coworkers ?? []), [coworkers]);
   useEffect(() => {
-    if (cacheKey && initialData && initialData.length > 0 && !coworkerListCache.has(cacheKey)) {
-      coworkerListCache.set(cacheKey, initialData);
+    if (
+      cacheKey &&
+      initialData &&
+      initialData.length > 0 &&
+      completedCacheKeyRef.current !== cacheKey
+    ) {
+      coworkerListCache.set(
+        cacheKey,
+        mergeCoworkerLists(coworkerListCache.get(cacheKey) ?? [], initialData),
+      );
     }
   }, [cacheKey, initialData]);
   useEffect(() => {
-    if (cacheKey && (mappedData.length > 0 || details.type === "complete")) {
+    if (cacheKey && details.type === "complete") {
       coworkerListCache.set(cacheKey, mappedData);
+      completedCacheKeyRef.current = cacheKey;
+    } else if (cacheKey && mappedData.length > 0) {
+      coworkerListCache.set(
+        cacheKey,
+        mergeCoworkerLists(coworkerListCache.get(cacheKey) ?? [], mappedData),
+      );
     }
   }, [cacheKey, details.type, mappedData]);
   const cachedData = cacheKey ? coworkerListCache.get(cacheKey) : undefined;
+  const hasCompletedCurrentInventory = completedCacheKeyRef.current === cacheKey;
   const data =
-    mappedData.length > 0 || details.type === "complete"
+    details.type === "complete"
       ? mappedData
-      : (cachedData ?? initialData ?? mappedData);
+      : hasCompletedCurrentInventory
+        ? mergeCoworkerLists(cachedData ?? [], mappedData)
+        : mergeCoworkerLists(cachedData ?? [], mappedData, initialData ?? []);
   const error = zeroRuntime.error ?? (details.type === "error" ? details.error : null);
   const isWaitingForZero =
     Boolean(zeroRuntime.userId && zeroRuntime.workspaceId) && !zeroRuntime.isReady;

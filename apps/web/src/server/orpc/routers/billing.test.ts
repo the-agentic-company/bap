@@ -37,6 +37,7 @@ var cancelInvitationMock: ReturnType<typeof vi.fn>;
 var cancelWorkspaceInvitationMock: ReturnType<typeof vi.fn>;
 var removeWorkspaceMemberMock: ReturnType<typeof vi.fn>;
 var updateWorkspaceMemberRoleMock: ReturnType<typeof vi.fn>;
+var setWorkspaceTwoFactorRequirementMock: ReturnType<typeof vi.fn>;
 
 vi.mock("../middleware", () => ({
   protectedProcedure: createProcedureStub(),
@@ -103,6 +104,10 @@ vi.mock("@bap/core/server/billing/service", () => ({
   setActiveWorkspace: (() => {
     setActiveWorkspaceMock = vi.fn<VitestProcedure>();
     return setActiveWorkspaceMock;
+  })(),
+  setWorkspaceTwoFactorRequirement: (() => {
+    setWorkspaceTwoFactorRequirementMock = vi.fn<VitestProcedure>();
+    return setWorkspaceTwoFactorRequirementMock;
   })(),
   updateWorkspaceMemberRole: (() => {
     updateWorkspaceMemberRoleMock = vi.fn<VitestProcedure>();
@@ -219,6 +224,10 @@ describe("billingRouter", () => {
     cancelWorkspaceInvitationMock.mockResolvedValue({ id: "inv-1", status: "canceled" });
     setActiveOrganizationMock.mockResolvedValue({ id: "ws-2" });
     setActiveWorkspaceMock.mockResolvedValue(undefined);
+    setWorkspaceTwoFactorRequirementMock.mockResolvedValue({
+      id: "ws-1",
+      requiresTwoFactor: true,
+    });
     cancelPlanForOwnerMock.mockResolvedValue({ success: true });
     updateWorkspaceImageMock.mockResolvedValue({
       id: "ws-1",
@@ -597,6 +606,18 @@ describe("billingRouter", () => {
       "alice@example.com",
       "admin",
     );
+  });
+
+  it("lets Workspace admins require two-factor authentication", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValueOnce({ role: "admin" });
+
+    await expect(
+      billingRouterAny.setTwoFactorRequirement({
+        input: { workspaceId: "ws-1", required: true },
+        context: createContext(),
+      }),
+    ).resolves.toEqual({ id: "ws-1", requiresTwoFactor: true });
+    expect(setWorkspaceTwoFactorRequirementMock).toHaveBeenCalledWith("ws-1", true);
   });
 
   it("removes a Workspace Membership for workspace admins", async () => {

@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { T } from "gt-react";
+import { useEffect, useRef } from "react";
+import { reportRootErrorObservation } from "@/lib/client-observations";
 
 /**
  * Root error boundary fallback. Kept intentionally minimal for v1 of the TanStack Start
@@ -9,7 +11,29 @@ import { T } from "gt-react";
  * reference resolves once the home route lands in a later page-migration phase.
  */
 export function RootErrorBoundary({ error }: { error: unknown }) {
-  const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+  const message =
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+      ? error.message
+      : "An unexpected error occurred.";
+  const eventIdRef = useRef<string | undefined>(undefined);
+  const observedErrorRef = useRef<unknown>(undefined);
+
+  useEffect(() => {
+    try {
+      if (observedErrorRef.current !== error) {
+        observedErrorRef.current = error;
+        eventIdRef.current =
+          globalThis.crypto?.randomUUID?.() ??
+          `root-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+      reportRootErrorObservation(error, eventIdRef.current);
+    } catch {
+      // Observability is best-effort and must not break the root fallback.
+    }
+  }, [error]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
