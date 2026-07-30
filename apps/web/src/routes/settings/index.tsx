@@ -335,7 +335,11 @@ function SettingsPage() {
     Boolean(savedTimezone) && Boolean(browserTimezone) && savedTimezone !== browserTimezone;
   const twoFactorRequired =
     billingOverview?.workspaces.some((workspace) => workspace.requiresTwoFactor === true) ?? false;
-  const twoFactorEnabled = "twoFactorEnabled" in user && user.twoFactorEnabled === true;
+  const twoFactorEnabled =
+    typeof user === "object" &&
+    user !== null &&
+    "twoFactorEnabled" in user &&
+    user.twoFactorEnabled === true;
 
   if (status === "loading") {
     return (
@@ -533,7 +537,12 @@ function SettingsPage() {
             <T>Protect password sign-ins with an authenticator app.</T>
           </p>
         </div>
-        <TwoFactorEnrollment initiallyEnabled={twoFactorEnabled} required={twoFactorRequired} />
+        <TwoFactorEnrollment
+          initiallyEnabled={twoFactorEnabled}
+          email={user.email}
+          passwordSetupCallbackUrl="/settings"
+          required={twoFactorRequired}
+        />
       </section>
     </div>
   );

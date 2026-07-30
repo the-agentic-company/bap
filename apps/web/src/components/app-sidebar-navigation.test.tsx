@@ -232,6 +232,7 @@ describe("AppSidebar navigation", () => {
     const overviewLink = await screen.findByRole("link", { name: "Overview" });
     const auditLink = await screen.findByRole("link", { name: "Audit" });
     const workspacesLink = await screen.findByRole("link", { name: "Workspaces" });
+    const settingsLink = await screen.findByRole("link", { name: "Settings" });
     const subscriptionsLink = await screen.findByRole("link", { name: "AI Subscriptions" });
     const usageLink = await screen.findByRole("link", { name: "Usage" });
 
@@ -239,6 +240,7 @@ describe("AppSidebar navigation", () => {
     expect(overviewLink).toBeInTheDocument();
     expect(auditLink).toBeInTheDocument();
     expect(workspacesLink).toHaveClass("bg-sidebar-primary");
+    expect(settingsLink).toBeInTheDocument();
     expect(subscriptionsLink).toBeInTheDocument();
     expect(usageLink).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "History" })).not.toBeInTheDocument();

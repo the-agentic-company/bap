@@ -427,6 +427,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     { icon: Activity, label: "Overview", href: "/admin/overview" },
     { icon: ScrollText, label: "Audit", href: "/admin/audit-trail" },
     { icon: Building2, label: "Workspaces", href: "/admin/workspaces" },
+    { icon: Settings, label: "Settings", href: "/admin/settings" },
     { icon: CreditCard, label: "AI Subscriptions", href: "/admin/subscriptions" },
     { icon: BarChart3, label: "Usage", href: "/admin/usage" },
   ];

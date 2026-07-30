@@ -38,6 +38,8 @@ export const Route = createFileRoute("/_auth/two-factor/setup")({
 
     return {
       callbackUrl,
+      email: context.principal.email,
+      passwordSetupCallbackUrl: `/two-factor/setup?callbackUrl=${encodeURIComponent(callbackUrl)}`,
       twoFactorEnabled: context.principal.twoFactorEnabled === true,
     };
   },
@@ -47,7 +49,7 @@ export const Route = createFileRoute("/_auth/two-factor/setup")({
 
 function TwoFactorSetupPage() {
   const navigate = useNavigate();
-  const { callbackUrl, twoFactorEnabled } = Route.useLoaderData();
+  const { callbackUrl, email, passwordSetupCallbackUrl, twoFactorEnabled } = Route.useLoaderData();
 
   const handleComplete = useCallback(() => {
     void navigate({ href: callbackUrl });
@@ -69,6 +71,8 @@ function TwoFactorSetupPage() {
         </div>
         <TwoFactorEnrollment
           initiallyEnabled={twoFactorEnabled}
+          email={email}
+          passwordSetupCallbackUrl={passwordSetupCallbackUrl}
           required
           onComplete={handleComplete}
         />
