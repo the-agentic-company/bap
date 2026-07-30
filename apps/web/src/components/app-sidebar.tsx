@@ -21,7 +21,6 @@ import {
   Settings,
   Shield,
   Toolbox,
-  User,
   UserCog,
   WandSparkles,
 } from "lucide-react";
@@ -49,8 +48,6 @@ import { useBillingOverview, useSwitchWorkspace } from "@/orpc/hooks/billing";
 import { toast } from "sonner";
 
 type SessionData = Awaited<ReturnType<typeof authClient.getSession>>["data"];
-type SidebarMode = "user" | "admin";
-const SIDEBAR_MODE_STORAGE_KEY = "bap.sidebarMode";
 
 type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
@@ -63,19 +60,6 @@ const MCP_LOGO_MASK_STYLE = {
   mask: "url('/integrations/mcp.svg') center / contain no-repeat",
   WebkitMask: "url('/integrations/mcp.svg') center / contain no-repeat",
 } as const;
-
-function readStoredSidebarMode(): SidebarMode {
-  if (typeof window === "undefined") {
-    return "admin";
-  }
-
-  try {
-    const savedMode = window.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY);
-    return savedMode === "user" || savedMode === "admin" ? savedMode : "admin";
-  } catch {
-    return "admin";
-  }
-}
 
 function McpLogoIcon({ className }: { className?: string }) {
   return (
@@ -151,83 +135,6 @@ function NavGroup({ children }: { children: React.ReactNode }) {
 
 function NavDivider() {
   return <div className="bg-sidebar-border my-1 h-px w-8" />;
-}
-
-function SidebarModeToggle({
-  mode,
-  onModeChange,
-}: {
-  mode: SidebarMode;
-  onModeChange: (mode: SidebarMode) => void;
-}) {
-  const t = useGT();
-
-  return (
-    <div
-      className="border-sidebar-border bg-sidebar-accent/55 flex flex-col gap-1 rounded-xl border p-1"
-      role="group"
-      aria-label={t("Sidebar view")}
-    >
-      <SidebarModeToggleButton
-        currentMode={mode}
-        icon={User}
-        label={t("User view")}
-        mode="user"
-        onModeChange={onModeChange}
-      />
-      <SidebarModeToggleButton
-        currentMode={mode}
-        icon={Shield}
-        label={t("Internal view")}
-        mode="admin"
-        onModeChange={onModeChange}
-      />
-    </div>
-  );
-}
-
-function SidebarModeToggleButton({
-  currentMode,
-  icon: Icon,
-  label,
-  mode,
-  onModeChange,
-}: {
-  currentMode: SidebarMode;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  mode: SidebarMode;
-  onModeChange: (mode: SidebarMode) => void;
-}) {
-  const active = currentMode === mode;
-  const handleClick = useCallback(() => {
-    onModeChange(mode);
-  }, [mode, onModeChange]);
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={handleClick}
-          aria-label={label}
-          aria-pressed={active}
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
-            "focus-visible:ring-sidebar-ring/45 focus-visible:ring-3 focus-visible:outline-none",
-            active
-              ? "bg-sidebar-primary text-sidebar-primary-foreground"
-              : "text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-          )}
-        >
-          <Icon className="h-4 w-4" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="right" sideOffset={10}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
 }
 
 type SidebarWorkspace = {
@@ -358,7 +265,6 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   });
   const navigate = useNavigate();
   const [session, setSession] = useState<SessionData | undefined>(undefined);
-  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(readStoredSidebarMode);
   const [reportOpen, setReportOpen] = useState(false);
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
   const effectiveUser = session?.user ?? null;
@@ -430,40 +336,13 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     }
   }, []);
 
-  const enterAdminMode = useCallback(() => {
-    setSidebarMode("admin");
-    try {
-      window.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, "admin");
-    } catch {
-      // Ignore storage failures; the in-memory view mode still updates.
-    }
-  }, []);
-
   const openAdminRoute = useCallback(() => {
     void navigate({ to: "/admin" });
   }, [navigate]);
 
-  const enterUserMode = useCallback(() => {
-    setSidebarMode("user");
-    try {
-      window.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, "user");
-    } catch {
-      // Ignore storage failures; the in-memory view mode still updates.
-    }
+  const exitAdminRoute = useCallback(() => {
     void navigate({ to: "/inbox" });
   }, [navigate]);
-
-  const handleSidebarModeChange = useCallback(
-    (mode: SidebarMode) => {
-      if (mode === "admin") {
-        enterAdminMode();
-        return;
-      }
-
-      enterUserMode();
-    },
-    [enterAdminMode, enterUserMode],
-  );
 
   const openReportDialog = useCallback(() => {
     setReportOpen(true);
@@ -516,7 +395,6 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
   const isProductAdminRoute = pathname?.startsWith("/admin");
   const isAdminRoute =
     isProductAdminRoute || pathname?.startsWith("/internal") || pathname?.startsWith("/instance");
-  const activeSidebarMode: SidebarMode = !isAdmin || isAdminRoute ? "admin" : sidebarMode;
   const impersonatedBy = (
     session as (SessionData & { session?: { impersonatedBy?: string | null } }) | null
   )?.session?.impersonatedBy;
@@ -538,13 +416,6 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     { icon: BrickIcon, label: t("Agents"), href: "/agents" },
     { icon: Toolbox, label: t("Toolbox"), href: "/toolbox" },
   ];
-
-  const userNavItems: NavItem[] = isAdmin
-    ? [
-        { icon: Inbox, label: t("Inbox"), href: "/inbox" },
-        { icon: BrickIcon, label: t("Agents"), href: "/agents" },
-      ]
-    : [];
 
   const adminUsersItems: NavItem[] = [
     { icon: UserCog, label: "User", href: "/internal" },
@@ -598,15 +469,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 pb-4 pt-1">
-          {activeSidebarMode === "user" ? (
-            <>
-              <NavGroup>
-                {userNavItems.map((item) => (
-                  <NavLink key={item.href} item={item} active={isActive(item.href)} />
-                ))}
-              </NavGroup>
-            </>
-          ) : !isAdminRoute ? (
+          {!isAdminRoute ? (
             <>
               <NavGroup>
                 {mainNavItems.map((item) => (
@@ -636,7 +499,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
               </NavGroup>
               <NavDivider />
               <NavGroup>
-                <NavButton icon={ArrowLeft} label={t("Exit Admin")} onClick={enterUserMode} />
+                <NavButton icon={ArrowLeft} label={t("Exit Admin")} onClick={exitAdminRoute} />
               </NavGroup>
             </>
           ) : clientEditionCapabilities.hasSupportAdmin ? (
@@ -666,7 +529,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
               </NavGroup>
               <NavDivider />
               <NavGroup>
-                <NavButton icon={ArrowLeft} label={t("Exit Admin")} onClick={enterUserMode} />
+                <NavButton icon={ArrowLeft} label={t("Exit Admin")} onClick={exitAdminRoute} />
               </NavGroup>
             </>
           ) : (
@@ -680,16 +543,13 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
               ) : null}
               <NavDivider />
               <NavGroup>
-                <NavButton icon={ArrowLeft} label={t("Exit Admin")} onClick={enterUserMode} />
+                <NavButton icon={ArrowLeft} label={t("Exit Admin")} onClick={exitAdminRoute} />
               </NavGroup>
             </>
           )}
         </nav>
 
         <div className="flex flex-col items-center gap-2 px-2 pb-3">
-          {isAdmin ? (
-            <SidebarModeToggle mode={activeSidebarMode} onModeChange={handleSidebarModeChange} />
-          ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button

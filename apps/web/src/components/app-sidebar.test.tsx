@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import * as jestDomVitest from "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -134,43 +134,20 @@ describe("AppSidebar", () => {
     cleanup();
   });
 
-  it("shows user navigation in user view", async () => {
+  it("ignores the legacy view preference and always shows the full app navigation", async () => {
     window.localStorage.setItem("bap.sidebarMode", "user");
 
     render(<AppSidebar />);
 
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "User view" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      ),
-    );
-
-    expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Agents" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Coworkers" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Templates" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Chat" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Toolbox" })).not.toBeInTheDocument();
-  });
-
-  it("shows the full app navigation in admin view", async () => {
-    render(<AppSidebar />);
-
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Internal view" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      ),
-    );
-
-    expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Inbox" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Templates" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Chat" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Agents" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Toolbox" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bug report" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Admin" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "User view" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Internal view" })).not.toBeInTheDocument();
   });
 
   it("renders admin navigation and avatar from the initial principal before client session resolves", () => {
@@ -179,32 +156,9 @@ describe("AppSidebar", () => {
     render(<AppSidebar initialPrincipal={INITIAL_ADMIN_PRINCIPAL} />);
 
     expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Internal view" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(screen.getByRole("link", { name: "Templates" })).toBeInTheDocument();
     expect(screen.getByTitle("admin@example.com")).toBeInTheDocument();
     expect(document.querySelector('img[src="/avatar.png"]')).toBeInTheDocument();
-  });
-
-  it("routes between sidebar views from the toggle", async () => {
-    render(<AppSidebar />);
-
-    fireEvent.click(await screen.findByRole("button", { name: "User view" }));
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/inbox" });
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "User view" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      ),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Internal view" }));
-    expect(mocks.navigate).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Internal view" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
   });
 
   it("keeps admin route navigation on admin routes", async () => {
@@ -212,14 +166,7 @@ describe("AppSidebar", () => {
 
     render(<AppSidebar />);
 
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Internal view" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      ),
-    );
-
-    expect(screen.getByRole("link", { name: "Workspaces" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Workspaces" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Inbox" })).not.toBeInTheDocument();
   });
 });
