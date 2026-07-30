@@ -37,10 +37,19 @@ vi.mock("@/components/chat/message-bubble", () => ({
 
 vi.mock("@/orpc/hooks/conversation", () => ({
   useAgenticAppHtml: mockUseAgenticAppHtml,
-  useDownloadSandboxFile: () => ({ mutateAsync: mockDownloadSandboxFile, isPending: false }),
+  useDownloadSandboxFile: () => ({
+    mutateAsync: mockDownloadSandboxFile,
+    isPending: false,
+  }),
   useConversation: mockUseConversation,
-  useShareConversation: () => ({ mutateAsync: mockShareConversation, isPending: false }),
-  useUnshareConversation: () => ({ mutateAsync: mockUnshareConversation, isPending: false }),
+  useShareConversation: () => ({
+    mutateAsync: mockShareConversation,
+    isPending: false,
+  }),
+  useUnshareConversation: () => ({
+    mutateAsync: mockUnshareConversation,
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/orpc/hooks/generation", () => ({
@@ -92,7 +101,11 @@ beforeEach(() => {
   now = 10_000_000;
   vi.spyOn(Date, "now").mockImplementation(() => now);
   mockUseAgenticAppHtml.mockReturnValue({
-    data: { html: "<button>Edit</button>", filename: "output.html", sizeBytes: 128 },
+    data: {
+      html: "<button>Edit</button>",
+      filename: "output.html",
+      sizeBytes: 128,
+    },
     isLoading: false,
     isError: false,
     isFetching: false,
@@ -101,7 +114,9 @@ beforeEach(() => {
   });
   mockSendAgenticAppPrompt.mockResolvedValue(true);
   mockUseSendAgenticAppPrompt.mockReturnValue(mockSendAgenticAppPrompt);
-  mockUseConversation.mockReturnValue({ data: { isShared: false, shareToken: null } });
+  mockUseConversation.mockReturnValue({
+    data: { isShared: false, shareToken: null },
+  });
   mockShareConversation.mockResolvedValue({ shareToken: "share-token" });
   mockUnshareConversation.mockResolvedValue({});
 });
@@ -195,6 +210,20 @@ describe("OutputPanel empty states", () => {
     render(<OutputPanel conversationId="conv-run-3" runStatus="running" />);
 
     expect(screen.getByText("Generating output ...")).toBeTruthy();
+  });
+
+  it("waits for required input instead of presenting the parameter prompt as output", () => {
+    render(
+      <OutputPanel
+        conversationId="conv-run-needs-input"
+        runStatus="needs_user_input"
+        latestCoworkerMessage="What name should I use for the greeting?"
+      />,
+    );
+
+    expect(screen.getByText("Waiting for user input...")).toBeTruthy();
+    expect(screen.queryByText("Latest coworker message")).toBeNull();
+    expect(screen.queryByText("What name should I use for the greeting?")).toBeNull();
   });
 
   it("shows run errors with a red error state message", () => {

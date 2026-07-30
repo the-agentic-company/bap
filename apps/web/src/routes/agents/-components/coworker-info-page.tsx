@@ -12,8 +12,8 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { findLatestAgenticAppFile } from "@/components/chat/agentic-app-selection";
-import { mapPersistedMessagesToChatMessages } from "@/components/chat/persisted-message-mapper";
 import { ChatShareControls } from "@/components/chat/chat-share-controls";
+import { mapPersistedMessagesToChatMessages } from "@/components/chat/persisted-message-mapper";
 import { CoworkerAvatar } from "@/components/coworker-avatar";
 import {
   extractRemoteRunSourceDetails,
@@ -26,8 +26,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { DualPanelWorkspace } from "@/components/ui/dual-panel-workspace";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { downloadSandboxFileToBrowser } from "@/lib/download-file";
 import { getCoworkerBackHref, getCoworkerEditHref } from "@/lib/coworker-routes";
+import { downloadSandboxFileToBrowser } from "@/lib/download-file";
 import { normalizeGenerationError } from "@/lib/generation-errors";
 import { cn } from "@/lib/utils";
 import { useConversation, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
@@ -63,10 +63,18 @@ type Props = {
   coworkerSlug: string;
 };
 
+type OptimisticTriggeredRun = {
+  id: string;
+  conversationId: string;
+  status: "running" | "needs_user_input";
+};
+
 export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const t = useGT();
 
-  const searchStr = useRouterState({ select: (state) => state.location.searchStr });
+  const searchStr = useRouterState({
+    select: (state) => state.location.searchStr,
+  });
   const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
   const navigate = useNavigate();
   const triggerCoworker = useTriggerCoworker();
@@ -84,12 +92,15 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const coworkerRuns = useCoworkerRuns(resolvedCoworkerId, 20, {
     enabled: Boolean(resolvedCoworkerId),
   });
+  const [optimisticTriggeredRun, setOptimisticTriggeredRun] =
+    useState<OptimisticTriggeredRun | null>(null);
   const requestedRunId = searchParams.get("run");
   const latestKnownRunId = coworkerListItem?.recentRuns?.[0]?.id;
   const selectedRunId =
-    coworkerRuns.data?.some((candidate) => candidate.id === requestedRunId) && requestedRunId
+    optimisticTriggeredRun?.id ??
+    (coworkerRuns.data?.some((candidate) => candidate.id === requestedRunId) && requestedRunId
       ? requestedRunId
-      : (coworkerRuns.data?.[0]?.id ?? latestKnownRunId);
+      : (coworkerRuns.data?.[0]?.id ?? latestKnownRunId));
   const run = useCoworkerRun(selectedRunId, {
     enabled: Boolean(selectedRunId),
   });
@@ -104,11 +115,15 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const shouldWaitForCoworkerRuns = Boolean(requestedRunId || latestKnownRunId);
   const isRunSelectionLoading =
     shouldWaitForCoworkerRuns && !selectedRunId && coworkerRuns.isLoading;
+  const selectedOptimisticRun =
+    optimisticTriggeredRun?.id === selectedRunId ? optimisticTriggeredRun : null;
   const isRunLoading =
     (shouldWaitForCoworkerList && coworkerList.isLoading) ||
     isRunSelectionLoading ||
-    Boolean(selectedRunId && run.isLoading);
-  const conversationId = run.data?.conversationId ?? undefined;
+    Boolean(selectedRunId && run.isLoading && !selectedOptimisticRun);
+  const conversationId =
+    run.data?.conversationId ?? selectedOptimisticRun?.conversationId ?? undefined;
+  const runStatus = run.data?.status ?? selectedOptimisticRun?.status;
   const runnerDeclaredFailure = isRunnerDeclaredFailure(run.data?.failureKind);
   const conversation = useConversation(conversationId);
   const persistedMessages = conversation.data?.messages;
@@ -130,7 +145,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     useDownloadSandboxFile();
 
   useEffect(() => {
-    if (run.data?.status !== "running") {
+    if (runStatus !== "running") {
       return;
     }
 
@@ -142,28 +157,28 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     return () => {
       window.clearInterval(interval);
     };
-  }, [run.data?.status]);
+  }, [runStatus]);
 
   const headerRunMeta = useMemo(
     () => ({
       launchedAtLabel: formatHeaderTimestamp(run.data?.startedAt),
       durationLabel:
-        run.data?.status === "running"
+        runStatus === "running"
           ? formatLiveDuration(run.data?.startedAt, runClockNow)
           : formatDuration(run.data?.startedAt, run.data?.finishedAt),
-      statusPresentation: getRunStatusPresentation(run.data?.status),
-      runStatus: run.data?.status,
+      statusPresentation: getRunStatusPresentation(runStatus),
+      runStatus,
     }),
-    [run.data?.finishedAt, run.data?.startedAt, run.data?.status, runClockNow],
+    [run.data?.finishedAt, run.data?.startedAt, runStatus, runClockNow],
   );
-  const shouldShowHeaderRunMeta = Boolean(run.data?.startedAt || run.data?.status);
+  const shouldShowHeaderRunMeta = Boolean(run.data?.startedAt || runStatus);
   const outputPanel = useMemo(
     () => (
       <OutputPanel
         outputFile={outputFile}
         conversationId={conversationId}
         latestCoworkerMessage={latestCoworkerMessage}
-        runStatus={run.data?.status}
+        runStatus={runStatus}
         runErrorMessage={run.data?.errorMessage}
         runFailureKind={run.data?.failureKind}
         showOutputToolbar={false}
@@ -175,12 +190,13 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
       outputFile,
       run.data?.errorMessage,
       run.data?.failureKind,
-      run.data?.status,
+      runStatus,
     ],
   );
 
   const handleHistorySelect = useCallback(
     (runId: string) => {
+      setOptimisticTriggeredRun(null);
       const params = new URLSearchParams(searchParams.toString());
       params.set("run", runId);
       void navigate({
@@ -280,8 +296,20 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
         id: resolvedCoworkerId,
         payload: {},
       });
+      setOptimisticTriggeredRun({
+        id: result.runId,
+        conversationId: result.conversationId,
+        status: result.generationId ? "running" : "needs_user_input",
+      });
       toast.success(result.generationId ? "Run started." : "Needs your input.");
-      void navigate({ to: "/agents/info/$slug", params: { slug: resolvedCoworkerSlug } });
+      void navigate({
+        to: "/agents/info/$slug",
+        params: { slug: resolvedCoworkerSlug },
+        search: {
+          run: result.runId,
+          tab: undefined,
+        },
+      });
     } catch (error) {
       toast.error(normalizeGenerationError(error, "start_rpc").message);
     }
@@ -504,12 +532,12 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     </section>
   );
 
-  if (!run.data && !coworkerRuns.data?.length) {
+  if (!run.data && !selectedOptimisticRun && !coworkerRuns.data?.length) {
     return (
       <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 min-w-0 flex-col overflow-hidden md:h-dvh">
         {headerSection}
 
-        <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
           {mobileHeaderSection}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto md:hidden">
             <div className="px-4 pt-4 pb-4">
@@ -549,7 +577,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 min-w-0 flex-col overflow-hidden md:h-dvh">
       {headerSection}
 
-      <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
+      <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 overflow-hidden px-0 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-0 md:gap-4 md:px-6 md:pt-3 md:pb-6">
         <RemoteRunSourceBanner source={remoteRunSource} />
         {mobileHeaderSection}
 

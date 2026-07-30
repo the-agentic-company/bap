@@ -13,8 +13,8 @@ import {
   Wrench,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { MessageBubble } from "@/components/chat/message-bubble";
 import type { Message, MessagePart, SandboxFileData } from "@/components/chat/message-list";
+import { MessageBubble } from "@/components/chat/message-bubble";
 import { useAgenticAppPromptBridge } from "@/components/chat/use-agentic-app-prompt-bridge";
 import { RunnerDeclaredFailureChatArea } from "@/components/coworkers/runner-declared-failure";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,10 @@ export type MobilePanel = "app" | "chat";
 
 export const MOBILE_PANEL_ORDER: MobilePanel[] = ["app", "chat"];
 export const MOBILE_PANEL_SWIPE_THRESHOLD = 48;
-export const MOBILE_PANEL_TRANSITION = { duration: 0.18, ease: [0.22, 1, 0.36, 1] } as const;
+export const MOBILE_PANEL_TRANSITION = {
+  duration: 0.18,
+  ease: [0.22, 1, 0.36, 1],
+} as const;
 export const MOBILE_PANEL_VARIANTS = {
   enter: (direction: number) => ({
     opacity: 0,
@@ -414,6 +417,16 @@ function EmptyNoOutputState() {
   );
 }
 
+function WaitingForUserInputState() {
+  return (
+    <div className="flex h-full min-h-[22rem] items-center justify-center p-6">
+      <p className="text-muted-foreground text-sm">
+        <T>Waiting for user input...</T>
+      </p>
+    </div>
+  );
+}
+
 function EmptyPreview({
   latestMessage,
   runStatus,
@@ -468,6 +481,10 @@ function EmptyPreview({
         </div>
       </div>
     );
+  }
+
+  if (runStatus === "needs_user_input") {
+    return <WaitingForUserInputState />;
   }
 
   if (latestMessage?.trim()) {
