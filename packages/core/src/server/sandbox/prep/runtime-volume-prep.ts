@@ -265,6 +265,8 @@ export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): st
         "fi",
       ]
     : [];
+  // A global `sync` can block indefinitely once s3fs volumes are mounted.
+  // The signature is written to local storage, and s3fs commits file writes on close.
   const script = [
     "set -euo pipefail",
     "missing=()",
@@ -400,7 +402,6 @@ export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): st
     "}",
     "if runtime_volume_mounts_ready; then",
     "  write_runtime_volume_mount_signature",
-    "  sync",
     "  exit 0",
     "fi",
     "stop_opencode_server_if_runtime_volumes_mounted",
@@ -420,7 +421,6 @@ export function buildRuntimeVolumeSetupCommand(plan: RuntimeVolumeMountPlan): st
     ),
     ...buildSkillMergeCommands(plan),
     "write_runtime_volume_mount_signature",
-    "sync",
   ].join("\n");
 
   return `bash <<'BAP_RUNTIME_VOLUME_SCRIPT'\n${script}\nBAP_RUNTIME_VOLUME_SCRIPT`;

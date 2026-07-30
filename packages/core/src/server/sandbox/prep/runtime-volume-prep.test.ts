@@ -178,6 +178,7 @@ describe("runtime-volume-prep", () => {
     expect(command).toContain("has_managed_runtime_volume_mounts() {");
     expect(command).toContain("done < <(findmnt -rn -o TARGET)");
     expect(command).toContain('unmount_if_mounted "$mount_path"');
+    expect(command).not.toMatch(/^\s*sync\s*$/m);
     expect(command.indexOf("stop_opencode_server_if_runtime_volumes_mounted\n")).toBeLessThan(
       command.indexOf("reset_runtime_volume_mounts\n"),
     );
