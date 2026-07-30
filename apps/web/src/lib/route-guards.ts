@@ -37,6 +37,15 @@ export interface SessionContext {
   worktreeAutoLoginConfigured: boolean;
 }
 
+function getPendingWorkspaceInvitationId(error: unknown): string | null {
+  if (!(error instanceof Error) || error.name !== "PendingWorkspaceInvitationError") {
+    return null;
+  }
+
+  const invitationId = (error as Error & { invitationId?: unknown }).invitationId;
+  return typeof invitationId === "string" && invitationId.length > 0 ? invitationId : null;
+}
+
 /**
  * Server function that resolves the current request's session principal and environment
  * flags. Reads cookies from the active request, so it must run on the server (SSR or a
@@ -50,13 +59,23 @@ export const fetchSessionContext = createServerFn({ method: "GET" }).handler(
 
     const user = sessionData?.user ?? null;
     const session = sessionData?.session ?? null;
-    const activeWorkspaceId =
-      user && session
-        ? await resolveSessionPrincipalWorkspaceId(
-            user.id,
-            (session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null,
-          )
-        : null;
+    let activeWorkspaceId: string | null = null;
+    if (user && session) {
+      try {
+        activeWorkspaceId = await resolveSessionPrincipalWorkspaceId(
+          user.id,
+          (session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null,
+        );
+      } catch (error) {
+        const invitationId = getPendingWorkspaceInvitationId(error);
+        if (invitationId) {
+          throw redirect({
+            href: `/workspace-invitations/${encodeURIComponent(invitationId)}`,
+          });
+        }
+        throw error;
+      }
+    }
     const principal: SessionPrincipal | null =
       user && session
         ? {

@@ -15,6 +15,7 @@ process.env.AWS_ACCESS_KEY_ID ??= "test-access-key";
 process.env.AWS_SECRET_ACCESS_KEY ??= "test-secret-key";
 
 var userFindFirstMock: ReturnType<typeof vi.fn>;
+var invitationFindFirstMock: ReturnType<typeof vi.fn>;
 var workspaceMemberFindFirstMock: ReturnType<typeof vi.fn>;
 var workspaceFindFirstMock: ReturnType<typeof vi.fn>;
 var billingTopUpFindManyMock: ReturnType<typeof vi.fn>;
@@ -39,6 +40,7 @@ var deleteFromS3Mock: ReturnType<typeof vi.fn>;
 vi.mock("@bap/db/client", () => ({
   db: (() => {
     userFindFirstMock = vi.fn();
+    invitationFindFirstMock = vi.fn();
     billingTopUpFindManyMock = vi.fn();
     workspaceMemberFindFirstMock = vi.fn();
     workspaceFindFirstMock = vi.fn();
@@ -68,6 +70,7 @@ vi.mock("@bap/db/client", () => ({
     return {
       query: {
         user: { findFirst: userFindFirstMock },
+        invitation: { findFirst: invitationFindFirstMock },
         billingTopUp: { findMany: billingTopUpFindManyMock },
         workspaceMember: { findFirst: workspaceMemberFindFirstMock },
         workspace: { findFirst: workspaceFindFirstMock },
@@ -115,6 +118,7 @@ vi.mock("./autumn", () => ({
 const {
   createManualTopUp,
   createWorkspaceForUser,
+  ensureWorkspaceForUser,
   getAdminBillingOverviewForUser,
   getExistingBillingOwnerForUser,
   resolveBillingOwnerForUser,
@@ -125,6 +129,7 @@ describe("billing service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     insertMock.mockReturnValue({ values: billingTopUpInsertValuesMock });
+    invitationFindFirstMock.mockResolvedValue(null);
     ensureBucketMock.mockResolvedValue(undefined);
     uploadToS3Mock.mockResolvedValue(undefined);
     deleteFromS3Mock.mockResolvedValue(undefined);
@@ -201,6 +206,7 @@ describe("billing service", () => {
       .mockResolvedValueOnce({
         id: "user-1",
         name: "Alice",
+        email: "alice@example.com",
       });
     workspaceMemberFindFirstMock.mockResolvedValue(null);
     workspaceFindFirstMock.mockResolvedValue(null);
@@ -225,6 +231,28 @@ describe("billing service", () => {
       autumnCustomerId: "ws-created",
       planId: "free",
     });
+  });
+
+  it("does not create a personal workspace while the user has a pending invitation", async () => {
+    userFindFirstMock.mockResolvedValue({
+      id: "user-1",
+      name: "Alice",
+      email: "alice@example.com",
+    });
+    workspaceMemberFindFirstMock.mockResolvedValue(null);
+    invitationFindFirstMock.mockResolvedValue({
+      id: "invitation-1",
+      organizationId: "workspace-invited",
+    });
+
+    await expect(ensureWorkspaceForUser("user-1")).rejects.toMatchObject({
+      name: "PendingWorkspaceInvitationError",
+      invitationId: "invitation-1",
+      workspaceId: "workspace-invited",
+    });
+
+    expect(workspaceInsertValuesMock).not.toHaveBeenCalled();
+    expect(workspaceMemberInsertValuesMock).not.toHaveBeenCalled();
   });
 
   it("returns no existing billing owner when the target user has no active workspace", async () => {

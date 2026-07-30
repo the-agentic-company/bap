@@ -23,6 +23,7 @@ import { listWorkspacesForUser } from "./workspace-lifecycle";
 // Keep the billing service as the public entry point for the focused billing,
 // workspace lifecycle, and credit snapshot modules.
 export type { BillingOwner } from "./billing-owner";
+export { PendingWorkspaceInvitationError } from "./workspace-lifecycle";
 export { getExistingBillingOwnerForUser, resolveBillingOwnerForUser } from "./billing-owner";
 export {
   addWorkspaceMembers,

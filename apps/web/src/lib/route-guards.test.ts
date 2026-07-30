@@ -116,6 +116,21 @@ describe("route guards", () => {
     expect(resolveSessionPrincipalWorkspaceIdMock).toHaveBeenCalledWith("user-1", "workspace-2");
   });
 
+  it("redirects an invited user to the pending invitation without creating a workspace", async () => {
+    mockSession("user");
+    resolveSessionPrincipalWorkspaceIdMock.mockRejectedValue(
+      Object.assign(new Error("Pending Workspace Invitation"), {
+        name: "PendingWorkspaceInvitationError",
+        invitationId: "invitation/1",
+        workspaceId: "workspace-invited",
+      }),
+    );
+
+    await expect(fetchSessionContext()).rejects.toEqual({
+      href: "/workspace-invitations/invitation%2F1",
+    });
+  });
+
   it("redirects unauthenticated protected routes to login with callback", async () => {
     await expect(requireSession("/chat?tab=latest")).rejects.toEqual({
       href: "/login?callbackUrl=%2Fchat%3Ftab%3Dlatest",

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { type BillingPlanId } from "../../lib/billing-plans";
 import { db } from "@bap/db/client";
 import {
@@ -13,6 +13,18 @@ import {
 } from "@bap/db/schema";
 import { isSelfHostedEdition } from "../edition";
 import { buildWorkspaceImageDataUrl, buildWorkspaceImageUrl } from "./workspace-image";
+
+export class PendingWorkspaceInvitationError extends Error {
+  readonly invitationId: string;
+  readonly workspaceId: string;
+
+  constructor(invitationId: string, workspaceId: string) {
+    super("Accept or reject the pending Workspace Invitation before continuing.");
+    this.name = "PendingWorkspaceInvitationError";
+    this.invitationId = invitationId;
+    this.workspaceId = workspaceId;
+  }
+}
 
 function slugifyWorkspaceName(value: string): string {
   return value
@@ -136,11 +148,33 @@ export async function ensureWorkspaceForUser(userId: string, activeWorkspaceId?:
     columns: {
       id: true,
       name: true,
+      email: true,
     },
   });
 
   if (!dbUser) {
     throw new Error("User not found");
+  }
+
+  const normalizedEmail = dbUser.email.trim().toLowerCase();
+  const pendingInvitation = await db.query.invitation.findFirst({
+    where: and(
+      eq(sql<string>`lower(${invitation.email})`, normalizedEmail),
+      eq(invitation.status, "pending"),
+      gt(invitation.expiresAt, new Date()),
+    ),
+    columns: {
+      id: true,
+      organizationId: true,
+    },
+    orderBy: [desc(invitation.createdAt)],
+  });
+
+  if (pendingInvitation) {
+    throw new PendingWorkspaceInvitationError(
+      pendingInvitation.id,
+      pendingInvitation.organizationId,
+    );
   }
 
   const workspaceName = `${dbUser.name}'s workspace`;
