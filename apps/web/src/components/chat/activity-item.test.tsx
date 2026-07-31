@@ -57,6 +57,21 @@ const longSystemFixture: ActivityItemData = {
     "warning: very-long-unbroken-system-message-that-must-not-expand-the-live-activity-pane-outside-the-window",
 };
 
+const mcpConnectionRequiredFixture: ActivityItemData = {
+  id: "system-mcp-connection-required",
+  timestamp: 1,
+  type: "system",
+  content: "Connect these tools in Toolbox to use them:\n- galien\n- linear-mcp",
+};
+
+const legacyMcpConnectionRequiredFixture: ActivityItemData = {
+  id: "system-legacy-mcp-connection-required",
+  timestamp: 1,
+  type: "system",
+  content:
+    "Some selected tools are unavailable for this run:\n- galien: OpenCode MCP server galien is not connected (status=failed): SSE error: Unable to connect. Is the computer able to access the url?.\n- linear: OpenCode MCP server linear is not connected (status=failed): SSE error: Unable to connect. Is the computer able to access the url?.",
+};
+
 const longToolLabelFixture: ActivityItemData = {
   id: "tool-long-1",
   timestamp: 1,
@@ -136,10 +151,18 @@ const executorToolCallFixture: ActivityItemData = {
 
 const executorSourcesFixture = [
   {
+    id: "source-linear",
     namespace: "linear-mcp",
     kind: "mcp",
     name: "linear-mcp",
     endpoint: "https://mcp.linear.app/mcp",
+  },
+  {
+    id: "source-galien",
+    namespace: "galien",
+    kind: "mcp",
+    name: "Galien",
+    endpoint: "https://galien.example.com/sse",
   },
 ] as const;
 
@@ -295,5 +318,40 @@ describe("ActivityItem", () => {
     expect(screen.getByText("Request (linear-mcp.list_issues)")).toBeInTheDocument();
     expect(screen.getByText(/"assignee": "me"/)).toBeInTheDocument();
     expect(screen.getByText("Response")).toBeInTheDocument();
+  });
+
+  it("renders disconnected MCP servers as actionable Toolbox rows", () => {
+    render(
+      <ActivityItem item={mcpConnectionRequiredFixture} executorSources={executorSourcesFixture} />,
+    );
+
+    expect(screen.getByText("Connect tools to use them in this run")).toBeInTheDocument();
+    expect(screen.getByText("Galien")).toBeInTheDocument();
+    expect(screen.getByText("Linear")).toBeInTheDocument();
+    expect(screen.getAllByText("needs to be connected")).toHaveLength(2);
+    expect(screen.queryByText(/SSE error/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Galien in Toolbox" })).toHaveAttribute(
+      "href",
+      "/toolbox/sources/source-galien",
+    );
+    expect(screen.getByRole("link", { name: "Open Linear in Toolbox" })).toHaveAttribute(
+      "href",
+      "/toolbox/sources/source-linear",
+    );
+  });
+
+  it("renders persisted legacy MCP warnings as actionable Toolbox rows", () => {
+    render(
+      <ActivityItem
+        item={legacyMcpConnectionRequiredFixture}
+        executorSources={executorSourcesFixture}
+      />,
+    );
+
+    expect(screen.getByText("Connect tools to use them in this run")).toBeInTheDocument();
+    expect(screen.getByText("Galien")).toBeInTheDocument();
+    expect(screen.getByText("Linear")).toBeInTheDocument();
+    expect(screen.queryByText(/OpenCode MCP server/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/SSE error/i)).not.toBeInTheDocument();
   });
 });

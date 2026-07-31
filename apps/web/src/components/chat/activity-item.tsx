@@ -3,6 +3,7 @@
 import { T } from "gt-react";
 import {
   Wrench,
+  Toolbox,
   Puzzle,
   Check,
   Loader2,
@@ -98,6 +99,8 @@ const TOOL_DETAILS_EXIT = { height: 0, opacity: 0, y: -2 };
 const TOOL_DETAILS_TRANSITION: Transition = { duration: 0.2, ease: "easeInOut" };
 const MARKDOWN_REMARK_PLUGINS = [remarkGfm];
 const EMPTY_EXECUTOR_SOURCES: readonly WorkspaceMcpServerLike[] = [];
+const MCP_CONNECTION_REQUIRED_HEADER = "Connect these tools in Toolbox to use them:";
+const LEGACY_MCP_CONNECTION_REQUIRED_HEADER = "Some selected tools are unavailable for this run:";
 const ACTIVITY_MARKDOWN_COMPONENTS = {
   table: ({ children }: { children?: ReactNode }) => (
     <div className="my-2 overflow-x-auto">
@@ -171,6 +174,105 @@ function getInputDescription(input: unknown): string | null {
   }
   const trimmedDescription = withDescription.description.trim();
   return trimmedDescription.length > 0 ? trimmedDescription : null;
+}
+
+function parseMcpConnectionRequired(content: string): string[] | null {
+  const [header, ...lines] = content.split("\n");
+  const isCurrentFormat = header === MCP_CONNECTION_REQUIRED_HEADER;
+  const isLegacyFormat = header === LEGACY_MCP_CONNECTION_REQUIRED_HEADER;
+  if (!isCurrentFormat && !isLegacyFormat) {
+    return null;
+  }
+
+  const serverNames = lines
+    .map((line) => {
+      if (isLegacyFormat) {
+        return line.match(/^\s*-\s+([^:]+):/)?.[1]?.trim();
+      }
+      return line.match(/^\s*-\s+(.+?)\s*$/)?.[1];
+    })
+    .filter((name): name is string => Boolean(name));
+
+  return serverNames.length > 0 ? [...new Set(serverNames)] : null;
+}
+
+function McpConnectionRequired({
+  serverNames,
+  executorSources,
+}: {
+  serverNames: string[];
+  executorSources: readonly WorkspaceMcpServerLike[];
+}) {
+  return (
+    <div className="border-border/60 bg-background/70 my-1 min-w-0 rounded-lg border px-2.5 py-2">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <span className="text-foreground min-w-0 text-xs font-medium">
+          <T>Connect tools to use them in this run</T>
+        </span>
+      </div>
+      <div className="mt-1.5 space-y-1">
+        {serverNames.map((serverName) => {
+          const display = getExecutorDisplayMetadata(undefined, executorSources, serverName);
+          const source = display.source;
+          const integration = display.integration;
+          const displayName =
+            (integration ? getIntegrationDisplayName(integration) : null) ||
+            source?.name?.trim() ||
+            serverName;
+          const logo = integration ? getIntegrationLogo(integration) : null;
+          const IntegrationIcon = integration ? getIntegrationIcon(integration) : null;
+          const sourceLogo = source?.endpoint ? getBrandfetchLogoUrl(source.endpoint) : null;
+          const href = source?.id ? `/toolbox/sources/${source.id}` : "/toolbox";
+
+          return (
+            <div
+              key={serverName}
+              className="bg-muted/40 flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5"
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                {logo ? (
+                  <AppImage
+                    src={logo}
+                    alt={displayName}
+                    width={16}
+                    height={16}
+                    className="h-4 w-4 object-contain"
+                  />
+                ) : IntegrationIcon ? (
+                  <IntegrationIcon className="text-muted-foreground h-4 w-4" aria-hidden="true" />
+                ) : sourceLogo ? (
+                  <AppImage
+                    src={sourceLogo}
+                    alt={displayName}
+                    width={16}
+                    height={16}
+                    className="h-4 w-4 rounded-sm object-contain"
+                  />
+                ) : (
+                  <Puzzle className="text-muted-foreground h-4 w-4" aria-hidden="true" />
+                )}
+              </span>
+              <span className="text-foreground min-w-0 flex-1 truncate text-xs">
+                <span className="font-medium">{displayName}</span>{" "}
+                <span className="text-muted-foreground">
+                  <T>needs to be connected</T>
+                </span>
+              </span>
+              <a
+                href={href}
+                className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring inline-flex h-6 shrink-0 items-center gap-1 rounded px-1.5 text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                aria-label={`Open ${displayName} in Toolbox`}
+              >
+                <Toolbox className="h-3.5 w-3.5" aria-hidden="true" />
+                <T>Toolbox</T>
+              </a>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function ActivityItem({ item, executorSources = EMPTY_EXECUTOR_SOURCES }: Props) {
@@ -296,6 +398,13 @@ export function ActivityItem({ item, executorSources = EMPTY_EXECUTOR_SOURCES }:
 
   // Render system message (interruption, etc.)
   if (type === "system") {
+    const mcpServerNames = parseMcpConnectionRequired(content);
+    if (mcpServerNames) {
+      return (
+        <McpConnectionRequired serverNames={mcpServerNames} executorSources={executorSources} />
+      );
+    }
+
     const isWarning = content.toLowerCase().includes("warning");
     const SystemIcon = isWarning ? AlertCircle : StopCircle;
     return (

@@ -1,6 +1,7 @@
 import { ALL_INTEGRATION_TYPES, type DisplayIntegrationType } from "@/lib/integration-icons";
 
 export type WorkspaceMcpServerLike = {
+  id?: string;
   namespace: string;
   kind: "mcp";
   name?: string | null;
