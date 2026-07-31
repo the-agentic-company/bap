@@ -1,0 +1,1 @@
+export const MAX_DOCUMENTS_PER_COWORKER = 20;

@@ -136,24 +136,6 @@ export function formatFileSize(sizeBytes: number): string {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function buildCoworkerDocumentBuilderMessage(filenames: string[]): string {
-  return [
-    "I uploaded new coworker documents:",
-    ...filenames.map((filename) => `- ${filename}`),
-    "",
-    "Please add them to my agent instruction and use them when relevant.",
-  ].join("\n");
-}
-
-export function buildCoworkerDocumentRemovalBuilderMessage(filenames: string[]): string {
-  return [
-    "I removed coworker documents:",
-    ...filenames.map((filename) => `- ${filename}`),
-    "",
-    "Please remove them from my agent instruction and stop using them.",
-  ].join("\n");
-}
-
 export function formatRelativeTime(value?: Date | string | null) {
   if (!value) {
     return "just now";

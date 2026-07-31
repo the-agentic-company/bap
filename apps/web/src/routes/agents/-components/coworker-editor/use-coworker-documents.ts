@@ -5,29 +5,18 @@ import {
   useGetCoworkerDocumentUrl,
   useUploadCoworkerDocument,
 } from "@/orpc/hooks/coworkers";
-import type { CoworkerDocumentRecord, UploadAttachment } from "./types";
 import {
-  buildCoworkerDocumentBuilderMessage,
-  buildCoworkerDocumentRemovalBuilderMessage,
-} from "./coworker-editor-utils";
-
-type BuilderChatActions = {
-  sendMessage: (input: {
-    content: string;
-    attachments?: UploadAttachment[];
-  }) => Promise<
-    | { status: "missing-conversation" }
-    | { status: "sent"; conversationId: string }
-    | { status: "queued"; conversationId: string }
-  >;
-};
+  getCoworkerDocumentUploadLimitError,
+  uploadCoworkerDocumentFiles,
+} from "./coworker-document-upload";
+import type { CoworkerDocumentRecord } from "./types";
 
 type UseCoworkerDocumentsInput = {
   coworkerId?: string;
-  builderChat: BuilderChatActions;
+  documentCount: number;
 };
 
-export function useCoworkerDocuments({ coworkerId, builderChat }: UseCoworkerDocumentsInput) {
+export function useCoworkerDocuments({ coworkerId, documentCount }: UseCoworkerDocumentsInput) {
   const uploadCoworkerDocument = useUploadCoworkerDocument();
   const deleteCoworkerDocument = useDeleteCoworkerDocument();
   const getCoworkerDocumentUrl = useGetCoworkerDocumentUrl();
@@ -46,44 +35,21 @@ export function useCoworkerDocuments({ coworkerId, builderChat }: UseCoworkerDoc
         return;
       }
 
+      const uploadLimitError = getCoworkerDocumentUploadLimitError(documentCount, nextFiles.length);
+      if (uploadLimitError) {
+        toast.error(uploadLimitError);
+        return;
+      }
+
       setIsUploadingDocuments(true);
       try {
-        const uploadedDocuments = await Promise.all(
-          nextFiles.map((file) =>
-            uploadCoworkerDocument.mutateAsync({
-              coworkerId,
-              file,
-            }),
-          ),
+        const uploadedDocuments = await uploadCoworkerDocumentFiles(nextFiles, (file) =>
+          uploadCoworkerDocument.mutateAsync({ coworkerId, file }),
         );
-        const attachments: UploadAttachment[] = uploadedDocuments.map((document) => ({
-          fileAssetId: document.fileAssetId,
-          name: document.filename,
-          mimeType: document.mimeType,
-          sizeBytes: document.sizeBytes,
-        }));
-
-        const builderPrompt = buildCoworkerDocumentBuilderMessage(
-          uploadedDocuments.map((document) => document.filename),
-        );
-        const sendResult = await builderChat.sendMessage({
-          content: builderPrompt,
-          attachments,
-        });
-
-        if (sendResult.status === "missing-conversation") {
-          toast.success(
-            uploadedDocuments.length === 1
-              ? `Uploaded ${uploadedDocuments[0]?.filename ?? "document"}.`
-              : `Uploaded ${uploadedDocuments.length} documents.`,
-          );
-          return;
-        }
-
         toast.success(
-          sendResult.status === "sent"
-            ? `Uploaded ${uploadedDocuments.length} document${uploadedDocuments.length === 1 ? "" : "s"} and sent them to the builder chat.`
-            : `Uploaded ${uploadedDocuments.length} document${uploadedDocuments.length === 1 ? "" : "s"} and queued a builder update.`,
+          uploadedDocuments.length === 1
+            ? `Uploaded ${uploadedDocuments[0]?.filename ?? "document"}.`
+            : `Uploaded ${uploadedDocuments.length} documents.`,
         );
       } catch (error) {
         console.error("Failed to upload coworker documents:", error);
@@ -96,7 +62,7 @@ export function useCoworkerDocuments({ coworkerId, builderChat }: UseCoworkerDoc
         setIsUploadingDocuments(false);
       }
     },
-    [builderChat, coworkerId, uploadCoworkerDocument],
+    [coworkerId, documentCount, uploadCoworkerDocument],
   );
 
   const deleteDocument = useCallback(
@@ -107,21 +73,7 @@ export function useCoworkerDocuments({ coworkerId, builderChat }: UseCoworkerDoc
 
       try {
         await deleteCoworkerDocument.mutateAsync({ id: document.id });
-
-        const sendResult = await builderChat.sendMessage({
-          content: buildCoworkerDocumentRemovalBuilderMessage([document.filename]),
-        });
-
-        if (sendResult.status === "missing-conversation") {
-          toast.success(`Removed ${document.filename}.`);
-          return;
-        }
-
-        toast.success(
-          sendResult.status === "sent"
-            ? `Removed ${document.filename} and updated the builder chat.`
-            : `Removed ${document.filename} and queued a builder update.`,
-        );
+        toast.success(`Removed ${document.filename}.`);
       } catch (error) {
         console.error("Failed to delete coworker document:", error);
         toast.error(
@@ -133,7 +85,7 @@ export function useCoworkerDocuments({ coworkerId, builderChat }: UseCoworkerDoc
         setDeletingDocumentIds((current) => current.filter((id) => id !== document.id));
       }
     },
-    [builderChat, deleteCoworkerDocument],
+    [deleteCoworkerDocument],
   );
 
   const downloadDocument = useCallback(

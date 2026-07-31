@@ -22,8 +22,8 @@ import {
   workspaceMember,
 } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, count, eq } from "drizzle-orm";
-import { validateFileUpload } from "@/server/storage/validation";
+import { and, count, eq, sql } from "drizzle-orm";
+import { MAX_DOCUMENTS_PER_COWORKER, validateFileUpload } from "@/server/storage/validation";
 
 type Database = typeof db;
 
@@ -132,11 +132,6 @@ export async function uploadCoworkerDocument(params: {
     throw new ORPCError("BAD_REQUEST", { message: "Coworker workspace not found" });
   }
 
-  const [{ value: documentCount }] = await params.database
-    .select({ value: count() })
-    .from(coworkerDocument)
-    .where(eq(coworkerDocument.coworkerId, params.coworkerId));
-
   const asset = await resolveCoworkerDocumentAsset({
     database: params.database,
     userId: params.userId,
@@ -146,30 +141,45 @@ export async function uploadCoworkerDocument(params: {
     contentBase64: params.contentBase64,
     fileAssetId: params.fileAssetId,
   });
-  validateFileUpload(asset.filename, asset.mimeType, asset.sizeBytes, documentCount);
   const storagePrefix = buildCoworkerDocumentsRuntimeVolumePrefix({
     workspaceId: existingCoworker.workspaceId,
     coworkerId: params.coworkerId,
   });
-  await writeRuntimeVolumeFile({
-    storagePrefix,
-    relativePath: asset.filename,
-    body: await downloadFromS3(asset.storageKey),
-    contentType: asset.mimeType,
+  const document = await params.database.transaction(async (transaction) => {
+    await transaction.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`coworker-document-capacity:${params.coworkerId}`}))`,
+    );
+    const [{ value: documentCount }] = await transaction
+      .select({ value: count() })
+      .from(coworkerDocument)
+      .where(eq(coworkerDocument.coworkerId, params.coworkerId));
+    validateFileUpload(asset.filename, asset.mimeType, asset.sizeBytes, documentCount, {
+      maxDocumentCount: MAX_DOCUMENTS_PER_COWORKER,
+      documentCollectionLabel: "Coworker",
+    });
+    await writeRuntimeVolumeFile({
+      storagePrefix,
+      relativePath: asset.filename,
+      body: await downloadFromS3(asset.storageKey),
+      contentType: asset.mimeType,
+    });
+    const [insertedDocument] = await transaction
+      .insert(coworkerDocument)
+      .values({
+        coworkerId: params.coworkerId,
+        fileAssetId: null,
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        sizeBytes: asset.sizeBytes,
+        storageKey: buildRuntimeVolumeObjectKey(storagePrefix, asset.filename),
+        description: params.description,
+      })
+      .returning();
+    if (!insertedDocument) {
+      throw new ORPCError("INTERNAL_SERVER_ERROR", { message: "Document upload failed" });
+    }
+    return insertedDocument;
   });
-
-  const [document] = await params.database
-    .insert(coworkerDocument)
-    .values({
-      coworkerId: params.coworkerId,
-      fileAssetId: null,
-      filename: asset.filename,
-      mimeType: asset.mimeType,
-      sizeBytes: asset.sizeBytes,
-      storageKey: buildRuntimeVolumeObjectKey(storagePrefix, asset.filename),
-      description: params.description,
-    })
-    .returning();
   await refreshCoworkerDocumentsRuntimeVolumeProjection({
     workspaceId: existingCoworker.workspaceId,
     coworkerId: params.coworkerId,
@@ -302,7 +312,10 @@ export async function updateCoworkerDocument(params: {
       fileAssetId: params.fileAssetId,
     });
     // Replacement does not increase the number of documents, so skip the count-limit branch.
-    validateFileUpload(asset.filename, asset.mimeType, asset.sizeBytes, 0);
+    validateFileUpload(asset.filename, asset.mimeType, asset.sizeBytes, 0, {
+      maxDocumentCount: MAX_DOCUMENTS_PER_COWORKER,
+      documentCollectionLabel: "Coworker",
+    });
 
     replacementAsset = asset;
     updates.fileAssetId = null;

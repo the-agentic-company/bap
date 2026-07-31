@@ -61,4 +61,5 @@ export const coworkerRouter = {
   adminListWorkspaceCoworkers: coworkerAdminProcedures.adminListWorkspaceCoworkers,
   adminGetWorkspaceRun: coworkerAdminProcedures.adminGetWorkspaceRun,
   getOrCreateBuilderConversation: coworkerBuilderProcedures.getOrCreateBuilderConversation,
+  getInstructionDocumentChanges: coworkerBuilderProcedures.getInstructionDocumentChanges,
 };

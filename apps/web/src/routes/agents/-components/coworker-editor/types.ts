@@ -23,6 +23,11 @@ export type CoworkerDocumentRecord = {
   createdAt: Date | string;
 };
 
+export type CoworkerInstructionDocumentChange = {
+  type: "added" | "removed";
+  filename: string;
+};
+
 export type UploadAttachment = {
   fileAssetId: string;
   name: string;

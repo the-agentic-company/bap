@@ -18,6 +18,7 @@ import type {
   AvailableSkillEntry,
   CoworkerDocumentRecord,
   CoworkerForwardingAlias,
+  CoworkerInstructionDocumentChange,
   CoworkerRunListItem,
   CoworkerScheduleType,
   CoworkerTab,
@@ -51,6 +52,7 @@ type CoworkerSettingsPanelProps = {
   requiresUserInput: boolean;
   userInputPrompt: string;
   prompt: string;
+  instructionDocumentChanges: CoworkerInstructionDocumentChange[];
   model: string;
   modelAuthSource: ProviderAuthSource | null;
   providerAvailability: ProviderAuthAvailabilityByProvider;
@@ -150,6 +152,7 @@ export function CoworkerSettingsPanel({
   requiresUserInput,
   userInputPrompt,
   prompt,
+  instructionDocumentChanges,
   model,
   modelAuthSource,
   providerAvailability,
@@ -416,6 +419,7 @@ export function CoworkerSettingsPanel({
             username={username}
             description={description}
             prompt={prompt}
+            instructionDocumentChanges={instructionDocumentChanges}
             model={model}
             modelAuthSource={modelAuthSource}
             providerAvailability={providerAvailability}

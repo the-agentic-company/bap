@@ -361,6 +361,14 @@ export function useGetCoworkerDocumentUrl() {
   });
 }
 
+export function useCoworkerInstructionDocumentChanges(coworkerId?: string) {
+  return useQuery({
+    queryKey: ["coworker", "instruction-document-changes", coworkerId],
+    queryFn: () => client.coworker.getInstructionDocumentChanges({ id: coworkerId! }),
+    enabled: Boolean(coworkerId),
+  });
+}
+
 export function useTriggerCoworker() {
   const queryClient = useQueryClient();
 

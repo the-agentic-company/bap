@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CoworkerSchedule } from "@/orpc/hooks/coworkers";
 import {
-  buildCoworkerDocumentBuilderMessage,
-  buildCoworkerDocumentRemovalBuilderMessage,
   formatFileSize,
   formatRelativeTime,
   inferUploadMimeType,
@@ -55,27 +53,6 @@ describe("coworker editor utils", () => {
     );
     expect(inferUploadMimeType({ name: "archive.unknown", type: "" } as File)).toBe(
       "application/octet-stream",
-    );
-  });
-
-  it("formats document builder messages deterministically", () => {
-    expect(buildCoworkerDocumentBuilderMessage(["brief.pdf", "data.csv"])).toBe(
-      [
-        "I uploaded new coworker documents:",
-        "- brief.pdf",
-        "- data.csv",
-        "",
-        "Please add them to my agent instruction and use them when relevant.",
-      ].join("\n"),
-    );
-
-    expect(buildCoworkerDocumentRemovalBuilderMessage(["old.pdf"])).toBe(
-      [
-        "I removed coworker documents:",
-        "- old.pdf",
-        "",
-        "Please remove them from my agent instruction and stop using them.",
-      ].join("\n"),
     );
   });
 

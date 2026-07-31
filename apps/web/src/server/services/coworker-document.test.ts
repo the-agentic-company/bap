@@ -47,6 +47,7 @@ vi.mock("@bap/core/server/services/runtime-volume-service", () => ({
 }));
 
 vi.mock("@/server/storage/validation", () => ({
+  MAX_DOCUMENTS_PER_COWORKER: 20,
   validateFileUpload: validateFileUploadMock,
 }));
 
@@ -101,7 +102,12 @@ function createDatabase() {
         where: vi.fn<VitestProcedure>().mockResolvedValue([{ value: 0 }]),
       })),
     })),
+    execute: vi.fn<VitestProcedure>().mockResolvedValue(undefined),
+    transaction: vi.fn<VitestProcedure>(),
   };
+  database.transaction.mockImplementation(async (callback: (tx: typeof database) => unknown) =>
+    callback(database),
+  );
 
   database.query.coworkerDocument.findFirst.mockResolvedValue({
     id: "doc-1",
@@ -271,7 +277,10 @@ describe("coworker document service", () => {
       description: null,
     });
 
-    expect(validateFileUploadMock).toHaveBeenCalledWith("brief-v2.pdf", "application/pdf", 7, 0);
+    expect(validateFileUploadMock).toHaveBeenCalledWith("brief-v2.pdf", "application/pdf", 7, 0, {
+      maxDocumentCount: 20,
+      documentCollectionLabel: "Coworker",
+    });
     expect(createFileAssetFromBufferMock).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",

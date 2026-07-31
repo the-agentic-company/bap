@@ -1,5 +1,7 @@
 import { ORPCError } from "@orpc/server";
 
+export { MAX_DOCUMENTS_PER_COWORKER } from "@/lib/coworker-document-constraints";
+
 // Allowed MIME types for skill documents
 const ALLOWED_MIME_TYPES = [
   // Documents
@@ -27,6 +29,11 @@ const MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
 // Maximum files per skill
 const MAX_DOCUMENTS_PER_SKILL = 10;
 
+type FileUploadValidationOptions = {
+  maxDocumentCount?: number;
+  documentCollectionLabel?: string;
+};
+
 function normalizeMimeType(mimeType: string): string {
   return mimeType.toLowerCase().split(";")[0]?.trim() ?? "";
 }
@@ -36,6 +43,7 @@ export function validateFileUpload(
   mimeType: string,
   sizeBytes: number,
   currentDocumentCount: number,
+  options?: FileUploadValidationOptions,
 ): void {
   // Check file size
   if (sizeBytes > MAX_FILE_SIZE_BYTES) {
@@ -53,9 +61,12 @@ export function validateFileUpload(
   }
 
   // Check document count limit
-  if (currentDocumentCount >= MAX_DOCUMENTS_PER_SKILL) {
+  const maxDocumentCount = options?.maxDocumentCount ?? MAX_DOCUMENTS_PER_SKILL;
+  if (currentDocumentCount >= maxDocumentCount) {
     throw new ORPCError("BAD_REQUEST", {
-      message: `Maximum of ${MAX_DOCUMENTS_PER_SKILL} documents per skill`,
+      message: `Maximum of ${maxDocumentCount} documents per ${
+        options?.documentCollectionLabel ?? "skill"
+      }`,
     });
   }
 

@@ -1,6 +1,6 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { T, useGT } from "gt-react";
-import { Loader2, Pencil, Save, X } from "lucide-react";
+import { AlertTriangle, Loader2, Pencil, Save, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
@@ -18,7 +18,11 @@ import { Switch } from "@/components/ui/switch";
 import type { ProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
 import { cn } from "@/lib/utils";
 import { CoworkerTriggerSection } from "./coworker-trigger-section";
-import type { CoworkerForwardingAlias, CoworkerScheduleType } from "./types";
+import type {
+  CoworkerForwardingAlias,
+  CoworkerInstructionDocumentChange,
+  CoworkerScheduleType,
+} from "./types";
 
 const instructionRemarkPlugins = [remarkGfm, remarkBreaks];
 
@@ -29,6 +33,7 @@ type CoworkerInstructionsPanelProps = {
   username: string;
   description: string;
   prompt: string;
+  instructionDocumentChanges: CoworkerInstructionDocumentChange[];
   model: string;
   modelAuthSource: ProviderAuthSource | null;
   providerAvailability: ProviderAuthAvailabilityByProvider;
@@ -80,6 +85,7 @@ export function CoworkerInstructionsPanel({
   username,
   description,
   prompt,
+  instructionDocumentChanges,
   model,
   modelAuthSource,
   providerAvailability,
@@ -179,6 +185,34 @@ export function CoworkerInstructionsPanel({
         </div>
       </div>
 
+      {instructionDocumentChanges.length > 0 ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div className="min-w-0 space-y-1.5">
+              <p className="text-sm font-semibold">
+                <T>Agent instructions might be out of date</T>
+              </p>
+              <p className="text-xs leading-relaxed text-amber-800">
+                <T>
+                  Documents were added or removed since the instructions were last updated. Update
+                  the instructions to dismiss this notice.
+                </T>
+              </p>
+              <ul className="space-y-0.5 text-xs text-amber-900">
+                {instructionDocumentChanges.map((change) => (
+                  <li key={`${change.type}:${change.filename}`} className="break-words">
+                    <span className="font-medium">
+                      {change.type === "added" ? <T>Added:</T> : <T>Removed:</T>}
+                    </span>{" "}
+                    {change.filename}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <InstructionPreview prompt={prompt} onOpenInstructionModal={handleOpenInstructionModal} />
 
       <div className="border-border/30 rounded-xl border px-4 py-3">

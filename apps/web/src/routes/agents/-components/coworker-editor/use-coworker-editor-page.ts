@@ -25,6 +25,7 @@ import { buildProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-ava
 import {
   useCoworker,
   useCoworkerForwardingAlias,
+  useCoworkerInstructionDocumentChanges,
   useCoworkerImpersonationTarget,
   useCoworkerRunImpersonationTarget,
   useUpdateCoworker,
@@ -135,6 +136,8 @@ export function useCoworkerEditorPage({
     enabled: isAdmin,
   });
   const { data: coworkerForwardingAlias } = useCoworkerForwardingAlias(coworkerId);
+  const { data: instructionDocumentChanges = [] } =
+    useCoworkerInstructionDocumentChanges(coworkerId);
   const { data: runs, refetch: refetchRuns } = useCoworkerRuns(coworkerId);
   const updateCoworker = useUpdateCoworker();
 
@@ -238,7 +241,7 @@ export function useCoworkerEditorPage({
     downloadDocument: handleDownloadDocument,
   } = useCoworkerDocuments({
     coworkerId,
-    builderChat,
+    documentCount: activeCoworker?.documents.length ?? 0,
   });
   const deferredRemoteUserQuery = useDeferredValue(remoteUserQuery);
   const availableRemoteIntegrationTargets = useMemo(
@@ -679,6 +682,7 @@ export function useCoworkerEditorPage({
         requiresUserInput,
         userInputPrompt,
         prompt,
+        instructionDocumentChanges,
         model,
         modelAuthSource,
         providerAvailability,
@@ -820,6 +824,7 @@ export function useCoworkerEditorPage({
       handleUsernameChange,
       hasActiveForwardingAlias,
       integrationEntries,
+      instructionDocumentChanges,
       intervalMinutes,
       isAccessibleSkillsLoading,
       isAdmin,

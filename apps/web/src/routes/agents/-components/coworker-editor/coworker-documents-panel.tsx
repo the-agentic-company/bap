@@ -2,6 +2,7 @@ import { T } from "gt-react";
 import { Download, FileText, Loader2, Trash2, Upload } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MAX_DOCUMENTS_PER_COWORKER } from "@/lib/coworker-document-constraints";
 import { cn } from "@/lib/utils";
 import { formatFileSize, formatRelativeTime } from "./coworker-editor-utils";
 import type { CoworkerDocumentRecord } from "./types";
@@ -27,13 +28,14 @@ export function CoworkerDocumentsPanel({
 }: CoworkerDocumentsPanelProps) {
   const [isDocumentDragActive, setIsDocumentDragActive] = useState(false);
   const documentInputRef = useRef<HTMLInputElement | null>(null);
+  const isAtDocumentLimit = documents.length >= MAX_DOCUMENTS_PER_COWORKER;
 
   const handleBrowseDocuments = useCallback(() => {
-    if (isUploadingDocuments) {
+    if (isUploadingDocuments || isAtDocumentLimit) {
       return;
     }
     documentInputRef.current?.click();
-  }, [isUploadingDocuments]);
+  }, [isAtDocumentLimit, isUploadingDocuments]);
 
   const handleDocumentInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,14 +66,14 @@ export function CoworkerDocumentsPanel({
     (event: React.DragEvent<HTMLButtonElement>) => {
       event.preventDefault();
       setIsDocumentDragActive(false);
-      if (isUploadingDocuments) {
+      if (isUploadingDocuments || isAtDocumentLimit) {
         return;
       }
       if (event.dataTransfer.files.length > 0) {
         void onUploadDocuments(event.dataTransfer.files);
       }
     },
-    [isUploadingDocuments, onUploadDocuments],
+    [isAtDocumentLimit, isUploadingDocuments, onUploadDocuments],
   );
 
   const handleDeleteDocumentClick = useCallback(
@@ -120,6 +122,7 @@ export function CoworkerDocumentsPanel({
           onChange={handleDocumentInputChange}
         />
         <DocumentDropZone
+          documentCount={documents.length}
           isUploadingDocuments={isUploadingDocuments}
           isDocumentDragActive={isDocumentDragActive}
           onBrowseDocuments={handleBrowseDocuments}
@@ -154,6 +157,7 @@ export function CoworkerDocumentsPanel({
 }
 
 function DocumentDropZone({
+  documentCount,
   isUploadingDocuments,
   isDocumentDragActive,
   onBrowseDocuments,
@@ -161,6 +165,7 @@ function DocumentDropZone({
   onDocumentDragLeave,
   onDocumentDrop,
 }: {
+  documentCount: number;
   isUploadingDocuments: boolean;
   isDocumentDragActive: boolean;
   onBrowseDocuments: () => void;
@@ -168,6 +173,7 @@ function DocumentDropZone({
   onDocumentDragLeave: (event: React.DragEvent<HTMLButtonElement>) => void;
   onDocumentDrop: (event: React.DragEvent<HTMLButtonElement>) => void;
 }) {
+  const isAtDocumentLimit = documentCount >= MAX_DOCUMENTS_PER_COWORKER;
   return (
     <button
       type="button"
@@ -175,7 +181,7 @@ function DocumentDropZone({
       onDragOver={onDocumentDragOver}
       onDragLeave={onDocumentDragLeave}
       onDrop={onDocumentDrop}
-      disabled={isUploadingDocuments}
+      disabled={isUploadingDocuments || isAtDocumentLimit}
       aria-label="Upload coworker documents"
       className={cn(
         "relative block w-full overflow-hidden rounded-[24px] border-2 border-dashed px-5 py-8 text-left transition-all",
@@ -183,6 +189,7 @@ function DocumentDropZone({
           ? "border-emerald-400 bg-emerald-50/70 shadow-[0_0_0_6px_rgba(16,185,129,0.08)]"
           : "border-muted-foreground/25 hover:border-muted-foreground/40 bg-gradient-to-br from-white to-slate-50/80",
         isUploadingDocuments && "cursor-wait opacity-80",
+        isAtDocumentLimit && "cursor-not-allowed opacity-70",
       )}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.04),transparent_55%)]" />
@@ -204,18 +211,23 @@ function DocumentDropZone({
         <div className="space-y-1">
           <p className="text-sm font-medium text-slate-800">
             {isUploadingDocuments
-              ? "Uploading documents and updating the builder..."
-              : "Drop files here or browse from your machine"}
+              ? "Uploading documents..."
+              : isAtDocumentLimit
+                ? `Maximum of ${MAX_DOCUMENTS_PER_COWORKER} documents reached`
+                : "Drop files here or browse from your machine"}
           </p>
           <p className="text-muted-foreground text-xs">
             <T>
-              PDF, Office docs, text, CSV, and images. Uploaded files are stored for future coworker
-              runs and sent to the builder chat.
+              PDF, Office docs, text, CSV, and images. Uploaded files are stored for future Coworker
+              Runs.
             </T>
+          </p>
+          <p className="text-muted-foreground text-xs font-medium">
+            {documentCount} of {MAX_DOCUMENTS_PER_COWORKER} documents
           </p>
         </div>
         <span className="border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground mt-1 inline-flex h-8 items-center justify-center rounded-full border px-4 text-xs font-medium">
-          <T>Browse files</T>
+          {isAtDocumentLimit ? <T>Document limit reached</T> : <T>Browse files</T>}
         </span>
       </div>
     </button>
