@@ -2,37 +2,46 @@ import { useNavigate } from "@tanstack/react-router";
 import { useGT } from "gt-react";
 import { type ChangeEvent, useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { IntegrationType } from "@/lib/integration-icons";
 import { getCoworkerDisplayName } from "@/components/coworkers/coworker-card-content";
 import { COWORKERS_OPEN_RECENT_DRAWER_EVENT } from "@/lib/coworkers-events";
-import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@/lib/integration-icons";
 import {
   type CoworkerListData,
   type CoworkerFolderListData,
   useCreateCoworkerFolder,
   useCoworkerFolderList,
   useCoworkerList,
+  useCoworkerUsers,
   useDeleteCoworkerFolder,
   useDeleteCoworker,
   useImportCoworkerDefinition,
-  useImportSharedCoworker,
   useMoveCoworkerFolder,
   useMoveCoworkerToFolder,
-  useSharedCoworkerList,
   useUpdateCoworkerFolderVisibility,
 } from "@/orpc/hooks/coworkers";
-import { useIntegrationList } from "@/orpc/hooks/integrations";
 import { useCurrentUser } from "@/orpc/hooks/user";
-import type { SharedCoworkerItem } from "../shared-coworker-card";
 import { useCoworkerComposer } from "./use-coworker-composer";
 
 export type CoworkerItem = CoworkerListData[number];
 export type CoworkerFolderItem = CoworkerFolderListData[number];
-type DraggedCoworker = { id: string; name?: string | null; folderId?: string | null };
+type DraggedCoworker = {
+  id: string;
+  name?: string | null;
+  folderId?: string | null;
+};
 type DraggedFolder = CoworkerFolderItem;
 export type MoveTarget =
-  | { type: "coworker"; id: string; name: string; currentFolderId: string | null }
-  | { type: "folder"; id: string; name: string; currentFolderId: string | null };
+  | {
+      type: "coworker";
+      id: string;
+      name: string;
+      currentFolderId: string | null;
+    }
+  | {
+      type: "folder";
+      id: string;
+      name: string;
+      currentFolderId: string | null;
+    };
 
 const EMPTY_INITIAL_COWORKERS: CoworkerListData = [];
 const EMPTY_INITIAL_FOLDERS: CoworkerFolderListData = [];
@@ -69,14 +78,12 @@ export function useCoworkerInventory({
   const { data: folders, isLoading: isFoldersLoading } = useCoworkerFolderList({
     initialData: initialFolders,
   });
-  const { data: sharedCoworkers } = useSharedCoworkerList();
-  const { data: integrations } = useIntegrationList();
   const { data: currentUser } = useCurrentUser();
+  const { data: coworkerUsers } = useCoworkerUsers();
   const createFolder = useCreateCoworkerFolder();
   const deleteFolder = useDeleteCoworkerFolder();
   const deleteCoworker = useDeleteCoworker();
   const importCoworkerDefinition = useImportCoworkerDefinition();
-  const importSharedCoworker = useImportSharedCoworker();
   const moveCoworkerToFolder = useMoveCoworkerToFolder();
   const moveFolder = useMoveCoworkerFolder();
   const updateFolderVisibility = useUpdateCoworkerFolderVisibility();
@@ -87,7 +94,6 @@ export function useCoworkerInventory({
   const openRecentDrawer = useCallback(() => {
     window.dispatchEvent(new CustomEvent(COWORKERS_OPEN_RECENT_DRAWER_EVENT));
   }, []);
-  const [importingSharedCoworkerId, setImportingSharedCoworkerId] = useState<string | null>(null);
   const [deletingCoworkerId, setDeletingCoworkerId] = useState<string | null>(null);
   const [coworkerPendingDelete, setCoworkerPendingDelete] = useState<CoworkerItem | null>(null);
   const [filterShared, setFilterShared] = useState(false);
@@ -138,36 +144,28 @@ export function useCoworkerInventory({
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
   const coworkerList = useMemo(() => {
     const real = Array.isArray(coworkers) ? coworkers : [];
+    const usersByCoworkerId = new Map<string, NonNullable<typeof coworkerUsers>>();
+    for (const usage of coworkerUsers ?? []) {
+      const users = usersByCoworkerId.get(usage.coworkerId) ?? [];
+      users.push(usage);
+      usersByCoworkerId.set(usage.coworkerId, users);
+    }
     return real.map((entry) =>
       Object.assign({}, entry, {
         toolAccessMode: entry.toolAccessMode,
-        allowedIntegrations: (entry.allowedIntegrations ?? []) as IntegrationType[],
+        allowedIntegrations: entry.allowedIntegrations ?? [],
         allowedSkillSlugs: entry.allowedSkillSlugs ?? [],
+        usedBy: usersByCoworkerId.get(entry.id) ?? [],
       }),
     );
-  }, [coworkers]);
+  }, [coworkers, coworkerUsers]);
   const visibleCoworkerCount = Math.max(initialCoworkerTotalCount, coworkerList.length);
-  const connectedIntegrationTypes = useMemo(
-    () =>
-      (integrations ?? []).flatMap((entry) =>
-        entry.enabled &&
-        entry.setupRequired !== true &&
-        COWORKER_AVAILABLE_INTEGRATION_TYPES.includes(entry.type as IntegrationType)
-          ? ([entry.type as IntegrationType] as const)
-          : [],
-      ),
-    [integrations],
-  );
-  const sharedCoworkerList = useMemo(
-    () =>
-      (sharedCoworkers ?? []).filter(
-        (entry) => !entry.isOwnedByCurrentUser,
-      ) as SharedCoworkerItem[],
-    [sharedCoworkers],
-  );
   const sharedByMeCount = useMemo(
     () =>
-      Math.max(initialCoworkerSharedCount, coworkerList.filter((c) => c.sharedAt != null).length),
+      Math.max(
+        initialCoworkerSharedCount,
+        coworkerList.filter((c) => c.visibility === "workspace").length,
+      ),
     [coworkerList, initialCoworkerSharedCount],
   );
   const folderList = useMemo(() => (Array.isArray(folders) ? folders : []), [folders]);
@@ -195,8 +193,14 @@ export function useCoworkerInventory({
     [getFolderRoot],
   );
   const canManageFolder = useCallback(
-    (folder: CoworkerFolderItem) => Boolean(currentUser?.id && folder.ownerId === currentUser.id),
-    [currentUser?.id],
+    (folder: CoworkerFolderItem) =>
+      Boolean(
+        currentUser?.id &&
+        (folder.ownerId === currentUser.id ||
+          currentUser.workspaceRole === "admin" ||
+          currentUser.workspaceRole === "owner"),
+      ),
+    [currentUser],
   );
   const currentFolder = currentFolderId ? (folderById.get(currentFolderId) ?? null) : null;
   const currentParentId = currentFolderId ?? null;
@@ -284,7 +288,9 @@ export function useCoworkerInventory({
   }, [currentParentId, folderList, isGlobalSearch, searchQuery]);
   const hasActiveFilters = selectedTriggerTypes.size > 0;
   const displayedCoworkerList = useMemo(() => {
-    let list = filterShared ? coworkerList.filter((c) => c.sharedAt != null) : coworkerList;
+    let list = filterShared
+      ? coworkerList.filter((c) => c.visibility === "workspace")
+      : coworkerList;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -298,21 +304,6 @@ export function useCoworkerInventory({
     }
     return list;
   }, [coworkerList, currentParentId, filterShared, searchQuery, selectedTriggerTypes]);
-  const displayedSharedCoworkerList = useMemo(() => {
-    let list = sharedCoworkerList;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(
-        (c) => c.name?.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q),
-      );
-    } else {
-      list = list.filter((c) => (c.folderId ?? null) === currentParentId);
-    }
-    if (selectedTriggerTypes.size > 0) {
-      list = list.filter((c) => selectedTriggerTypes.has(c.triggerType));
-    }
-    return list;
-  }, [currentParentId, searchQuery, selectedTriggerTypes, sharedCoworkerList]);
   const moveVisibilityMessage = useMemo(() => {
     if (!moveTarget) {
       return null;
@@ -341,22 +332,6 @@ export function useCoworkerInventory({
       : t("Moving this folder will make all contained coworkers private.");
   }, [getFolderEffectiveVisibility, moveDestinationId, moveTarget, t]);
 
-  const handleImportSharedCoworker = useCallback(
-    async (sourceCoworkerId: string) => {
-      setImportingSharedCoworkerId(sourceCoworkerId);
-      try {
-        const created = await importSharedCoworker.mutateAsync(sourceCoworkerId);
-        toast.success(t("Coworker imported."));
-        void navigate({ to: "/agents/edit/$id", params: { id: created.id } });
-      } catch (error) {
-        console.error("Failed to import coworker:", error);
-        toast.error(t("Failed to import coworker."));
-      } finally {
-        setImportingSharedCoworkerId(null);
-      }
-    },
-    [importSharedCoworker, navigate, t],
-  );
   const handleImportCoworkerClick = useCallback(() => {
     if (importCoworkerDefinition.isPending) {
       return;
@@ -520,7 +495,10 @@ export function useCoworkerInventory({
           return;
         }
         try {
-          await moveFolder.mutateAsync({ folderId: draggedFolder.id, parentId: folder.id });
+          await moveFolder.mutateAsync({
+            folderId: draggedFolder.id,
+            parentId: folder.id,
+          });
           toast.success(t("Folder moved."));
         } catch {
           toast.error(t("Failed to move folder."));
@@ -535,7 +513,10 @@ export function useCoworkerInventory({
         return;
       }
       try {
-        await moveCoworkerToFolder.mutateAsync({ coworkerId, folderId: folder.id });
+        await moveCoworkerToFolder.mutateAsync({
+          coworkerId,
+          folderId: folder.id,
+        });
         toast.success(t("Coworker moved."));
       } catch {
         toast.error(t("Failed to move coworker."));
@@ -585,10 +566,16 @@ export function useCoworkerInventory({
     const folderId = moveDestinationId === "top" ? null : moveDestinationId;
     try {
       if (moveTarget.type === "coworker") {
-        await moveCoworkerToFolder.mutateAsync({ coworkerId: moveTarget.id, folderId });
+        await moveCoworkerToFolder.mutateAsync({
+          coworkerId: moveTarget.id,
+          folderId,
+        });
         toast.success(t("Coworker moved."));
       } else {
-        await moveFolder.mutateAsync({ folderId: moveTarget.id, parentId: folderId });
+        await moveFolder.mutateAsync({
+          folderId: moveTarget.id,
+          parentId: folderId,
+        });
         toast.success(t("Folder moved."));
       }
       handleMoveDialogChange(false);
@@ -687,8 +674,7 @@ export function useCoworkerInventory({
     }
   }, [coworkerPendingDelete, deleteCoworker, t]);
 
-  const hasInventoryData =
-    coworkerList.length > 0 || folderList.length > 0 || displayedSharedCoworkerList.length > 0;
+  const hasInventoryData = coworkerList.length > 0 || folderList.length > 0;
   const isInventoryLoading =
     !currentFolderId && !hasInventoryData && (isCoworkersLoading || isFoldersLoading);
 
@@ -702,7 +688,6 @@ export function useCoworkerInventory({
     coworkerList,
     folderList,
     visibleCoworkerCount,
-    connectedIntegrationTypes,
     sharedByMeCount,
     breadcrumbs,
     currentFolder,
@@ -717,9 +702,7 @@ export function useCoworkerInventory({
     isInventoryLoading,
     displayedFolderList,
     displayedCoworkerList,
-    displayedSharedCoworkerList,
     activeDropFolderId,
-    importingSharedCoworkerId,
     deletingCoworkerId,
     coworkerPendingDelete,
     filterShared,
@@ -745,7 +728,6 @@ export function useCoworkerInventory({
     handleTriggerTypeButtonClick,
     handleClearAllFilters,
     handleSearchChange,
-    handleImportSharedCoworker,
     handleImportCoworkerClick,
     handleCreateFolderDialogChange,
     handleOpenCreateFolderDialog,

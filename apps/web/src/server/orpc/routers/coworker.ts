@@ -19,6 +19,7 @@ import { coworkerWorkspaceMoveProcedures } from "./coworker/workspace-move.route
 export const coworkerRouter = {
   list: coworkerCatalogProcedures.list,
   get: coworkerCatalogProcedures.get,
+  listUsers: coworkerCatalogProcedures.listUsers,
   getHistory: coworkerHistoryProcedures.getHistory,
   getOverview: coworkerDashboardProcedures.getOverview,
   getUsageDashboard: coworkerDashboardProcedures.getUsageDashboard,
@@ -48,6 +49,13 @@ export const coworkerRouter = {
   proposeAutomationOwner: coworkerAutomationOwnerProcedures.proposeAutomationOwner,
   respondToAutomationOwnerProposal:
     coworkerAutomationOwnerProcedures.respondToAutomationOwnerProposal,
+  getAutomationRegistrations: coworkerAutomationOwnerProcedures.getAutomationRegistrations,
+  registerForAutomation: coworkerAutomationOwnerProcedures.registerForAutomation,
+  changeAutomationRegistration: coworkerAutomationOwnerProcedures.changeAutomationRegistration,
+  getMyAutomationAccountPreferences:
+    coworkerAutomationOwnerProcedures.getMyAutomationAccountPreferences,
+  setMyAutomationAccountPreference:
+    coworkerAutomationOwnerProcedures.setMyAutomationAccountPreference,
   getForwardingAlias: coworkerForwardingAliasProcedures.getForwardingAlias,
   createForwardingAlias: coworkerForwardingAliasProcedures.createForwardingAlias,
   disableForwardingAlias: coworkerForwardingAliasProcedures.disableForwardingAlias,
@@ -56,7 +64,6 @@ export const coworkerRouter = {
   unshare: coworkerSharingProcedures.unshare,
   listShared: coworkerSharingProcedures.listShared,
   exportDefinition: coworkerDefinitionProcedures.exportDefinition,
-  importShared: coworkerDefinitionProcedures.importShared,
   importDefinition: coworkerDefinitionProcedures.importDefinition,
   adminListWorkspaceCoworkers: coworkerAdminProcedures.adminListWorkspaceCoworkers,
   adminGetWorkspaceRun: coworkerAdminProcedures.adminGetWorkspaceRun,

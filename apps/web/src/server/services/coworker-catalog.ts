@@ -2,9 +2,8 @@ import {
   reconcileStaleCoworkerRunsForCoworker,
   reconcileStaleCoworkerRunsForCoworkers,
 } from "@bap/core/server/services/coworker-service";
-import { generation, coworkerDocument, coworkerRun } from "@bap/db/schema";
+import { generation, coworkerDocument, coworkerRun, user } from "@bap/db/schema";
 import { and, desc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
-import { ensureBuilderCoworkerMetadata } from "@/server/services/coworker-builder-metadata";
 import { getResolvedCoworkerToolPolicy } from "@/server/services/coworker-toolbox";
 
 type CatalogContext = {
@@ -91,11 +90,7 @@ export async function listCoworkerCatalog(input: {
   }
 
   const items = await Promise.all(
-    input.coworkers.map(async (coworkerRow) => {
-      const wf = await ensureBuilderCoworkerMetadata({
-        context: input.context,
-        wf: coworkerRow,
-      });
+    input.coworkers.map(async (wf) => {
       const runs = recentRunsByCoworkerId.get(wf.id) ?? [];
       const lastRun = runs[0];
       const { toolAccessMode, allowedSkillSlugs } = getResolvedCoworkerToolPolicy(wf);
@@ -142,16 +137,41 @@ export async function listCoworkerCatalog(input: {
   return items;
 }
 
+export async function listCoworkerUsers(input: { context: CatalogContext; coworkerIds: string[] }) {
+  if (input.coworkerIds.length === 0) {
+    return [];
+  }
+
+  const executionUserId = sql<string>`coalesce(
+    ${coworkerRun.executionUserId},
+    ${coworkerRun.initiatedByUserId},
+    ${coworkerRun.ownerId}
+  )`;
+  const rows = await input.context.db
+    .selectDistinct({
+      coworkerId: coworkerRun.coworkerId,
+      id: user.id,
+      name: user.name,
+      image: user.image,
+    })
+    .from(coworkerRun)
+    .innerJoin(user, eq(user.id, executionUserId))
+    .where(
+      and(inArray(coworkerRun.coworkerId, input.coworkerIds), isNull(coworkerRun.syntheticKind)),
+    );
+
+  return rows.toSorted((left, right) =>
+    left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
+  );
+}
+
 export async function getCoworkerCatalogDetails(input: {
   context: CatalogContext;
   coworker: typeof import("@bap/db/schema").coworker.$inferSelect;
 }) {
   await reconcileStaleCoworkerRunsForCoworker(input.coworker.id);
 
-  const wf = await ensureBuilderCoworkerMetadata({
-    context: input.context,
-    wf: input.coworker,
-  });
+  const wf = input.coworker;
 
   const runs = await input.context.db.query.coworkerRun.findMany({
     where: eq(coworkerRun.coworkerId, wf.id),
@@ -188,7 +208,16 @@ export async function getCoworkerCatalogDetails(input: {
     schedule: wf.schedule,
     requiresUserInput: wf.requiresUserInput,
     userInputPrompt: wf.userInputPrompt,
+    visibility: wf.visibility,
+    createdByUserId: wf.createdByUserId ?? wf.ownerId,
+    createdByNameSnapshot: wf.createdByNameSnapshot,
+    createdByAvatarSnapshot: wf.createdByAvatarSnapshot,
+    automationOwnerUserId: wf.automationOwnerUserId,
+    automationOwnerConsentedAt: wf.automationOwnerConsentedAt,
+    proposedAutomationOwnerUserId: wf.proposedAutomationOwnerUserId,
+    configurationRevision: wf.configurationRevision,
     sharedAt: wf.sharedAt,
+    publishedAt: wf.publishedAt,
     createdAt: wf.createdAt,
     updatedAt: wf.updatedAt,
     documents: documents.map((document) => ({

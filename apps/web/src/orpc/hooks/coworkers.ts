@@ -1,7 +1,8 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { useQuery as useZeroQuery } from "@rocicorp/zero/react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { IntegrationType } from "@/lib/integration-icons";
 import {
   mapZeroCoworkerFolders,
   mapZeroCoworkerList,
@@ -66,7 +67,7 @@ function isActiveCoworkerRunStatus(status: string | null | undefined): boolean {
 
 export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
   const zeroRuntime = useBapZeroRuntime();
-  const completedCacheKeyRef = useRef<string | null>(null);
+  const [completedCacheKey, setCompletedCacheKey] = useState<string | null>(null);
   const [coworkers, details] = useZeroQuery(
     zeroRuntime.isReady ? zeroQueries.coworkerInventory.coworkers() : null,
   );
@@ -74,22 +75,17 @@ export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
   const initialData = options?.initialData;
   const mappedData = useMemo(() => mapZeroCoworkerList(coworkers ?? []), [coworkers]);
   useEffect(() => {
-    if (
-      cacheKey &&
-      initialData &&
-      initialData.length > 0 &&
-      completedCacheKeyRef.current !== cacheKey
-    ) {
+    if (cacheKey && initialData && initialData.length > 0 && completedCacheKey !== cacheKey) {
       coworkerListCache.set(
         cacheKey,
         mergeCoworkerLists(coworkerListCache.get(cacheKey) ?? [], initialData),
       );
     }
-  }, [cacheKey, initialData]);
+  }, [cacheKey, completedCacheKey, initialData]);
   useEffect(() => {
     if (cacheKey && details.type === "complete") {
       coworkerListCache.set(cacheKey, mappedData);
-      completedCacheKeyRef.current = cacheKey;
+      setCompletedCacheKey(cacheKey);
     } else if (cacheKey && mappedData.length > 0) {
       coworkerListCache.set(
         cacheKey,
@@ -98,7 +94,7 @@ export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
     }
   }, [cacheKey, details.type, mappedData]);
   const cachedData = cacheKey ? coworkerListCache.get(cacheKey) : undefined;
-  const hasCompletedCurrentInventory = completedCacheKeyRef.current === cacheKey;
+  const hasCompletedCurrentInventory = completedCacheKey === cacheKey;
   const data =
     details.type === "complete"
       ? mappedData
@@ -119,7 +115,7 @@ export function useCoworkerList(options?: { initialData?: CoworkerListData }) {
 
   return {
     data,
-    dataUpdatedAt: Date.now(),
+    dataUpdatedAt: 0,
     error,
     isError: Boolean(error),
     isFetching:
@@ -177,6 +173,14 @@ export function useCoworker(id: string | undefined) {
     queryKey: ["coworker", "get", id],
     queryFn: () => client.coworker.get({ id: id! }),
     enabled: !!id,
+  });
+}
+
+export function useCoworkerUsers() {
+  return useQuery({
+    queryKey: ["coworker", "users"],
+    queryFn: () => client.coworker.listUsers(),
+    staleTime: 60_000,
   });
 }
 
@@ -258,6 +262,9 @@ export function useUpdateCoworker() {
       authSource?: ProviderAuthSource | null;
       autoApprove?: boolean;
       isPinned?: boolean;
+      isHidden?: boolean;
+      visibility?: "private" | "workspace";
+      expectedRevision?: number;
       toolAccessMode?: CoworkerToolAccessMode;
       allowedIntegrations?: (
         | "google_gmail"
@@ -462,17 +469,6 @@ export function useSharedCoworkerList() {
   });
 }
 
-export function useImportSharedCoworker() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (sourceCoworkerId: string) => client.coworker.importShared({ sourceCoworkerId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["coworker"] });
-    },
-  });
-}
-
 export function useExportCoworkerDefinition() {
   return useMutation({
     mutationFn: (id: string) => client.coworker.exportDefinition({ id }),
@@ -485,6 +481,128 @@ export function useImportCoworkerDefinition() {
   return useMutation({
     mutationFn: (definitionJson: string) => client.coworker.importDefinition({ definitionJson }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+    },
+  });
+}
+
+export function useCoworkerRevisions(coworkerId: string | undefined) {
+  return useQuery({
+    queryKey: ["coworker", coworkerId, "revisions"],
+    queryFn: () => client.coworker.listRevisions({ coworkerId: coworkerId!, limit: 50 }),
+    enabled: Boolean(coworkerId),
+  });
+}
+
+export function useRestoreCoworkerRevision() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { coworkerId: string; revision: number }) =>
+      client.coworker.restoreRevision(input),
+    onSuccess: (_result, input) => {
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+      queryClient.invalidateQueries({
+        queryKey: ["coworker", input.coworkerId, "revisions"],
+      });
+    },
+  });
+}
+
+export function useCoworkerAutomationOwner(coworkerId: string | undefined) {
+  return useQuery({
+    queryKey: ["coworker", coworkerId, "automation-owner"],
+    queryFn: () => client.coworker.getAutomationOwner({ coworkerId: coworkerId! }),
+    enabled: Boolean(coworkerId),
+  });
+}
+
+export function useCoworkerAutomationRegistrations(coworkerId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["coworker", coworkerId, "automation-registrations"],
+    queryFn: () => client.coworker.getAutomationRegistrations({ coworkerId: coworkerId! }),
+    enabled: Boolean(coworkerId) && enabled,
+    refetchInterval: 5_000,
+  });
+}
+
+export function useRegisterForCoworkerAutomation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { coworkerId: string }) => client.coworker.registerForAutomation(input),
+    onSuccess: (_result, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["coworker", input.coworkerId, "automation-registrations"],
+      });
+    },
+  });
+}
+
+export function useChangeCoworkerAutomationRegistration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      coworkerId: string;
+      userId: string;
+      action: "pause" | "resume" | "remove";
+    }) => client.coworker.changeAutomationRegistration(input),
+    onSuccess: (_result, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["coworker", input.coworkerId, "automation-registrations"],
+      });
+    },
+  });
+}
+
+export function useMyCoworkerAutomationAccountPreferences(
+  coworkerId: string | undefined,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["coworker", coworkerId, "automation-account-preferences"],
+    queryFn: () => client.coworker.getMyAutomationAccountPreferences({ coworkerId: coworkerId! }),
+    enabled: Boolean(coworkerId) && enabled,
+  });
+}
+
+export function useSetMyCoworkerAutomationAccountPreference() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      coworkerId: string;
+      integrationType: IntegrationType;
+      accountLabel: string | null;
+    }) => client.coworker.setMyAutomationAccountPreference(input),
+    onSuccess: (_result, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["coworker", input.coworkerId, "automation-account-preferences"],
+      });
+    },
+  });
+}
+
+export function useRespondToCoworkerAutomationOwner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { coworkerId: string; response: "accept" | "reject" }) =>
+      client.coworker.respondToAutomationOwnerProposal(input),
+    onSuccess: (_result, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["coworker", input.coworkerId, "automation-owner"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+    },
+  });
+}
+
+export function useProposeCoworkerAutomationOwner() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { coworkerId: string; userId: string }) =>
+      client.coworker.proposeAutomationOwner(input),
+    onSuccess: (_result, input) => {
+      queryClient.invalidateQueries({
+        queryKey: ["coworker", input.coworkerId, "automation-owner"],
+      });
       queryClient.invalidateQueries({ queryKey: ["coworker"] });
     },
   });
@@ -552,7 +670,7 @@ export function useCoworkerRuns(
 
   return {
     data,
-    dataUpdatedAt: Date.now(),
+    dataUpdatedAt: 0,
     error,
     isError: Boolean(error),
     isFetching:
@@ -661,7 +779,7 @@ export function useCoworkerFolderList(options?: { initialData?: CoworkerFolderLi
 
   return {
     data: folderData,
-    dataUpdatedAt: Date.now(),
+    dataUpdatedAt: 0,
     error,
     isError: Boolean(error),
     isFetching:
