@@ -21,8 +21,8 @@ vi.mock("@bap/core/server/edition", () => ({
   isSelfHostedEdition: isSelfHostedEditionMock,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  auth: { api: { getSession: getSessionMock } },
+vi.mock("@/server/session-auth", () => ({
+  getRequestSession: getSessionMock,
 }));
 
 vi.mock("@/server/instance/health", () => ({
@@ -143,7 +143,7 @@ describe("handleInstanceHealth (GET /api/instance/health)", () => {
     await handleInstanceHealth(request);
 
     expect(getSessionMock).toHaveBeenCalledTimes(1);
-    expect(getSessionMock.mock.calls[0]?.[0]?.headers).toBe(request.headers);
+    expect(getSessionMock).toHaveBeenCalledWith(request.headers);
   });
 
   it("returns 200 with the status payload when the instance is healthy", async () => {

@@ -1,5 +1,5 @@
 import { env } from "@/env";
-import { auth } from "@/lib/auth";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral handler for the bug report endpoint.
@@ -161,7 +161,7 @@ async function uploadAttachmentToSlack(channelId: string, file: File, initialCom
 
 /** POST /api/report */
 export async function handleReport(request: Request): Promise<Response> {
-  const sessionData = await auth.api.getSession({ headers: request.headers });
+  const sessionData = await getRequestSession(request.headers);
   if (!sessionData?.user) {
     return new Response("Unauthorized", { status: 401 });
   }

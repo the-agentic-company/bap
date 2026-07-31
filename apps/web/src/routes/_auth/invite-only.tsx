@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { InviteOnlyAccessClient } from "@/components/login/invite-only-access-client";
-import { auth } from "@/lib/auth";
+import { getRequestSession } from "@/server/session-auth";
 
 type InviteOnlySearch = {
   email?: string;
@@ -30,7 +30,7 @@ function validateInviteOnlySearch(search: Record<string, unknown>): InviteOnlySe
  */
 const guardInviteOnly = createServerFn({ method: "GET" }).handler(async () => {
   const request = getRequest();
-  const sessionData = await auth.api.getSession({ headers: request.headers });
+  const sessionData = await getRequestSession(request.headers);
   if (sessionData?.user?.id) {
     throw redirect({ href: "/chat" });
   }

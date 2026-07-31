@@ -61,6 +61,11 @@ export const authClient = createAuthClient({
               defaultValue: false,
               input: false,
             },
+            sessionIdleTimeoutMinutes: {
+              type: "number",
+              required: false,
+              input: false,
+            },
             updatedAt: {
               type: "date",
               required: false,

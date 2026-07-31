@@ -37,12 +37,8 @@ vi.mock("@bap/core/server/control-plane/local-links", () => ({
   upsertCloudAccountLinkForUser: upsertCloudAccountLinkForUserMock,
 }));
 
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      getSession: getSessionMock,
-    },
-  },
+vi.mock("@/server/session-auth", () => ({
+  getRequestSession: getSessionMock,
 }));
 
 vi.mock("@/server/control-plane/auth", () => ({

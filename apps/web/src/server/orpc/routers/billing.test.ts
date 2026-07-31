@@ -38,6 +38,8 @@ var cancelWorkspaceInvitationMock: ReturnType<typeof vi.fn>;
 var removeWorkspaceMemberMock: ReturnType<typeof vi.fn>;
 var updateWorkspaceMemberRoleMock: ReturnType<typeof vi.fn>;
 var setWorkspaceTwoFactorRequirementMock: ReturnType<typeof vi.fn>;
+var setWorkspaceSessionIdleTimeoutMock: ReturnType<typeof vi.fn>;
+var addWorkspaceSessionIdleTimeoutsMock: ReturnType<typeof vi.fn>;
 
 vi.mock("../middleware", () => ({
   protectedProcedure: createProcedureStub(),
@@ -112,6 +114,17 @@ vi.mock("@bap/core/server/billing/service", () => ({
   updateWorkspaceMemberRole: (() => {
     updateWorkspaceMemberRoleMock = vi.fn<VitestProcedure>();
     return updateWorkspaceMemberRoleMock;
+  })(),
+}));
+
+vi.mock("@/server/workspace-session-policy", () => ({
+  addWorkspaceSessionIdleTimeouts: (() => {
+    addWorkspaceSessionIdleTimeoutsMock = vi.fn<VitestProcedure>((overview) => overview);
+    return addWorkspaceSessionIdleTimeoutsMock;
+  })(),
+  setWorkspaceSessionIdleTimeout: (() => {
+    setWorkspaceSessionIdleTimeoutMock = vi.fn<VitestProcedure>();
+    return setWorkspaceSessionIdleTimeoutMock;
   })(),
 }));
 
@@ -227,6 +240,10 @@ describe("billingRouter", () => {
     setWorkspaceTwoFactorRequirementMock.mockResolvedValue({
       id: "ws-1",
       requiresTwoFactor: true,
+    });
+    setWorkspaceSessionIdleTimeoutMock.mockResolvedValue({
+      id: "ws-1",
+      sessionIdleTimeoutMinutes: 60,
     });
     cancelPlanForOwnerMock.mockResolvedValue({ success: true });
     updateWorkspaceImageMock.mockResolvedValue({
@@ -618,6 +635,18 @@ describe("billingRouter", () => {
       }),
     ).resolves.toEqual({ id: "ws-1", requiresTwoFactor: true });
     expect(setWorkspaceTwoFactorRequirementMock).toHaveBeenCalledWith("ws-1", true);
+  });
+
+  it("lets Workspace admins set an idle session timeout", async () => {
+    getWorkspaceMembershipForUserMock.mockResolvedValueOnce({ role: "admin" });
+
+    await expect(
+      billingRouterAny.setSessionIdleTimeout({
+        input: { workspaceId: "ws-1", timeoutMinutes: 60 },
+        context: createContext(),
+      }),
+    ).resolves.toEqual({ id: "ws-1", sessionIdleTimeoutMinutes: 60 });
+    expect(setWorkspaceSessionIdleTimeoutMock).toHaveBeenCalledWith("ws-1", 60);
   });
 
   it("removes a Workspace Membership for workspace admins", async () => {

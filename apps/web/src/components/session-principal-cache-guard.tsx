@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { authClient } from "@/lib/auth-client";
 
@@ -13,6 +13,7 @@ import { authClient } from "@/lib/auth-client";
  */
 export function SessionPrincipalCacheGuard() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const lastSessionUserIdRef = useRef<string | null | undefined>(undefined);
 
@@ -29,6 +30,13 @@ export function SessionPrincipalCacheGuard() {
         const previousUserId = lastSessionUserIdRef.current;
         if (previousUserId === undefined) {
           lastSessionUserIdRef.current = currentUserId;
+          if (!currentUserId) {
+            queryClient.clear();
+            void navigate({
+              href: `/login?callbackUrl=${encodeURIComponent(pathname)}`,
+              replace: true,
+            });
+          }
           return;
         }
         if (previousUserId !== currentUserId) {
@@ -39,6 +47,12 @@ export function SessionPrincipalCacheGuard() {
             currentUserId,
             pathname,
           });
+          if (previousUserId && !currentUserId) {
+            void navigate({
+              href: `/login?callbackUrl=${encodeURIComponent(pathname)}`,
+              replace: true,
+            });
+          }
           return;
         }
         lastSessionUserIdRef.current = currentUserId;
@@ -71,7 +85,7 @@ export function SessionPrincipalCacheGuard() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [pathname, queryClient]);
+  }, [navigate, pathname, queryClient]);
 
   return null;
 }

@@ -8,6 +8,7 @@ import { env } from "@/env";
 import { INVITE_ONLY_LOGIN_ERROR } from "@/lib/admin-emails";
 import { auth } from "@/lib/auth";
 import { buildRequestAwareUrl } from "@/lib/request-aware-url";
+import { getTrustedOrigins } from "@/lib/trusted-origins";
 import { consumePending } from "@/server/ai/pending-oauth";
 import { sanitizeReturnPath } from "@/server/control-plane/return-path";
 import {
@@ -23,7 +24,7 @@ import {
   resolveMagicLinkPageState,
 } from "@/server/lib/magic-link-request-state";
 import { storeProviderTokens } from "@/server/orpc/routers/provider-auth";
-import { getTrustedOrigins } from "@/lib/trusted-origins";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral HTTP handlers for the `/api/auth/**` URL area.
@@ -133,6 +134,11 @@ function withCors(request: Request, response: Response): Response {
  * and re-applies CORS + Set-Cookie headers. Used for every HTTP method.
  */
 export async function handleBetterAuth(request: Request): Promise<Response> {
+  if (request.headers.has("cookie")) {
+    // Apply Bap's Workspace idle policy before any Better Auth endpoint can use the session.
+    // If it was revoked, Better Auth continues as an unauthenticated request.
+    await getRequestSession(request.headers);
+  }
   const handled = await auth.handler(request);
   const response = (await redirectInviteOnlyAuthError(request, handled)) ?? handled;
   return withCors(request, response);
@@ -368,9 +374,7 @@ export async function handleNativeCallback(request: Request): Promise<Response> 
     const cookieHeader = request.headers.get("cookie");
     console.log("[native-callback] Cookies received:", cookieHeader);
 
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    const session = await getRequestSession(request.headers);
 
     console.log("[native-callback] Session result:", JSON.stringify(session, null, 2));
 
@@ -442,7 +446,7 @@ export async function handleProviderCallback(
     return Response.redirect(settingsUrl, 307);
   }
 
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await getRequestSession(request.headers);
   if (!session?.user || session.user.id !== pending.userId) {
     settingsUrl.searchParams.set("provider_error", "auth_mismatch");
     return Response.redirect(settingsUrl, 307);

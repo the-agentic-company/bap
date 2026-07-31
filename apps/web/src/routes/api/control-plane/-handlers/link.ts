@@ -9,7 +9,7 @@ import {
 import { db } from "@bap/db/client";
 import { controlPlaneLinkRequest } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
+import { env } from "@/env";
 import { buildRequestAwareUrl } from "@/lib/request-aware-url";
 import {
   assertCloudControlPlaneEnabled,
@@ -17,7 +17,7 @@ import {
   getValidLinkRequest,
   requireCloudSession,
 } from "@/server/control-plane/auth";
-import { env } from "@/env";
+import { getRequestSession } from "@/server/session-auth";
 import { redirectResponse } from "./redirect";
 
 /**
@@ -78,9 +78,7 @@ export async function callbackHandler(request: Request): Promise<Response> {
     return Response.json({ message: "Missing code or state" }, { status: 400 });
   }
 
-  const sessionData = await auth.api.getSession({
-    headers: request.headers,
-  });
+  const sessionData = await getRequestSession(request.headers);
 
   if (!sessionData?.user?.id) {
     const loginUrl = buildRequestAwareUrl("/login", request);

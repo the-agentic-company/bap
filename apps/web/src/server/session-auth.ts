@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { enforceWorkspaceSessionIdleTimeout } from "@/server/workspace-session-timeout";
 
 const BETTER_AUTH_SESSION_COOKIE_NAMES = new Set([
   "better-auth.session_token",
@@ -113,21 +114,34 @@ export function getSessionCookieHeaders(headers: Headers): Headers[] {
 }
 
 export async function getRequestSession(headers: Headers) {
+  const candidateHeaders = getSessionCookieHeaders(headers);
+  const enforceIdleTimeout = candidateHeaders.length > 0;
   const directSession = await auth.api.getSession({ headers }).catch(() => null);
-  if (directSession?.user?.id && directSession?.session) {
+  if (
+    directSession?.user?.id &&
+    directSession?.session &&
+    (!enforceIdleTimeout || (await enforceWorkspaceSessionIdleTimeout(directSession.session)))
+  ) {
     return directSession;
   }
 
-  const candidateHeaders = getSessionCookieHeaders(headers);
   const candidateSessions = await Promise.all(
     candidateHeaders.map((sessionHeaders) =>
       auth.api.getSession({ headers: sessionHeaders }).catch(() => null),
     ),
   );
 
-  return (
-    candidateSessions.find((sessionData) => sessionData?.user?.id && sessionData?.session) ?? null
+  const validCandidates = await Promise.all(
+    candidateSessions.map(async (sessionData) =>
+      sessionData?.user?.id &&
+      sessionData.session &&
+      (await enforceWorkspaceSessionIdleTimeout(sessionData.session))
+        ? sessionData
+        : null,
+    ),
   );
+
+  return validCandidates.find((sessionData) => sessionData !== null) ?? null;
 }
 
 export async function getRequestSessionCandidates(headers: Headers) {
@@ -137,9 +151,16 @@ export async function getRequestSessionCandidates(headers: Headers) {
     ),
   );
 
+  const validSessions = await Promise.all(
+    resolvedSessions.map(async (session) =>
+      session?.user?.id && (await enforceWorkspaceSessionIdleTimeout(session.session))
+        ? session
+        : null,
+    ),
+  );
   const sessions: NonNullable<RequestSession>[] = [];
-  for (const session of resolvedSessions) {
-    if (session?.user?.id && !sessions.some((candidate) => candidate.user.id === session.user.id)) {
+  for (const session of validSessions) {
+    if (session && !sessions.some((candidate) => candidate.user.id === session.user.id)) {
       sessions.push(session);
     }
   }

@@ -49,6 +49,10 @@ vi.mock("@/lib/auth", () => ({
   },
 }));
 
+vi.mock("@/server/session-auth", () => ({
+  getRequestSession: getSessionMock,
+}));
+
 vi.mock("@/env", () => ({
   env: {
     APP_URL: undefined,
@@ -124,6 +128,7 @@ function postMagicLinkResend(token = "abc123") {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getSessionMock.mockResolvedValue(null);
   delete process.env.APP_URL;
   delete process.env.VITE_APP_URL;
   process.env.PORT = "3000";

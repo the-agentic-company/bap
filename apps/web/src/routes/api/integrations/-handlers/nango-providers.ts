@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral handler for `GET /api/integrations/nango/providers`.
@@ -64,7 +64,7 @@ function normalizeProvider(input: unknown): NangoProvider | null {
 }
 
 export async function handleNangoProviders(request: Request): Promise<Response> {
-  const sessionData = await auth.api.getSession({ headers: request.headers });
+  const sessionData = await getRequestSession(request.headers);
   if (!sessionData?.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

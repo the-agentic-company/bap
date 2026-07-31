@@ -3,7 +3,7 @@ import { db } from "@bap/db/client";
 import { controlPlaneAuthRequest, controlPlaneLinkRequest } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
 import { env } from "@/env";
-import { auth } from "@/lib/auth";
+import { getRequestSession } from "@/server/session-auth";
 
 const CONTROL_PLANE_INSTANCE_API_KEY_HEADER = "x-bap-instance-api-key";
 const LINK_REQUEST_TTL_MS = 10 * 60 * 1000;
@@ -24,9 +24,7 @@ export function assertValidInstanceApiKey(request: Request) {
 }
 
 export async function requireCloudSession(request: Request) {
-  const sessionData = await auth.api.getSession({
-    headers: request.headers,
-  });
+  const sessionData = await getRequestSession(request.headers);
 
   return sessionData;
 }

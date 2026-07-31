@@ -148,6 +148,15 @@ export const auth = betterAuth({
       },
     },
   },
+  session: {
+    additionalFields: {
+      lastActivityAt: {
+        type: "date",
+        required: false,
+        input: false,
+      },
+    },
+  },
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: authSchema,
@@ -301,6 +310,11 @@ export const auth = betterAuth({
               type: "boolean",
               required: false,
               defaultValue: false,
+              input: false,
+            },
+            sessionIdleTimeoutMinutes: {
+              type: "number",
+              required: false,
               input: false,
             },
             updatedAt: {

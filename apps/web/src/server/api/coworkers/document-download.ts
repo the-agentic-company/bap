@@ -3,8 +3,8 @@ import { getPresignedDownloadUrl } from "@bap/core/server/storage/s3-client";
 import { db } from "@bap/db/client";
 import { coworker, coworkerDocument } from "@bap/db/schema";
 import { and, eq, or } from "drizzle-orm";
-import { auth } from "@/lib/auth";
 import { requireActiveWorkspaceAccess } from "@/server/orpc/workspace-access";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral handler for `GET /api/coworkers/documents/:id/download`.
@@ -18,7 +18,7 @@ export async function downloadCoworkerDocument(
   request: Request,
   documentId: string,
 ): Promise<Response> {
-  const sessionData = await auth.api.getSession({ headers: request.headers });
+  const sessionData = await getRequestSession(request.headers);
   if (!sessionData?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

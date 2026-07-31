@@ -3,8 +3,8 @@ import { db } from "@bap/db/client";
 import { integration } from "@bap/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { getRequestAwareOrigin } from "@/lib/request-aware-url";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral handlers for `/api/oauth/dynamics/pending`.
@@ -41,7 +41,7 @@ const completeSchema = z.object({
 });
 
 async function getAuthedUserId(headers: Headers): Promise<string | null> {
-  const sessionData = await auth.api.getSession({ headers });
+  const sessionData = await getRequestSession(headers);
   return sessionData?.user?.id ?? null;
 }
 

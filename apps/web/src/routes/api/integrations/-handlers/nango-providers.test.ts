@@ -9,8 +9,8 @@ const { getSessionMock } = vi.hoisted(() => ({
   getSessionMock: vi.fn<VitestProcedure>(),
 }));
 
-vi.mock("@/lib/auth", () => ({
-  auth: { api: { getSession: getSessionMock } },
+vi.mock("@/server/session-auth", () => ({
+  getRequestSession: getSessionMock,
 }));
 
 import { handleNangoProviders } from "./nango-providers";

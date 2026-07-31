@@ -6,12 +6,8 @@ const mustGetQueryMock = vi.fn<() => { fn: (input: unknown) => unknown }>();
 const resolveSessionPrincipalWorkspaceIdMock =
   vi.fn<(userId: string, activeOrganizationId?: string | null) => Promise<string>>();
 
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      getSession: getSessionMock,
-    },
-  },
+vi.mock("@/server/session-auth", () => ({
+  getRequestSession: getSessionMock,
 }));
 
 vi.mock("@/zero/queries", () => ({

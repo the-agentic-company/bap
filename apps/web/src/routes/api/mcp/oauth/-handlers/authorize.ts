@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { buildRequestAwareUrl } from "@/lib/request-aware-url";
 import {
   createHostedMcpAuthorizationCode,
@@ -9,6 +8,7 @@ import {
   resolveHostedMcpWorkspaceConsent,
   renderHostedMcpConsentHtml,
 } from "@/server/hosted-mcp-oauth";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral handlers for the hosted MCP OAuth authorization endpoint
@@ -58,7 +58,7 @@ function buildErrorRedirect(
 
 export async function handleHostedMcpAuthorizeGet(request: Request): Promise<Response> {
   try {
-    const sessionData = await auth.api.getSession({ headers: request.headers });
+    const sessionData = await getRequestSession(request.headers);
     if (!sessionData?.user?.id) {
       return buildLoginRedirect(request);
     }
@@ -111,7 +111,7 @@ export async function handleHostedMcpAuthorizePost(request: Request): Promise<Re
   let validatedRedirectUri: string | null = null;
 
   try {
-    const sessionData = await auth.api.getSession({ headers: request.headers });
+    const sessionData = await getRequestSession(request.headers);
     if (!sessionData?.user?.id) {
       return buildLoginRedirect(request);
     }

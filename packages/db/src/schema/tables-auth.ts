@@ -66,6 +66,7 @@ export const session = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     impersonatedBy: text("impersonated_by"),
     activeOrganizationId: text("active_organization_id"),
+    lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -243,6 +244,7 @@ export const organization = pgTable(
     imageStorageKey: text("image_storage_key"),
     imageMimeType: text("image_mime_type"),
     requiresTwoFactor: boolean("requires_two_factor").default(false).notNull(),
+    sessionIdleTimeoutMinutes: integer("session_idle_timeout_minutes"),
     updatedAt: timestamp("updated_at")
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())

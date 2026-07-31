@@ -16,6 +16,7 @@ import { integrationRouter } from "./routers/integration";
 import { integrationSkillRouter } from "./routers/integration-skill";
 import { modulrRouter } from "./routers/modulr";
 import { providerAuthRouter } from "./routers/provider-auth";
+import { sessionRouter } from "./routers/session";
 import { skillRouter } from "./routers/skill";
 import { templateRouter } from "./routers/template";
 import { userRouter } from "./routers/user";
@@ -40,6 +41,7 @@ export const appRouter = {
   integrationSkill: integrationSkillRouter,
   modulr: modulrRouter,
   providerAuth: providerAuthRouter,
+  session: sessionRouter,
   workspaceMcpServer: workspaceMcpServerRouter,
   workspaceIntegrationPolicy: workspaceIntegrationPolicyRouter,
   skill: skillRouter,

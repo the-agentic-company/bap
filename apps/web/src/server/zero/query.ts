@@ -1,12 +1,12 @@
 import { mustGetQuery } from "@rocicorp/zero";
 import { handleQueryRequest } from "@rocicorp/zero/server";
-import { auth } from "@/lib/auth";
+import { getRequestSession } from "@/server/session-auth";
 import { resolveSessionPrincipalWorkspaceId } from "@/server/session-principal-workspace";
 import { zeroQueries, type ZeroQueryContext } from "@/zero/queries";
 import { schema } from "@/zero/schema";
 
 export async function handleZeroQueryRequest(request: Request): Promise<Response> {
-  const sessionData = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+  const sessionData = await getRequestSession(request.headers);
   const userId = sessionData?.user?.id;
 
   if (!userId) {

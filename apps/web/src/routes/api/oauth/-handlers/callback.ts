@@ -15,11 +15,11 @@ import {
   workspaceMcpAuthorization,
 } from "@bap/db/schema";
 import { eq, and } from "drizzle-orm";
-import { auth } from "@/lib/auth";
 import { buildRequestAwareUrl, getRequestAwareOrigin } from "@/lib/request-aware-url";
 import { consumeWorkspaceMcpServerOAuthPending } from "@/server/executor-source-oauth";
 import { fetchDynamicsInstances } from "@/server/integrations/dynamics";
 import { requireActiveWorkspaceAccess } from "@/server/orpc/workspace-access";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral handler for `GET /api/oauth/callback`.
@@ -87,9 +87,7 @@ export async function handleOAuthCallback(request: Request): Promise<Response> {
   }
 
   // Get session
-  const sessionData = await auth.api.getSession({
-    headers: request.headers,
-  });
+  const sessionData = await getRequestSession(request.headers);
 
   if (!sessionData?.user) {
     return oauthRedirect(buildRequestAwareUrl("/login?error=unauthorized", request));

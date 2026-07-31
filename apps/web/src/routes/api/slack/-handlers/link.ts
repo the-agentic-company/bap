@@ -1,7 +1,7 @@
 import { db } from "@bap/db/client";
 import { slackUserLink } from "@bap/db/schema";
-import { auth } from "@/lib/auth";
 import { buildRequestAwareUrl } from "@/lib/request-aware-url";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral handler for `GET /api/slack/link`.
@@ -25,9 +25,7 @@ export async function handleSlackLink(request: Request): Promise<Response> {
   }
 
   // Require authenticated session
-  const sessionData = await auth.api.getSession({
-    headers: request.headers,
-  });
+  const sessionData = await getRequestSession(request.headers);
 
   if (!sessionData?.session) {
     // Redirect to login with return URL

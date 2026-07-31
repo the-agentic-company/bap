@@ -2,12 +2,12 @@ import type { TemplateCatalogTemplate } from "@bap/db/template-catalog";
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { auth } from "@/lib/auth";
 import {
   buildWorktreeAutoLoginPath,
   isWorktreeAutoLoginConfigured,
 } from "@/lib/worktree-auto-login";
 import { listFeaturedTemplateCatalogEntries } from "@/server/services/template-catalog";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Server-side data for the landing route (`/`).
@@ -30,7 +30,7 @@ export interface LandingData {
 export const fetchLandingData = createServerFn({ method: "GET" }).handler(
   async (): Promise<LandingData> => {
     const request = getRequest();
-    const sessionData = await auth.api.getSession({ headers: request.headers }).catch(() => null);
+    const sessionData = await getRequestSession(request.headers);
     const hasSession = Boolean(sessionData?.session && sessionData?.user);
 
     if (!hasSession && isWorktreeAutoLoginConfigured()) {

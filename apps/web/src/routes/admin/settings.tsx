@@ -1,11 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, KeyRound, ShieldCheck, TriangleAlert } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { Check, Clock3, KeyRound, ShieldCheck, TriangleAlert } from "lucide-react";
+import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useBillingOverview } from "@/orpc/hooks/billing";
-import { useSetWorkspaceTwoFactorRequirement, useWorkspaceMembers } from "@/orpc/hooks/workspace";
+import {
+  useSetWorkspaceSessionIdleTimeout,
+  useSetWorkspaceTwoFactorRequirement,
+  useWorkspaceMembers,
+} from "@/orpc/hooks/workspace";
 
 export const Route = createFileRoute("/admin/settings")({
   head: () => ({ meta: [{ title: "Workspace Security - Bap" }] }),
@@ -51,10 +55,12 @@ export function AdminWorkspaceSettingsPage() {
   );
   const { data: membersData, isLoading: membersLoading } = useWorkspaceMembers(activeWorkspaceId);
   const setTwoFactorRequirement = useSetWorkspaceTwoFactorRequirement();
+  const setSessionIdleTimeout = useSetWorkspaceSessionIdleTimeout();
   const [confirmDisable, setConfirmDisable] = useState(false);
 
   const members = membersData?.members ?? EMPTY_MEMBERS;
   const requiresTwoFactor = activeWorkspace?.requiresTwoFactor === true;
+  const sessionIdleTimeoutMinutes = activeWorkspace?.sessionIdleTimeoutMinutes ?? null;
   const canManagePolicy =
     membersData?.membershipRole === "owner" || membersData?.membershipRole === "admin";
   const enrolledCount = useMemo(
@@ -110,6 +116,37 @@ export function AdminWorkspaceSettingsPage() {
   const handleCancelDisable = useCallback(() => {
     setConfirmDisable(false);
   }, []);
+
+  const handleSessionIdleTimeoutChange = useCallback(
+    async (value: string) => {
+      if (!activeWorkspaceId) {
+        return;
+      }
+
+      const timeoutMinutes =
+        value === "disabled" ? null : (Number(value) as 15 | 30 | 60 | 240 | 480 | 1440);
+      try {
+        await setSessionIdleTimeout.mutateAsync({ workspaceId: activeWorkspaceId, timeoutMinutes });
+        toast.success(
+          timeoutMinutes === null
+            ? "Idle session timeout disabled."
+            : "Idle session timeout updated.",
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not update the session policy.",
+        );
+      }
+    },
+    [activeWorkspaceId, setSessionIdleTimeout],
+  );
+
+  const handleSessionIdleTimeoutSelectChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      void handleSessionIdleTimeoutChange(event.target.value);
+    },
+    [handleSessionIdleTimeoutChange],
+  );
 
   if (overviewLoading || membersLoading) {
     return <SettingsSkeleton />;
@@ -191,6 +228,45 @@ export function AdminWorkspaceSettingsPage() {
           </div>
         ) : null}
 
+        {!canManagePolicy ? (
+          <div className="text-muted-foreground border-t px-5 py-3 text-sm">
+            Workspace admin access is required to change this policy.
+          </div>
+        ) : null}
+      </section>
+
+      <section className="mt-5 overflow-hidden rounded-xl border">
+        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex max-w-2xl gap-3">
+            <span className="bg-brand-light text-brand-dark flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+              <Clock3 className="h-[18px] w-[18px]" aria-hidden="true" />
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold">Idle session timeout</h3>
+              <p className="text-muted-foreground mt-1 max-w-[65ch] text-sm">
+                Sign members out after they stop interacting with Bap. Background updates do not
+                keep a session active.
+              </p>
+            </div>
+          </div>
+          <label className="shrink-0">
+            <span className="sr-only">Idle session timeout</span>
+            <select
+              className="border-input bg-background h-9 min-w-40 rounded-md border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              value={sessionIdleTimeoutMinutes?.toString() ?? "disabled"}
+              disabled={!canManagePolicy || setSessionIdleTimeout.isPending}
+              onChange={handleSessionIdleTimeoutSelectChange}
+            >
+              <option value="disabled">Disabled</option>
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="240">4 hours</option>
+              <option value="480">8 hours</option>
+              <option value="1440">24 hours</option>
+            </select>
+          </label>
+        </div>
         {!canManagePolicy ? (
           <div className="text-muted-foreground border-t px-5 py-3 text-sm">
             Workspace admin access is required to change this policy.

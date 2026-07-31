@@ -185,6 +185,20 @@ export function useSetWorkspaceTwoFactorRequirement() {
   });
 }
 
+export function useSetWorkspaceSessionIdleTimeout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      workspaceId: string;
+      timeoutMinutes: 15 | 30 | 60 | 240 | 480 | 1440 | null;
+    }) => client.billing.setSessionIdleTimeout(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["billing"] });
+    },
+  });
+}
+
 export function useUpdateWorkspaceImage() {
   const queryClient = useQueryClient();
 

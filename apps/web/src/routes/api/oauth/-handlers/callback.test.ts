@@ -102,12 +102,8 @@ const {
   };
 });
 
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      getSession: getSessionMock,
-    },
-  },
+vi.mock("@/server/session-auth", () => ({
+  getRequestSession: getSessionMock,
 }));
 
 vi.mock("@bap/db/client", () => ({

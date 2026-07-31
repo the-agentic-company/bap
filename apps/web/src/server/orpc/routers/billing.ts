@@ -35,6 +35,10 @@ import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import {
+  addWorkspaceSessionIdleTimeouts,
+  setWorkspaceSessionIdleTimeout,
+} from "@/server/workspace-session-policy";
 import type { ORPCContext } from "../context";
 import { protectedProcedure } from "../middleware";
 import {
@@ -185,9 +189,11 @@ async function resolveRequestedOwner(params: {
 }
 
 const overview = protectedProcedure.handler(async ({ context }) => {
-  const overview = await getBillingOverviewForUser(
-    context.user.id,
-    getActiveOrganizationId(context.session) ?? context.workspaceId,
+  const overview = await addWorkspaceSessionIdleTimeouts(
+    await getBillingOverviewForUser(
+      context.user.id,
+      getActiveOrganizationId(context.session) ?? context.workspaceId,
+    ),
   );
   if (context.hostedMcp?.audience !== "bap" || context.hostedMcp.allowAllWorkspaces) {
     return overview;
@@ -560,6 +566,30 @@ const setTwoFactorRequirement = protectedProcedure
     return setWorkspaceTwoFactorRequirement(input.workspaceId, input.required);
   });
 
+const setSessionIdleTimeout = protectedProcedure
+  .input(
+    z.object({
+      workspaceId: z.string(),
+      timeoutMinutes: z.union([
+        z.null(),
+        z.literal(15),
+        z.literal(30),
+        z.literal(60),
+        z.literal(240),
+        z.literal(480),
+        z.literal(1440),
+      ]),
+    }),
+  )
+  .handler(async ({ input, context }) => {
+    await requireHostedMcpWorkspaceAdmin({
+      context,
+      workspaceId: input.workspaceId,
+    });
+
+    return setWorkspaceSessionIdleTimeout(input.workspaceId, input.timeoutMinutes);
+  });
+
 const updateImage = protectedProcedure
   .input(
     z.object({
@@ -707,6 +737,7 @@ export const billingRouter = {
   removeMember,
   rename,
   setTwoFactorRequirement,
+  setSessionIdleTimeout,
   updateImage,
   removeImage,
 };

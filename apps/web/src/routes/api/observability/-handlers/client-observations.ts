@@ -10,8 +10,8 @@ import { conversation, generation } from "@bap/db/schema";
 import { and, eq } from "drizzle-orm";
 import IORedis from "ioredis";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { requireActiveWorkspaceAccess } from "@/server/orpc/workspace-access";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral handler for `POST /api/observability/client-observations`.
@@ -164,7 +164,7 @@ async function verifyGenerationAccess(args: {
 }
 
 export async function handleClientObservations(request: Request): Promise<Response> {
-  const sessionData = await auth.api.getSession({ headers: request.headers });
+  const sessionData = await getRequestSession(request.headers);
   if (!sessionData?.user) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }

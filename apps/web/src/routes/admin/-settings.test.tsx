@@ -14,7 +14,9 @@ type VitestProcedure = Extract<
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn<VitestProcedure>(),
   mutateAsync: vi.fn<VitestProcedure>(),
+  sessionTimeoutMutateAsync: vi.fn<VitestProcedure>(),
   requiresTwoFactor: false,
+  sessionIdleTimeoutMinutes: null as number | null,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -31,6 +33,7 @@ vi.mock("@/orpc/hooks/billing", () => ({
           id: "workspace-1",
           name: "Acme Operations",
           requiresTwoFactor: mocks.requiresTwoFactor,
+          sessionIdleTimeoutMinutes: mocks.sessionIdleTimeoutMinutes,
         },
       ],
     },
@@ -39,6 +42,10 @@ vi.mock("@/orpc/hooks/billing", () => ({
 }));
 
 vi.mock("@/orpc/hooks/workspace", () => ({
+  useSetWorkspaceSessionIdleTimeout: () => ({
+    mutateAsync: mocks.sessionTimeoutMutateAsync,
+    isPending: false,
+  }),
   useSetWorkspaceTwoFactorRequirement: () => ({
     mutateAsync: mocks.mutateAsync,
     isPending: false,
@@ -80,9 +87,14 @@ describe("AdminWorkspaceSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requiresTwoFactor = false;
+    mocks.sessionIdleTimeoutMinutes = null;
     mocks.mutateAsync.mockResolvedValue({
       id: "workspace-1",
       requiresTwoFactor: true,
+    });
+    mocks.sessionTimeoutMutateAsync.mockResolvedValue({
+      id: "workspace-1",
+      sessionIdleTimeoutMinutes: 60,
     });
   });
 
@@ -140,6 +152,21 @@ describe("AdminWorkspaceSettingsPage", () => {
       expect(mocks.mutateAsync).toHaveBeenCalledWith({
         workspaceId: "workspace-1",
         required: false,
+      });
+    });
+  });
+
+  it("updates the Workspace idle session timeout", async () => {
+    render(<AdminWorkspaceSettingsPage />);
+
+    fireEvent.change(screen.getByLabelText("Idle session timeout"), {
+      target: { value: "60" },
+    });
+
+    await waitFor(() => {
+      expect(mocks.sessionTimeoutMutateAsync).toHaveBeenCalledWith({
+        workspaceId: "workspace-1",
+        timeoutMinutes: 60,
       });
     });
   });

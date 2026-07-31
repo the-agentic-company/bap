@@ -1,9 +1,9 @@
 import { startCloudAuth } from "@bap/core/server/control-plane/client";
 import { isSelfHostedEdition } from "@bap/core/server/edition";
-import { auth } from "@/lib/auth";
 import { buildRequestAwareUrl } from "@/lib/request-aware-url";
 import { sanitizeReturnPath } from "@/server/control-plane/return-path";
 import { getInstanceHealthStatus } from "@/server/instance/health";
+import { getRequestSession } from "@/server/session-auth";
 
 /**
  * Framework-neutral HTTP handlers for the `/api/instance/**` URL area.
@@ -52,9 +52,7 @@ export async function handleInstanceAuthStart(request: Request): Promise<Respons
  * instance health status with 200 when healthy and 503 when degraded.
  */
 export async function handleInstanceHealth(request: Request): Promise<Response> {
-  const sessionData = await auth.api.getSession({
-    headers: request.headers,
-  });
+  const sessionData = await getRequestSession(request.headers);
 
   if (!sessionData?.user?.id) {
     return Response.json({ message: "Unauthorized" }, { status: 401 });

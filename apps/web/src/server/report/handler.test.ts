@@ -10,8 +10,8 @@ const { getSessionMock, envMock } = vi.hoisted(() => ({
   envMock: { SLACK_BOT_TOKEN: "xoxb-test" } as { SLACK_BOT_TOKEN: string | undefined },
 }));
 
-vi.mock("@/lib/auth", () => ({
-  auth: { api: { getSession: getSessionMock } },
+vi.mock("@/server/session-auth", () => ({
+  getRequestSession: getSessionMock,
 }));
 
 vi.mock("@/env", () => ({
