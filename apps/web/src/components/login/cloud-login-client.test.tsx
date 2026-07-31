@@ -138,10 +138,10 @@ describe("CloudLoginClient", () => {
           email: "pilot@heybap.com",
         }),
       });
+      expect(screen.getByRole("button", { name: "Forgot password?" })).toBeInTheDocument();
     });
 
     expect(screen.getByRole("heading", { name: "Log in" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Forgot password?" })).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
       target: { value: "hunter2hunter2" },
     });
