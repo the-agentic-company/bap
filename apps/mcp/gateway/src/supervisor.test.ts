@@ -1,9 +1,26 @@
-import { describe, expect, it } from "vitest";
+import type { ChildProcess } from "node:child_process";
+import { describe, expect, it, vi } from "vitest";
 import {
+  getMcpChildRestartDelayMs,
   getManagedChildMode,
   parseMcpChildListeningPort,
   shouldManageGatewayChildren,
+  superviseManagedGatewayChild,
+  type ManagedGatewaySupervisorDependencies,
 } from "./supervisor";
+
+function fakeChildProcess(pid: number): ChildProcess {
+  return { pid } as ChildProcess;
+}
+
+const spawnParams = {
+  slug: "bap" as const,
+  childRoot: "servers/bap",
+  mode: "dev" as const,
+  port: 4101,
+  env: {},
+  rootDir: "/repo/apps/mcp",
+};
 
 describe("gateway supervisor config", () => {
   it("enables managed children only when requested", () => {
@@ -33,5 +50,158 @@ describe("gateway supervisor config", () => {
         "127.0.0.1",
       ),
     ).toBeNull();
+  });
+
+  it("uses capped exponential backoff for child restarts", () => {
+    expect(getMcpChildRestartDelayMs(0)).toBe(250);
+    expect(getMcpChildRestartDelayMs(1)).toBe(500);
+    expect(getMcpChildRestartDelayMs(2)).toBe(1_000);
+    expect(getMcpChildRestartDelayMs(10)).toBe(5_000);
+    expect(getMcpChildRestartDelayMs(-1)).toBe(250);
+  });
+
+  it.each(["process_exit", "target_unhealthy"] as const)(
+    "restarts on the same port after %s",
+    async (failureReason) => {
+      const initialProcess = fakeChildProcess(101);
+      const replacementProcess = fakeChildProcess(102);
+      const controller = new AbortController();
+      let failureChecks = 0;
+      const waitForFailure = vi.fn(async () => {
+        failureChecks += 1;
+        if (failureChecks === 1) {
+          return failureReason;
+        }
+        controller.abort();
+        return "shutdown" as const;
+      });
+      const spawnChild = vi.fn(async () => ({
+        process: replacementProcess,
+        readyPort: Promise.resolve(4101),
+      }));
+      const waitForDelay = vi.fn(async () => undefined);
+      const terminateChild = vi.fn();
+      const child = {
+        slug: "bap" as const,
+        port: 4101,
+        target: "http://127.0.0.1:4101",
+        process: initialProcess,
+      };
+
+      await superviseManagedGatewayChild(
+        {
+          child,
+          initialHandle: { process: initialProcess, readyPort: Promise.resolve(4101) },
+          spawnParams,
+          signal: controller.signal,
+        },
+        {
+          waitForFailure,
+          spawnChild,
+          waitForDelay,
+          terminateChild,
+          now: () => 0,
+        } as ManagedGatewaySupervisorDependencies,
+      );
+
+      expect(waitForDelay).toHaveBeenCalledWith(250, controller.signal);
+      expect(spawnChild).toHaveBeenCalledWith(expect.objectContaining({ port: 4101 }));
+      expect(terminateChild).toHaveBeenCalledWith(initialProcess);
+      expect(child.process).toBe(replacementProcess);
+    },
+  );
+
+  it("terminates a replacement spawned while shutdown is in flight", async () => {
+    const initialProcess = fakeChildProcess(201);
+    const replacementProcess = fakeChildProcess(202);
+    const controller = new AbortController();
+    const terminateChild = vi.fn();
+    const child = {
+      slug: "bap" as const,
+      port: 4101,
+      target: "http://127.0.0.1:4101",
+      process: initialProcess,
+    };
+    const spawnChild = vi.fn(async () => {
+      controller.abort();
+      return {
+        process: replacementProcess,
+        readyPort: Promise.resolve(4101),
+      };
+    });
+
+    await superviseManagedGatewayChild(
+      {
+        child,
+        initialHandle: { process: initialProcess, readyPort: Promise.resolve(4101) },
+        spawnParams,
+        signal: controller.signal,
+      },
+      {
+        waitForFailure: vi.fn(async () => "target_unhealthy" as const),
+        spawnChild,
+        waitForDelay: vi.fn(async () => undefined),
+        terminateChild,
+        now: () => 0,
+      } as ManagedGatewaySupervisorDependencies,
+    );
+
+    expect(terminateChild).toHaveBeenCalledWith(initialProcess);
+    expect(terminateChild).toHaveBeenCalledWith(replacementProcess);
+    expect(child.process).toBe(initialProcess);
+  });
+
+  it("backs off across replacements that become ready and quickly fail", async () => {
+    const initialProcess = fakeChildProcess(301);
+    const firstReplacement = fakeChildProcess(302);
+    const secondReplacement = fakeChildProcess(303);
+    const controller = new AbortController();
+    let failureChecks = 0;
+    const waitForFailure = vi.fn(async () => {
+      failureChecks += 1;
+      if (failureChecks <= 2) {
+        return "process_exit" as const;
+      }
+      controller.abort();
+      return "shutdown" as const;
+    });
+    const spawnChild = vi
+      .fn()
+      .mockResolvedValueOnce({
+        process: firstReplacement,
+        readyPort: Promise.resolve(4101),
+      })
+      .mockResolvedValueOnce({
+        process: secondReplacement,
+        readyPort: Promise.resolve(4101),
+      });
+    const waitForDelay = vi.fn<(ms: number, signal: AbortSignal) => Promise<void>>(
+      async () => undefined,
+    );
+    const child = {
+      slug: "bap" as const,
+      port: 4101,
+      target: "http://127.0.0.1:4101",
+      process: initialProcess,
+    };
+
+    await superviseManagedGatewayChild(
+      {
+        child,
+        initialHandle: { process: initialProcess, readyPort: Promise.resolve(4101) },
+        spawnParams,
+        signal: controller.signal,
+      },
+      {
+        waitForFailure,
+        spawnChild,
+        waitForDelay,
+        terminateChild: vi.fn(),
+        now: () => 0,
+      } as ManagedGatewaySupervisorDependencies,
+    );
+
+    expect(waitForDelay.mock.calls.map(([delay]) => delay)).toEqual([250, 500]);
+    expect(child.process).toBe(secondReplacement);
   });
 });

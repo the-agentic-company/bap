@@ -23,7 +23,19 @@ type WorkerReadinessResponse = {
   counts: Record<string, number>;
 };
 
-function mockRemotePreflightFetch(readWorkerQueue: () => WorkerReadinessResponse) {
+function mockRemotePreflightFetch(
+  readWorkerQueue: () => WorkerReadinessResponse,
+  mcpResponse: () => Response = () =>
+    Response.json({
+      jsonrpc: "2.0",
+      id: "cli-live-preflight",
+      result: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        serverInfo: { name: "Bap MCP", version: "1" },
+      },
+    }),
+) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input, _init) => {
     const url = String(input);
     if (url === "https://staging.heybap.com/api/health") {
@@ -33,7 +45,7 @@ function mockRemotePreflightFetch(readWorkerQueue: () => WorkerReadinessResponse
       return Response.json(readWorkerQueue());
     }
     if (url === "https://mcp.staging.heybap.com/bap") {
-      return new Response("ok");
+      return mcpResponse();
     }
 
     return new Response("not found", { status: 404 });
@@ -90,6 +102,13 @@ describe("e2e-live cli preflight", () => {
         "https://staging.heybap.com/api/internal/testing/cli-live",
         expect.objectContaining({ method: "POST" }),
       ]);
+      expect(fetchMock.mock.calls).toContainEqual([
+        "https://mcp.staging.heybap.com/bap",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({ authorization: expect.stringMatching(/^Bearer /) }),
+        }),
+      ]);
     } finally {
       fetchMock.mockRestore();
     }
@@ -125,6 +144,69 @@ describe("e2e-live cli preflight", () => {
       expect(result.checks.find((check) => check.service === "worker")?.detail).toBe(
         'remote queue "bap-staging" has 1 registered worker(s)',
       );
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  test("rejects a reachable Bap MCP server that cannot verify managed tokens", async () => {
+    const fetchMock = mockRemotePreflightFetch(
+      () => ({
+        ready: true,
+        queueName: "bap-staging",
+        workerCount: 1,
+        counts: {},
+      }),
+      () =>
+        Response.json(
+          { error: "Cannot verify a managed MCP token without a secret." },
+          { status: 401 },
+        ),
+    );
+
+    try {
+      const result = await runCliLivePreflight({
+        env: stagingPreflightEnv,
+        repoRoot: "/does/not/exist",
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.checks.find((check) => check.service === "Bap MCP")).toMatchObject({
+        status: "unhealthy",
+        detail: expect.stringContaining("returned HTTP 401"),
+      });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  test("rejects a 200 response without a successful MCP initialize result", async () => {
+    const fetchMock = mockRemotePreflightFetch(
+      () => ({
+        ready: true,
+        queueName: "bap-staging",
+        workerCount: 1,
+        counts: {},
+      }),
+      () =>
+        Response.json({
+          jsonrpc: "2.0",
+          id: "cli-live-preflight",
+          error: { code: -32_000, message: "Unauthorized" },
+        }),
+    );
+
+    try {
+      const result = await runCliLivePreflight({
+        env: stagingPreflightEnv,
+        repoRoot: "/does/not/exist",
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.checks.find((check) => check.service === "Bap MCP")).toMatchObject({
+        status: "unhealthy",
+        detail: expect.stringContaining("did not return a successful JSON-RPC initialize result"),
+      });
     } finally {
       fetchMock.mockRestore();
     }

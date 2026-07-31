@@ -17,9 +17,15 @@ describe("managed Bap capability profiles", () => {
 
   it("limits the runner profile to its Generation-bound failure tool and procedure", () => {
     expect(MANAGED_BAP_TOOL_PROFILES.coworker_runner).toEqual(["runner_markFailed"]);
+    expect(isManagedBapToolAllowed("coworker_runner", "runner_markFailed")).toBe(true);
+    expect(isManagedBapToolAllowed("coworker_runner", "workspace_list")).toBe(false);
+    expect(isManagedBapToolAllowed("coworker_runner", "coworker_read")).toBe(false);
+    expect(isManagedBapToolAllowed("coworker_runner", "coworkerRun_start")).toBe(false);
     expect(
       isManagedBapRpcAllowed("coworker_runner", "generation/markCurrentCoworkerRunFailed"),
     ).toBe(true);
+    expect(isManagedBapRpcAllowed("coworker_runner", "coworker/list")).toBe(false);
+    expect(isManagedBapRpcAllowed("coworker_runner", "coworker/trigger")).toBe(false);
     expect(isManagedBapRpcAllowed("coworker_runner", "coworker/update")).toBe(false);
   });
 

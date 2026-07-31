@@ -1,3 +1,4 @@
+import { signManagedMcpToken } from "@bap/core/server/managed-mcp-auth";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -32,8 +33,10 @@ type RemoteWorkerWaitOptions = {
 const DEFAULT_SERVER_URL = "http://localhost:3000";
 const DEFAULT_LOCAL_TUNNEL_HEALTH_URL = "http://127.0.0.1:3399/__localcan/health";
 const DEFAULT_HEALTH_TIMEOUT_MS = 800;
+const DEFAULT_MCP_HEALTH_TIMEOUT_MS = 5_000;
 const DEFAULT_REMOTE_WORKER_READY_TIMEOUT_MS = 180_000;
 const DEFAULT_REMOTE_WORKER_READY_INTERVAL_MS = 5_000;
+const BAP_MCP_DIAGNOSTIC_TOKEN_TTL_SECONDS = 60;
 
 const webRecovery =
   "Start the web server with `bun run dev` or `bun run dev:web`, then rerun the command.";
@@ -160,6 +163,45 @@ function parseJsonText(text: string): unknown | null {
   }
 }
 
+function parseMcpJsonRpcText(text: string): unknown | null {
+  const direct = parseJsonText(text);
+  if (direct !== null) {
+    return direct;
+  }
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) {
+      continue;
+    }
+    const eventBody = parseJsonText(line.slice("data:".length).trim());
+    if (eventBody !== null) {
+      return eventBody;
+    }
+  }
+  return null;
+}
+
+function acceptsMcpInitializeResponse(body: unknown): boolean {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const response = body as { jsonrpc?: unknown; id?: unknown; result?: unknown; error?: unknown };
+  if (
+    response.jsonrpc !== "2.0" ||
+    response.id !== "cli-live-preflight" ||
+    response.error !== undefined ||
+    typeof response.result !== "object" ||
+    response.result === null
+  ) {
+    return false;
+  }
+  const result = response.result as { protocolVersion?: unknown; serverInfo?: unknown };
+  return (
+    typeof result.protocolVersion === "string" &&
+    typeof result.serverInfo === "object" &&
+    result.serverInfo !== null
+  );
+}
+
 function summarizeRemoteWorkerReadiness(body: unknown): {
   ready: boolean;
   queueName: string;
@@ -226,7 +268,6 @@ async function checkJsonHealth(args: {
         args.recovery,
       );
     }
-
     if (!args.acceptsBody(body)) {
       return unhealthy(
         args.service,
@@ -425,32 +466,75 @@ async function checkBapMcp(env: NodeJS.ProcessEnv): Promise<CliLivePreflightChec
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DEFAULT_HEALTH_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_MCP_HEALTH_TIMEOUT_MS);
 
   try {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const token = signManagedMcpToken(
+      {
+        userId: "cli-live-preflight",
+        workspaceId: "cli-live-preflight",
+        internalKey: "bap",
+        scopes: ["bap"],
+        surface: "chat",
+        spawnDepth: 0,
+        exp: nowSeconds + BAP_MCP_DIAGNOSTIC_TOKEN_TTL_SECONDS,
+      },
+      secret,
+    );
     const response = await fetch(url, {
-      headers: { accept: "application/json, text/event-stream, */*" },
+      method: "POST",
+      headers: {
+        accept: "application/json, text/event-stream",
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "cli-live-preflight",
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: { name: "bap-cli-live-preflight", version: "1" },
+        },
+      }),
       signal: controller.signal,
     });
     const text = await response.text();
-    if (response.status >= 500) {
-      return unhealthy("Bap MCP", `GET ${url} returned HTTP ${response.status}`, bapMcpRecovery);
+    if (!response.ok) {
+      return unhealthy(
+        "Bap MCP",
+        `authenticated MCP initialize at ${url} returned HTTP ${response.status}`,
+        bapMcpRecovery,
+      );
     }
     if (/Public URL not available/i.test(text)) {
       return unhealthy(
         "Bap MCP",
-        `GET ${url} returned a LocalCan unavailable page`,
+        `authenticated MCP initialize at ${url} returned a LocalCan unavailable page`,
+        bapMcpRecovery,
+      );
+    }
+    if (!acceptsMcpInitializeResponse(parseMcpJsonRpcText(text))) {
+      return unhealthy(
+        "Bap MCP",
+        `authenticated MCP initialize at ${url} did not return a successful JSON-RPC initialize result`,
         bapMcpRecovery,
       );
     }
 
-    return ok("Bap MCP", `reachable at ${url}`, bapMcpRecovery);
+    return ok("Bap MCP", `authenticated MCP initialize succeeded at ${url}`, bapMcpRecovery);
   } catch (error) {
     const reason =
       error instanceof Error && error.name === "AbortError"
-        ? `timed out after ${DEFAULT_HEALTH_TIMEOUT_MS}ms`
+        ? `timed out after ${DEFAULT_MCP_HEALTH_TIMEOUT_MS}ms`
         : formatError(error);
-    return missing("Bap MCP", `GET ${url} failed: ${reason}`, bapMcpRecovery);
+    return missing(
+      "Bap MCP",
+      `authenticated MCP initialize at ${url} failed: ${reason}`,
+      bapMcpRecovery,
+    );
   } finally {
     clearTimeout(timeout);
   }
