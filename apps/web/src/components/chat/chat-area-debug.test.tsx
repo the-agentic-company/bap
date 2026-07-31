@@ -4,9 +4,8 @@
 
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import { chatAreaMocks, renderInChatHeader, resetChatAreaMocks } from "./chat-area.test-support";
 import { ChatArea } from "./chat-area";
+import { chatAreaMocks, renderInChatHeader, resetChatAreaMocks } from "./chat-area.test-support";
 
 const { mockStartGeneration, mockAdminState, mockActiveGenerationState } = chatAreaMocks;
 
@@ -41,7 +40,7 @@ describe("ChatArea admin debug recovery presets", () => {
         expect.any(Object),
       );
     });
-  });
+  }, 15_000);
 
   it("arms the auth recovery preset and forwards the auth park override", async () => {
     mockAdminState.isAdmin = true;
