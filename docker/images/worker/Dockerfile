@@ -2,7 +2,7 @@
 
 FROM oven/bun:1.3.9 AS bun
 
-FROM node:24-bookworm-slim AS pruner
+FROM node:25-bookworm-slim AS pruner
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
 RUN bun --version && node --version
