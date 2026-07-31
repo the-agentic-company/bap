@@ -2,7 +2,17 @@
 
 import { Link, useNavigate } from "@tanstack/react-router";
 import { T, useGT } from "gt-react";
-import { Circle, Download, Ellipsis, Loader2, Move, Share2, Star, Trash2 } from "lucide-react";
+import {
+  Circle,
+  Download,
+  Ellipsis,
+  FolderInput,
+  Loader2,
+  LockKeyhole,
+  Star,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { startTransition, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent } from "@/components/animate-ui/components/radix/sheet";
@@ -20,12 +30,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { getCoworkerPublicShareHref } from "@/lib/coworker-routes";
 import { getCoworkerRunStatusLabel } from "@/lib/coworker-status";
 import {
   COWORKER_AVAILABLE_INTEGRATION_TYPES,
@@ -36,9 +44,8 @@ import {
 import { cn } from "@/lib/utils";
 import {
   useDeleteCoworker,
+  useDuplicateCoworkerDefinition,
   useExportCoworkerDefinition,
-  useShareCoworker,
-  useUnshareCoworker,
   useUpdateCoworker,
 } from "@/orpc/hooks/coworkers";
 import { useIntegrationList } from "@/orpc/hooks/integrations";
@@ -49,6 +56,27 @@ import {
 } from "./coworker-card-content";
 
 const MAX_VISIBLE_TOOL_INDICATORS = 3;
+
+function DuplicateAndRemixIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 9V7a3 3 0 0 1 3-3h13" />
+      <path d="m17 1 3 3-3 3" />
+      <path d="M20 15v2a3 3 0 0 1-3 3H4" />
+      <path d="m7 23-3-3 3-3" />
+      <path d="M12 9v6M9 12h6" />
+    </svg>
+  );
+}
 
 export type InteractiveCoworkerCardData = CoworkerCardData & {
   id: string;
@@ -82,15 +110,6 @@ function formatDate(value?: Date | string | null) {
     return `${diffD}d ago`;
   }
   return date.toLocaleDateString();
-}
-
-async function copyPublicShareLink(coworker: { id: string; username?: string | null }) {
-  const sharePath = getCoworkerPublicShareHref(coworker);
-  const shareUrl =
-    typeof window === "undefined"
-      ? sharePath
-      : new URL(sharePath, window.location.origin).toString();
-  await navigator.clipboard.writeText(shareUrl);
 }
 
 function getRunStatusColor(status: string) {
@@ -212,12 +231,10 @@ export function InteractiveCoworkerCard({
   const { data: integrations } = useIntegrationList();
   const updateCoworker = useUpdateCoworker();
   const deleteCoworkerMutation = useDeleteCoworker();
-  const shareCoworker = useShareCoworker();
-  const unshareCoworker = useUnshareCoworker();
+  const duplicateCoworker = useDuplicateCoworkerDefinition();
   const exportCoworkerDefinition = useExportCoworkerDefinition();
 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isUpdatingShare, setIsUpdatingShare] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [runsOpen, setRunsOpen] = useState(false);
@@ -285,28 +302,6 @@ export function InteractiveCoworkerCard({
     [updateCoworker, coworker.id, isOn, isUpdatingStatus, nounLabel],
   );
 
-  const handleToggleShare = useCallback(async () => {
-    setIsUpdatingShare(true);
-    try {
-      if (coworker.publishedAt) {
-        await unshareCoworker.mutateAsync(coworker.id);
-        toast.success(`${nounLabel} public link disabled.`);
-      } else {
-        await shareCoworker.mutateAsync(coworker.id);
-        try {
-          await copyPublicShareLink(coworker);
-          toast.success(`${nounLabel} public link copied.`);
-        } catch {
-          toast.success(`${nounLabel} public link enabled.`);
-        }
-      }
-    } catch {
-      toast.error(t("Failed to update sharing."));
-    } finally {
-      setIsUpdatingShare(false);
-    }
-  }, [shareCoworker, unshareCoworker, coworker, nounLabel, t]);
-
   const handleToggleWorkspaceVisibility = useCallback(async () => {
     const nextVisibility = coworker.visibility === "workspace" ? "private" : "workspace";
     if (
@@ -330,15 +325,6 @@ export function InteractiveCoworkerCard({
       toast.error("You cannot change this Coworker's Workspace visibility.");
     }
   }, [coworker.configurationRevision, coworker.id, coworker.visibility, updateCoworker]);
-
-  const handleCopyPublicShareLink = useCallback(async () => {
-    try {
-      await copyPublicShareLink(coworker);
-      toast.success(`${nounLabel} public link copied.`);
-    } catch {
-      toast.error(t("Failed to copy public link."));
-    }
-  }, [coworker, nounLabel, t]);
 
   const handleDelete = useCallback(async () => {
     try {
@@ -438,6 +424,19 @@ export function InteractiveCoworkerCard({
     }
   }, [exportCoworkerDefinition, coworker.id, coworker.username, coworker.name, t]);
 
+  const handleDuplicate = useCallback(async () => {
+    try {
+      const duplicate = await duplicateCoworker.mutateAsync(coworker.id);
+      toast.success("Coworker duplicated. Make it your own.");
+      await navigate({
+        to: "/agents/edit/$id",
+        params: { id: duplicate.id },
+      });
+    } catch {
+      toast.error(t("Failed to duplicate coworker."));
+    }
+  }, [coworker.id, duplicateCoworker, navigate, t]);
+
   const isDeleting = deleteCoworkerMutation.isPending;
 
   // oxlint-disable-next-line react-perf/jsx-no-jsx-as-prop -- slot pattern
@@ -493,60 +492,36 @@ export function InteractiveCoworkerCard({
         onKeyDown={handleMenuKeyDown}
         onCloseAutoFocus={handleCloseAutoFocus}
       >
-        <DropdownMenuItem onSelect={handleTogglePin}>
-          {coworker.isPinned ? (
-            <>
-              <Star className="size-4 fill-current" />
-              <T>Remove favorite</T>
-            </>
+        <DropdownMenuItem
+          onSelect={handleDuplicate}
+          disabled={duplicateCoworker.isPending || isDeleting || isUpdatingStatus}
+        >
+          {duplicateCoworker.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
           ) : (
-            <>
-              <Star className="size-4" />
-              <T>Add favorite</T>
-            </>
+            <DuplicateAndRemixIcon className="size-4" />
           )}
+          <T>Duplicate and remix</T>
         </DropdownMenuItem>
         {onMove ? (
           <DropdownMenuItem onSelect={handleMove}>
-            <Move className="size-4" />
-            <T>Move coworker</T>
+            <FolderInput className="size-4" />
+            <T>Move to folder</T>
           </DropdownMenuItem>
         ) : null}
         {sharingLocked ? null : (
           <DropdownMenuItem onSelect={handleToggleWorkspaceVisibility}>
-            <Share2 className="size-4" />
             {coworker.visibility === "workspace" ? (
-              <T>Make private</T>
+              <>
+                <LockKeyhole className="size-4" />
+                <T>Make private</T>
+              </>
             ) : (
-              <T>Share with workspace</T>
+              <>
+                <Users className="size-4" />
+                <T>Share with workspace</T>
+              </>
             )}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        {sharingLocked ? null : coworker.publishedAt ? (
-          <>
-            <DropdownMenuItem
-              onSelect={handleCopyPublicShareLink}
-              disabled={isUpdatingShare || isDeleting || isUpdatingStatus}
-            >
-              <Share2 className="size-4" />
-              <T>Copy public link</T>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={handleToggleShare}
-              disabled={isUpdatingShare || isDeleting || isUpdatingStatus}
-            >
-              <Share2 className="size-4" />
-              <T>Disable public link</T>
-            </DropdownMenuItem>
-          </>
-        ) : (
-          <DropdownMenuItem
-            onSelect={handleToggleShare}
-            disabled={isUpdatingShare || isDeleting || isUpdatingStatus}
-          >
-            <Share2 className="size-4" />
-            <T>Copy public link</T>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
@@ -556,7 +531,6 @@ export function InteractiveCoworkerCard({
           <Download className="size-4" />
           <T>Export as JSON</T>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={handleRequestDelete}
           disabled={isDeleting || isUpdatingStatus}

@@ -15,7 +15,14 @@ import {
   markFileAssetReference,
 } from "@bap/core/server/services/file-asset-service";
 import { downloadFromS3 } from "@bap/core/server/storage/s3-client";
-import { conversation, coworker, coworkerDocument, coworkerRun, sandboxFile } from "@bap/db/schema";
+import {
+  conversation,
+  coworker,
+  coworkerDocument,
+  coworkerRun,
+  sandboxFile,
+  user,
+} from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -130,6 +137,11 @@ type DefinitionContext = {
   user: { id: string };
   db: typeof import("@bap/db/client").db;
 };
+
+export function getDuplicateCoworkerName(name: string): string {
+  const sourceName = name.trim() || "Untitled coworker";
+  return `Copy of ${sourceName}`.slice(0, 128);
+}
 
 function assertModelIsSelectable(model: string): void {
   if (isRetiredChatModel(model)) {
@@ -422,6 +434,10 @@ async function importCoworkerDefinition(input: {
     allowedIntegrations: definition.coworker.allowedIntegrations,
     allowedWorkspaceMcpServerIds: [],
   });
+  const dbUser = await input.context.db.query.user.findFirst({
+    where: eq(user.id, input.context.user.id),
+    columns: { name: true, email: true, image: true },
+  });
 
   const [created] = await input.context.db
     .insert(coworker)
@@ -431,7 +447,13 @@ async function importCoworkerDefinition(input: {
       description: normalizeDescriptionInput(definition.coworker.description),
       username,
       ownerId: input.context.user.id,
+      createdByUserId: input.context.user.id,
+      createdByNameSnapshot: dbUser?.name ?? dbUser?.email ?? null,
+      createdByAvatarSnapshot: dbUser?.image ?? null,
       workspaceId: input.workspaceId,
+      visibility: "private",
+      automationOwnerUserId: input.context.user.id,
+      automationOwnerConsentedAt: new Date(),
       status: "off",
       triggerType: definition.coworker.triggerType,
       prompt: definition.coworker.prompt,
@@ -504,5 +526,34 @@ export async function importCoworkerDefinitionFromJson(input: {
     workspaceId: input.workspaceId,
     definition: coworkerDefinitionSchema.parse(parsedDefinition),
     userRole: input.userRole,
+  });
+}
+
+export async function duplicateCoworkerDefinition(input: {
+  context: DefinitionContext;
+  workspaceId: string;
+  coworker: typeof coworker.$inferSelect;
+  userRole: string | null | undefined;
+}) {
+  const definition = coworkerDefinitionSchema.parse(
+    await exportCoworkerDefinition({
+      context: input.context,
+      coworker: input.coworker,
+    }),
+  );
+
+  return importCoworkerDefinition({
+    context: input.context,
+    workspaceId: input.workspaceId,
+    userRole: input.userRole,
+    definition: {
+      ...definition,
+      coworker: {
+        ...definition.coworker,
+        name: getDuplicateCoworkerName(definition.coworker.name),
+        username: null,
+        status: "off",
+      },
+    },
   });
 }

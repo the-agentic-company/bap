@@ -486,6 +486,17 @@ export function useImportCoworkerDefinition() {
   });
 }
 
+export function useDuplicateCoworkerDefinition() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => client.coworker.duplicateDefinition({ id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coworker"] });
+    },
+  });
+}
+
 export function useCoworkerRevisions(coworkerId: string | undefined) {
   return useQuery({
     queryKey: ["coworker", coworkerId, "revisions"],

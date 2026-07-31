@@ -65,6 +65,7 @@ export const coworkerRouter = {
   listShared: coworkerSharingProcedures.listShared,
   exportDefinition: coworkerDefinitionProcedures.exportDefinition,
   importDefinition: coworkerDefinitionProcedures.importDefinition,
+  duplicateDefinition: coworkerDefinitionProcedures.duplicateDefinition,
   adminListWorkspaceCoworkers: coworkerAdminProcedures.adminListWorkspaceCoworkers,
   adminGetWorkspaceRun: coworkerAdminProcedures.adminGetWorkspaceRun,
   getOrCreateBuilderConversation: coworkerBuilderProcedures.getOrCreateBuilderConversation,

@@ -5,6 +5,7 @@ import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
 import { requireAccessibleCoworkerInActiveWorkspace } from "./access";
 import {
+  duplicateCoworkerDefinition,
   exportCoworkerDefinition,
   importCoworkerDefinitionFromJson,
 } from "@/server/services/coworker-definition";
@@ -41,7 +42,28 @@ const importDefinition = protectedProcedure
     });
   });
 
+const duplicateDefinition = protectedProcedure
+  .input(z.object({ id: z.string() }))
+  .handler(async ({ input, context }) => {
+    const [{ coworker: coworkerRow }, activeWorkspace, dbUser] = await Promise.all([
+      requireAccessibleCoworkerInActiveWorkspace(context, input.id),
+      requireActiveWorkspaceAccess(context.user.id, context.workspaceId),
+      context.db.query.user.findFirst({
+        where: eq(user.id, context.user.id),
+        columns: { role: true },
+      }),
+    ]);
+
+    return duplicateCoworkerDefinition({
+      context,
+      workspaceId: activeWorkspace.workspace.id,
+      coworker: coworkerRow,
+      userRole: dbUser?.role ?? null,
+    });
+  });
+
 export const coworkerDefinitionProcedures = {
+  duplicateDefinition,
   exportDefinition,
   importDefinition,
 };

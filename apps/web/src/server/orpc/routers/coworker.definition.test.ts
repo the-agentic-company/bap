@@ -574,6 +574,80 @@ describe("coworkerRouter", () => {
     expect(syncCoworkerScheduleJobMock).not.toHaveBeenCalled();
   });
 
+  it("duplicates an accessible coworker as a private, editable copy", async () => {
+    const context = createContext();
+    const createdAt = new Date("2026-07-31T10:00:00.000Z");
+    context.db.query.user.findFirst.mockResolvedValue({
+      role: "member",
+      name: "Remixer",
+      email: "remixer@example.com",
+      image: "https://example.com/remixer.png",
+    });
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-source",
+      ownerId: "source-owner",
+      workspaceId: "ws-1",
+      name: "Inbox triage",
+      description: "Sorts and summarizes new messages.",
+      username: "inbox-triage",
+      status: "on",
+      triggerType: "manual",
+      prompt: "Triage the inbox.",
+      model: DEFAULT_MODEL,
+      authSource: "shared",
+      autoApprove: true,
+      toolAccessMode: "selected",
+      allowedIntegrations: ["slack"],
+      allowedCustomIntegrations: [],
+      allowedWorkspaceMcpServerIds: [],
+      allowedSkillSlugs: ["skill-a"],
+      schedule: null,
+      requiresUserInput: false,
+      userInputPrompt: null,
+      builderConversationId: null,
+      sharedAt: createdAt,
+      visibility: "workspace",
+      createdAt,
+      updatedAt: createdAt,
+    });
+    context.mocks.insertReturningMock.mockResolvedValue([
+      {
+        id: "wf-copy",
+        name: "Copy of Inbox triage",
+        description: "Sorts and summarizes new messages.",
+        username: null,
+        status: "off",
+      },
+    ]);
+
+    const result = await coworkerRouterAny.duplicateDefinition({
+      input: { id: "wf-source" },
+      context,
+    });
+
+    expect(result).toEqual({
+      id: "wf-copy",
+      name: "Copy of Inbox triage",
+      description: "Sorts and summarizes new messages.",
+      username: null,
+      status: "off",
+    });
+    expect(context.mocks.insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Copy of Inbox triage",
+        username: null,
+        ownerId: "user-1",
+        createdByUserId: "user-1",
+        createdByNameSnapshot: "Remixer",
+        visibility: "private",
+        status: "off",
+        prompt: "Triage the inbox.",
+        allowedIntegrations: ["slack"],
+        allowedSkillSlugs: ["skill-a"],
+      }),
+    );
+  });
+
   it("imports v2 artifacts as builder conversation sandbox files", async () => {
     const context = createContext();
     context.mocks.insertReturningMock
