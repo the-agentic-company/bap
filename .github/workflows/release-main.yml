@@ -245,6 +245,9 @@ jobs:
     needs:
       - resolve
       - staging-resume
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/db-push.yml
     with:
       ref: ${{ needs.resolve.outputs.commit_sha }}
@@ -295,6 +298,9 @@ jobs:
       - observability-changes
       - staging-observability
     if: ${{ needs.observability-changes.outputs.verify_grafana == 'true' || needs.observability-changes.outputs.verify_vmalert == 'true' }}
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/verify-observability.yml
     with:
       environment: staging
@@ -347,6 +353,9 @@ jobs:
     needs:
       - resolve
       - staging-verify
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/db-push.yml
     with:
       ref: ${{ needs.resolve.outputs.commit_sha }}

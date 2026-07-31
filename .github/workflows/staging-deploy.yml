@@ -45,6 +45,9 @@ jobs:
 
   db-push:
     needs: resolve
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/db-push.yml
     with:
       ref: ${{ needs.resolve.outputs.commit_sha }}

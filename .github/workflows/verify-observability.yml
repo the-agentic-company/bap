@@ -18,8 +18,11 @@ on:
         type: boolean
         default: false
     secrets:
-      TAILSCALE_AUTHKEY:
-        description: "Tailscale auth key used to reach private observability endpoints"
+      TS_OAUTH_CLIENT_ID:
+        description: "Tailscale workload identity client ID"
+        required: true
+      TS_AUDIENCE:
+        description: "Tailscale workload identity audience"
         required: true
 
 jobs:
@@ -27,6 +30,9 @@ jobs:
     if: ${{ inputs.verify_grafana || inputs.verify_vmalert }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Resolve observability endpoints
         env:
@@ -47,9 +53,11 @@ jobs:
           esac
 
       - name: Connect to Tailscale
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:bap-ci
 
       - name: Verify Grafana health
         if: ${{ inputs.verify_grafana }}
