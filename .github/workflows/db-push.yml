@@ -149,6 +149,14 @@ jobs:
                 '
             )"
             export DATABASE_URL="${resolved_database_url}"
+            case "${ENVIRONMENT}" in
+              staging)
+                export DATABASE_URL_STAGING="${resolved_database_url}"
+                ;;
+              prod)
+                export DATABASE_URL_PROD="${resolved_database_url}"
+                ;;
+            esac
           fi
 
           max_attempts=5
