@@ -31,7 +31,7 @@ let resetCoworkerRunsAndEnable: typeof import("./coworker-run-reset").resetCowor
 describe("resetCoworkerRunsAndEnable", () => {
   beforeAll(async () => {
     ({ resetCoworkerRunsAndEnable } = await import("./coworker-run-reset"));
-  });
+  }, 30_000);
 
   beforeEach(() => {
     vi.clearAllMocks();

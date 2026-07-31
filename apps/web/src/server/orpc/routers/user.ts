@@ -7,9 +7,9 @@ import {
   convertImageThumbnail,
   IMAGE_THUMBNAIL_INPUT_EXTENSIONS,
 } from "@bap/core/server/image-thumbnail";
-import { user, coworker } from "@bap/db/schema";
+import { user, coworker, workspaceMember } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../middleware";
 
@@ -45,6 +45,13 @@ const me = protectedProcedure.handler(async ({ context }) => {
     context.user.id,
     getActiveOrganizationId(context.session) ?? context.workspaceId,
   );
+  const membership = await context.db.query.workspaceMember.findFirst({
+    where: and(
+      eq(workspaceMember.organizationId, workspace.id),
+      eq(workspaceMember.userId, context.user.id),
+    ),
+    columns: { role: true },
+  });
 
   return {
     id: context.user.id,
@@ -55,6 +62,7 @@ const me = protectedProcedure.handler(async ({ context }) => {
     onboardedAt: dbUser?.onboardedAt ?? null,
     timezone: dbUser?.timezone ?? null,
     activeWorkspaceId: workspace.id,
+    workspaceRole: membership?.role ?? null,
     billingPlanId: workspace.billingPlanId,
   };
 });
@@ -96,7 +104,8 @@ const forwarding = protectedProcedure.handler(async ({ context }) => {
 
   const coworkers = await context.db.query.coworker.findMany({
     where: and(
-      eq(coworker.ownerId, context.user.id),
+      eq(coworker.automationOwnerUserId, context.user.id),
+      isNotNull(coworker.automationOwnerConsentedAt),
       eq(coworker.workspaceId, workspace.id),
       eq(coworker.triggerType, EMAIL_FORWARDED_TRIGGER_TYPE),
     ),
@@ -132,7 +141,8 @@ const setDefaultForwardedCoworker = protectedProcedure
       const owned = await context.db.query.coworker.findFirst({
         where: and(
           eq(coworker.id, input.coworkerId),
-          eq(coworker.ownerId, context.user.id),
+          eq(coworker.automationOwnerUserId, context.user.id),
+          isNotNull(coworker.automationOwnerConsentedAt),
           eq(coworker.workspaceId, workspace.id),
           eq(coworker.triggerType, EMAIL_FORWARDED_TRIGGER_TYPE),
         ),

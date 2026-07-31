@@ -40,6 +40,7 @@ import {
 } from "@/orpc/hooks/coworkers";
 import { AppLink as Link } from "../-lib/app-link";
 import { CoworkerInfoEmptyOutput } from "./coworker-info-empty-state";
+import { CoworkerInfoPrivateRun } from "./coworker-info-private-run";
 import {
   formatDuration,
   formatHeaderTimestamp,
@@ -568,6 +569,20 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
               right={emptyOutputPanel}
             />
           </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (run.data?.contentVisible === false) {
+    return (
+      <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 min-w-0 flex-col overflow-hidden md:h-dvh">
+        {headerSection}
+
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 overflow-hidden px-4 pt-[max(0.25rem,var(--safe-area-inset-top))] pb-4 md:gap-4 md:px-6 md:pt-3 md:pb-6">
+          <RemoteRunSourceBanner source={remoteRunSource} />
+          {mobileHeaderSection}
+          <CoworkerInfoPrivateRun />
         </div>
       </main>
     );

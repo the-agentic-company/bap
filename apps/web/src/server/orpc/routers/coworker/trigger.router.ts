@@ -5,7 +5,7 @@ import { generationLifecyclePolicy } from "@bap/core/server/services/lifecycle-p
 import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 import { protectedProcedure } from "../../middleware";
-import { requireOwnedCoworkerInActiveWorkspace } from "./access";
+import { requireCoworkerActionInActiveWorkspace } from "./access";
 import { triggerCoworkerFromWeb } from "@/server/services/coworker-trigger";
 
 const trigger = protectedProcedure
@@ -39,7 +39,7 @@ const trigger = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    await requireOwnedCoworkerInActiveWorkspace(context, input.id);
+    await requireCoworkerActionInActiveWorkspace(context, input.id, "run_manual");
     try {
       return await triggerCoworkerFromWeb({
         context: context as Parameters<typeof triggerCoworkerFromWeb>[0]["context"],

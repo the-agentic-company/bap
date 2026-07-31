@@ -62,6 +62,7 @@ describe("connected account sandbox helper", () => {
     process.env.BAP_RUNTIME_CREDENTIALS_URL =
       "https://app.example.com/api/internal/mcp/runtime-credentials";
     process.env.BAP_USER_ID = "local-user-1";
+    process.env.CONVERSATION_ID = "conversation-1";
     process.env.BAP_SERVER_SECRET = "test-secret";
     process.env.BAP_REMOTE_INTEGRATION_SOURCE = JSON.stringify({
       targetEnv: "prod",
@@ -82,6 +83,7 @@ describe("connected account sandbox helper", () => {
       expect.objectContaining({
         body: JSON.stringify({
           userId: "local-user-1",
+          conversationId: "conversation-1",
           remoteIntegrationSource: {
             targetEnv: "prod",
             remoteUserId: "remote-user-1",

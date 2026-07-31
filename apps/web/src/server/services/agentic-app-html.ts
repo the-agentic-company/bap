@@ -35,6 +35,7 @@ export async function loadAgenticAppHtml(params: {
   file: SandboxFileForAgenticApp | null | undefined;
   userId: string;
   workspaceId: string;
+  allowSharedAutomatedRun?: boolean;
 }): Promise<{
   html: string;
   filename: typeof AGENTIC_APP_FILENAME;
@@ -43,7 +44,7 @@ export async function loadAgenticAppHtml(params: {
   const { file, userId, workspaceId } = params;
   if (
     !file ||
-    file.conversation.userId !== userId ||
+    (file.conversation.userId !== userId && !params.allowSharedAutomatedRun) ||
     file.conversation.workspaceId !== workspaceId
   ) {
     throw new AgenticAppHtmlError("not_found", "File not found");

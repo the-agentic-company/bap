@@ -3,11 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const {
   isCoworkerRunBacklogAutoDisableErrorMock,
   isDisabledCoworkerTriggerErrorMock,
+  dispatchScheduledCoworkerOccurrenceMock,
   triggerCoworkerRunMock,
 } = vi.hoisted(() => ({
   isCoworkerRunBacklogAutoDisableErrorMock: vi.fn(() => false),
   isDisabledCoworkerTriggerErrorMock: vi.fn(() => false),
+  dispatchScheduledCoworkerOccurrenceMock: vi.fn(),
   triggerCoworkerRunMock: vi.fn(),
+}));
+
+vi.mock("../services/coworker-schedule-dispatcher", () => ({
+  dispatchScheduledCoworkerOccurrence: dispatchScheduledCoworkerOccurrenceMock,
 }));
 
 vi.mock("../services/coworker-service", () => ({
@@ -29,7 +35,7 @@ describe("handleScheduledCoworkerJob", () => {
 
   it("skips active-run conflicts for scheduled coworkers", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    triggerCoworkerRunMock.mockRejectedValueOnce({
+    dispatchScheduledCoworkerOccurrenceMock.mockRejectedValueOnce({
       code: "BAD_REQUEST",
       status: 400,
       message: "Coworker already has an active run",
@@ -49,7 +55,7 @@ describe("handleScheduledCoworkerJob", () => {
 
   it("still throws unexpected scheduled coworker errors", async () => {
     const error = new Error("database unavailable");
-    triggerCoworkerRunMock.mockRejectedValueOnce(error);
+    dispatchScheduledCoworkerOccurrenceMock.mockRejectedValueOnce(error);
 
     await expect(
       handleScheduledCoworkerJob({
@@ -57,5 +63,25 @@ describe("handleScheduledCoworkerJob", () => {
         data: { coworkerId: "wf-1", scheduleType: "interval" },
       } as Parameters<typeof handleScheduledCoworkerJob>[0]),
     ).rejects.toThrow(error);
+  });
+
+  it("dispatches one durable occurrence using the repeat job id", async () => {
+    dispatchScheduledCoworkerOccurrenceMock.mockResolvedValueOnce({
+      occurrenceId: "occurrence-1",
+    });
+    const timestamp = Date.parse("2026-07-31T09:00:00Z");
+
+    await handleScheduledCoworkerJob({
+      id: "repeat:coworker:wf-1:1785488400000",
+      timestamp,
+      data: { coworkerId: "wf-1", scheduleType: "daily" },
+    } as Parameters<typeof handleScheduledCoworkerJob>[0]);
+
+    expect(dispatchScheduledCoworkerOccurrenceMock).toHaveBeenCalledWith({
+      coworkerId: "wf-1",
+      dispatchKey: "repeat:coworker:wf-1:1785488400000",
+      scheduleType: "daily",
+      scheduledFor: new Date(timestamp),
+    });
   });
 });

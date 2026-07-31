@@ -1,100 +1,23 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-
-process.env.BETTER_AUTH_SECRET = "test-secret";
-process.env.DATABASE_URL = "postgres://localhost/test";
-process.env.REDIS_URL = "redis://localhost:6379";
-process.env.OPENAI_API_KEY = "test-openai-key";
-process.env.ANTHROPIC_API_KEY = "test-anthropic-key";
-process.env.SANDBOX_DEFAULT = "docker";
-process.env.ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-process.env.APP_SERVER_SECRET = "1".repeat(64);
-process.env.AWS_ENDPOINT_URL = "https://s3.example.com";
-process.env.AWS_ACCESS_KEY_ID = "test-access-key";
-process.env.AWS_SECRET_ACCESS_KEY = "test-secret-key";
-
-const coworkerFindFirstMock = vi.fn();
-const coworkerRunFindManyMock = vi.fn();
-const coworkerRunFindFirstMock = vi.fn();
-const workspaceMcpServerFindManyMock = vi.fn();
-const workspaceMemberFindFirstMock = vi.fn();
-const getEnabledIntegrationTypesMock = vi.fn();
-const getRemoteIntegrationCredentialsMock = vi.fn();
-const emitPreGenerationCoworkerRunFailureSloEventMock = vi.fn();
-const getPendingInterruptForGenerationMock = vi.fn();
-const cancelInterruptsForGenerationMock = vi.fn();
-const removeCoworkerScheduleJobMock = vi.fn();
-
-const insertValuesMock = vi.fn();
-const insertMock = vi.fn(() => ({ values: insertValuesMock }));
-
-const updateWhereMock = vi.fn();
-const updateSetMock = vi.fn(() => ({ where: updateWhereMock }));
-const updateMock = vi.fn(() => ({ set: updateSetMock }));
-
-const dbMock = {
-  query: {
-    coworker: {
-      findFirst: coworkerFindFirstMock,
-    },
-    coworkerRun: {
-      findMany: coworkerRunFindManyMock,
-      findFirst: coworkerRunFindFirstMock,
-    },
-    workspaceMcpServer: {
-      findMany: workspaceMcpServerFindManyMock,
-    },
-    customIntegrationCredential: {
-      findMany: vi.fn(),
-    },
-    workspaceMember: {
-      findFirst: workspaceMemberFindFirstMock,
-    },
-  },
-  insert: insertMock,
-  update: updateMock,
-};
-
-const startCoworkerGenerationMock = vi.fn();
-const FIXED_NOW_MS = Date.parse("2026-02-12T12:00:00.000Z");
-
-vi.mock("@bap/db/client", () => ({
-  db: dbMock,
-}));
-
-vi.mock("./generation-manager", () => ({
-  generationManager: {
-    startCoworkerGeneration: startCoworkerGenerationMock,
-  },
-}));
-
-vi.mock("./generation-interrupt-service", () => ({
-  generationInterruptService: {
-    getPendingInterruptForGeneration: getPendingInterruptForGenerationMock,
-    cancelInterruptsForGeneration: cancelInterruptsForGenerationMock,
-  },
-}));
-
-vi.mock("./coworker-scheduler", () => ({
-  removeCoworkerScheduleJob: removeCoworkerScheduleJobMock,
-}));
-
-vi.mock("../integrations/cli-env", () => ({
-  getEnabledIntegrationTypes: getEnabledIntegrationTypesMock,
-}));
-
-vi.mock("../integrations/remote-integrations", async () => {
-  const actual = await vi.importActual<typeof import("../integrations/remote-integrations")>(
-    "../integrations/remote-integrations",
-  );
-  return {
-    ...actual,
-    getRemoteIntegrationCredentials: getRemoteIntegrationCredentialsMock,
-  };
-});
-
-vi.mock("./slo-journey", () => ({
-  emitPreGenerationCoworkerRunFailureSloEvent: emitPreGenerationCoworkerRunFailureSloEventMock,
-}));
+import {
+  cancelInterruptsForGenerationMock,
+  coworkerFindFirstMock,
+  coworkerRunFindFirstMock,
+  coworkerRunFindManyMock,
+  emitPreGenerationCoworkerRunFailureSloEventMock,
+  getEnabledIntegrationTypesMock,
+  getPendingInterruptForGenerationMock,
+  getRemoteIntegrationCredentialsMock,
+  insertMock,
+  insertValuesMock,
+  removeCoworkerScheduleJobMock,
+  resetCoworkerServiceTestHarness,
+  startCoworkerGenerationMock,
+  updateSetMock,
+  updateWhereMock,
+  workspaceMcpServerFindManyMock,
+  workspaceMemberFindFirstMock,
+} from "./coworker-service.test-harness";
 
 let triggerCoworkerRun: typeof import("./coworker-service").triggerCoworkerRun;
 let startPendingCoworkerRun: typeof import("./coworker-service").startPendingCoworkerRun;
@@ -102,117 +25,21 @@ let startPendingCoworkerRun: typeof import("./coworker-service").startPendingCow
 describe("triggerCoworkerRun", () => {
   beforeAll(async () => {
     ({ triggerCoworkerRun, startPendingCoworkerRun } = await import("./coworker-service"));
-  });
+  }, 30_000);
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    vi.spyOn(Date, "now").mockReturnValue(FIXED_NOW_MS);
-
-    coworkerFindFirstMock.mockResolvedValue({
-      id: "wf-1",
-      ownerId: "user-1",
-      createdByUserId: "user-1",
-      visibility: "private",
-      automationOwnerUserId: "user-1",
-      automationOwnerConsentedAt: new Date("2026-02-01T00:00:00.000Z"),
-      workspaceId: "ws-1",
-      status: "on",
-      triggerType: "manual",
-      autoApprove: true,
-      toolAccessMode: "all",
-      allowedIntegrations: ["slack"],
-      allowedCustomIntegrations: ["custom-crm"],
-      allowedWorkspaceMcpServerIds: [],
-      allowedSkillSlugs: [],
-      model: "anthropic/claude-sonnet-4-6",
-      prompt: "Do the coworker",
-      requiresUserInput: false,
-      userInputPrompt: null,
-    });
-    workspaceMemberFindFirstMock.mockResolvedValue({ role: "member" });
-    coworkerRunFindManyMock.mockResolvedValue([]);
-    coworkerRunFindFirstMock.mockResolvedValue(null);
-    workspaceMcpServerFindManyMock.mockResolvedValue([]);
-    dbMock.query.customIntegrationCredential.findMany.mockResolvedValue([]);
-    getEnabledIntegrationTypesMock.mockResolvedValue(["slack"]);
-    getRemoteIntegrationCredentialsMock.mockResolvedValue({
-      remoteUserId: "remote-user-1",
-      remoteUserEmail: "client@example.com",
-      remoteUserName: "Client",
-      enabledIntegrations: ["google_gmail", "hubspot"],
-      tokens: {
-        GMAIL_ACCESS_TOKEN: "remote-gmail-token",
-        HUBSPOT_ACCESS_TOKEN: "remote-hubspot-token",
-      },
-    });
-    emitPreGenerationCoworkerRunFailureSloEventMock.mockResolvedValue(true);
-    getPendingInterruptForGenerationMock.mockResolvedValue(null);
-    cancelInterruptsForGenerationMock.mockResolvedValue(undefined);
-    removeCoworkerScheduleJobMock.mockResolvedValue(undefined);
-
-    let insertedUserMessageCount = 0;
-    insertValuesMock.mockImplementation((values: unknown) => {
-      const record = values as Record<string, unknown>;
-      if (record.type === "coworker" && "title" in record) {
-        return {
-          returning: vi.fn().mockResolvedValue([
-            {
-              id: "conv-pending",
-              ...record,
-            },
-          ]),
-        };
-      }
-      if ("role" in record && "conversationId" in record) {
-        insertedUserMessageCount += 1;
-        return {
-          returning: vi
-            .fn()
-            .mockResolvedValue([{ id: `msg-user-${insertedUserMessageCount}`, ...record }]),
-        };
-      }
-      if ("coworkerId" in record && "status" in record) {
-        return {
-          returning: vi.fn().mockResolvedValue([
-            {
-              id: record.status === "needs_user_input" ? "run-pending" : "run-1",
-              coworkerId: "wf-1",
-              startedAt: new Date("2026-02-12T12:00:00.000Z"),
-              ...record,
-            },
-          ]),
-        };
-      }
-
-      return {
-        returning: vi.fn().mockResolvedValue([{ id: "inserted-1", ...record }]),
-      };
-    });
-
-    updateWhereMock.mockImplementation(() => ({
-      returning: vi.fn().mockResolvedValue([
-        {
-          id: "run-pending",
-          coworkerId: "wf-1",
-          ownerId: "user-1",
-          workspaceId: "ws-1",
-          status: "running",
-          startedAt: new Date("2026-02-12T12:00:00.000Z"),
-        },
-      ]),
-    }));
-
-    startCoworkerGenerationMock.mockResolvedValue({
-      generationId: "gen-1",
-      conversationId: "conv-1",
-    });
+    resetCoworkerServiceTestHarness();
   });
 
   it("throws NOT_FOUND when coworker is missing", async () => {
     coworkerFindFirstMock.mockResolvedValue(null);
 
     await expect(
-      triggerCoworkerRun({ coworkerId: "missing", startKind: "user_intent", triggerPayload: {} }),
+      triggerCoworkerRun({
+        coworkerId: "missing",
+        startKind: "user_intent",
+        triggerPayload: {},
+      }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
@@ -294,7 +121,11 @@ describe("triggerCoworkerRun", () => {
     });
 
     await expect(
-      triggerCoworkerRun({ coworkerId: "wf-1", startKind: "external_trigger", triggerPayload: {} }),
+      triggerCoworkerRun({
+        coworkerId: "wf-1",
+        startKind: "external_trigger",
+        triggerPayload: {},
+      }),
     ).rejects.toMatchObject({
       code: "BAD_REQUEST",
       message: "Coworker trigger type is disabled: gmail.new_email",
@@ -438,6 +269,112 @@ describe("triggerCoworkerRun", () => {
     );
   });
 
+  it("executes a shared manual run as the initiating member", async () => {
+    coworkerFindFirstMock.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "creator-1",
+      createdByUserId: "creator-1",
+      visibility: "workspace",
+      workspaceId: "ws-1",
+      status: "on",
+      triggerType: "manual",
+      autoApprove: true,
+      toolAccessMode: "all",
+      allowedIntegrations: [],
+      allowedCustomIntegrations: [],
+      allowedWorkspaceMcpServerIds: [],
+      allowedSkillSlugs: [],
+      model: "anthropic/claude-sonnet-4-6",
+      prompt: "Do the coworker",
+      requiresUserInput: false,
+      userInputPrompt: null,
+    });
+
+    await triggerCoworkerRun({
+      coworkerId: "wf-1",
+      startKind: "user_intent",
+      triggerPayload: { source: "manual" },
+      userId: "member-2",
+    });
+
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerId: "member-2",
+        initiatedByUserId: "member-2",
+        executionUserId: "member-2",
+        startKind: "user_intent",
+      }),
+    );
+    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "member-2" }),
+    );
+  });
+
+  it("executes an automated run only as the consenting automation owner", async () => {
+    coworkerFindFirstMock.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "creator-1",
+      createdByUserId: "creator-1",
+      visibility: "workspace",
+      automationOwnerUserId: "automation-owner-1",
+      automationOwnerConsentedAt: new Date("2026-02-01T00:00:00.000Z"),
+      workspaceId: "ws-1",
+      status: "on",
+      triggerType: "schedule",
+      autoApprove: true,
+      toolAccessMode: "all",
+      allowedIntegrations: [],
+      allowedCustomIntegrations: [],
+      allowedWorkspaceMcpServerIds: [],
+      allowedSkillSlugs: [],
+      model: "anthropic/claude-sonnet-4-6",
+      prompt: "Do the coworker",
+      requiresUserInput: false,
+      userInputPrompt: null,
+    });
+
+    await triggerCoworkerRun({
+      coworkerId: "wf-1",
+      startKind: "external_trigger",
+      triggerPayload: { source: "schedule" },
+    });
+
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerId: "automation-owner-1",
+        initiatedByUserId: null,
+        executionUserId: "automation-owner-1",
+        startKind: "external_trigger",
+      }),
+    );
+    expect(startCoworkerGenerationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "automation-owner-1" }),
+    );
+  });
+
+  it("pauses automation when the consenting owner is no longer a Workspace member", async () => {
+    workspaceMemberFindFirstMock.mockResolvedValue(null);
+
+    await expect(
+      triggerCoworkerRun({
+        coworkerId: "wf-1",
+        startKind: "external_trigger",
+        triggerPayload: { source: "schedule" },
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Coworker automation owner is missing, inactive, or has not consented.",
+    });
+
+    expect(updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "off",
+        disabledReason: "automation_owner_required",
+      }),
+    );
+    expect(startCoworkerGenerationMock).not.toHaveBeenCalled();
+  });
+
   it("uses remote enabled integrations for all-tools manual runs", async () => {
     await triggerCoworkerRun({
       coworkerId: "wf-1",
@@ -479,7 +416,10 @@ describe("triggerCoworkerRun", () => {
     await triggerCoworkerRun({
       coworkerId: "wf-1",
       startKind: "user_intent",
-      triggerPayload: { source: "chat_mention", message: "Transcribe this call" },
+      triggerPayload: {
+        source: "chat_mention",
+        message: "Transcribe this call",
+      },
       userId: "user-1",
       userRole: "admin",
       fileAttachments: [
@@ -956,5 +896,4 @@ describe("triggerCoworkerRun", () => {
       }),
     );
   });
-
 });

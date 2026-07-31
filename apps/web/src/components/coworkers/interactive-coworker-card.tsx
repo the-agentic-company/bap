@@ -57,6 +57,7 @@ export type InteractiveCoworkerCardData = CoworkerCardData & {
   allowedIntegrations?: IntegrationType[];
   allowedSkillSlugs?: string[];
   isPinned?: boolean;
+  configurationRevision?: number;
 };
 
 function formatDate(value?: Date | string | null) {
@@ -138,7 +139,11 @@ function buildToolSummary(
   };
 }
 
-type RunEntry = { id: string; status: string; startedAt?: Date | string | null };
+type RunEntry = {
+  id: string;
+  status: string;
+  startedAt?: Date | string | null;
+};
 
 function RunsList({ runs }: { runs: RunEntry[] }) {
   return (
@@ -260,10 +265,16 @@ export function InteractiveCoworkerCard({
     async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      if (isUpdatingStatus) {
+        return;
+      }
       const nextStatus = isOn ? "off" : "on";
       setIsUpdatingStatus(true);
       try {
-        await updateCoworker.mutateAsync({ id: coworker.id, status: nextStatus });
+        await updateCoworker.mutateAsync({
+          id: coworker.id,
+          status: nextStatus,
+        });
         toast.success(`${nounLabel} turned ${nextStatus}.`);
       } catch {
         toast.error(`Failed to update ${nounLabel.toLowerCase()}.`);
@@ -271,13 +282,13 @@ export function InteractiveCoworkerCard({
         setIsUpdatingStatus(false);
       }
     },
-    [updateCoworker, coworker.id, isOn, nounLabel],
+    [updateCoworker, coworker.id, isOn, isUpdatingStatus, nounLabel],
   );
 
   const handleToggleShare = useCallback(async () => {
     setIsUpdatingShare(true);
     try {
-      if (coworker.sharedAt) {
+      if (coworker.publishedAt) {
         await unshareCoworker.mutateAsync(coworker.id);
         toast.success(`${nounLabel} public link disabled.`);
       } else {
@@ -295,6 +306,30 @@ export function InteractiveCoworkerCard({
       setIsUpdatingShare(false);
     }
   }, [shareCoworker, unshareCoworker, coworker, nounLabel, t]);
+
+  const handleToggleWorkspaceVisibility = useCallback(async () => {
+    const nextVisibility = coworker.visibility === "workspace" ? "private" : "workspace";
+    if (
+      nextVisibility === "private" &&
+      !window.confirm("Make this Coworker private? Workspace members will immediately lose access.")
+    ) {
+      return;
+    }
+    try {
+      await updateCoworker.mutateAsync({
+        id: coworker.id,
+        visibility: nextVisibility,
+        expectedRevision: coworker.configurationRevision ?? 0,
+      });
+      toast.success(
+        nextVisibility === "workspace"
+          ? "Coworker shared with the Workspace."
+          : "Coworker made private.",
+      );
+    } catch {
+      toast.error("You cannot change this Coworker's Workspace visibility.");
+    }
+  }, [coworker.configurationRevision, coworker.id, coworker.visibility, updateCoworker]);
 
   const handleCopyPublicShareLink = useCallback(async () => {
     try {
@@ -326,7 +361,10 @@ export function InteractiveCoworkerCard({
 
   const handleTogglePin = useCallback(async () => {
     try {
-      await updateCoworker.mutateAsync({ id: coworker.id, isPinned: !coworker.isPinned });
+      await updateCoworker.mutateAsync({
+        id: coworker.id,
+        isPinned: !coworker.isPinned,
+      });
       toast.success(coworker.isPinned ? "Removed from favorites." : "Added to favorites.");
     } catch {
       toast.error(t("Failed to update favorite."));
@@ -437,6 +475,7 @@ export function InteractiveCoworkerCard({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          aria-label={`More actions for ${coworker.name}`}
           onClick={handleStopPropagation}
           className={cn(
             "text-muted-foreground hover:text-foreground hover:bg-muted inline-flex size-7 items-center justify-center rounded-md transition-colors",
@@ -473,8 +512,18 @@ export function InteractiveCoworkerCard({
             <T>Move coworker</T>
           </DropdownMenuItem>
         ) : null}
+        {sharingLocked ? null : (
+          <DropdownMenuItem onSelect={handleToggleWorkspaceVisibility}>
+            <Share2 className="size-4" />
+            {coworker.visibility === "workspace" ? (
+              <T>Make private</T>
+            ) : (
+              <T>Share with workspace</T>
+            )}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
-        {sharingLocked ? null : coworker.sharedAt ? (
+        {sharingLocked ? null : coworker.publishedAt ? (
           <>
             <DropdownMenuItem
               onSelect={handleCopyPublicShareLink}
@@ -654,7 +703,6 @@ export function InteractiveCoworkerCard({
           actionsSlot={cardActions}
           badgesSlot={toolBadges}
           runsSlot={runsSection}
-          footerSlot={false}
         />
       </div>
 

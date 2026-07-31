@@ -61,7 +61,6 @@ export default function CoworkersPage({
     folderList,
     hasInventoryData,
     visibleCoworkerCount,
-    connectedIntegrationTypes,
     sharedByMeCount,
     breadcrumbs,
     createFolderParent,
@@ -74,9 +73,7 @@ export default function CoworkersPage({
     isInventoryLoading,
     displayedFolderList,
     displayedCoworkerList,
-    displayedSharedCoworkerList,
     activeDropFolderId,
-    importingSharedCoworkerId,
     deletingCoworkerId,
     coworkerPendingDelete,
     filterShared,
@@ -101,7 +98,6 @@ export default function CoworkersPage({
     handleTriggerTypeButtonClick,
     handleClearAllFilters,
     handleSearchChange,
-    handleImportSharedCoworker,
     handleImportCoworkerClick,
     handleCreateFolderDialogChange,
     handleOpenCreateFolderDialog,
@@ -135,10 +131,7 @@ export default function CoworkersPage({
 
   return (
     <div className="space-y-10">
-      {!hasInventoryData &&
-      !currentFolderId &&
-      !searchQuery.trim() &&
-      !isInventoryLoading ? (
+      {!hasInventoryData && !currentFolderId && !searchQuery.trim() && !isInventoryLoading ? (
         <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
           <Image src="/tools/lobster.svg" alt="" width={64} height={64} className="mb-6" />
           <h2 className="text-foreground mb-1.5 text-center text-xl font-semibold tracking-tight">
@@ -350,7 +343,7 @@ export default function CoworkersPage({
             <CoworkerInventoryLoading label={t("Loading coworkers")} />
           ) : displayedCoworkerList.length === 0 &&
             displayedFolderList.length === 0 &&
-            displayedSharedCoworkerList.length === 0 ? (
+            displayedCoworkerList.length === 0 ? (
             <div className="border-border rounded-xl border border-dashed p-10 text-center">
               <p className="text-muted-foreground text-sm">
                 {searchQuery.trim() ? (
@@ -366,15 +359,12 @@ export default function CoworkersPage({
             </div>
           ) : (
             <CoworkerBrowserGrid
-              connectedIntegrationTypes={connectedIntegrationTypes}
               displayedCoworkerList={displayedCoworkerList}
               displayedFolderList={displayedFolderList}
-              displayedSharedCoworkerList={displayedSharedCoworkerList}
               activeDropFolderId={activeDropFolderId}
               canManageFolder={canManageFolder}
               getFolderPathLabel={getFolderPathLabel}
               handleDeleteFolderRequest={handleDeleteFolderRequest}
-              handleImportSharedCoworker={handleImportSharedCoworker}
               handleMoveCoworker={handleMoveCoworker}
               handleMoveFolder={handleMoveFolder}
               handleOpenCreateChildFolderDialog={handleOpenCreateChildFolderDialog}
@@ -387,7 +377,6 @@ export default function CoworkersPage({
               handleFolderDragOver={handleFolderDragOver}
               handleFolderDropCoworker={handleFolderDropCoworker}
               handleToggleFolderVisibilityRequest={handleToggleFolderVisibilityRequest}
-              importingSharedCoworkerId={importingSharedCoworkerId}
               isGlobalSearch={isGlobalSearch}
             />
           )}

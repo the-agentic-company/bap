@@ -6,10 +6,17 @@ import {
   resetCoworkerRouterTestHarness,
 } from "./coworker.test-harness";
 
+function createHistoryContext() {
+  const context = createContext();
+  context.db.query.coworker.findMany.mockResolvedValue([{ id: "wf-1" }]);
+  return context;
+}
+
 describe("coworkerRouter", () => {
   beforeEach(resetCoworkerRouterTestHarness);
+
   it("returns normalized history entries for successful writes", async () => {
-    const context = createContext();
+    const context = createHistoryContext();
     const startedAt = new Date("2026-04-07T09:00:00.000Z");
     const actionAt = new Date("2026-04-07T09:01:00.000Z");
 
@@ -19,6 +26,11 @@ describe("coworkerRouter", () => {
         status: "completed",
         errorMessage: null,
         startedAt,
+        executionUser: {
+          id: "user-1",
+          name: "Baptiste",
+          image: "https://example.com/baptiste.png",
+        },
         coworker: {
           id: "wf-1",
           name: "Slack Notifier",
@@ -67,6 +79,11 @@ describe("coworkerRouter", () => {
           runId: "run-1",
           toolUseId: "tool-1",
           timestamp: actionAt,
+          runner: {
+            id: "user-1",
+            name: "Baptiste",
+            image: "https://example.com/baptiste.png",
+          },
           coworker: {
             id: "wf-1",
             name: "Slack Notifier",
@@ -85,10 +102,23 @@ describe("coworkerRouter", () => {
       nextCursor: undefined,
     });
     expect(reconcileStaleCoworkerRunsForCoworkersMock).toHaveBeenCalledWith(["wf-1"]);
+    expect(context.db.query.coworkerRun.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        with: expect.objectContaining({
+          executionUser: {
+            columns: {
+              id: true,
+              image: true,
+              name: true,
+            },
+          },
+        }),
+      }),
+    );
   });
 
   it("marks rejected interrupts as denied", async () => {
-    const context = createContext();
+    const context = createHistoryContext();
     context.db.query.coworkerRun.findMany.mockResolvedValue([
       {
         id: "run-2",
@@ -158,7 +188,7 @@ describe("coworkerRouter", () => {
   });
 
   it("marks pending writes and prefers edited approval payloads", async () => {
-    const context = createContext();
+    const context = createHistoryContext();
     context.db.query.coworkerRun.findMany.mockResolvedValue([
       {
         id: "run-3",
@@ -246,7 +276,7 @@ describe("coworkerRouter", () => {
   });
 
   it("marks failed writes as errors when the run ends before a tool result", async () => {
-    const context = createContext();
+    const context = createHistoryContext();
     context.db.query.coworkerRun.findMany.mockResolvedValue([
       {
         id: "run-4",
@@ -298,7 +328,7 @@ describe("coworkerRouter", () => {
   });
 
   it("returns multiple write actions from the same run", async () => {
-    const context = createContext();
+    const context = createHistoryContext();
     context.db.query.coworkerRun.findMany.mockResolvedValue([
       {
         id: "run-5",
@@ -382,7 +412,7 @@ describe("coworkerRouter", () => {
   });
 
   it("excludes read-only tool events from history", async () => {
-    const context = createContext();
+    const context = createHistoryContext();
     context.db.query.coworkerRun.findMany.mockResolvedValue([
       {
         id: "run-6",
@@ -437,7 +467,7 @@ describe("coworkerRouter", () => {
   });
 
   it("returns a cursor when older runs are available", async () => {
-    const context = createContext();
+    const context = createHistoryContext();
     const newestRunAt = new Date("2026-04-07T15:00:00.000Z");
     const olderRunAt = new Date("2026-04-07T14:00:00.000Z");
     context.db.query.coworkerRun.findMany.mockResolvedValue([

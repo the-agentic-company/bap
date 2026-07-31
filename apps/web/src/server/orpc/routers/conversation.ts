@@ -1,7 +1,7 @@
 import { writeSessionTranscriptFromConversation } from "@bap/core/server/services/memory-service";
 import { clearConversationSessionSnapshot } from "@bap/core/server/services/opencode-session-snapshot-service";
 import { getFileAssetDownloadUrl } from "@bap/core/server/services/file-asset-service";
-import { conversation, message, messageAttachment, sandboxFile } from "@bap/db/schema";
+import { conversation, coworkerRun, message, messageAttachment, sandboxFile } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { eq, desc, and, isNull, asc, sql, lt, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -44,6 +44,28 @@ function decodeConversationListCursor(
       message: "Invalid conversation list cursor",
     });
   }
+}
+
+async function canReadSharedAutomatedConversation(input: {
+  context: { db: typeof import("@bap/db/client").db };
+  conversationId: string;
+  workspaceId: string;
+}) {
+  const run = await input.context.db.query.coworkerRun.findFirst({
+    where: and(
+      eq(coworkerRun.conversationId, input.conversationId),
+      eq(coworkerRun.workspaceId, input.workspaceId),
+      eq(coworkerRun.startKind, "external_trigger"),
+    ),
+    with: {
+      coworker: {
+        columns: { visibility: true, sharedAt: true },
+      },
+    },
+  });
+  return Boolean(
+    run?.coworker && (run.coworker.visibility === "workspace" || run.coworker.sharedAt),
+  );
 }
 
 // List conversations for current user
@@ -133,7 +155,6 @@ const get = protectedProcedure
     const conv = await context.db.query.conversation.findFirst({
       where: and(
         eq(conversation.id, input.id),
-        eq(conversation.userId, context.user.id),
         eq(conversation.workspaceId, workspaceId),
         isNull(conversation.syntheticKind),
       ),
@@ -148,7 +169,15 @@ const get = protectedProcedure
       },
     });
 
-    if (!conv) {
+    if (
+      !conv ||
+      (conv.userId !== context.user.id &&
+        !(await canReadSharedAutomatedConversation({
+          context,
+          conversationId: conv.id,
+          workspaceId,
+        })))
+    ) {
       throw new ORPCError("NOT_FOUND", { message: "Conversation not found" });
     }
 
@@ -616,10 +645,17 @@ const downloadAttachment = protectedProcedure
       },
     });
 
+    const attachmentConversation = attachment?.message.conversation;
     if (
       !attachment ||
-      attachment.message.conversation.userId !== context.user.id ||
-      attachment.message.conversation.workspaceId !== workspaceId
+      !attachmentConversation ||
+      attachmentConversation.workspaceId !== workspaceId ||
+      (attachmentConversation.userId !== context.user.id &&
+        !(await canReadSharedAutomatedConversation({
+          context,
+          conversationId: attachmentConversation.id,
+          workspaceId,
+        })))
     ) {
       throw new ORPCError("NOT_FOUND", { message: "Attachment not found" });
     }
@@ -664,8 +700,13 @@ const downloadSandboxFile = protectedProcedure
 
     if (
       !file ||
-      file.conversation.userId !== context.user.id ||
-      file.conversation.workspaceId !== workspaceId
+      file.conversation.workspaceId !== workspaceId ||
+      (file.conversation.userId !== context.user.id &&
+        !(await canReadSharedAutomatedConversation({
+          context,
+          conversationId: file.conversation.id,
+          workspaceId,
+        })))
     ) {
       throw new ORPCError("NOT_FOUND", { message: "File not found" });
     }
@@ -698,10 +739,21 @@ const getAgenticAppHtml = protectedProcedure
     });
 
     try {
+      const allowSharedAutomatedRun =
+        file &&
+        file.conversation.workspaceId === workspaceId &&
+        file.conversation.userId !== context.user.id
+          ? await canReadSharedAutomatedConversation({
+              context,
+              conversationId: file.conversation.id,
+              workspaceId,
+            })
+          : false;
       return await loadAgenticAppHtml({
         file,
         userId: context.user.id,
         workspaceId,
+        allowSharedAutomatedRun,
       });
     } catch (error) {
       if (error instanceof AgenticAppHtmlError) {
@@ -733,12 +785,19 @@ const getSandboxFiles = protectedProcedure
     const conv = await context.db.query.conversation.findFirst({
       where: and(
         eq(conversation.id, input.conversationId),
-        eq(conversation.userId, context.user.id),
         eq(conversation.workspaceId, workspaceId),
       ),
     });
 
-    if (!conv) {
+    if (
+      !conv ||
+      (conv.userId !== context.user.id &&
+        !(await canReadSharedAutomatedConversation({
+          context,
+          conversationId: conv.id,
+          workspaceId,
+        })))
+    ) {
       throw new ORPCError("NOT_FOUND", { message: "Conversation not found" });
     }
 

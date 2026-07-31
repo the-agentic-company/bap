@@ -16,6 +16,8 @@ const getEnabledIntegrationTypesMock = vi.fn<() => Promise<unknown>>();
 const getRemoteIntegrationCredentialsMock = vi.fn<() => Promise<unknown>>();
 const getTokensForIntegrationsMock = vi.fn<() => Promise<unknown>>();
 const userFindFirstMock = vi.fn<() => Promise<unknown>>();
+const coworkerRunFindFirstMock = vi.fn<() => Promise<unknown>>();
+const resolveConnectedAccountCredentialMock = vi.fn<() => Promise<unknown>>();
 const canUserUseModulrInWorkspaceMock = vi.fn<() => Promise<unknown>>();
 const getModulrWorkspaceConnectionMock = vi.fn<() => Promise<unknown>>();
 
@@ -43,7 +45,7 @@ vi.mock("@bap/core/server/integrations/cli-env", () => ({
 
 vi.mock("@bap/core/server/integrations/connected-account-resolution", () => ({
   ConnectedAccountResolutionError: class ConnectedAccountResolutionError extends Error {},
-  resolveConnectedAccountCredential: vi.fn<() => Promise<unknown>>(),
+  resolveConnectedAccountCredential: resolveConnectedAccountCredentialMock,
 }));
 
 vi.mock("@bap/core/server/integrations/remote-integrations", () => {
@@ -76,6 +78,9 @@ vi.mock("@bap/db/client", () => ({
       user: {
         findFirst: userFindFirstMock,
       },
+      coworkerRun: {
+        findFirst: coworkerRunFindFirstMock,
+      },
     },
   },
 }));
@@ -84,9 +89,14 @@ vi.mock("@bap/db/schema", () => ({
   user: {
     id: "user.id",
   },
+  coworkerRun: {
+    conversationId: "coworkerRun.conversationId",
+    executionUserId: "coworkerRun.executionUserId",
+  },
 }));
 
 vi.mock("drizzle-orm", () => ({
+  and: vi.fn<() => unknown>(),
   eq: vi.fn<() => unknown>(),
 }));
 
@@ -107,6 +117,7 @@ describe("handleRuntimeCredentials", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     userFindFirstMock.mockResolvedValue({ role: "admin" });
+    coworkerRunFindFirstMock.mockResolvedValue(null);
     getRemoteIntegrationCredentialsMock.mockResolvedValue({
       remoteUserId: "remote-user-1",
       remoteUserEmail: "client@example.com",
@@ -116,6 +127,44 @@ describe("handleRuntimeCredentials", () => {
         GMAIL_ACCESS_TOKEN: "remote-gmail-token",
       },
     });
+  });
+
+  it("uses the private registration preference for a scheduled run", async () => {
+    coworkerRunFindFirstMock.mockResolvedValue({
+      id: "run-1",
+      automationRegistration: {
+        connectedAccountPreferences: {
+          google_gmail: { accountLabel: "work" },
+        },
+      },
+    });
+    resolveConnectedAccountCredentialMock.mockResolvedValue({
+      integrationType: "google_gmail",
+      accessToken: "work-token",
+      connectedAccountId: "account-1",
+      connectedIdentityId: "identity-1",
+      accountLabel: "work",
+      displayName: "Work",
+      metadata: null,
+      availableAccountLabels: ["personal", "work"],
+    });
+
+    const response = await handleRuntimeCredentials(
+      runtimeCredentialsRequest({
+        userId: "member-1",
+        conversationId: "conversation-1",
+        resolve: {
+          integrationType: "google_gmail",
+          accountLabel: null,
+          allowedIntegrationTypes: ["google_gmail"],
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(resolveConnectedAccountCredentialMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "member-1", accountLabel: "work" }),
+    );
   });
 
   it("returns remote integration tokens for an admin actor", async () => {

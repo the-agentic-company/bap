@@ -82,8 +82,9 @@ type UseCoworkerDefinitionEditorInput = {
 };
 
 function buildCoworkerPayloadSignature(input: CoworkerEditorPayload) {
+  const { expectedRevision: _expectedRevision, ...configuration } = input;
   return JSON.stringify({
-    ...input,
+    ...configuration,
     allowedIntegrations: [...input.allowedIntegrations].toSorted(),
     allowedWorkspaceMcpServerIds: [...input.allowedWorkspaceMcpServerIds].toSorted(),
     allowedSkillSlugs: [...input.allowedSkillSlugs].toSorted(),
@@ -93,6 +94,46 @@ function buildCoworkerPayloadSignature(input: CoworkerEditorPayload) {
 
 function toCoworkerUpdatedAt(value: CoworkerRecord["updatedAt"]) {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+export type CoworkerEditorConflict = {
+  currentRevision: number;
+  conflictingFields: string[];
+  currentValues: Record<string, unknown>;
+  latestActors: Record<string, { name?: string | null }>;
+};
+
+export function getCoworkerConflict(error: unknown): CoworkerEditorConflict | null {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+  const data = "data" in error ? error.data : null;
+  if (!data || typeof data !== "object" || !("conflictingFields" in data)) {
+    return null;
+  }
+  const fields = Array.isArray(data.conflictingFields)
+    ? data.conflictingFields.filter((field): field is string => typeof field === "string")
+    : [];
+  const latestActors =
+    "latestActors" in data && data.latestActors && typeof data.latestActors === "object"
+      ? (data.latestActors as Record<string, { name?: string | null }>)
+      : {};
+  const currentRevision =
+    "currentRevision" in data && typeof data.currentRevision === "number"
+      ? data.currentRevision
+      : null;
+  const currentValues =
+    "currentValues" in data && data.currentValues && typeof data.currentValues === "object"
+      ? (data.currentValues as Record<string, unknown>)
+      : {};
+  return fields.length > 0 && currentRevision !== null
+    ? {
+        currentRevision,
+        conflictingFields: fields,
+        currentValues,
+        latestActors,
+      }
+    : null;
 }
 
 export function useCoworkerDefinitionEditor({
@@ -118,6 +159,7 @@ export function useCoworkerDefinitionEditor({
   const [requiresUserInput, setRequiresUserInput] = useState(false);
   const [userInputPrompt, setUserInputPrompt] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [conflict, setConflict] = useState<CoworkerEditorConflict | null>(null);
 
   const [scheduleType, setScheduleType] = useState<CoworkerScheduleType>("daily");
   const [intervalMinutes, setIntervalMinutes] = useState(60);
@@ -134,6 +176,7 @@ export function useCoworkerDefinitionEditor({
   const lastSyncedCoworkerUpdatedAtRef = useRef<string | null>(null);
   const lastSavedPayloadRef = useRef<string | null>(null);
   const lastSavedPayloadSnapshotRef = useRef<CoworkerEditorPayload | null>(null);
+  const currentRevisionRef = useRef(0);
 
   const buildSchedule = useCallback((): CoworkerSchedule | null => {
     if (triggerType !== "schedule") {
@@ -233,6 +276,7 @@ export function useCoworkerDefinitionEditor({
 
     return {
       id: coworkerId,
+      expectedRevision: currentRevisionRef.current,
       name,
       description,
       username,
@@ -295,7 +339,13 @@ export function useCoworkerDefinitionEditor({
         return true;
       } catch (error) {
         console.error("Failed to update coworker:", error);
-        toast.error("Failed to save coworker.");
+        const nextConflict = getCoworkerConflict(error);
+        if (nextConflict) {
+          setConflict(nextConflict);
+          toast.error("This Coworker changed while you were editing. Choose which values to keep.");
+        } else {
+          toast.error("Failed to save coworker.");
+        }
         return false;
       } finally {
         setIsSaving(false);
@@ -304,6 +354,35 @@ export function useCoworkerDefinitionEditor({
     [getCoworkerUpdateInput, updateCoworker],
   );
   const persistCoworkerRef = useRef(persistCoworker);
+
+  const useLatestConflictValues = useCallback(() => {
+    if (!conflict) {
+      return;
+    }
+    const local = getCoworkerUpdateInput();
+    if (!local) {
+      return;
+    }
+    const next = {
+      ...local,
+      ...conflict.currentValues,
+      expectedRevision: conflict.currentRevision,
+    } as CoworkerEditorPayload;
+    currentRevisionRef.current = conflict.currentRevision;
+    applyEditorPayload(next);
+    lastSavedPayloadSnapshotRef.current = next;
+    lastSavedPayloadRef.current = buildCoworkerPayloadSignature(next);
+    setConflict(null);
+  }, [applyEditorPayload, conflict, getCoworkerUpdateInput]);
+
+  const keepLocalConflictValues = useCallback(async () => {
+    if (!conflict) {
+      return false;
+    }
+    currentRevisionRef.current = conflict.currentRevision;
+    setConflict(null);
+    return persistCoworker({ force: true });
+  }, [conflict, persistCoworker]);
 
   useEffect(() => {
     persistCoworkerRef.current = persistCoworker;
@@ -323,6 +402,7 @@ export function useCoworkerDefinitionEditor({
     ).filter((type): type is IntegrationType => allIntegrationTypes.includes(type));
     const payloadFromCoworker: CoworkerEditorPayload = {
       id: coworker.id,
+      expectedRevision: coworker.configurationRevision ?? 0,
       name: coworker.name,
       description: coworker.description ?? "",
       username: coworker.username ?? "",
@@ -350,6 +430,7 @@ export function useCoworkerDefinitionEditor({
       lastSavedPayloadRef.current !== null &&
       currentLocalSignature !== lastSavedPayloadRef.current;
     const coworkerUpdatedAt = toCoworkerUpdatedAt(coworker.updatedAt);
+    currentRevisionRef.current = coworker.configurationRevision ?? 0;
     const isFirstHydration = initializedCoworkerIdRef.current !== coworker.id;
     const hasFreshServerUpdate = lastSyncedCoworkerUpdatedAtRef.current !== coworkerUpdatedAt;
 
@@ -441,7 +522,7 @@ export function useCoworkerDefinitionEditor({
   ]);
 
   useEffect(() => {
-    if (!hasInitializedEditorRef.current || !coworkerId) {
+    if (!hasInitializedEditorRef.current || !coworkerId || conflict) {
       return;
     }
 
@@ -477,6 +558,7 @@ export function useCoworkerDefinitionEditor({
     triggerType,
     username,
     userInputPrompt,
+    conflict,
   ]);
 
   const handleCoworkerSyncFromChat = useCallback(
@@ -640,6 +722,9 @@ export function useCoworkerDefinitionEditor({
       setScheduleDayOfMonth,
     },
     isSaving,
+    conflict,
+    useLatestConflictValues,
+    keepLocalConflictValues,
     persistCoworker,
     handleCoworkerSyncFromChat,
   };

@@ -9,6 +9,7 @@ import {
   coworkerMemberPreference,
   coworkerRun,
   generation,
+  workspaceMember,
 } from "@bap/db/schema";
 import { and, count, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
@@ -36,7 +37,7 @@ export async function queryInitialCoworkerInventory(params: {
     .select({ value: count() })
     .from(coworker)
     .where(and(where, or(eq(coworker.visibility, "workspace"), isNotNull(coworker.sharedAt))));
-  const [rows, folders] = await Promise.all([
+  const [rows, folders, activeMembers] = await Promise.all([
     db.query.coworker.findMany({
       where,
       orderBy: [desc(coworker.updatedAt), desc(coworker.id)],
@@ -46,7 +47,12 @@ export async function queryInitialCoworkerInventory(params: {
       where: folderWhere,
       orderBy: (folder, { asc }) => [asc(folder.parentId), asc(folder.position), asc(folder.name)],
     }),
+    db.query.workspaceMember.findMany({
+      where: eq(workspaceMember.organizationId, params.workspaceId),
+      columns: { userId: true },
+    }),
   ]);
+  const activeMemberIds = new Set(activeMembers.map((membership) => membership.userId));
   const coworkerIds = rows.map((row) => row.id);
   const preferences =
     coworkerIds.length > 0
@@ -130,6 +136,10 @@ export async function queryInitialCoworkerInventory(params: {
         createdByUserId: row.createdByUserId ?? row.ownerId,
         createdByNameSnapshot: row.createdByNameSnapshot,
         createdByAvatarSnapshot: row.createdByAvatarSnapshot,
+        creatorIsActiveMember: Boolean(
+          (row.createdByUserId ?? row.ownerId) &&
+          activeMemberIds.has((row.createdByUserId ?? row.ownerId)!),
+        ),
         name: row.name,
         description: row.description,
         username: row.username,
@@ -158,6 +168,7 @@ export async function queryInitialCoworkerInventory(params: {
         automationOwnerConsentedAt: row.automationOwnerConsentedAt,
         configurationRevision: row.configurationRevision,
         sharedAt: row.sharedAt,
+        publishedAt: row.publishedAt,
         updatedAt: row.updatedAt,
         lastRunStatus: lastRun?.status ?? null,
         lastRunAt: lastRun?.startedAt ?? null,

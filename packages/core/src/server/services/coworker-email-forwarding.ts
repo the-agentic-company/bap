@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import {
   buildCoworkerForwardingAddress,
@@ -381,7 +381,8 @@ async function resolveCoworkerForUserAlias(userId: string): Promise<string | nul
     const selected = await db.query.coworker.findFirst({
       where: and(
         eq(coworker.id, owner.defaultForwardedCoworkerId),
-        eq(coworker.ownerId, owner.id),
+        eq(coworker.automationOwnerUserId, owner.id),
+        isNotNull(coworker.automationOwnerConsentedAt),
         eq(coworker.status, "on"),
         eq(coworker.triggerType, EMAIL_FORWARDED_TRIGGER_TYPE),
       ),
@@ -395,7 +396,8 @@ async function resolveCoworkerForUserAlias(userId: string): Promise<string | nul
 
   const candidates = await db.query.coworker.findMany({
     where: and(
-      eq(coworker.ownerId, owner.id),
+      eq(coworker.automationOwnerUserId, owner.id),
+      isNotNull(coworker.automationOwnerConsentedAt),
       eq(coworker.status, "on"),
       eq(coworker.triggerType, EMAIL_FORWARDED_TRIGGER_TYPE),
     ),

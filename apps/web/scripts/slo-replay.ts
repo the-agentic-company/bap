@@ -621,6 +621,7 @@ async function executeReplayCandidate(
       const result = await triggerCoworkerRun({
         coworkerId: candidate.coworkerId,
         startKind: "user_intent",
+        userId: localUser.id,
         triggerPayload: { source: "slo_replay" },
         userRole: "admin",
         remoteIntegrationSource,

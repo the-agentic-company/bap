@@ -11,12 +11,17 @@ import {
 } from "../../lib/coworker-tool-policy";
 import { coworker, coworkerBuilderChat } from "@bap/db/schema";
 import { generateCoworkerMetadataOnFirstPromptFill } from "./coworker-metadata";
+import { applyCanonicalCoworkerChange } from "./coworker-change-service";
+import { createDrizzleCoworkerChangeRepository } from "./coworker-change-repository";
 import { syncCoworkerScheduleJob } from "./coworker-scheduler";
 import { logger } from "../utils/observability";
 
 const BUILDER_ALLOWED_TRIGGER_TYPES = ["manual", "schedule"] as const;
 
-const LEGACY_READ_ONLY_TRIGGER_TYPES = [EMAIL_FORWARDED_TRIGGER_TYPE, "gmail.new_email"] as const;
+const LEGACY_READ_ONLY_TRIGGER_TYPES = [
+  EMAIL_FORWARDED_TRIGGER_TYPE,
+  "gmail.new_email",
+] as const;
 
 const modelReferenceSchema = z
   .string()
@@ -164,11 +169,13 @@ const coworkerBuilderUpdatedRowSchema = z.object({
   status: z.enum(["on", "off"]),
 });
 
-const coworkerBuilderVerifiedRowSchema = coworkerBuilderUpdatedRowSchema.extend({
-  name: z.string(),
-  description: z.string().nullable().optional(),
-  username: z.string().nullable().optional(),
-});
+const coworkerBuilderVerifiedRowSchema = coworkerBuilderUpdatedRowSchema.extend(
+  {
+    name: z.string(),
+    description: z.string().nullable().optional(),
+    username: z.string().nullable().optional(),
+  },
+);
 
 function normalizeIntegrations(input: string[]): string[] {
   const seen = new Set<string>();
@@ -201,7 +208,10 @@ function toBuilderContext(row: {
     updatedAt: row.updatedAt.toISOString(),
     prompt: row.prompt,
     model: row.model,
-    toolAccessMode: normalizeCoworkerToolAccessMode(row.toolAccessMode, row.allowedIntegrations),
+    toolAccessMode: normalizeCoworkerToolAccessMode(
+      row.toolAccessMode,
+      row.allowedIntegrations,
+    ),
     triggerType: row.triggerType,
     schedule: row.schedule,
     allowedIntegrations: row.allowedIntegrations,
@@ -222,28 +232,30 @@ export async function resolveCoworkerBuilderContextByConversation(params: {
       };
     };
   };
-  const associationUnknown = await database.query.coworkerBuilderChat.findFirst({
-    where: and(
-      eq(coworkerBuilderChat.userId, params.userId),
-      eq(coworkerBuilderChat.conversationId, params.conversationId),
-    ),
-    with: {
-      coworker: {
-        columns: {
-          id: true,
-          prompt: true,
-          model: true,
-          toolAccessMode: true,
-          triggerType: true,
-          schedule: true,
-          allowedIntegrations: true,
-          requiresUserInput: true,
-          userInputPrompt: true,
-          updatedAt: true,
+  const associationUnknown = await database.query.coworkerBuilderChat.findFirst(
+    {
+      where: and(
+        eq(coworkerBuilderChat.userId, params.userId),
+        eq(coworkerBuilderChat.conversationId, params.conversationId),
+      ),
+      with: {
+        coworker: {
+          columns: {
+            id: true,
+            prompt: true,
+            model: true,
+            toolAccessMode: true,
+            triggerType: true,
+            schedule: true,
+            allowedIntegrations: true,
+            requiresUserInput: true,
+            userInputPrompt: true,
+            updatedAt: true,
+          },
         },
       },
     },
-  });
+  );
 
   if (!associationUnknown || typeof associationUnknown !== "object") {
     return null;
@@ -316,7 +328,10 @@ function buildChangedFields(params: {
   if (params.current.triggerType !== params.next.triggerType) {
     changed.push("triggerType");
   }
-  if (JSON.stringify(params.current.schedule) !== JSON.stringify(params.next.schedule)) {
+  if (
+    JSON.stringify(params.current.schedule) !==
+    JSON.stringify(params.next.schedule)
+  ) {
     changed.push("schedule");
   }
   if (
@@ -335,7 +350,10 @@ function buildChangedFields(params: {
 }
 
 function sameSortedStrings(left: string[], right: string[]): boolean {
-  return JSON.stringify([...left].toSorted()) === JSON.stringify([...right].toSorted());
+  return (
+    JSON.stringify([...left].toSorted()) ===
+    JSON.stringify([...right].toSorted())
+  );
 }
 
 function sameJson(left: unknown, right: unknown): boolean {
@@ -373,7 +391,9 @@ function buildPersistedMismatchFields(params: {
         }
         break;
       case "description":
-        if ((params.persisted.description ?? null) !== params.next.description) {
+        if (
+          (params.persisted.description ?? null) !== params.next.description
+        ) {
           mismatched.push(field);
         }
         break;
@@ -403,7 +423,9 @@ function buildPersistedMismatchFields(params: {
         }
         break;
       case "schedule":
-        if (!sameJson(params.persisted.schedule ?? null, params.next.schedule)) {
+        if (
+          !sameJson(params.persisted.schedule ?? null, params.next.schedule)
+        ) {
           mismatched.push(field);
         }
         break;
@@ -418,12 +440,18 @@ function buildPersistedMismatchFields(params: {
         }
         break;
       case "requiresUserInput":
-        if ((params.persisted.requiresUserInput ?? false) !== params.next.requiresUserInput) {
+        if (
+          (params.persisted.requiresUserInput ?? false) !==
+          params.next.requiresUserInput
+        ) {
           mismatched.push(field);
         }
         break;
       case "userInputPrompt":
-        if ((params.persisted.userInputPrompt ?? null) !== params.next.userInputPrompt) {
+        if (
+          (params.persisted.userInputPrompt ?? null) !==
+          params.next.userInputPrompt
+        ) {
           mismatched.push(field);
         }
         break;
@@ -440,6 +468,10 @@ export async function applyCoworkerEdit(params: {
   coworkerId: string;
   baseUpdatedAt: string;
   changes: CoworkerBuilderEdit;
+  expectedRevision?: number;
+  actorName?: string | null;
+  actorAvatar?: string | null;
+  origin?: "builder_chat" | "runtime";
 }): Promise<CoworkerEditApplyResult> {
   const database = params.database as {
     query: {
@@ -480,7 +512,9 @@ export async function applyCoworkerEdit(params: {
   });
 
   if (!existingUnknown) {
-    throw new ORPCError("NOT_FOUND", { message: "Coworker builder context not found" });
+    throw new ORPCError("NOT_FOUND", {
+      message: "Coworker builder context not found",
+    });
   }
   const existing = coworkerBuilderRowSchema.parse(existingUnknown);
 
@@ -492,9 +526,14 @@ export async function applyCoworkerEdit(params: {
   const nextTriggerType = params.changes.triggerType ?? existing.triggerType;
   const nextToolAccessMode =
     params.changes.toolAccessMode ??
-    normalizeCoworkerToolAccessMode(existing.toolAccessMode, existing.allowedIntegrations);
+    normalizeCoworkerToolAccessMode(
+      existing.toolAccessMode,
+      existing.allowedIntegrations,
+    );
   const nextSchedule =
-    params.changes.schedule !== undefined ? params.changes.schedule : (existing.schedule ?? null);
+    params.changes.schedule !== undefined
+      ? params.changes.schedule
+      : (existing.schedule ?? null);
   const nextRequiresUserInput =
     params.changes.requiresUserInput ?? existing.requiresUserInput ?? false;
   const nextUserInputPrompt =
@@ -552,7 +591,8 @@ export async function applyCoworkerEdit(params: {
         : params.changes.schedule !== undefined
           ? params.changes.schedule
           : (existing.schedule ?? null),
-    allowedIntegrations: normalizedIntegrations ?? (existing.allowedIntegrations as string[]),
+    allowedIntegrations:
+      normalizedIntegrations ?? (existing.allowedIntegrations as string[]),
     requiresUserInput: nextRequiresUserInput,
     userInputPrompt: nextUserInputPrompt,
   };
@@ -626,6 +666,112 @@ export async function applyCoworkerEdit(params: {
     };
   }
 
+  if (params.expectedRevision !== undefined) {
+    const changeResult = await applyCanonicalCoworkerChange({
+      repository: createDrizzleCoworkerChangeRepository(
+        params.database as typeof import("@bap/db/client").db,
+      ),
+      coworkerId: existing.id,
+      actor: {
+        userId: params.userId,
+        name: params.actorName ?? null,
+        avatar: params.actorAvatar ?? null,
+        workspaceRole: params.userRole,
+        isActiveWorkspaceMember: true,
+      },
+      origin: params.origin ?? "builder_chat",
+      expectedRevision: params.expectedRevision,
+      changes: {
+        name: nextState.name,
+        description: nextState.description,
+        username: nextState.username,
+        prompt: nextState.prompt,
+        model: nextState.model,
+        toolAccessMode: nextState.toolAccessMode,
+        triggerType: nextState.triggerType,
+        schedule: nextState.schedule,
+        allowedIntegrations: nextState.allowedIntegrations,
+        requiresUserInput: nextState.requiresUserInput,
+        userInputPrompt: nextState.userInputPrompt,
+      },
+    });
+    if (changeResult.kind === "not_found") {
+      throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
+    }
+    if (changeResult.kind === "forbidden") {
+      throw new ORPCError("FORBIDDEN", {
+        message: "Coworker action is not allowed",
+      });
+    }
+    if (changeResult.kind === "conflict") {
+      return {
+        status: "conflict",
+        coworker: toBuilderContext({
+          id: existing.id,
+          prompt:
+            (changeResult.currentValues.prompt as string | undefined) ??
+            existing.prompt,
+          model:
+            (changeResult.currentValues.model as string | undefined) ??
+            existing.model,
+          toolAccessMode: existing.toolAccessMode,
+          triggerType: existing.triggerType,
+          schedule: existing.schedule ?? null,
+          allowedIntegrations: existing.allowedIntegrations as string[],
+          requiresUserInput: existing.requiresUserInput,
+          userInputPrompt: existing.userInputPrompt,
+          updatedAt: existing.updatedAt,
+        }),
+        message: `Coworker changed since this edit was prepared (${changeResult.conflictingFields.join(", ")})`,
+      };
+    }
+
+    const configuration = changeResult.coworker.configuration;
+    if (
+      changedFields.includes("triggerType") ||
+      changedFields.includes("schedule")
+    ) {
+      await syncCoworkerScheduleJob({
+        id: existing.id,
+        status: configuration.status,
+        triggerType: configuration.triggerType,
+        schedule: configuration.schedule,
+      });
+    }
+    const refreshedUnknown = await database.query.coworker.findFirst({
+      where: eq(coworker.id, existing.id),
+      columns: {
+        id: true,
+        prompt: true,
+        model: true,
+        toolAccessMode: true,
+        triggerType: true,
+        schedule: true,
+        allowedIntegrations: true,
+        requiresUserInput: true,
+        userInputPrompt: true,
+        updatedAt: true,
+      },
+    });
+    const refreshed = coworkerBuilderContextRowSchema.parse(refreshedUnknown);
+    return {
+      status: "applied",
+      coworker: toBuilderContext({
+        id: refreshed.id,
+        prompt: refreshed.prompt,
+        model: refreshed.model,
+        toolAccessMode: refreshed.toolAccessMode,
+        triggerType: refreshed.triggerType,
+        schedule: refreshed.schedule ?? null,
+        allowedIntegrations: refreshed.allowedIntegrations as string[],
+        requiresUserInput: refreshed.requiresUserInput,
+        userInputPrompt: refreshed.userInputPrompt,
+        updatedAt: refreshed.updatedAt,
+      }),
+      appliedChanges: changedFields,
+    };
+  }
+
   const updatedRowsUnknown = await database
     .update(coworker)
     .set({
@@ -661,7 +807,9 @@ export async function applyCoworkerEdit(params: {
       updatedAt: coworker.updatedAt,
       status: coworker.status,
     });
-  const updatedRows = z.array(coworkerBuilderUpdatedRowSchema).parse(updatedRowsUnknown);
+  const updatedRows = z
+    .array(coworkerBuilderUpdatedRowSchema)
+    .parse(updatedRowsUnknown);
   const updated = updatedRows[0];
 
   if (!updated) {
@@ -771,7 +919,10 @@ export async function applyCoworkerEdit(params: {
     };
   }
 
-  if (changedFields.includes("triggerType") || changedFields.includes("schedule")) {
+  if (
+    changedFields.includes("triggerType") ||
+    changedFields.includes("schedule")
+  ) {
     try {
       await syncCoworkerScheduleJob({
         id: verified.id,

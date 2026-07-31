@@ -65,4 +65,33 @@ describe("coworker run visibility", () => {
       }),
     ).toEqual({ allowed: true });
   });
+
+  it("keeps registered scheduled run content private to its execution user", () => {
+    expect(
+      decideCoworkerRunContentAccess({
+        actorUserId: "admin-1",
+        workspaceRole: "admin",
+        isActiveWorkspaceMember: true,
+        coworkerVisibility: "workspace",
+        coworkerCreatedByUserId: "member-1",
+        startKind: "external_trigger",
+        initiatedByUserId: null,
+        executionUserId: "member-1",
+        isScheduledRegistrationRun: true,
+      }),
+    ).toEqual({ allowed: false, reason: "scheduled_run_execution_user_required" });
+    expect(
+      decideCoworkerRunContentAccess({
+        actorUserId: "member-1",
+        workspaceRole: "member",
+        isActiveWorkspaceMember: true,
+        coworkerVisibility: "workspace",
+        coworkerCreatedByUserId: "member-1",
+        startKind: "external_trigger",
+        initiatedByUserId: null,
+        executionUserId: "member-1",
+        isScheduledRegistrationRun: true,
+      }),
+    ).toEqual({ allowed: true });
+  });
 });

@@ -15,23 +15,6 @@ describe("summarizeCoworkerInstructionDocumentChanges", () => {
     ]);
   });
 
-  it("represents a rename as removal of the old name and addition of the new name", () => {
-    expect(
-      summarizeCoworkerInstructionDocumentChanges([
-        {
-          type: "document_updated",
-          payload: {
-            before: { filename: "old.pdf" },
-            after: { filename: "new.pdf" },
-          },
-        },
-      ]),
-    ).toEqual([
-      { type: "removed", filename: "old.pdf" },
-      { type: "added", filename: "new.pdf" },
-    ]);
-  });
-
   it("ignores unrelated events and malformed filenames", () => {
     expect(
       summarizeCoworkerInstructionDocumentChanges([

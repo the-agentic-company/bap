@@ -56,7 +56,7 @@ describe("getPublicCoworkerPage", () => {
       name: "Shared Coworker",
       description: "Shared description",
       username: "shared-coworker",
-      sharedAt: SHARED_AT,
+      publishedAt: SHARED_AT,
     });
     dbMock.query.coworkerRun.findMany.mockResolvedValue([
       {
@@ -98,19 +98,19 @@ describe("getPublicCoworkerPage", () => {
       username: "shared-coworker",
       sharedAt: SHARED_AT.toISOString(),
     });
-    expect(page?.runs[0]).toEqual({
-      id: "run-1",
-      status: "completed",
-      startedAt: STARTED_AT.toISOString(),
-      finishedAt: FINISHED_AT.toISOString(),
-      conversationId: "conversation-1",
+    expect(page?.runs).toEqual([]);
+    expect(page?.selectedRun).toBeNull();
+    expect(page?.messages).toEqual([]);
+    expect(JSON.parse(page!.definitionJson)).toMatchObject({
+      coworker: {
+        status: "off",
+        authSource: null,
+        allowedWorkspaceMcpServerIds: [],
+      },
+      documents: [],
+      artifacts: [],
     });
-    expect(page?.selectedRun).not.toHaveProperty("errorMessage");
-    expect(page?.messages[0]?.attachments?.[0]).toEqual({
-      filename: "brief.pdf",
-      mimeType: "application/pdf",
-      previewUrl: "https://files.example/attachments/brief.pdf",
-    });
+    expect(dbMock.query.coworkerRun.findMany).not.toHaveBeenCalled();
   });
 
   it("returns null for invalid or unshared slugs", async () => {
@@ -127,13 +127,13 @@ describe("getPublicCoworkerPage", () => {
     expect(dbMock.query.coworker.findFirst).not.toHaveBeenCalled();
   });
 
-  it("reuses the mapped public sandbox file for output.html", async () => {
+  it("does not expose live source Workspace output through publication", async () => {
     dbMock.query.coworker.findFirst.mockResolvedValue({
       id: "coworker-1",
       name: "Shared Coworker",
       description: "Shared description",
       username: "shared-coworker",
-      sharedAt: SHARED_AT,
+      publishedAt: SHARED_AT,
     });
     dbMock.query.coworkerRun.findMany.mockResolvedValue([
       {
@@ -173,16 +173,8 @@ describe("getPublicCoworkerPage", () => {
 
     const page = await getPublicCoworkerPage({ slug: "shared-coworker" });
 
-    expect(page?.outputFile).toEqual({
-      fileId: "file-1",
-      path: "/app/output.html",
-      filename: "output.html",
-      mimeType: "text/html",
-      sizeBytes: 17,
-      downloadUrl: "https://files.example/sandbox/output.html",
-    });
-    expect(page?.outputHtml).toBe("<h1>Shared</h1>");
-    expect(getPresignedDownloadUrlMock).toHaveBeenCalledTimes(1);
-    expect(getPresignedDownloadUrlMock).toHaveBeenCalledWith("sandbox/output.html");
+    expect(page?.outputFile).toBeNull();
+    expect(page?.outputHtml).toBeNull();
+    expect(getPresignedDownloadUrlMock).not.toHaveBeenCalled();
   });
 });

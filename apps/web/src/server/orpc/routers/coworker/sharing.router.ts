@@ -3,58 +3,48 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
-import { requireOwnedCoworkerInActiveWorkspace } from "./access";
+import { requireCoworkerActionInActiveWorkspace } from "./access";
 import { getResolvedCoworkerToolPolicy } from "@/server/services/coworker-toolbox";
 
 const share = protectedProcedure
   .input(z.object({ id: z.string() }))
   .handler(async ({ input, context }) => {
-    const { coworker: wf, workspaceId } = await requireOwnedCoworkerInActiveWorkspace(
+    const { coworker: wf, workspaceId } = await requireCoworkerActionInActiveWorkspace(
       context,
       input.id,
+      "change_visibility",
     );
     if (wf.folderId) {
       throw new Error("Folder-contained coworker sharing is controlled by its folder.");
     }
     const [shared] = await context.db
       .update(coworker)
-      .set({ sharedAt: new Date() })
-      .where(
-        and(
-          eq(coworker.id, wf.id),
-          eq(coworker.ownerId, context.user.id),
-          eq(coworker.workspaceId, workspaceId),
-        ),
-      )
-      .returning({ id: coworker.id, sharedAt: coworker.sharedAt });
+      .set({ publishedAt: new Date() })
+      .where(and(eq(coworker.id, wf.id), eq(coworker.workspaceId, workspaceId)))
+      .returning({ id: coworker.id, publishedAt: coworker.publishedAt });
 
     return {
       success: true,
       id: shared?.id ?? wf.id,
-      sharedAt: shared?.sharedAt ?? new Date(),
+      publishedAt: shared?.publishedAt ?? new Date(),
     };
   });
 
 const unshare = protectedProcedure
   .input(z.object({ id: z.string() }))
   .handler(async ({ input, context }) => {
-    const { coworker: wf, workspaceId } = await requireOwnedCoworkerInActiveWorkspace(
+    const { coworker: wf, workspaceId } = await requireCoworkerActionInActiveWorkspace(
       context,
       input.id,
+      "change_visibility",
     );
     if (wf.folderId) {
       throw new Error("Folder-contained coworker sharing is controlled by its folder.");
     }
     await context.db
       .update(coworker)
-      .set({ sharedAt: null })
-      .where(
-        and(
-          eq(coworker.id, wf.id),
-          eq(coworker.ownerId, context.user.id),
-          eq(coworker.workspaceId, workspaceId),
-        ),
-      );
+      .set({ publishedAt: null })
+      .where(and(eq(coworker.id, wf.id), eq(coworker.workspaceId, workspaceId)));
 
     return { success: true };
   });
@@ -77,11 +67,11 @@ const listShared = protectedProcedure.handler(async ({ context }) => {
         columns: { id: true },
       },
     },
-    orderBy: (wf, { desc }) => [desc(wf.sharedAt), desc(wf.updatedAt)],
+    orderBy: (wf, { desc }) => [desc(wf.publishedAt), desc(wf.updatedAt)],
   });
 
   return coworkers
-    .filter((wf) => wf.sharedAt)
+    .filter((wf) => wf.publishedAt)
     .map((wf) => {
       const { toolAccessMode, allowedSkillSlugs } = getResolvedCoworkerToolPolicy(wf);
       return {
@@ -99,12 +89,12 @@ const listShared = protectedProcedure.handler(async ({ context }) => {
         allowedWorkspaceMcpServerIds: wf.allowedWorkspaceMcpServerIds,
         prompt: wf.prompt,
         model: wf.model,
-        sharedAt: wf.sharedAt,
+        publishedAt: wf.publishedAt,
         updatedAt: wf.updatedAt,
         owner: {
-          id: wf.owner.id,
-          name: wf.owner.name,
-          email: wf.owner.email,
+          id: wf.owner?.id ?? wf.createdByUserId ?? "",
+          name: wf.owner?.name ?? wf.createdByNameSnapshot ?? "Former member",
+          email: wf.owner?.email ?? "",
         },
         documentCount: wf.documents.length,
         isOwnedByCurrentUser: wf.ownerId === context.user.id,

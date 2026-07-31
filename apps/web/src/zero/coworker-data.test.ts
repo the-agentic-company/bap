@@ -77,8 +77,8 @@ describe("Zero coworker data adapters", () => {
       coworkerId: "cw-1",
       status: "completed",
       failureKind: null,
-      conversationId: "chat-1",
-      generationId: "gen-1",
+      conversationId: null,
+      generationId: null,
       startedAt: new Date(1781130000000),
       finishedAt: new Date(1781130300000),
       errorMessage: null,
@@ -86,6 +86,57 @@ describe("Zero coworker data adapters", () => {
       startKind: "user_intent",
       initiatedByUserId: null,
       executionUserId: null,
+      automationRegistrationId: null,
+      scheduleOccurrenceId: null,
+    });
+  });
+
+  it("maps the execution user as the person who ran the coworker", () => {
+    expect(
+      mapZeroCoworkerRun({
+        id: "run-2",
+        coworkerId: "cw-1",
+        status: "completed",
+        startedAt: 1781130000000,
+        executionUserId: "user-2",
+        executionUser: {
+          id: "user-2",
+          name: "Baptiste",
+          image: "https://example.com/baptiste.png",
+        },
+      }),
+    ).toMatchObject({
+      runner: {
+        id: "user-2",
+        name: "Baptiste",
+        image: "https://example.com/baptiste.png",
+      },
+    });
+  });
+
+  it("marks creator attribution as former when no matching Workspace membership remains", () => {
+    const [former] = mapZeroCoworkerList([
+      {
+        id: "cw-shared",
+        name: "Shared",
+        ownerId: null,
+        createdByUserId: "former-user",
+        createdByNameSnapshot: "Former Creator",
+        status: "on",
+        triggerType: "manual",
+        model: "openai/gpt-5",
+        requiresUserInput: false,
+        autoApprove: true,
+        isPinned: false,
+        visibility: "workspace",
+        updatedAt: 1781130000000,
+        creatorMemberships: [],
+      },
+    ]);
+
+    expect(former).toMatchObject({
+      createdByNameSnapshot: "Former Creator",
+      creatorIsActiveMember: false,
     });
   });
 

@@ -89,6 +89,14 @@ export const workspaceMemberTable = table("workspaceMember")
   })
   .primaryKey("id");
 
+export const userTable = table("user")
+  .columns({
+    id: string(),
+    name: string(),
+    image: string().optional(),
+  })
+  .primaryKey("id");
+
 export const coworkerFolderTable = table("coworkerFolder")
   .from("coworker_folder")
   .columns({
@@ -116,7 +124,9 @@ export const coworkerTable = table("coworker")
     folderId: string().from("folder_id").optional(),
     visibility: string<"private" | "workspace">(),
     status: string<"on" | "off">(),
-    disabledReason: string<"run_backlog_limit">().from("disabled_reason").optional(),
+    disabledReason: string<"run_backlog_limit" | "automation_owner_required">()
+      .from("disabled_reason")
+      .optional(),
     disabledAt: number().from("disabled_at").optional(),
     triggerType: string().from("trigger_type"),
     model: string(),
@@ -129,6 +139,7 @@ export const coworkerTable = table("coworker")
     toolAccessMode: string<"all" | "selected">().from("tool_access_mode").optional(),
     isPinned: boolean().from("is_pinned"),
     sharedAt: number().from("shared_at").optional(),
+    publishedAt: number().from("published_at").optional(),
     automationOwnerUserId: string().from("automation_owner_user_id").optional(),
     automationOwnerConsentedAt: number().from("automation_owner_consented_at").optional(),
     proposedAutomationOwnerUserId: string().from("proposed_automation_owner_user_id").optional(),
@@ -146,12 +157,12 @@ export const coworkerRunTable = table("coworkerRun")
     ownerId: string().from("owner_id").optional(),
     initiatedByUserId: string().from("initiated_by_user_id").optional(),
     executionUserId: string().from("execution_user_id").optional(),
+    automationRegistrationId: string().from("automation_registration_id").optional(),
+    scheduleOccurrenceId: string().from("schedule_occurrence_id").optional(),
     startKind: string<"user_intent" | "external_trigger">().from("start_kind"),
     workspaceId: string().from("workspace_id").optional(),
     status: string(),
     failureKind: string().from("failure_kind").optional(),
-    generationId: string().from("generation_id").optional(),
-    conversationId: string().from("conversation_id").optional(),
     startedAt: number().from("started_at"),
     finishedAt: number().from("finished_at").optional(),
     syntheticKind: string().from("synthetic_kind").optional(),
@@ -245,6 +256,11 @@ const coworkerRelationships = relationships(coworkerTable, ({ many, one }) => ({
     destField: ["workspaceId"],
     destSchema: workspaceMemberTable,
   }),
+  creatorMemberships: many({
+    sourceField: ["workspaceId", "createdByUserId"],
+    destField: ["workspaceId", "userId"],
+    destSchema: workspaceMemberTable,
+  }),
 }));
 
 const coworkerRunRelationships = relationships(coworkerRunTable, ({ many, one }) => ({
@@ -252,6 +268,11 @@ const coworkerRunRelationships = relationships(coworkerRunTable, ({ many, one })
     sourceField: ["coworkerId"],
     destField: ["id"],
     destSchema: coworkerTable,
+  }),
+  executionUser: one({
+    sourceField: ["executionUserId"],
+    destField: ["id"],
+    destSchema: userTable,
   }),
   workspaceMembers: many({
     sourceField: ["workspaceId"],
@@ -275,6 +296,7 @@ export const schema = createSchema({
     messageAttachmentTable,
     sandboxFileTable,
     workspaceMemberTable,
+    userTable,
     coworkerFolderTable,
     coworkerTable,
     coworkerRunTable,

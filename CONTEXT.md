@@ -149,8 +149,16 @@ The immutable provenance identity for a **Coworker**, shown with the creator's n
 _Avoid_: owner
 
 **Coworker Automation Owner**:
-The active, consenting Workspace member whose authorizations automated schedule, email, and webhook **Coworker Runs** use. If no valid Coworker Automation Owner exists, automated triggers pause while manual runs and editing remain available.
+The compatibility identity whose authorizations non-scheduled external-trigger **Coworker Runs**, such as forwarded email, use until those triggers receive their own multi-member design. Scheduled Coworkers use **Automation Registrations** instead.
 _Avoid_: owner, creator, service account
+
+**Automation Registration**:
+One Workspace member's explicit consent for a Workspace-shared Coworker's shared schedule to create a private **Coworker Run** using that member's execution identity and authorizations. A member registers or reactivates only themselves; a Workspace administrator can pause or remove a registration but cannot consent for another member. One Coworker can have many Automation Registrations.
+_Avoid_: installation, automation owner, subscriber
+
+**Schedule Occurrence**:
+One durable tick of a scheduled Coworker. A Schedule Occurrence groups the member-specific **Coworker Runs** created for the active **Automation Registrations** at that time and provides their shared idempotency boundary.
+_Avoid_: batch run, global run, scheduler job
 
 **Coworker Revision**:
 One immutable record of an accepted change to canonical Coworker configuration, including its actor, origin, changed fields, and a safe restorable configuration snapshot. Restoring an older Coworker Revision creates a new Coworker Revision rather than rewriting history.

@@ -38,6 +38,8 @@ describe("coworkerRouter.moveWorkspace", () => {
       workspaceId: "ws-2",
       folderId: null,
       sharedAt: null,
+      visibility: "private",
+      publishedAt: null,
       allowedWorkspaceMcpServerIds: [],
       builderConversationId: null,
     });

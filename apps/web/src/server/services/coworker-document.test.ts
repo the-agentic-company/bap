@@ -195,15 +195,18 @@ describe("coworker document service", () => {
       description: "Reference brief",
     });
 
-    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
-      workspaceId: "ws-1",
-      kind: "coworker_documents",
-      coworkerId: "cw-1",
-      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
-      mountPath: "/home/user/coworker-documents",
-      readOnly: false,
-      generationId: null,
-    });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith(
+      {
+        workspaceId: "ws-1",
+        kind: "coworker_documents",
+        coworkerId: "cw-1",
+        storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+        mountPath: "/home/user/coworker-documents",
+        readOnly: false,
+        generationId: null,
+      },
+      { reconcileProductIndex: false },
+    );
   });
 
   it("renames document projection and Runtime Volume file without replacing bytes", async () => {
@@ -245,15 +248,18 @@ describe("coworker document service", () => {
       body: Buffer.from("old"),
       contentType: "application/pdf",
     });
-    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
-      workspaceId: "ws-1",
-      kind: "coworker_documents",
-      coworkerId: "cw-1",
-      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
-      mountPath: "/home/user/coworker-documents",
-      readOnly: false,
-      generationId: null,
-    });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith(
+      {
+        workspaceId: "ws-1",
+        kind: "coworker_documents",
+        coworkerId: "cw-1",
+        storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+        mountPath: "/home/user/coworker-documents",
+        readOnly: false,
+        generationId: null,
+      },
+      { reconcileProductIndex: false },
+    );
     expect(result).toEqual({
       id: "doc-1",
       fileAssetId: null,
@@ -309,15 +315,18 @@ describe("coworker document service", () => {
       storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
       relativePath: "brief.pdf",
     });
-    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
-      workspaceId: "ws-1",
-      kind: "coworker_documents",
-      coworkerId: "cw-1",
-      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
-      mountPath: "/home/user/coworker-documents",
-      readOnly: false,
-      generationId: null,
-    });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith(
+      {
+        workspaceId: "ws-1",
+        kind: "coworker_documents",
+        coworkerId: "cw-1",
+        storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+        mountPath: "/home/user/coworker-documents",
+        readOnly: false,
+        generationId: null,
+      },
+      { reconcileProductIndex: false },
+    );
     expect(result).toEqual({
       id: "doc-1",
       fileAssetId: null,
@@ -361,15 +370,18 @@ describe("coworker document service", () => {
       filename: "brief.pdf",
     });
 
-    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith({
-      workspaceId: "ws-1",
-      kind: "coworker_documents",
-      coworkerId: "cw-1",
-      storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
-      mountPath: "/home/user/coworker-documents",
-      readOnly: false,
-      generationId: null,
-    });
+    expect(reconcileRuntimeVolumeProjectionMock).toHaveBeenCalledWith(
+      {
+        workspaceId: "ws-1",
+        kind: "coworker_documents",
+        coworkerId: "cw-1",
+        storagePrefix: "runtime-volumes/ws-1/coworkers/cw-1/documents/",
+        mountPath: "/home/user/coworker-documents",
+        readOnly: false,
+        generationId: null,
+      },
+      { reconcileProductIndex: false },
+    );
   });
 
   it("rejects an empty document update", async () => {

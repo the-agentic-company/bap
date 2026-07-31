@@ -1,5 +1,5 @@
 import { reconcileStaleCoworkerRunsForCoworkers } from "@bap/core/server/services/coworker-service";
-import { coworkerRun, coworkerRunEvent } from "@bap/db/schema";
+import { coworker, coworkerRun, coworkerRunEvent } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
 import { and, desc, eq, gte, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { z } from "zod";
@@ -78,6 +78,11 @@ export type CoworkerHistoryEntry = {
   runId: string;
   toolUseId: string;
   timestamp: Date;
+  runner?: {
+    id: string;
+    name: string;
+    image: string | null;
+  };
   coworker: {
     id: string;
     name: string;
@@ -96,6 +101,13 @@ type HistoryRunRow = {
   status: string;
   errorMessage: string | null;
   startedAt: Date;
+  startKind: "user_intent" | "external_trigger";
+  initiatedByUserId: string | null;
+  executionUser: {
+    id: string;
+    name: string;
+    image: string | null;
+  } | null;
   coworker: {
     id: string;
     name: string;
@@ -115,6 +127,9 @@ type CoworkerHistoryDatabase = {
   query: {
     coworkerRun: {
       findMany: (args: unknown) => Promise<unknown[]>;
+    };
+    coworker: {
+      findMany: (args: unknown) => Promise<Array<{ id: string }>>;
     };
     coworkerRunEvent: {
       findMany: (args: unknown) => Promise<unknown[]>;
@@ -345,6 +360,7 @@ function normalizeHistoryEntry(params: {
     runId: params.run.id,
     toolUseId,
     timestamp: params.toolUseEvent.createdAt,
+    ...(params.run.executionUser ? { runner: params.run.executionUser } : {}),
     coworker: params.run.coworker!,
     integration,
     operation,
@@ -377,10 +393,31 @@ export async function getCoworkerHistory(input: {
   limit?: number;
 }): Promise<{ entries: CoworkerHistoryEntry[]; nextCursor?: string }> {
   const cursor = decodeHistoryCursor(input.cursor);
+  const accessibleCoworkers = await input.database.query.coworker.findMany({
+    where: and(
+      eq(coworker.workspaceId, input.workspaceId),
+      or(
+        eq(coworker.visibility, "workspace"),
+        eq(coworker.createdByUserId, input.userId),
+        eq(coworker.ownerId, input.userId),
+      ),
+    ),
+    columns: { id: true },
+  });
+  if (accessibleCoworkers.length === 0) {
+    return { entries: [], nextCursor: undefined };
+  }
 
   const dateFilters = [
-    eq(coworkerRun.ownerId, input.userId),
     eq(coworkerRun.workspaceId, input.workspaceId),
+    inArray(
+      coworkerRun.coworkerId,
+      accessibleCoworkers.map((item) => item.id),
+    ),
+    or(
+      eq(coworkerRun.startKind, "external_trigger"),
+      eq(coworkerRun.initiatedByUserId, input.userId),
+    ),
     isNull(coworkerRun.syntheticKind),
     ...(input.from ? [gte(coworkerRun.startedAt, input.from)] : []),
     ...(input.to ? [lte(coworkerRun.startedAt, input.to)] : []),
@@ -405,6 +442,13 @@ export async function getCoworkerHistory(input: {
           id: true,
           name: true,
           username: true,
+        },
+      },
+      executionUser: {
+        columns: {
+          id: true,
+          name: true,
+          image: true,
         },
       },
     },

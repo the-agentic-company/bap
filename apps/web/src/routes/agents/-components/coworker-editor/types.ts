@@ -37,6 +37,7 @@ export type UploadAttachment = {
 
 export type CoworkerEditorPayload = {
   id: string;
+  expectedRevision: number;
   name: string;
   description: string;
   username: string;
@@ -89,6 +90,9 @@ export type CoworkerRunListItem = {
   startedAt: Date;
   finishedAt: Date | null;
   errorMessage: string | null;
+  automationRegistrationId?: string | null;
+  scheduleOccurrenceId?: string | null;
+  runner?: { id: string; name: string; image: string | null };
 };
 
 export const EMPTY_COWORKER_DOCUMENTS: CoworkerDocumentRecord[] = [];

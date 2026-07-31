@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   coworkerFindFirstMock,
+  coworkerBuilderChatFindFirstMock,
   coworkerRunFindFirstMock,
   coworkerRunUpdateReturningMock,
   coworkerRunUpdateWhereMock,
@@ -11,6 +12,7 @@ const {
   recordCounterMock,
 } = vi.hoisted(() => ({
   coworkerFindFirstMock: vi.fn(),
+  coworkerBuilderChatFindFirstMock: vi.fn(),
   coworkerRunFindFirstMock: vi.fn(),
   coworkerRunUpdateReturningMock: vi.fn(),
   coworkerRunUpdateWhereMock: vi.fn(),
@@ -25,6 +27,7 @@ vi.mock("@bap/db/client", () => ({
     update: dbUpdateMock,
     query: {
       coworker: { findFirst: coworkerFindFirstMock },
+      coworkerBuilderChat: { findFirst: coworkerBuilderChatFindFirstMock },
       coworkerRun: { findFirst: coworkerRunFindFirstMock },
     },
   },
@@ -61,6 +64,7 @@ describe("SLO Journey classification", () => {
     coworkerRunUpdateWhereMock.mockReturnValue({ returning: coworkerRunUpdateReturningMock });
     coworkerRunUpdateReturningMock.mockResolvedValue([{ id: "run-1" }]);
     coworkerFindFirstMock.mockResolvedValue(null);
+    coworkerBuilderChatFindFirstMock.mockResolvedValue(null);
     coworkerRunFindFirstMock.mockResolvedValue(null);
   });
 
@@ -176,7 +180,9 @@ describe("SLO Journey classification", () => {
   });
 
   it("classifies coworker builder Generations and skips unclassified coworker Generations", async () => {
-    coworkerFindFirstMock.mockResolvedValueOnce({ id: "coworker-1" });
+    coworkerBuilderChatFindFirstMock.mockResolvedValueOnce({
+      coworkerId: "coworker-1",
+    });
 
     await emitGenerationSloTerminalEvent({
       generationId: "gen-1",

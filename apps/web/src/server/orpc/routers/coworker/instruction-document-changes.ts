@@ -14,28 +14,6 @@ export function summarizeCoworkerInstructionDocumentChanges(
   const changesByFilename = new Map<string, CoworkerInstructionDocumentChange>();
 
   for (const event of events) {
-    if (event.type === "document_updated") {
-      const before = event.payload.before;
-      const after = event.payload.after;
-      const beforeFilename =
-        typeof before === "object" &&
-        before !== null &&
-        typeof (before as Record<string, unknown>).filename === "string"
-          ? ((before as Record<string, unknown>).filename as string)
-          : null;
-      const afterFilename =
-        typeof after === "object" &&
-        after !== null &&
-        typeof (after as Record<string, unknown>).filename === "string"
-          ? ((after as Record<string, unknown>).filename as string)
-          : null;
-      if (beforeFilename && afterFilename && beforeFilename !== afterFilename) {
-        changesByFilename.set(beforeFilename, { type: "removed", filename: beforeFilename });
-        changesByFilename.set(afterFilename, { type: "added", filename: afterFilename });
-      }
-      continue;
-    }
-
     const filename = event.payload.filename;
     if (typeof filename !== "string" || filename.trim().length === 0) {
       continue;

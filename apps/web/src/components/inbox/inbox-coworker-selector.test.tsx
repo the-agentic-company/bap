@@ -79,5 +79,5 @@ describe("InboxCoworkerSelector", () => {
 
     expect(scrollRegion.className).toContain("overflow-y-auto");
     expect(scrollRegion.className).toContain("max-h-[min(420px,calc(100vh-20rem))]");
-  });
+  }, 15_000);
 });

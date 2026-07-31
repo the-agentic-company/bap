@@ -1,5 +1,5 @@
 import { coworker, coworkerFolder } from "@bap/db/schema";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
 export type CoworkerFolderVisibility = "private" | "workspace";
 
@@ -194,7 +194,10 @@ async function syncContainedCoworkerSharing(input: {
 
   await input.context.db
     .update(coworker)
-    .set({ sharedAt: input.visibility === "workspace" ? new Date() : null })
+    .set({
+      visibility: input.visibility,
+      sharedAt: input.visibility === "workspace" ? new Date() : null,
+    })
     .where(inArray(coworker.folderId, input.folderIds));
 }
 
@@ -275,8 +278,12 @@ export async function moveCoworkerToFolder(input: {
   const existingCoworker = await input.context.db.query.coworker.findFirst({
     where: and(
       eq(coworker.id, input.coworkerId),
-      eq(coworker.ownerId, input.userId),
       eq(coworker.workspaceId, input.workspaceId),
+      or(
+        eq(coworker.visibility, "workspace"),
+        eq(coworker.createdByUserId, input.userId),
+        eq(coworker.ownerId, input.userId),
+      ),
     ),
   });
 
@@ -284,7 +291,7 @@ export async function moveCoworkerToFolder(input: {
     throw new Error("Coworker not found.");
   }
 
-  let sharedAt = existingCoworker.sharedAt;
+  let visibility = existingCoworker.visibility;
   if (input.folderId) {
     const result = await requireVisibleFolder({
       context: input.context,
@@ -292,18 +299,25 @@ export async function moveCoworkerToFolder(input: {
       userId: input.userId,
       folderId: input.folderId,
     });
-    const visibility = getEffectiveVisibility(result.folder, result.foldersById);
-    sharedAt = visibility === "workspace" ? new Date() : null;
+    visibility = getEffectiveVisibility(result.folder, result.foldersById);
   }
 
   const [updated] = await input.context.db
     .update(coworker)
-    .set({ folderId: input.folderId, sharedAt })
+    .set({
+      folderId: input.folderId,
+      visibility,
+      sharedAt: visibility === "workspace" ? new Date() : null,
+    })
     .where(
       and(
         eq(coworker.id, input.coworkerId),
-        eq(coworker.ownerId, input.userId),
         eq(coworker.workspaceId, input.workspaceId),
+        or(
+          eq(coworker.visibility, "workspace"),
+          eq(coworker.createdByUserId, input.userId),
+          eq(coworker.ownerId, input.userId),
+        ),
       ),
     )
     .returning();
@@ -393,6 +407,7 @@ export async function updateTopLevelCoworkerFolderVisibility(input: {
   context: CoworkerFolderContext;
   workspaceId: string;
   userId: string;
+  workspaceRole: string | null;
   folderId: string;
   visibility: CoworkerFolderVisibility;
 }) {
@@ -406,7 +421,11 @@ export async function updateTopLevelCoworkerFolderVisibility(input: {
   if (root.id !== result.folder.id) {
     throw new Error("Only top-level folder visibility can be changed.");
   }
-  if (root.ownerId !== input.userId) {
+  if (
+    root.ownerId !== input.userId &&
+    input.workspaceRole !== "admin" &&
+    input.workspaceRole !== "owner"
+  ) {
     throw new Error("Folder not found.");
   }
 

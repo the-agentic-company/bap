@@ -1,8 +1,6 @@
 import { EMAIL_FORWARDED_TRIGGER_TYPE } from "@bap/core/lib/email-forwarding";
 import { T, useGT, useMessages } from "gt-react";
-import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { CoworkerForwardingAlias, CoworkerScheduleType } from "./types";
 
@@ -21,12 +18,9 @@ const scheduleMotionAnimate = { opacity: 1, y: 0, height: "auto" } as const;
 const scheduleMotionExit = { opacity: 0, y: -8, height: 0 } as const;
 const scheduleMotionTransition = { duration: 0.22, ease: "easeOut" } as const;
 const scheduleMotionStyle = { overflow: "hidden" } as const;
-const sectionMotionInitial = { height: 0, opacity: 0 } as const;
-const sectionMotionAnimate = { height: "auto" as const, opacity: 1 } as const;
-const sectionMotionExit = { height: 0, opacity: 0 } as const;
-const sectionMotionTransition = { duration: 0.2 } as const;
 
 type CoworkerTriggerSectionProps = {
+  children?: React.ReactNode;
   triggerType: string;
   triggers: readonly { value: string; label: string }[];
   scheduleType: CoworkerScheduleType;
@@ -35,8 +29,6 @@ type CoworkerTriggerSectionProps = {
   scheduleDaysOfWeek: number[];
   scheduleDayOfMonth: number;
   localTimezone: string;
-  requiresUserInput: boolean;
-  userInputPrompt: string;
   hasActiveForwardingAlias: boolean;
   coworkerForwardingAddress: string | null;
   coworkerForwardingAlias: CoworkerForwardingAlias | undefined;
@@ -51,8 +43,6 @@ type CoworkerTriggerSectionProps = {
   onScheduleTimeChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onToggleWeekDay: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onScheduleDayOfMonthChange: (value: string) => void;
-  onRequiresUserInputChange: (checked: boolean) => void;
-  onUserInputPromptChange: (value: string) => void;
   onCopyCoworkerAlias: () => void;
   onRotateCoworkerAlias: () => void;
   onDisableCoworkerAlias: () => void;
@@ -60,6 +50,7 @@ type CoworkerTriggerSectionProps = {
 };
 
 export function CoworkerTriggerSection({
+  children,
   triggerType,
   triggers,
   scheduleType,
@@ -68,8 +59,6 @@ export function CoworkerTriggerSection({
   scheduleDaysOfWeek,
   scheduleDayOfMonth,
   localTimezone,
-  requiresUserInput,
-  userInputPrompt,
   hasActiveForwardingAlias,
   coworkerForwardingAddress,
   coworkerForwardingAlias,
@@ -84,8 +73,6 @@ export function CoworkerTriggerSection({
   onScheduleTimeChange,
   onToggleWeekDay,
   onScheduleDayOfMonthChange,
-  onRequiresUserInputChange,
-  onUserInputPromptChange,
   onCopyCoworkerAlias,
   onRotateCoworkerAlias,
   onDisableCoworkerAlias,
@@ -93,117 +80,73 @@ export function CoworkerTriggerSection({
 }: CoworkerTriggerSectionProps) {
   const t = useGT();
   const m = useMessages();
-  const [triggerExpanded, setTriggerExpanded] = useState(false);
-  const handleToggleTriggerExpanded = useCallback(() => {
-    setTriggerExpanded((value) => !value);
-  }, []);
-  const handleUserInputPromptChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onUserInputPromptChange(event.target.value);
-    },
-    [onUserInputPromptChange],
-  );
-
   return (
     <div className="border-border/20 rounded-xl border">
-      <button
-        type="button"
-        className="hover:bg-muted/20 flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-colors"
-        onClick={handleToggleTriggerExpanded}
-      >
-        <div>
-          <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-            <T>Trigger</T>
-          </span>
-          <p className="text-foreground mt-0.5 text-sm">
-            {m(triggers.find((trigger) => trigger.value === triggerType)?.label ?? "Manual only")}
-          </p>
-        </div>
-        <ChevronDown
-          className={cn(
-            "text-muted-foreground h-3.5 w-3.5 shrink-0 transition-transform duration-200",
-            triggerExpanded && "rotate-180",
-          )}
-        />
-      </button>
-      <AnimatePresence initial={false}>
-        {triggerExpanded && (
-          <motion.div
-            initial={sectionMotionInitial}
-            animate={sectionMotionAnimate}
-            exit={sectionMotionExit}
-            transition={sectionMotionTransition}
-            className="overflow-hidden"
-          >
-            <div className="border-border/40 space-y-3 border-t px-4 pt-3 pb-4">
-              <Select value={triggerType} onValueChange={onTriggerTypeChange}>
-                <SelectTrigger className="h-9 w-full bg-transparent text-sm">
-                  <SelectValue placeholder={t("Select a trigger")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {triggers.map((trigger) => (
-                    <SelectItem key={trigger.value} value={trigger.value}>
-                      {m(trigger.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      <div className="px-4 pt-3">
+        <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+          <T>Trigger</T>
+        </span>
+      </div>
+      <div className="space-y-3 px-4 pt-2 pb-4">
+        <Select value={triggerType} onValueChange={onTriggerTypeChange}>
+          <SelectTrigger className="h-9 w-full bg-transparent text-sm">
+            <SelectValue placeholder={t("Select a trigger")} />
+          </SelectTrigger>
+          <SelectContent>
+            {triggers.map((trigger) => (
+              <SelectItem key={trigger.value} value={trigger.value}>
+                {m(trigger.label)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-              <AnimatePresence initial={false} mode="wait">
-                {triggerType === "schedule" && (
-                  <motion.div
-                    key="schedule-settings"
-                    className="space-y-3"
-                    initial={scheduleMotionInitial}
-                    animate={scheduleMotionAnimate}
-                    exit={scheduleMotionExit}
-                    transition={scheduleMotionTransition}
-                    style={scheduleMotionStyle}
-                  >
-                    <ScheduleSettings
-                      scheduleType={scheduleType}
-                      intervalMinutes={intervalMinutes}
-                      scheduleTime={scheduleTime}
-                      scheduleDaysOfWeek={scheduleDaysOfWeek}
-                      scheduleDayOfMonth={scheduleDayOfMonth}
-                      localTimezone={localTimezone}
-                      onScheduleTypeChange={onScheduleTypeChange}
-                      onIntervalHoursChange={onIntervalHoursChange}
-                      onScheduleTimeChange={onScheduleTimeChange}
-                      onToggleWeekDay={onToggleWeekDay}
-                      onScheduleDayOfMonthChange={onScheduleDayOfMonthChange}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {triggerType === EMAIL_FORWARDED_TRIGGER_TYPE && (
-                <ForwardingAliasSettings
-                  hasActiveForwardingAlias={hasActiveForwardingAlias}
-                  coworkerForwardingAddress={coworkerForwardingAddress}
-                  coworkerForwardingAlias={coworkerForwardingAlias}
-                  isEmailTriggerPersisted={isEmailTriggerPersisted}
-                  copiedForwardingField={copiedForwardingField}
-                  createForwardingAlias={createForwardingAlias}
-                  disableForwardingAlias={disableForwardingAlias}
-                  rotateForwardingAlias={rotateForwardingAlias}
-                  onCopyCoworkerAlias={onCopyCoworkerAlias}
-                  onRotateCoworkerAlias={onRotateCoworkerAlias}
-                  onDisableCoworkerAlias={onDisableCoworkerAlias}
-                  onCreateCoworkerAlias={onCreateCoworkerAlias}
-                />
-              )}
-
-              <NeedsUserInputSettings
-                requiresUserInput={requiresUserInput}
-                userInputPrompt={userInputPrompt}
-                onRequiresUserInputChange={onRequiresUserInputChange}
-                onUserInputPromptChange={handleUserInputPromptChange}
+        <AnimatePresence initial={false} mode="wait">
+          {triggerType === "schedule" && (
+            <motion.div
+              key="schedule-settings"
+              className="space-y-3"
+              initial={scheduleMotionInitial}
+              animate={scheduleMotionAnimate}
+              exit={scheduleMotionExit}
+              transition={scheduleMotionTransition}
+              style={scheduleMotionStyle}
+            >
+              <ScheduleSettings
+                scheduleType={scheduleType}
+                intervalMinutes={intervalMinutes}
+                scheduleTime={scheduleTime}
+                scheduleDaysOfWeek={scheduleDaysOfWeek}
+                scheduleDayOfMonth={scheduleDayOfMonth}
+                localTimezone={localTimezone}
+                onScheduleTypeChange={onScheduleTypeChange}
+                onIntervalHoursChange={onIntervalHoursChange}
+                onScheduleTimeChange={onScheduleTimeChange}
+                onToggleWeekDay={onToggleWeekDay}
+                onScheduleDayOfMonthChange={onScheduleDayOfMonthChange}
               />
-            </div>
-          </motion.div>
+              {children ? <div className="border-border/50 border-t pt-3">{children}</div> : null}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {triggerType === EMAIL_FORWARDED_TRIGGER_TYPE && (
+          <ForwardingAliasSettings
+            hasActiveForwardingAlias={hasActiveForwardingAlias}
+            coworkerForwardingAddress={coworkerForwardingAddress}
+            coworkerForwardingAlias={coworkerForwardingAlias}
+            isEmailTriggerPersisted={isEmailTriggerPersisted}
+            copiedForwardingField={copiedForwardingField}
+            createForwardingAlias={createForwardingAlias}
+            disableForwardingAlias={disableForwardingAlias}
+            rotateForwardingAlias={rotateForwardingAlias}
+            onCopyCoworkerAlias={onCopyCoworkerAlias}
+            onRotateCoworkerAlias={onRotateCoworkerAlias}
+            onDisableCoworkerAlias={onDisableCoworkerAlias}
+            onCreateCoworkerAlias={onCreateCoworkerAlias}
+          />
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -261,7 +204,6 @@ function ScheduleSettings({
           </SelectContent>
         </Select>
       </div>
-
       {scheduleType === "interval" && (
         <div className="space-y-1.5">
           <label className="text-xs font-medium">
@@ -452,60 +394,6 @@ function ForwardingAliasSettings({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function NeedsUserInputSettings({
-  requiresUserInput,
-  userInputPrompt,
-  onRequiresUserInputChange,
-  onUserInputPromptChange,
-}: {
-  requiresUserInput: boolean;
-  userInputPrompt: string;
-  onRequiresUserInputChange: (checked: boolean) => void;
-  onUserInputPromptChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
-}) {
-  return (
-    <div className="border-border/40 space-y-3 rounded-lg border p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <label className="text-xs font-medium">
-            <T>Needs your input</T>
-          </label>
-          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            <T>Ask a first question in chat before this trigger starts a run.</T>
-          </p>
-        </div>
-        <Switch checked={requiresUserInput} onCheckedChange={onRequiresUserInputChange} />
-      </div>
-      <AnimatePresence initial={false}>
-        {requiresUserInput && (
-          <motion.div
-            key="user-input-prompt"
-            initial={sectionMotionInitial}
-            animate={sectionMotionAnimate}
-            exit={sectionMotionExit}
-            transition={sectionMotionTransition}
-            className="overflow-hidden"
-          >
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">
-                <T>Question to ask</T>
-              </label>
-              <textarea
-                value={userInputPrompt}
-                onChange={onUserInputPromptChange}
-                maxLength={1000}
-                aria-label="Question to ask"
-                placeholder="Which email address should I send the draft to?"
-                className="bg-background text-foreground placeholder:text-muted-foreground/60 focus:ring-ring/40 min-h-[78px] w-full resize-none rounded-md border px-3 py-2 text-sm leading-relaxed focus:ring-2 focus:outline-none"
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

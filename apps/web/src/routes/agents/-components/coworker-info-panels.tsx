@@ -23,6 +23,7 @@ import { downloadSandboxFileToBrowser } from "@/lib/download-file";
 import { cn } from "@/lib/utils";
 import { useAgenticAppHtml, useDownloadSandboxFile } from "@/orpc/hooks/conversation";
 import { useSendAgenticAppPrompt } from "@/orpc/hooks/generation";
+import { AppImage as Image } from "../-lib/app-image";
 
 export type MobilePanel = "app" | "chat";
 
@@ -52,6 +53,11 @@ type HistoryRunItem = {
   status: string;
   failureKind?: string | null;
   startedAt?: Date | string | null;
+  runner?: {
+    id: string;
+    name: string;
+    image: string | null;
+  };
 };
 
 type RunEventSummary = {
@@ -685,6 +691,8 @@ export function HistoryRunButton({
   const handleClick = useCallback(() => {
     onSelect(run.id);
   }, [onSelect, run.id]);
+  const runnerName = run.runner?.name.trim() || (run.runner ? "Workspace member" : "Former member");
+  const runnerInitial = runnerName.trim().charAt(0).toUpperCase() || "?";
 
   return (
     <button
@@ -695,10 +703,28 @@ export function HistoryRunButton({
       )}
       onClick={handleClick}
     >
-      <span className="min-w-0">
+      {run.runner?.image ? (
+        <Image
+          src={run.runner.image}
+          alt=""
+          width={28}
+          height={28}
+          className="size-7 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="bg-background text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold"
+        >
+          {runnerInitial}
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{formatRunDate(run.startedAt)}</span>
-        <span className="block truncate text-xs">
-          {getRunStatusLabel(run.status, run.failureKind)}
+        <span className="flex min-w-0 items-center gap-1 text-xs">
+          <span className="shrink-0">{getRunStatusLabel(run.status, run.failureKind)}</span>
+          <span aria-hidden="true">·</span>
+          <span className="truncate">{runnerName}</span>
         </span>
       </span>
       {selected ? <span className="bg-brand h-1.5 w-1.5 shrink-0 rounded-full" /> : null}

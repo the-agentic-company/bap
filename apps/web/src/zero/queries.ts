@@ -95,10 +95,12 @@ export const zeroQueries = defineQueries({
             .where("workspaceId", ctx.workspaceId)
             .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
             .where("syntheticKind", "IS", null)
+            .related("executionUser")
             .orderBy("startedAt", "desc")
             .limit(COWORKER_RUNS_PER_COWORKER_LIMIT),
         )
         .related("preferences", (preferences) => preferences.where("userId", ctx.userId))
+        .related("creatorMemberships")
         .orderBy("updatedAt", "desc")
         .limit(COWORKER_LIMIT),
     ),
@@ -108,6 +110,7 @@ export const zeroQueries = defineQueries({
         .where("workspaceId", ctx.workspaceId)
         .whereExists("workspaceMembers", (members) => members.where("userId", ctx.userId))
         .where("syntheticKind", "IS", null)
+        .related("executionUser")
         .orderBy("startedAt", "desc")
         .limit(args.limit ?? COWORKER_RUNS_PER_COWORKER_LIMIT),
     ),

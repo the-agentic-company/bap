@@ -61,6 +61,32 @@ describe("coworkerRouter", () => {
     );
   });
 
+  it("allows a workspace member to run a canonical shared coworker", async () => {
+    const context = createContext();
+    context.db.query.user.findFirst.mockResolvedValue({ role: "member" });
+    context.db.query.coworker.findFirst.mockResolvedValue({
+      id: "wf-1",
+      ownerId: "creator-1",
+      createdByUserId: "creator-1",
+      workspaceId: "ws-1",
+      visibility: "workspace",
+      sharedAt: new Date("2026-07-30T00:00:00.000Z"),
+    });
+
+    await coworkerRouterAny.trigger({
+      input: { id: "wf-1", payload: { source: "manual" } },
+      context,
+    });
+
+    expect(triggerCoworkerRunMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coworkerId: "wf-1",
+        startKind: "user_intent",
+        userId: "user-1",
+      }),
+    );
+  });
+
   it("passes remote integration source and actor metadata for admin triggers", async () => {
     const context = createContext();
     context.db.query.user.findFirst.mockResolvedValue({
@@ -341,6 +367,9 @@ describe("coworkerRouter", () => {
       status: "success",
       triggerPayload: { source: "schedule" },
       generationId: "gen-1",
+      startKind: "external_trigger",
+      initiatedByUserId: null,
+      executionUserId: "user-1",
       startedAt: createdAt,
       finishedAt: createdAt,
       errorMessage: null,
@@ -379,6 +408,10 @@ describe("coworkerRouter", () => {
       coworkerName: "Inbox Triage",
       coworkerUsername: "inbox-triage",
       status: "success",
+      startKind: "external_trigger",
+      initiatedByUserId: null,
+      executionUserId: "user-1",
+      contentVisible: true,
       triggerPayload: { source: "schedule" },
       generationId: "gen-1",
       conversationId: "conv-1",
@@ -531,9 +564,18 @@ describe("coworkerRouter", () => {
       {
         id: "run-1",
         status: "success",
+        startKind: undefined,
+        initiatedByUserId: undefined,
+        executionUserId: undefined,
+        automationRegistrationId: undefined,
+        scheduleOccurrenceId: undefined,
+        scheduleOccurrence: undefined,
+        runner: undefined,
+        contentVisible: true,
         startedAt: now,
         finishedAt: now,
         errorMessage: null,
+        failureKind: undefined,
       },
     ]);
     expect(reconcileStaleCoworkerRunsForCoworkerMock).toHaveBeenCalledWith("wf-1");
@@ -544,10 +586,14 @@ describe("coworkerRouter", () => {
     const context = createContext();
     const newestRunAt = new Date("2026-04-13T10:00:00.000Z");
     const olderRunAt = new Date("2026-04-13T09:00:00.000Z");
+    context.db.query.coworker.findMany.mockResolvedValue([{ id: "wf-1" }, { id: "wf-2" }]);
     context.db.query.coworkerRun.findMany.mockResolvedValue([
       {
         id: "run-1",
         status: "success",
+        startKind: "external_trigger",
+        initiatedByUserId: null,
+        executionUserId: "user-1",
         startedAt: newestRunAt,
         finishedAt: newestRunAt,
         errorMessage: null,
@@ -562,6 +608,9 @@ describe("coworkerRouter", () => {
       {
         id: "run-2",
         status: "error",
+        startKind: "external_trigger",
+        initiatedByUserId: null,
+        executionUserId: "user-1",
         startedAt: olderRunAt,
         finishedAt: olderRunAt,
         errorMessage: "boom",
@@ -592,11 +641,11 @@ describe("coworkerRouter", () => {
       {
         id: "run-1",
         status: "success",
+        startKind: "external_trigger",
+        initiatedByUserId: null,
+        executionUserId: "user-1",
         startedAt: newestRunAt,
         finishedAt: newestRunAt,
-        errorMessage: null,
-        failureKind: null,
-        conversationId: "conv-1",
         coworkerId: "wf-1",
         coworkerName: "Inbox Triage",
       },
@@ -612,6 +661,7 @@ describe("coworkerRouter", () => {
 
   it("lists workspace runs with status and coworker filters", async () => {
     const context = createContext();
+    context.db.query.coworker.findMany.mockResolvedValue([{ id: "wf-1" }]);
 
     await coworkerRouterAny.listWorkspaceRuns({
       input: { status: "error", coworkerId: "wf-1", limit: 25 },

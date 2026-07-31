@@ -60,6 +60,7 @@ export async function resolveConnectedAccountAccessToken(
   const accountLabel = options.accountLabel?.trim() || null;
   const runtimeUrl = process.env.BAP_RUNTIME_CREDENTIALS_URL;
   const userId = process.env.BAP_USER_ID;
+  const conversationId = process.env.CONVERSATION_ID;
 
   if (runtimeUrl && userId) {
     const response = await fetch(runtimeUrl, {
@@ -67,6 +68,7 @@ export async function resolveConnectedAccountAccessToken(
       headers: runtimeCredentialRequestHeaders(),
       body: JSON.stringify({
         userId,
+        conversationId,
         remoteIntegrationSource: parseRemoteIntegrationSource(),
         resolve: {
           integrationType: options.integrationType,

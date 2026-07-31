@@ -1,7 +1,7 @@
 import { db } from "@bap/db/client";
 import { coworker, coworkerRun, coworkerRunEvent, generation } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { sanitizeJsonForPostgres } from "../utils/postgres-json";
 import { generationInterruptService } from "./generation-interrupt-service";
 import { reconcileStaleCoworkerRunsForCoworker } from "./coworker-service";
@@ -24,7 +24,11 @@ export async function resetCoworkerRunsAndEnable(params: {
       and(
         eq(coworker.id, params.coworkerId),
         eq(coworker.workspaceId, params.workspaceId),
-        or(eq(coworker.ownerId, params.resetByUserId), isNotNull(coworker.sharedAt)),
+        or(
+          eq(coworker.visibility, "workspace"),
+          eq(coworker.createdByUserId, params.resetByUserId),
+          eq(coworker.ownerId, params.resetByUserId),
+        ),
       ),
     )
     .returning({ id: coworker.id });

@@ -4,6 +4,7 @@ import { db } from "@bap/db/client";
 import {
   conversation,
   coworker,
+  coworkerAutomationRegistration,
   coworkerRun,
   invitation,
   skill,
@@ -265,6 +266,7 @@ export async function listWorkspacesForUser(userId: string, activeWorkspaceId?: 
         role: membership?.role ?? "member",
         billingPlanId: ensured.billingPlanId as BillingPlanId,
         requiresTwoFactor: ensured.requiresTwoFactor,
+        sessionIdleTimeoutMinutes: null,
         active: true,
       },
     ];
@@ -289,6 +291,7 @@ export async function listWorkspacesForUser(userId: string, activeWorkspaceId?: 
       role: membership.role,
       billingPlanId: membership.workspace.billingPlanId as BillingPlanId,
       requiresTwoFactor: membership.workspace.requiresTwoFactor,
+      sessionIdleTimeoutMinutes: membership.workspace.sessionIdleTimeoutMinutes,
       active: membership.workspace.id === resolvedActiveWorkspaceId,
     })),
   );
@@ -590,6 +593,7 @@ export async function adminRemoveWorkspaceMember(workspaceId: string, targetEmai
     throw new Error("User not found");
   }
 
+  await pauseCoworkersForDepartingAutomationOwner(workspaceId, targetUser.id);
   await db
     .delete(workspaceMember)
     .where(
@@ -642,6 +646,65 @@ async function getWorkspaceMembershipByEmail(workspaceId: string, targetEmail: s
   return { targetUser, membership };
 }
 
+async function pauseCoworkersForDepartingAutomationOwner(workspaceId: string, userId: string) {
+  const now = new Date();
+  await db
+    .update(coworkerAutomationRegistration)
+    .set({
+      status: "membership_revoked",
+      statusReason: "Workspace membership ended",
+      revokedAt: now,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(coworkerAutomationRegistration.workspaceId, workspaceId),
+        eq(coworkerAutomationRegistration.userId, userId),
+      ),
+    );
+  await db
+    .update(coworker)
+    .set({
+      automationOwnerUserId: null,
+      automationOwnerConsentedAt: null,
+      status: "off",
+      disabledReason: "automation_owner_required",
+      disabledAt: now,
+    })
+    .where(
+      and(
+        eq(coworker.workspaceId, workspaceId),
+        eq(coworker.automationOwnerUserId, userId),
+        sql`${coworker.triggerType} <> 'schedule'`,
+      ),
+    );
+  await db
+    .update(coworker)
+    .set({
+      automationOwnerUserId: null,
+      automationOwnerConsentedAt: null,
+    })
+    .where(
+      and(
+        eq(coworker.workspaceId, workspaceId),
+        eq(coworker.automationOwnerUserId, userId),
+        eq(coworker.triggerType, "schedule"),
+      ),
+    );
+  await db
+    .update(coworker)
+    .set({
+      proposedAutomationOwnerUserId: null,
+      proposedAutomationOwnerAt: null,
+    })
+    .where(
+      and(
+        eq(coworker.workspaceId, workspaceId),
+        eq(coworker.proposedAutomationOwnerUserId, userId),
+      ),
+    );
+}
+
 export async function updateWorkspaceMemberRole(
   workspaceId: string,
   targetEmail: string,
@@ -671,6 +734,7 @@ export async function removeWorkspaceMember(workspaceId: string, targetEmail: st
     throw new Error("Cannot remove the workspace owner");
   }
 
+  await pauseCoworkersForDepartingAutomationOwner(workspaceId, targetUser.id);
   await db
     .delete(workspaceMember)
     .where(

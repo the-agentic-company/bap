@@ -159,7 +159,10 @@ export const DEFAULT_MODEL = "openai/gpt-5.5";
 
 export function createContext() {
   const insertReturningMock = vi.fn<VitestProcedure>();
-  const insertOnConflictDoUpdateMock = vi.fn<VitestProcedure>();
+  const insertOnConflictReturningMock = vi.fn<VitestProcedure>();
+  const insertOnConflictDoUpdateMock = vi.fn<VitestProcedure>(() => ({
+    returning: insertOnConflictReturningMock,
+  }));
   const insertValuesMock = vi.fn<VitestProcedure>(() => ({
     returning: insertReturningMock,
     onConflictDoUpdate: insertOnConflictDoUpdateMock,
@@ -253,6 +256,7 @@ export function createContext() {
       insertReturningMock,
       insertValuesMock,
       insertOnConflictDoUpdateMock,
+      insertOnConflictReturningMock,
       updateSetMock,
       updateReturningMock,
       deleteMock,

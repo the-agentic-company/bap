@@ -6,7 +6,6 @@ import {
   deleteCoworkerDocumentMock,
   generateCoworkerMetadataOnFirstPromptFillMock,
   getPresignedDownloadUrlMock,
-  reconcileCoworkerScheduleJobMock,
   resetCoworkerRouterTestHarness,
   syncCoworkerScheduleJobMock,
   updateCoworkerDocumentMock,
@@ -15,7 +14,7 @@ import {
 
 describe("coworkerRouter", () => {
   beforeEach(resetCoworkerRouterTestHarness);
-  it("backfills missing builder metadata on get when prompt already exists", async () => {
+  it("does not mutate canonical builder metadata during a read", async () => {
     const context = createContext();
     const now = new Date("2026-03-12T10:00:00.000Z");
     generateCoworkerMetadataOnFirstPromptFillMock.mockResolvedValueOnce({
@@ -41,27 +40,6 @@ describe("coworkerRouter", () => {
       createdAt: now,
       updatedAt: now,
     });
-    context.mocks.updateReturningMock.mockResolvedValueOnce([
-      {
-        id: "wf-1",
-        ownerId: "user-1",
-        builderConversationId: "conv-builder-1",
-        name: "Builder Draft",
-        description: "Summarizes the workflow.",
-        username: "summary-sentence",
-        status: "on",
-        autoApprove: true,
-        toolAccessMode: "all",
-        allowedSkillSlugs: [],
-        triggerType: "manual",
-        prompt: "Summary sentence. another sentence",
-        allowedIntegrations: ["slack"],
-        allowedCustomIntegrations: [],
-        schedule: null,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ]);
     context.db.query.coworkerRun.findMany.mockResolvedValue([]);
 
     const result = await coworkerRouterAny.get({
@@ -69,16 +47,12 @@ describe("coworkerRouter", () => {
       context,
     });
 
-    expect(context.mocks.updateSetMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        description: "Summarizes the workflow.",
-        username: "summary-sentence",
-      }),
-    );
+    expect(generateCoworkerMetadataOnFirstPromptFillMock).not.toHaveBeenCalled();
+    expect(context.mocks.updateSetMock).not.toHaveBeenCalled();
     expect(result).toEqual(
       expect.objectContaining({
-        description: "Summarizes the workflow.",
-        username: "summary-sentence",
+        description: null,
+        username: null,
       }),
     );
   });
@@ -575,8 +549,12 @@ describe("coworkerRouter", () => {
     });
 
     expect(result).toEqual({ success: true });
-    expect(context.mocks.updateSetMock).toHaveBeenCalledWith({ status: "off" });
-    expect(reconcileCoworkerScheduleJobMock).toHaveBeenCalledWith("wf-1");
+    expect(context.mocks.updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "off", configurationRevision: 1 }),
+    );
+    expect(syncCoworkerScheduleJobMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "wf-1", status: "off" }),
+    );
   });
 
   it("allows a Workspace member to turn another member's coworker on", async () => {
@@ -608,8 +586,10 @@ describe("coworkerRouter", () => {
     });
 
     expect(result).toEqual({ success: true });
-    expect(context.mocks.updateSetMock).toHaveBeenCalledWith({ status: "on" });
-    expect(context.db.query.coworkerRun.findMany).toHaveBeenCalledOnce();
+    expect(context.mocks.updateSetMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "on", configurationRevision: 1 }),
+    );
+    expect(context.db.query.coworkerRun.findMany).toHaveBeenCalled();
   });
 
   it("does not allow a Workspace member to change a private coworker owned by someone else", async () => {
@@ -644,9 +624,9 @@ describe("coworkerRouter", () => {
         input: { id: "wf-1", status: "off" },
         context,
       }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "CONFLICT" });
 
-    expect(reconcileCoworkerScheduleJobMock).not.toHaveBeenCalled();
+    expect(syncCoworkerScheduleJobMock).not.toHaveBeenCalled();
   });
 
   it("requires reset before ordinary enable for a backlog-disabled coworker", async () => {

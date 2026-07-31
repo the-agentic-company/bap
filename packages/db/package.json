@@ -1,7 +1,7 @@
 {
   "name": "@bap/db",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
@@ -25,7 +25,9 @@
     "db:studio": "bun --env-file=../../.env drizzle-kit studio --config=drizzle.config.ts",
     "db:studio:prod": "bun --env-file=../../.env scripts/db-studio.ts prod",
     "db:studio:staging": "bun --env-file=../../.env scripts/db-studio.ts staging",
-    "db:workspace-org-backfill": "bun --env-file=../../.env src/workspace-organization-backfill.ts"
+    "db:workspace-org-backfill": "bun --env-file=../../.env src/workspace-organization-backfill.ts",
+    "db:canonical-coworker-backfill": "bun --env-file=../../.env src/canonical-coworker-backfill.ts",
+    "db:coworker-automation-registration-backfill": "bun --env-file=../../.env src/coworker-automation-registration-backfill.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",

@@ -22,7 +22,6 @@ import {
 import { normalizeAndEnsureUniqueCoworkerUsername } from "@bap/core/server/services/coworker-metadata";
 import { generateCoworkerMetadataOnFirstPromptFill } from "@bap/core/server/services/coworker-metadata";
 import {
-  reconcileCoworkerScheduleJob,
   removeCoworkerScheduleJob,
   syncCoworkerScheduleJob,
 } from "@bap/core/server/services/coworker-scheduler";
@@ -35,8 +34,9 @@ import {
   user,
 } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { resolveSelectedWorkspaceMcpServerIds } from "@/server/services/coworker-toolbox";
+import { activateCoworkerAutomationRegistration } from "@/server/services/coworker-automation-registration";
 
 const DISABLED_TRIGGER_TYPES = ["gmail.new_email"] as const;
 const RESET_REQUIRED_ENABLE_MESSAGE = "Reset coworker runs before enabling automated triggers.";
@@ -244,7 +244,7 @@ export async function createCoworkerProfile(input: {
   const coworkerId = crypto.randomUUID();
   const dbUser = await input.context.db.query.user.findFirst({
     where: eq(user.id, input.context.user.id),
-    columns: { role: true, name: true, image: true },
+    columns: { role: true, name: true, email: true, image: true },
   });
   assertModelAllowedForRole(input.payload.model, dbUser?.role);
   const resolvedAuthSource = resolveCoworkerAuthSource(
@@ -286,7 +286,7 @@ export async function createCoworkerProfile(input: {
       username: usernameToSave,
       ownerId: input.context.user.id,
       createdByUserId: input.context.user.id,
-      createdByNameSnapshot: dbUser?.name ?? null,
+      createdByNameSnapshot: dbUser?.name ?? dbUser?.email ?? null,
       createdByAvatarSnapshot: dbUser?.image ?? null,
       workspaceId: input.workspaceId,
       folderId: initialFolder.folderId,
@@ -588,6 +588,29 @@ export async function updateCoworkerProfile(input: {
     }
   }
 
+  const scheduleWasEdited = Boolean(
+    changedConfiguration?.coworker.configuration.triggerType === "schedule" &&
+    changedConfiguration.revision.changedFields.some(
+      (field) => field === "schedule" || field === "triggerType",
+    ),
+  );
+  if (scheduleWasEdited) {
+    const actor = await input.context.db.query.user.findFirst({
+      where: eq(user.id, input.context.user.id),
+      columns: { name: true, image: true },
+    });
+    await activateCoworkerAutomationRegistration({
+      database: input.context.db,
+      coworkerId: existing.id,
+      workspaceId: input.workspaceId,
+      actor: {
+        userId: input.context.user.id,
+        name: actor?.name ?? null,
+        image: actor?.image ?? null,
+      },
+    });
+  }
+
   if (input.payload.isPinned !== undefined || input.payload.isHidden !== undefined) {
     await input.context.db
       .insert(coworkerMemberPreference)
@@ -640,6 +663,7 @@ export async function setCoworkerStatus(input: {
   workspaceId: string;
   existing: typeof coworker.$inferSelect;
   status: "on" | "off";
+  membershipRole: string | null;
 }) {
   if (input.status === "on" && input.existing.status !== "on") {
     await assertCanEnableCoworker({
@@ -648,38 +672,17 @@ export async function setCoworkerStatus(input: {
     });
   }
 
-  const result = await input.context.db
-    .update(coworker)
-    .set({ status: input.status })
-    .where(
-      and(
-        eq(coworker.id, input.existing.id),
-        eq(coworker.workspaceId, input.workspaceId),
-        or(eq(coworker.ownerId, input.context.user.id), isNotNull(coworker.sharedAt)),
-      ),
-    )
-    .returning({
-      id: coworker.id,
-      status: coworker.status,
-      triggerType: coworker.triggerType,
-      schedule: coworker.schedule,
-    });
-
-  if (result.length === 0) {
-    throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
-  }
-
-  try {
-    await reconcileCoworkerScheduleJob(result[0]!.id);
-  } catch (error) {
-    console.error(
-      `[coworker] failed to sync scheduler after status update (${input.existing.id})`,
-      error,
-    );
-    throw new ORPCError("INTERNAL_SERVER_ERROR", {
-      message: "Coworker status updated but failed to sync schedule job",
-    });
-  }
+  await updateCoworkerProfile({
+    context: input.context,
+    workspaceId: input.workspaceId,
+    existing: input.existing,
+    membershipRole: input.membershipRole,
+    payload: {
+      id: input.existing.id,
+      status: input.status,
+      expectedRevision: input.existing.configurationRevision,
+    },
+  });
 
   return { success: true };
 }
@@ -706,13 +709,7 @@ export async function deleteCoworkerProfile(input: {
 
   const result = await input.context.db
     .delete(coworker)
-    .where(
-      and(
-        eq(coworker.id, input.coworkerId),
-        eq(coworker.ownerId, input.context.user.id),
-        eq(coworker.workspaceId, input.workspaceId),
-      ),
-    )
+    .where(and(eq(coworker.id, input.coworkerId), eq(coworker.workspaceId, input.workspaceId)))
     .returning({ id: coworker.id });
 
   if (result.length === 0) {

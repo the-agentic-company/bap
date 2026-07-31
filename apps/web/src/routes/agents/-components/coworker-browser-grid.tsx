@@ -4,10 +4,8 @@ import {
   InteractiveCoworkerCard,
   type InteractiveCoworkerCardData,
 } from "@/components/coworkers/interactive-coworker-card";
-import type { IntegrationType } from "@/lib/integration-icons";
 import type { CoworkerFolderItem, CoworkerItem } from "./coworkers-page";
 import { FolderCard } from "./folder-card";
-import { SharedCoworkerCard, type SharedCoworkerItem } from "./shared-coworker-card";
 
 type CoworkerSection = {
   key: string;
@@ -54,22 +52,35 @@ function buildCoworkerSections(coworkers: CoworkerItem[]): CoworkerSection[] {
 
   return [
     { key: "favorites", title: <T>Favorites</T>, coworkers: favorites },
-    { key: "active-14", title: <T>Active in last 14 days</T>, coworkers: active14 },
-    { key: "active-30", title: <T>Active in last 30 days</T>, coworkers: active30 },
-    { key: "inactive-30-60", title: <T>Inactive 30 to 60 days</T>, coworkers: older },
-    { key: "inactive-60", title: <T>Inactive 60+ days</T>, coworkers: inactive60 },
+    {
+      key: "active-14",
+      title: <T>Active in last 14 days</T>,
+      coworkers: active14,
+    },
+    {
+      key: "active-30",
+      title: <T>Active in last 30 days</T>,
+      coworkers: active30,
+    },
+    {
+      key: "inactive-30-60",
+      title: <T>Inactive 30 to 60 days</T>,
+      coworkers: older,
+    },
+    {
+      key: "inactive-60",
+      title: <T>Inactive 60+ days</T>,
+      coworkers: inactive60,
+    },
   ].filter((section) => section.coworkers.length > 0);
 }
 
 export function CoworkerBrowserGrid({
-  connectedIntegrationTypes,
   displayedCoworkerList,
   displayedFolderList,
-  displayedSharedCoworkerList,
   canManageFolder,
   getFolderPathLabel,
   handleDeleteFolderRequest,
-  handleImportSharedCoworker,
   handleMoveCoworker,
   handleMoveFolder,
   handleOpenCreateChildFolderDialog,
@@ -82,19 +93,15 @@ export function CoworkerBrowserGrid({
   handleFolderDragOver,
   handleFolderDropCoworker,
   handleToggleFolderVisibilityRequest,
-  importingSharedCoworkerId,
   isGlobalSearch,
   activeDropFolderId,
 }: {
-  connectedIntegrationTypes: IntegrationType[];
   displayedCoworkerList: CoworkerItem[];
   displayedFolderList: CoworkerFolderItem[];
-  displayedSharedCoworkerList: SharedCoworkerItem[];
   activeDropFolderId: string | null;
   canManageFolder: (folder: CoworkerFolderItem) => boolean;
   getFolderPathLabel: (folder: CoworkerFolderItem) => string | undefined;
   handleDeleteFolderRequest: (folder: CoworkerFolderItem) => void;
-  handleImportSharedCoworker: (id: string) => void;
   handleMoveCoworker: (coworker: InteractiveCoworkerCardData) => void;
   handleMoveFolder: (folder: CoworkerFolderItem) => void;
   handleOpenCreateChildFolderDialog: (folder: CoworkerFolderItem) => void;
@@ -119,7 +126,6 @@ export function CoworkerBrowserGrid({
     event: React.DragEvent<HTMLDivElement>,
   ) => void;
   handleToggleFolderVisibilityRequest: (folder: CoworkerFolderItem) => void;
-  importingSharedCoworkerId: string | null;
   isGlobalSearch: boolean;
 }) {
   const coworkerSections = buildCoworkerSections(displayedCoworkerList);
@@ -175,25 +181,6 @@ export function CoworkerBrowserGrid({
           </div>
         </section>
       ))}
-      {displayedSharedCoworkerList.length > 0 ? (
-        <section className="space-y-3">
-          <h3 className="text-muted-foreground text-xs font-medium">
-            <T>Shared with workspace</T>
-          </h3>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {displayedSharedCoworkerList.map((coworker) => (
-              <div key={`shared-${coworker.id}`} className="h-full">
-                <SharedCoworkerCard
-                  coworker={coworker}
-                  connectedIntegrationTypes={connectedIntegrationTypes}
-                  isImporting={importingSharedCoworkerId === coworker.id}
-                  onImport={handleImportSharedCoworker}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
     </div>
   );
 }

@@ -98,15 +98,18 @@ async function refreshCoworkerDocumentsRuntimeVolumeProjection(input: {
   workspaceId: string;
   coworkerId: string;
 }): Promise<void> {
-  await reconcileRuntimeVolumeProjection({
-    workspaceId: input.workspaceId,
-    kind: "coworker_documents",
-    coworkerId: input.coworkerId,
-    storagePrefix: buildCoworkerDocumentsRuntimeVolumePrefix(input),
-    mountPath: "/home/user/coworker-documents",
-    readOnly: false,
-    generationId: null,
-  });
+  await reconcileRuntimeVolumeProjection(
+    {
+      workspaceId: input.workspaceId,
+      kind: "coworker_documents",
+      coworkerId: input.coworkerId,
+      storagePrefix: buildCoworkerDocumentsRuntimeVolumePrefix(input),
+      mountPath: "/home/user/coworker-documents",
+      readOnly: false,
+      generationId: null,
+    },
+    { reconcileProductIndex: false },
+  );
 }
 
 export async function uploadCoworkerDocument(params: {

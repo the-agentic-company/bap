@@ -186,7 +186,9 @@ export async function copyRuntimeVolumePrefix(input: {
   return objects.length;
 }
 
-export async function listRuntimeVolumeManifest(storagePrefix: string): Promise<RuntimeVolumeManifest> {
+export async function listRuntimeVolumeManifest(
+  storagePrefix: string,
+): Promise<RuntimeVolumeManifest> {
   const prefix = ensureTrailingSlash(storagePrefix);
   const entries = (await listS3Objects(prefix))
     .filter((object) => object.key !== prefix && !object.key.endsWith("/"))
@@ -279,7 +281,9 @@ export async function issueRuntimeVolumeS3Credentials(input: {
   );
   const credentials = response.Credentials;
   if (!credentials?.AccessKeyId || !credentials.SecretAccessKey || !credentials.SessionToken) {
-    throw new Error("runtime_volume_credentials_unavailable: STS did not return session credentials");
+    throw new Error(
+      "runtime_volume_credentials_unavailable: STS did not return session credentials",
+    );
   }
 
   return {
@@ -397,10 +401,12 @@ export function buildRuntimeVolumeCredentialPolicy(
   };
 }
 
-export async function upsertRuntimeVolumeProjection(input: RuntimeVolumeProjectionInput & {
-  manifest: RuntimeVolumeManifest;
-  error?: { code: string; message: string } | null;
-}) {
+export async function upsertRuntimeVolumeProjection(
+  input: RuntimeVolumeProjectionInput & {
+    manifest: RuntimeVolumeManifest;
+    error?: { code: string; message: string } | null;
+  },
+) {
   const now = new Date();
   const [row] = await db
     .insert(runtimeVolume)
@@ -442,7 +448,10 @@ export async function upsertRuntimeVolumeProjection(input: RuntimeVolumeProjecti
   return row;
 }
 
-export async function reconcileRuntimeVolumeProjection(input: RuntimeVolumeProjectionInput): Promise<{
+export async function reconcileRuntimeVolumeProjection(
+  input: RuntimeVolumeProjectionInput,
+  options?: { reconcileProductIndex?: boolean },
+): Promise<{
   changed: boolean;
   manifestHash: string;
   entryCount: number;
@@ -461,7 +470,7 @@ export async function reconcileRuntimeVolumeProjection(input: RuntimeVolumeProje
   });
 
   const changed = existing?.manifestHash !== manifest.hash;
-  if (changed) {
+  if (changed && options?.reconcileProductIndex !== false) {
     await reconcileRuntimeVolumeProductIndex({ ...input, storagePrefix: prefix }, manifest);
   }
 
@@ -679,10 +688,12 @@ async function reconcileOwnedSkillsFromRuntimeVolume(
       continue;
     }
 
-    const skillMd = (await readRuntimeVolumeFile({
-      storagePrefix: input.storagePrefix,
-      relativePath: skillMdEntry.objectRelativePath,
-    })).toString("utf8");
+    const skillMd = (
+      await readRuntimeVolumeFile({
+        storagePrefix: input.storagePrefix,
+        relativePath: skillMdEntry.objectRelativePath,
+      })
+    ).toString("utf8");
     const metadata = parseSkillMarkdownMetadata(skillMd, skillSlug, existing);
 
     if (existing && existing.userId !== input.ownerUserId) {
@@ -786,7 +797,9 @@ async function reconcileCoworkerDocumentsFromRuntimeVolume(
   const existingDocuments = await db.query.coworkerDocument.findMany({
     where: eq(coworkerDocument.coworkerId, input.coworkerId),
   });
-  const existingByFilename = new Map(existingDocuments.map((document) => [document.filename, document]));
+  const existingByFilename = new Map(
+    existingDocuments.map((document) => [document.filename, document]),
+  );
   const missingIds = existingDocuments
     .filter((document) => !filenames.includes(document.filename))
     .map((document) => document.id);

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   bindGenerationToRuntimeMock,
+  applyCanonicalCoworkerChangeMock,
   checkModelAccessForUserMock,
   conversationFindFirstMock,
   createTraceIdMock,
@@ -23,6 +24,8 @@ const {
   updateSetMock,
   updateWhereMock,
   coworkerFindFirstMock,
+  userFindFirstMock,
+  createDrizzleCoworkerChangeRepositoryMock,
 } = vi.hoisted(() => {
   const insertReturningMock = vi.fn();
   const insertValuesMock = vi.fn(() => ({ returning: insertReturningMock }));
@@ -35,12 +38,14 @@ const {
   const generationFindFirstMock = vi.fn();
   const conversationFindFirstMock = vi.fn();
   const coworkerFindFirstMock = vi.fn();
+  const userFindFirstMock = vi.fn();
 
   const dbMock = {
     query: {
       generation: { findFirst: generationFindFirstMock },
       conversation: { findFirst: conversationFindFirstMock },
       coworker: { findFirst: coworkerFindFirstMock },
+      user: { findFirst: userFindFirstMock },
     },
     insert: insertMock,
     update: updateMock,
@@ -54,6 +59,7 @@ const {
 
   return {
     bindGenerationToRuntimeMock: vi.fn(),
+    applyCanonicalCoworkerChangeMock: vi.fn(),
     checkModelAccessForUserMock: vi.fn(),
     conversationFindFirstMock,
     createTraceIdMock: vi.fn(),
@@ -75,6 +81,8 @@ const {
     updateSetMock,
     updateWhereMock,
     coworkerFindFirstMock,
+    userFindFirstMock,
+    createDrizzleCoworkerChangeRepositoryMock: vi.fn(() => ({ kind: "repository" })),
   };
 });
 
@@ -103,6 +111,14 @@ vi.mock("../coworker-builder-service", () => ({
 
 vi.mock("../coworker-metadata", () => ({
   generateCoworkerMetadataOnFirstPromptFill: generateCoworkerMetadataOnFirstPromptFillMock,
+}));
+
+vi.mock("../coworker-change-service", () => ({
+  applyCanonicalCoworkerChange: applyCanonicalCoworkerChangeMock,
+}));
+
+vi.mock("../coworker-change-repository", () => ({
+  createDrizzleCoworkerChangeRepository: createDrizzleCoworkerChangeRepositoryMock,
 }));
 
 vi.mock("../platform-skill-service", () => ({
@@ -319,6 +335,14 @@ describe("TurnIntake.startGeneration", () => {
       allowedCustomIntegrations: [],
       schedule: null,
       autoApprove: false,
+      configurationRevision: 3,
+    });
+    userFindFirstMock.mockResolvedValueOnce({
+      name: "Builder Member",
+      image: "avatar.png",
+    });
+    applyCanonicalCoworkerChangeMock.mockResolvedValueOnce({
+      kind: "applied",
     });
     generateCoworkerMetadataOnFirstPromptFillMock.mockResolvedValueOnce({
       name: "Follow up with new inbound leads after every sales call",
@@ -344,10 +368,23 @@ describe("TurnIntake.startGeneration", () => {
         }),
       }),
     );
-    expect(updateSetMock).toHaveBeenCalledWith({
-      name: "Follow up with new inbound leads after every sales call",
-      description: "Follow up with new inbound leads after every sales call.",
-      username: "follow-up-with-new-inbound-leads-after-every-sales-call",
+    expect(applyCanonicalCoworkerChangeMock).toHaveBeenCalledWith({
+      repository: { kind: "repository" },
+      coworkerId: "cw-1",
+      actor: {
+        userId: "user-1",
+        name: "Builder Member",
+        avatar: "avatar.png",
+        workspaceRole: null,
+        isActiveWorkspaceMember: true,
+      },
+      origin: "builder_chat",
+      expectedRevision: 3,
+      changes: {
+        name: "Follow up with new inbound leads after every sales call",
+        description: "Follow up with new inbound leads after every sales call.",
+        username: "follow-up-with-new-inbound-leads-after-every-sales-call",
+      },
     });
     expect(enqueueGenerationRunMock).toHaveBeenCalledWith("gen-coworker-builder", "chat", {
       traceId: "trace-1",

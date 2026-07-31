@@ -22,6 +22,7 @@ const {
   conversationFindManyMock,
   messageAttachmentFindFirstMock,
   sandboxFileFindFirstMock,
+  coworkerRunFindFirstMock,
   userFindFirstMock,
   downloadFromS3Mock,
   getFileAssetDownloadUrlMock,
@@ -33,6 +34,7 @@ const {
   const conversationFindManyMock = vi.fn<VitestProcedure>();
   const messageAttachmentFindFirstMock = vi.fn<VitestProcedure>();
   const sandboxFileFindFirstMock = vi.fn<VitestProcedure>();
+  const coworkerRunFindFirstMock = vi.fn<VitestProcedure>();
   const userFindFirstMock = vi.fn<VitestProcedure>();
   const downloadFromS3Mock = vi.fn<VitestProcedure>();
   const getFileAssetDownloadUrlMock = vi.fn<VitestProcedure>();
@@ -57,6 +59,9 @@ const {
       sandboxFile: {
         findFirst: sandboxFileFindFirstMock,
       },
+      coworkerRun: {
+        findFirst: coworkerRunFindFirstMock,
+      },
       user: {
         findFirst: userFindFirstMock,
       },
@@ -68,6 +73,7 @@ const {
     conversationFindManyMock,
     messageAttachmentFindFirstMock,
     sandboxFileFindFirstMock,
+    coworkerRunFindFirstMock,
     userFindFirstMock,
     downloadFromS3Mock,
     getFileAssetDownloadUrlMock,
@@ -119,11 +125,14 @@ const conversationRouterAny = conversationRouter as unknown as Record<
 describe("conversationRouter.get", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    coworkerRunFindFirstMock.mockResolvedValue(null);
   });
 
   it("resolves access with the request workspace", async () => {
     conversationFindFirstMock.mockResolvedValue({
       id: "conv-1",
+      userId: "user-1",
+      workspaceId: "ws-1",
       type: "coworker",
       title: "Agentic-App Prompt Test",
       isPinned: false,
@@ -143,6 +152,62 @@ describe("conversationRouter.get", () => {
     });
 
     expect(requireActiveWorkspaceAccessMock).toHaveBeenCalledWith("user-1", "ws-1");
+  });
+
+  it("keeps another member's manual Coworker conversation private", async () => {
+    conversationFindFirstMock.mockResolvedValue({
+      id: "conv-private-run",
+      userId: "user-2",
+      workspaceId: "ws-1",
+      type: "coworker",
+      title: "Private manual run",
+      isPinned: false,
+      isShared: false,
+      shareToken: null,
+      model: "openai/gpt-5.5",
+      authSource: "shared",
+      autoApprove: true,
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await expect(
+      conversationRouterAny.get({
+        input: { id: "conv-private-run" },
+        context,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("shares an automated run conversation with Workspace members", async () => {
+    conversationFindFirstMock.mockResolvedValue({
+      id: "conv-automated-run",
+      userId: "automation-owner",
+      workspaceId: "ws-1",
+      type: "coworker",
+      title: "Shared automation",
+      isPinned: false,
+      isShared: false,
+      shareToken: null,
+      model: "openai/gpt-5.5",
+      authSource: "shared",
+      autoApprove: true,
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    coworkerRunFindFirstMock.mockResolvedValue({
+      id: "run-automated",
+      coworker: { visibility: "workspace", sharedAt: null },
+    });
+
+    await expect(
+      conversationRouterAny.get({
+        input: { id: "conv-automated-run" },
+        context,
+      }),
+    ).resolves.toMatchObject({ id: "conv-automated-run" });
   });
 });
 
@@ -368,7 +433,9 @@ describe("conversationRouter.list", () => {
         context,
       }),
     ).rejects.toMatchObject(
-      new ORPCError("BAD_REQUEST", { message: "Invalid conversation list cursor" }),
+      new ORPCError("BAD_REQUEST", {
+        message: "Invalid conversation list cursor",
+      }),
     );
     expect(conversationFindManyMock).not.toHaveBeenCalled();
   });

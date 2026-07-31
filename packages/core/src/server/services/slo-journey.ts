@@ -1,5 +1,5 @@
 import { db } from "@bap/db/client";
-import { coworker, coworkerRun } from "@bap/db/schema";
+import { coworker, coworkerBuilderChat, coworkerRun } from "@bap/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { logger, recordCounter } from "../utils/observability";
 import {
@@ -112,12 +112,18 @@ export async function emitGenerationSloTerminalEvent(
     return;
   }
 
-  const builder = await db.query.coworker.findFirst({
-    where: eq(coworker.builderConversationId, facts.conversationId),
-    columns: { id: true },
+  const builderAssociation = await db.query.coworkerBuilderChat.findFirst({
+    where: eq(coworkerBuilderChat.conversationId, facts.conversationId),
+    columns: { coworkerId: true },
   });
+  const legacyBuilder = builderAssociation
+    ? null
+    : await db.query.coworker.findFirst({
+        where: eq(coworker.builderConversationId, facts.conversationId),
+        columns: { id: true },
+      });
 
-  if (builder) {
+  if (builderAssociation || legacyBuilder) {
     recordSloMetricSamples(
       classifySloTerminalEvent({
         journey: "coworker_builder",

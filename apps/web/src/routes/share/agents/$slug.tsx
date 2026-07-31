@@ -244,15 +244,26 @@ function findLatestCoworkerMessage(messages: PublicChatMessages): string | undef
 
 function PublicCoworkerHeader({
   coworker,
+  definitionJson,
   onHistorySelect,
   runs,
   selectedRunId,
 }: {
   coworker: PublicCoworkerPageData["coworker"];
+  definitionJson: string;
   onHistorySelect: (runId: string) => void;
   runs: PublicCoworkerPageData["runs"];
   selectedRunId?: string;
 }) {
+  const handleMakeCopy = useCallback(() => {
+    const url = URL.createObjectURL(new Blob([definitionJson], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${coworker.username ?? coworker.id}.coworker.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [coworker.id, coworker.username, definitionJson]);
+
   return (
     <section className="bg-background/95 z-10 shrink-0 border-b px-4 py-3 backdrop-blur-sm md:px-6">
       <div className="flex min-h-10 items-center gap-3">
@@ -278,6 +289,10 @@ function PublicCoworkerHeader({
             <p className="text-muted-foreground truncate font-mono text-xs">@{coworker.username}</p>
           ) : null}
         </div>
+        <Button type="button" size="sm" className="ml-auto gap-1.5" onClick={handleMakeCopy}>
+          <Download className="size-3.5" />
+          <T>Make a copy</T>
+        </Button>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <Popover>
             <PopoverTrigger asChild>
@@ -616,6 +631,7 @@ function PublicCoworkerPage({ page }: { page: PublicCoworkerPageData }) {
     <main className="bg-background flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden">
       <PublicCoworkerHeader
         coworker={page.coworker}
+        definitionJson={page.definitionJson}
         runs={page.runs}
         selectedRunId={selectedRun?.id}
         onHistorySelect={handleHistorySelect}

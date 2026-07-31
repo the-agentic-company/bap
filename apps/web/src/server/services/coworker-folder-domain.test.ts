@@ -170,6 +170,7 @@ describe("coworker folder domain", () => {
       context,
       workspaceId: "workspace-1",
       userId: "user-1",
+      workspaceRole: "member",
       folderId: root.id,
       visibility: "workspace",
     });
@@ -178,6 +179,33 @@ describe("coworker folder domain", () => {
     expect(updateSetMock).toHaveBeenCalledWith(
       coworker,
       expect.objectContaining({ sharedAt: expect.any(Date) }),
+    );
+  });
+
+  it("allows a Workspace admin to make an abandoned shared folder private", async () => {
+    const root = folder({
+      id: "folder-root",
+      name: "Root",
+      ownerId: "former-member",
+      visibility: "workspace",
+    });
+    const { context, updateSetMock } = createContext({ folders: [root] });
+
+    await updateTopLevelCoworkerFolderVisibility({
+      context,
+      workspaceId: "workspace-1",
+      userId: "admin-1",
+      workspaceRole: "admin",
+      folderId: root.id,
+      visibility: "private",
+    });
+
+    expect(updateSetMock).toHaveBeenCalledWith(coworkerFolder, {
+      visibility: "private",
+    });
+    expect(updateSetMock).toHaveBeenCalledWith(
+      coworker,
+      expect.objectContaining({ visibility: "private", sharedAt: null }),
     );
   });
 

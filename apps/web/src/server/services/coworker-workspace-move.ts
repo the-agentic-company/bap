@@ -2,7 +2,7 @@ import { getWorkspaceMembershipForUser } from "@bap/core/server/billing/service"
 import { syncCoworkerScheduleJob } from "@bap/core/server/services/coworker-scheduler";
 import { coworker, workspace } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { assertHostedMcpWorkspaceAccess } from "@/server/orpc/hosted-mcp-workspace-access";
 import type { ORPCContext } from "@/server/orpc/context";
 
@@ -21,7 +21,11 @@ export async function moveCoworkerToWorkspace(input: {
     where: eq(coworker.id, input.coworkerId),
   });
 
-  if (!existing || existing.ownerId !== input.context.user.id || !existing.workspaceId) {
+  if (
+    !existing ||
+    (existing.createdByUserId ?? existing.ownerId) !== input.context.user.id ||
+    !existing.workspaceId
+  ) {
     throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
   }
 
@@ -71,13 +75,18 @@ export async function moveCoworkerToWorkspace(input: {
       workspaceId: input.targetWorkspaceId,
       folderId: null,
       sharedAt: null,
+      visibility: "private",
+      publishedAt: null,
       allowedWorkspaceMcpServerIds: [],
       builderConversationId: null,
     })
     .where(
       and(
         eq(coworker.id, input.coworkerId),
-        eq(coworker.ownerId, input.context.user.id),
+        or(
+          eq(coworker.createdByUserId, input.context.user.id),
+          eq(coworker.ownerId, input.context.user.id),
+        ),
         eq(coworker.workspaceId, sourceWorkspaceId),
       ),
     )

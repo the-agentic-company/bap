@@ -48,12 +48,12 @@ describe("Zero schema allowlist", () => {
       "ownerId",
       "initiatedByUserId",
       "executionUserId",
+      "automationRegistrationId",
+      "scheduleOccurrenceId",
       "startKind",
       "workspaceId",
       "status",
       "failureKind",
-      "generationId",
-      "conversationId",
       "startedAt",
       "finishedAt",
       "syntheticKind",
@@ -71,6 +71,11 @@ describe("Zero schema allowlist", () => {
       "role",
       "createdAt",
     ]);
+  });
+
+  it("limits user rows to runner attribution fields", () => {
+    expect(Object.keys(schema.tables.user.columns)).toEqual(["id", "name", "image"]);
+    expect(Object.keys(schema.tables.user.columns)).not.toContain("email");
   });
 
   it("relates workspace-owned product tables to workspace membership for read rules", () => {

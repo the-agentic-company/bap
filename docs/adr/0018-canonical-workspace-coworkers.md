@@ -111,4 +111,3 @@ Migration is additive first. New explicit fields and policy modules are
 introduced while legacy `ownerId`, `sharedAt`, `builderConversationId`, and
 `isPinned` callers move to the new model. Compatibility fields may remain only
 with a documented narrow purpose after the cutover.
-

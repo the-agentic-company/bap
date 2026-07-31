@@ -9,6 +9,7 @@ const authorizeRuntimeTurnMock = vi.fn<VitestProcedure>();
 const coworkerFindFirstMock = vi.fn<VitestProcedure>();
 const coworkerFindManyMock = vi.fn<VitestProcedure>();
 const userFindFirstMock = vi.fn<VitestProcedure>();
+const conversationFindFirstMock = vi.fn<VitestProcedure>();
 const triggerCoworkerRunMock = vi.fn<VitestProcedure>();
 const uploadCoworkerDocumentMock = vi.fn<VitestProcedure>();
 const createFileAssetFromBufferMock = vi.fn<VitestProcedure>();
@@ -32,6 +33,9 @@ vi.mock("@bap/db/client", () => ({
       },
       user: {
         findFirst: userFindFirstMock,
+      },
+      conversation: {
+        findFirst: conversationFindFirstMock,
       },
     },
   },
@@ -92,6 +96,7 @@ describe("coworker runtime handlers", () => {
       conversationId: "conv-1",
       userId: "user-1",
     });
+    conversationFindFirstMock.mockResolvedValue({ workspaceId: "ws-1" });
   });
 
   describe("handleCoworkerDocumentUpload", () => {
@@ -134,6 +139,7 @@ describe("coworker runtime handlers", () => {
         mimeType: "application/pdf",
         contentBase64: Buffer.from("hello world").toString("base64"),
         description: "Reference brief",
+        origin: "runtime",
       });
       expect(body).toEqual({
         document: {
@@ -182,7 +188,12 @@ describe("coworker runtime handlers", () => {
         conversationId: "conv-builder",
         userId: "user-1",
       });
-      userFindFirstMock.mockResolvedValue({ role: "admin" });
+      userFindFirstMock.mockResolvedValue({
+        role: "admin",
+        name: "Runtime User",
+        image: "avatar.png",
+      });
+      coworkerFindFirstMock.mockResolvedValue({ configurationRevision: 4 });
       resolveCoworkerBuilderContextByConversationMock.mockResolvedValue({
         coworkerId: "cw-1",
         updatedAt: "2026-03-03T12:00:00.000Z",
@@ -236,6 +247,10 @@ describe("coworker runtime handlers", () => {
         coworkerId: "cw-1",
         baseUpdatedAt: "2026-03-03T12:00:00.000Z",
         changes: { prompt: "Updated prompt" },
+        expectedRevision: 4,
+        actorName: "Runtime User",
+        actorAvatar: "avatar.png",
+        origin: "runtime",
       });
       expect(body).toEqual({
         edit: {

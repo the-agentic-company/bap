@@ -27,6 +27,7 @@ import type {
 const instructionRemarkPlugins = [remarkGfm, remarkBreaks];
 
 type CoworkerInstructionsPanelProps = {
+  children?: React.ReactNode;
   coworkerId?: string;
   hideHeader?: boolean;
   name: string;
@@ -79,6 +80,7 @@ type CoworkerInstructionsPanelProps = {
 };
 
 export function CoworkerInstructionsPanel({
+  children,
   coworkerId,
   hideHeader,
   name,
@@ -269,8 +271,6 @@ export function CoworkerInstructionsPanel({
         scheduleDaysOfWeek={scheduleDaysOfWeek}
         scheduleDayOfMonth={scheduleDayOfMonth}
         localTimezone={localTimezone}
-        requiresUserInput={requiresUserInput}
-        userInputPrompt={userInputPrompt}
         hasActiveForwardingAlias={hasActiveForwardingAlias}
         coworkerForwardingAddress={coworkerForwardingAddress}
         coworkerForwardingAlias={coworkerForwardingAlias}
@@ -285,13 +285,13 @@ export function CoworkerInstructionsPanel({
         onScheduleTimeChange={onScheduleTimeChange}
         onToggleWeekDay={onToggleWeekDay}
         onScheduleDayOfMonthChange={onScheduleDayOfMonthChange}
-        onRequiresUserInputChange={onRequiresUserInputChange}
-        onUserInputPromptChange={onUserInputPromptChange}
         onCopyCoworkerAlias={onCopyCoworkerAlias}
         onRotateCoworkerAlias={onRotateCoworkerAlias}
         onDisableCoworkerAlias={onDisableCoworkerAlias}
         onCreateCoworkerAlias={onCreateCoworkerAlias}
-      />
+      >
+        {children}
+      </CoworkerTriggerSection>
 
       <div className="flex items-center justify-between px-4 py-3">
         <div>
@@ -403,6 +403,7 @@ function InstructionEditorDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         className={cn(
           "flex max-w-none flex-col gap-0 overflow-hidden p-0",
           hideHeader

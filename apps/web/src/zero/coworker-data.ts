@@ -13,6 +13,13 @@ type ZeroRunLike = {
   readonly startKind?: "user_intent" | "external_trigger";
   readonly initiatedByUserId?: string | null;
   readonly executionUserId?: string | null;
+  readonly automationRegistrationId?: string | null;
+  readonly scheduleOccurrenceId?: string | null;
+  readonly executionUser?: {
+    readonly id: string;
+    readonly name: string;
+    readonly image?: string | null;
+  } | null;
 };
 
 type ZeroCoworkerLike = {
@@ -26,7 +33,7 @@ type ZeroCoworkerLike = {
   readonly username?: string | null;
   readonly folderId?: string | null;
   readonly status: "on" | "off";
-  readonly disabledReason?: "run_backlog_limit" | null;
+  readonly disabledReason?: "run_backlog_limit" | "automation_owner_required" | null;
   readonly disabledAt?: number | string | Date | null;
   readonly triggerType: string;
   readonly model: string;
@@ -42,6 +49,7 @@ type ZeroCoworkerLike = {
   readonly toolAccessMode?: "all" | "selected" | null;
   readonly isPinned: boolean;
   readonly sharedAt?: number | string | Date | null;
+  readonly publishedAt?: number | string | Date | null;
   readonly visibility?: "private" | "workspace";
   readonly automationOwnerUserId?: string | null;
   readonly automationOwnerConsentedAt?: number | string | Date | null;
@@ -53,6 +61,7 @@ type ZeroCoworkerLike = {
     readonly isHidden: boolean;
     readonly position?: number | null;
   }[];
+  readonly creatorMemberships?: readonly { readonly userId: string }[];
 };
 
 type ZeroFolderLike = {
@@ -84,8 +93,8 @@ export function mapZeroCoworkerRun(run: ZeroRunLike) {
     coworkerId: run.coworkerId,
     status: run.status,
     failureKind: run.failureKind ?? null,
-    generationId: run.generationId ?? null,
-    conversationId: run.conversationId ?? null,
+    generationId: null,
+    conversationId: null,
     startedAt: asDate(run.startedAt),
     finishedAt: dateOrNull(run.finishedAt),
     errorMessage: null,
@@ -93,6 +102,17 @@ export function mapZeroCoworkerRun(run: ZeroRunLike) {
     startKind: run.startKind ?? "user_intent",
     initiatedByUserId: run.initiatedByUserId ?? null,
     executionUserId: run.executionUserId ?? null,
+    automationRegistrationId: run.automationRegistrationId ?? null,
+    scheduleOccurrenceId: run.scheduleOccurrenceId ?? null,
+    ...(run.executionUser
+      ? {
+          runner: {
+            id: run.executionUser.id,
+            name: run.executionUser.name,
+            image: run.executionUser.image ?? null,
+          },
+        }
+      : {}),
   };
 }
 
@@ -115,6 +135,7 @@ export function mapZeroCoworkerList(coworkers: readonly ZeroCoworkerLike[]) {
         createdByUserId: coworker.createdByUserId ?? coworker.ownerId ?? null,
         createdByNameSnapshot: coworker.createdByNameSnapshot ?? null,
         createdByAvatarSnapshot: coworker.createdByAvatarSnapshot ?? null,
+        creatorIsActiveMember: (coworker.creatorMemberships?.length ?? 0) > 0,
         description: coworker.description ?? null,
         username: coworker.username ?? null,
         folderId: coworker.folderId ?? null,
@@ -142,6 +163,7 @@ export function mapZeroCoworkerList(coworkers: readonly ZeroCoworkerLike[]) {
         automationOwnerConsentedAt: dateOrNull(coworker.automationOwnerConsentedAt),
         configurationRevision: coworker.configurationRevision ?? 0,
         sharedAt: dateOrNull(coworker.sharedAt),
+        publishedAt: dateOrNull(coworker.publishedAt),
         updatedAt: asDate(coworker.updatedAt),
         lastRunStatus: lastRun?.status ?? null,
         lastRunAt: lastRun?.startedAt ?? null,

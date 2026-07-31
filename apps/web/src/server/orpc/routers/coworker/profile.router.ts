@@ -12,7 +12,6 @@ import {
 import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
 import {
-  requireAccessibleCoworkerInActiveWorkspace,
   requireCoworkerActionInActiveWorkspace,
   requireEditableCoworkerInActiveWorkspace,
 } from "./access";
@@ -120,16 +119,18 @@ const del = protectedProcedure
 const setStatus = protectedProcedure
   .input(z.object({ id: z.string(), status: z.enum(["on", "off"]) }))
   .handler(async ({ input, context }) => {
-    const { coworker: existing, workspaceId } = await requireAccessibleCoworkerInActiveWorkspace(
-      context,
-      input.id,
-    );
+    const {
+      coworker: existing,
+      workspaceId,
+      membershipRole,
+    } = await requireEditableCoworkerInActiveWorkspace(context, input.id);
 
     return setCoworkerStatus({
       context,
       workspaceId,
       existing,
       status: input.status,
+      membershipRole,
     });
   });
 

@@ -9,6 +9,7 @@ const {
   messageFindFirstMock,
   conversationFindFirstMock,
   coworkerFindFirstMock,
+  coworkerBuilderChatFindFirstMock,
   coworkerRunFindFirstMock,
   emitCanonicalServiceEventMock,
   recordCounterMock,
@@ -22,6 +23,7 @@ const {
   messageFindFirstMock: vi.fn(),
   conversationFindFirstMock: vi.fn(),
   coworkerFindFirstMock: vi.fn(),
+  coworkerBuilderChatFindFirstMock: vi.fn(),
   coworkerRunFindFirstMock: vi.fn(),
   emitCanonicalServiceEventMock: vi.fn(),
   recordCounterMock: vi.fn(),
@@ -36,6 +38,7 @@ vi.mock("@bap/db/client", () => ({
       message: { findFirst: messageFindFirstMock },
       conversation: { findFirst: conversationFindFirstMock },
       coworker: { findFirst: coworkerFindFirstMock },
+      coworkerBuilderChat: { findFirst: coworkerBuilderChatFindFirstMock },
       coworkerRun: { findFirst: coworkerRunFindFirstMock },
     },
   },
@@ -58,6 +61,7 @@ describe("Generation terminal canonical event", () => {
     generationUpdateReturningMock.mockResolvedValue([{ id: "gen-1" }]);
     conversationFindFirstMock.mockResolvedValue(null);
     coworkerFindFirstMock.mockResolvedValue(null);
+    coworkerBuilderChatFindFirstMock.mockResolvedValue(null);
     coworkerRunFindFirstMock.mockResolvedValue(null);
     generationFindFirstMock.mockResolvedValue({
       id: "gen-1",

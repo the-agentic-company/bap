@@ -147,12 +147,14 @@ const updateVisibility = protectedProcedure
   .handler(async ({ input, context }) => {
     const {
       workspace: { id: workspaceId },
+      membership,
     } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
 
     return updateTopLevelCoworkerFolderVisibility({
       context,
       workspaceId,
       userId: context.user.id,
+      workspaceRole: membership.role,
       folderId: input.id,
       visibility: input.visibility,
     });

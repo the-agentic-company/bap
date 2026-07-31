@@ -4,6 +4,7 @@ import {
   coworker,
   generation,
   message,
+  user,
   type GenerationExecutionPolicy,
   type SyntheticTrafficKind,
 } from "@bap/db/schema";
@@ -25,6 +26,8 @@ import { resolveDefaultOpencodeFreeModel } from "../../ai/opencode-models";
 import type { RemoteIntegrationSource } from "../../integrations/remote-integrations";
 import { createTraceId, logger } from "../../utils/observability";
 import { resolveCoworkerBuilderContextByConversation } from "../coworker-builder-service";
+import { applyCanonicalCoworkerChange } from "../coworker-change-service";
+import { createDrizzleCoworkerChangeRepository } from "../coworker-change-repository";
 import { generateCoworkerMetadataOnFirstPromptFill } from "../coworker-metadata";
 import { GenerationStartError } from "../generation-start-error";
 import { resolveSelectedPlatformSkillSlugs } from "../platform-skill-service";
@@ -319,10 +322,7 @@ export class TurnIntake {
 
     if (builderCoworkerContext) {
       const coworkerMetadataRow = await db.query.coworker.findFirst({
-        where: and(
-          eq(coworker.id, builderCoworkerContext.coworkerId),
-          eq(coworker.ownerId, userId),
-        ),
+        where: eq(coworker.id, builderCoworkerContext.coworkerId),
         columns: {
           id: true,
           name: true,
@@ -334,6 +334,7 @@ export class TurnIntake {
           allowedCustomIntegrations: true,
           schedule: true,
           autoApprove: true,
+          configurationRevision: true,
         },
       });
 
@@ -353,17 +354,33 @@ export class TurnIntake {
         );
 
         if (Object.keys(persistedMetadataUpdates).length > 0) {
-          await db
-            .update(coworker)
-            .set(persistedMetadataUpdates)
-            .where(eq(coworker.id, builderCoworkerContext.coworkerId));
-
-          builderCoworkerContext =
-            (await resolveCoworkerBuilderContextByConversation({
-              database: db,
+          const actor = await db.query.user.findFirst({
+            where: eq(user.id, userId),
+            columns: { name: true, image: true },
+          });
+          const metadataChange = await applyCanonicalCoworkerChange({
+            repository: createDrizzleCoworkerChangeRepository(db),
+            coworkerId: builderCoworkerContext.coworkerId,
+            actor: {
               userId,
-              conversationId: conv.id,
-            })) ?? builderCoworkerContext;
+              name: actor?.name ?? null,
+              avatar: actor?.image ?? null,
+              workspaceRole: null,
+              isActiveWorkspaceMember: true,
+            },
+            origin: "builder_chat",
+            expectedRevision: coworkerMetadataRow.configurationRevision ?? 0,
+            changes: persistedMetadataUpdates,
+          });
+
+          if (metadataChange.kind === "applied") {
+            builderCoworkerContext =
+              (await resolveCoworkerBuilderContextByConversation({
+                database: db,
+                userId,
+                conversationId: conv.id,
+              })) ?? builderCoworkerContext;
+          }
         }
       }
     }

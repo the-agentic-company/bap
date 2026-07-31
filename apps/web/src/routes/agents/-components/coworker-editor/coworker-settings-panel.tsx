@@ -1,19 +1,16 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
 import { T, useGT } from "gt-react";
-import { AlertTriangle, Loader2, Play, RotateCcw, Trash2, X } from "lucide-react";
+import { AlertTriangle, History, Loader2, Play, RotateCcw, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import type { IntegrationType } from "@/lib/integration-icons";
 import type { ProviderAuthAvailabilityByProvider } from "@/lib/provider-auth-availability";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { AnimatedTab, AnimatedTabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { CoworkerDocumentsPanel } from "./coworker-documents-panel";
-import { DeleteCoworkerDialog } from "./coworker-editor-layout";
-import { CoworkerInstructionsPanel } from "./coworker-instructions-panel";
-import { CoworkerRunsPanel } from "./coworker-runs-panel";
-import { CoworkerToolboxPanel } from "./coworker-toolbox-panel";
+import { useCoworkerRevisions, useRestoreCoworkerRevision } from "@/orpc/hooks/coworkers";
 import type {
   AvailableSkillEntry,
   CoworkerDocumentRecord,
@@ -25,6 +22,13 @@ import type {
   IntegrationEntry,
   WorkspaceMcpServerEntry,
 } from "./types";
+import type { CoworkerEditorConflict } from "./use-coworker-definition-editor";
+import { CoworkerDocumentsPanel } from "./coworker-documents-panel";
+import { DeleteCoworkerDialog } from "./coworker-editor-layout";
+import { CoworkerInstructionsPanel } from "./coworker-instructions-panel";
+import { CoworkerRunsPanel } from "./coworker-runs-panel";
+import { CoworkerScheduleRegistrations } from "./coworker-schedule-registrations";
+import { CoworkerToolboxPanel } from "./coworker-toolbox-panel";
 
 const statusTextMotionInitial = { opacity: 0, y: -4 } as const;
 const statusTextMotionAnimate = { opacity: 1, y: 0 } as const;
@@ -45,6 +49,9 @@ type CoworkerSettingsPanelProps = {
   description: string;
   username: string;
   isSaving: boolean;
+  conflict: CoworkerEditorConflict | null;
+  onUseLatestConflictValues: () => void;
+  onKeepLocalConflictValues: () => void | Promise<boolean>;
   status: "on" | "off";
   disabledReason: "run_backlog_limit" | "automation_owner_required" | null;
   disabledAt: Date | string | null;
@@ -145,6 +152,9 @@ export function CoworkerSettingsPanel({
   description,
   username,
   isSaving,
+  conflict,
+  onUseLatestConflictValues,
+  onKeepLocalConflictValues,
   status,
   disabledReason,
   disabledAt,
@@ -238,10 +248,15 @@ export function CoworkerSettingsPanel({
   renderAdminContent,
 }: CoworkerSettingsPanelProps) {
   const t = useGT();
+  const revisions = useCoworkerRevisions(coworkerId);
+  const restoreRevision = useRestoreCoworkerRevision();
 
   const handleOpenDeleteDialog = useCallback(() => {
     onShowDeleteDialogChange(true);
   }, [onShowDeleteDialogChange]);
+  const handleKeepLocalConflictValues = useCallback(() => {
+    void onKeepLocalConflictValues();
+  }, [onKeepLocalConflictValues]);
 
   const handleTabChange = useCallback(
     (key: string) => {
@@ -254,6 +269,12 @@ export function CoworkerSettingsPanel({
     runs?.filter((run) => COWORKER_RUN_BACKLOG_STATUSES.has(run.status)).length ?? 0;
   const shouldShowRunBacklogNotice =
     disabledReason === "run_backlog_limit" || backlogRunCount >= COWORKER_RUN_BACKLOG_LIMIT;
+  const addedInstructionDocuments = instructionDocumentChanges.filter(
+    (change) => change.type === "added",
+  );
+  const removedInstructionDocuments = instructionDocumentChanges.filter(
+    (change) => change.type === "removed",
+  );
   const disabledAtLabel = disabledAt ? new Date(disabledAt).toLocaleString() : null;
   const handleStatusSwitchChange = useCallback(
     (checked: boolean) => {
@@ -266,6 +287,19 @@ export function CoworkerSettingsPanel({
     },
     [onResetRunsAndEnable, onStatusChange, shouldShowRunBacklogNotice],
   );
+  const handleRestoreRevision = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!coworkerId) {
+        return;
+      }
+      const revision = Number(event.currentTarget.dataset.revision);
+      if (!Number.isInteger(revision)) {
+        return;
+      }
+      restoreRevision.mutate({ coworkerId, revision });
+    },
+    [coworkerId, restoreRevision],
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -276,9 +310,6 @@ export function CoworkerSettingsPanel({
               <AnimatedTabs activeKey={activeTab} onTabChange={handleTabChange}>
                 <AnimatedTab value="instruction">
                   <T>Instruction</T>
-                </AnimatedTab>
-                <AnimatedTab value="runs">
-                  <T>Runs</T>
                 </AnimatedTab>
                 <AnimatedTab value="docs">
                   <T>Docs</T>
@@ -294,6 +325,92 @@ export function CoworkerSettingsPanel({
               </AnimatedTabs>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {coworkerId ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs">
+                      <History className="size-3.5" />
+                      <T>History</T>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80 p-0">
+                    <div className="border-b px-3 py-2">
+                      <p className="text-sm font-medium">
+                        <T>Revision history</T>
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        <T>Every accepted shared edit is attributed.</T>
+                      </p>
+                    </div>
+                    <div className="max-h-80 overflow-auto p-2">
+                      {revisions.isLoading ? (
+                        <div className="text-muted-foreground p-3 text-xs">
+                          <T>Loading history…</T>
+                        </div>
+                      ) : revisions.data?.revisions.length || revisions.data?.events.length ? (
+                        <>
+                          {revisions.data?.revisions.map((revision) => (
+                            <div
+                              key={revision.id}
+                              className="border-border/60 flex items-start gap-2 border-b px-2 py-2 last:border-0"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium">
+                                  {revision.actorNameSnapshot ?? "Former member"}
+                                  <span className="text-muted-foreground font-normal">
+                                    {" "}
+                                    · r{revision.revision}
+                                  </span>
+                                </p>
+                                <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px]">
+                                  {revision.changedFields.length > 0
+                                    ? revision.changedFields.join(", ")
+                                    : "Initial configuration"}
+                                </p>
+                                <p className="text-muted-foreground mt-0.5 text-[10px]">
+                                  {new Date(revision.createdAt).toLocaleString()} ·{" "}
+                                  {revision.origin}
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
+                                disabled={restoreRevision.isPending}
+                                data-revision={revision.revision}
+                                onClick={handleRestoreRevision}
+                              >
+                                <T>Restore</T>
+                              </Button>
+                            </div>
+                          ))}
+                          {revisions.data?.events.map((event) => (
+                            <div
+                              key={event.id}
+                              className="border-border/60 border-b px-2 py-2 last:border-0"
+                            >
+                              <p className="truncate text-xs font-medium">
+                                {event.actorNameSnapshot ?? "Former member"}
+                              </p>
+                              <p className="text-muted-foreground mt-0.5 text-[11px]">
+                                {event.type.replaceAll("_", " ")}
+                              </p>
+                              <p className="text-muted-foreground mt-0.5 text-[10px]">
+                                {new Date(event.createdAt).toLocaleString()} · {event.origin}
+                              </p>
+                            </div>
+                          ))}
+                        </>
+                      ) : (
+                        <div className="text-muted-foreground p-3 text-xs">
+                          <T>No revisions yet.</T>
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ) : null}
               {isSaving ? (
                 <span className="text-muted-foreground shrink-0 text-xs">
                   <T>Saving...</T>
@@ -365,6 +482,86 @@ export function CoworkerSettingsPanel({
           </div>
         </div>
       )}
+      {conflict ? (
+        <div className="border-y border-amber-500/30 bg-amber-500/10 px-3 py-2" role="alert">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium">
+                <T>This Coworker changed while you were editing.</T>
+              </p>
+              <div className="text-muted-foreground mt-1 space-y-0.5 text-[11px]">
+                {conflict.conflictingFields.map((field) => (
+                  <p key={field} className="break-words">
+                    <span className="text-foreground font-medium">{field}</span>
+                    {conflict.latestActors[field]?.name
+                      ? ` · ${conflict.latestActors[field]?.name}`
+                      : null}
+                    {" · "}
+                    {JSON.stringify(conflict.currentValues[field])}
+                  </p>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={onUseLatestConflictValues}
+                >
+                  <T>Use latest</T>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleKeepLocalConflictValues}
+                >
+                  <T>Keep my changes</T>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {instructionDocumentChanges.length > 0 ? (
+        <output className="border-border bg-muted/40 block border-y px-3 py-2" aria-live="polite">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium">
+                <T>Agent instructions might be out of date</T>
+              </p>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                <T>Coworker Documents changed since the instructions were last updated.</T>
+              </p>
+              <div className="mt-1 space-y-0.5 text-[11px]">
+                {addedInstructionDocuments.length > 0 ? (
+                  <p className="break-words">
+                    <span className="text-foreground font-medium">
+                      <T>Added:</T>
+                    </span>{" "}
+                    <span className="text-muted-foreground">
+                      {addedInstructionDocuments.map((change) => change.filename).join(", ")}
+                    </span>
+                  </p>
+                ) : null}
+                {removedInstructionDocuments.length > 0 ? (
+                  <p className="break-words">
+                    <span className="text-foreground font-medium">
+                      <T>Removed:</T>
+                    </span>{" "}
+                    <span className="text-muted-foreground">
+                      {removedInstructionDocuments.map((change) => change.filename).join(", ")}
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </output>
+      ) : null}
       {shouldShowRunBacklogNotice ? (
         <div className="border-border bg-muted/40 border-y px-3 py-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -462,7 +659,14 @@ export function CoworkerSettingsPanel({
             onRotateCoworkerAlias={onRotateCoworkerAlias}
             onDisableCoworkerAlias={onDisableCoworkerAlias}
             onCreateCoworkerAlias={onCreateCoworkerAlias}
-          />
+          >
+            {coworkerId && triggerType === "schedule" ? (
+              <CoworkerScheduleRegistrations
+                coworkerId={coworkerId}
+                allowedIntegrations={allowedIntegrations}
+              />
+            ) : null}
+          </CoworkerInstructionsPanel>
         ) : null}
         {activeTab === "runs" ? (
           <CoworkerRunsPanel

@@ -20,7 +20,6 @@ import { ORPCError } from "@orpc/server";
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { uploadCoworkerDocument } from "@/server/services/coworker-document";
-import { ensureBuilderCoworkerMetadata } from "@/server/services/coworker-builder-metadata";
 import {
   getResolvedCoworkerToolPolicy,
   resolveSelectedWorkspaceMcpServerIds,
@@ -310,10 +309,7 @@ export async function exportCoworkerDefinition(input: {
   context: DefinitionContext;
   coworker: typeof coworker.$inferSelect;
 }) {
-  const wf = await ensureBuilderCoworkerMetadata({
-    context: input.context,
-    wf: input.coworker,
-  });
+  const wf = input.coworker;
   const { toolAccessMode, allowedSkillSlugs } = getResolvedCoworkerToolPolicy(wf);
   const documents = await input.context.db.query.coworkerDocument.findMany({
     where: eq(coworkerDocument.coworkerId, wf.id),
@@ -391,39 +387,6 @@ export async function exportCoworkerDefinition(input: {
       })),
     ),
   };
-}
-
-export async function importSharedCoworkerDefinition(input: {
-  context: DefinitionContext;
-  workspaceId: string;
-  sourceCoworkerId: string;
-  userRole: string | null | undefined;
-}) {
-  const source = await input.context.db.query.coworker.findFirst({
-    where: eq(coworker.id, input.sourceCoworkerId),
-  });
-
-  if (!source || source.workspaceId !== input.workspaceId || !source.sharedAt) {
-    throw new ORPCError("NOT_FOUND", {
-      message: "Shared coworker not found",
-    });
-  }
-
-  assertModelAllowedForRole(source.model, input.userRole);
-
-  const definition = coworkerDefinitionSchema.parse(
-    await exportCoworkerDefinition({
-      context: input.context,
-      coworker: source,
-    }),
-  );
-
-  return importCoworkerDefinition({
-    context: input.context,
-    workspaceId: input.workspaceId,
-    definition,
-    userRole: input.userRole,
-  });
 }
 
 async function importCoworkerDefinition(input: {

@@ -10,6 +10,7 @@ import {
   conversationRuntime,
   conversationSessionSnapshot,
   coworker,
+  coworkerAutomationRegistration,
   coworkerBuilderChat,
   coworkerDocument,
   coworkerEmailAlias,
@@ -18,6 +19,7 @@ import {
   coworkerMemberPreference,
   coworkerRevision,
   coworkerRun,
+  coworkerScheduleOccurrence,
   coworkerRunEvent,
   customIntegration,
   customIntegrationCredential,
@@ -390,6 +392,8 @@ export const coworkerRelations = relations(coworker, ({ one, many }) => ({
     references: [coworkerFolder.id],
   }),
   runs: many(coworkerRun),
+  automationRegistrations: many(coworkerAutomationRegistration),
+  scheduleOccurrences: many(coworkerScheduleOccurrence),
   documents: many(coworkerDocument),
   revisions: many(coworkerRevision),
   historyEvents: many(coworkerHistoryEvent),
@@ -398,6 +402,46 @@ export const coworkerRelations = relations(coworker, ({ one, many }) => ({
   emailAliases: many(coworkerEmailAlias),
   runtimeVolumes: many(runtimeVolume),
 }));
+
+export const coworkerAutomationRegistrationRelations = relations(
+  coworkerAutomationRegistration,
+  ({ one, many }) => ({
+    coworker: one(coworker, {
+      fields: [coworkerAutomationRegistration.coworkerId],
+      references: [coworker.id],
+    }),
+    workspace: one(workspace, {
+      fields: [coworkerAutomationRegistration.workspaceId],
+      references: [workspace.id],
+    }),
+    user: one(user, {
+      fields: [coworkerAutomationRegistration.userId],
+      references: [user.id],
+      relationName: "coworkerAutomationRegistrationUser",
+    }),
+    statusChangedBy: one(user, {
+      fields: [coworkerAutomationRegistration.statusChangedByUserId],
+      references: [user.id],
+      relationName: "coworkerAutomationRegistrationStatusActor",
+    }),
+    runs: many(coworkerRun),
+  }),
+);
+
+export const coworkerScheduleOccurrenceRelations = relations(
+  coworkerScheduleOccurrence,
+  ({ one, many }) => ({
+    coworker: one(coworker, {
+      fields: [coworkerScheduleOccurrence.coworkerId],
+      references: [coworker.id],
+    }),
+    workspace: one(workspace, {
+      fields: [coworkerScheduleOccurrence.workspaceId],
+      references: [workspace.id],
+    }),
+    runs: many(coworkerRun),
+  }),
+);
 
 export const coworkerFolderRelations = relations(coworkerFolder, ({ one, many }) => ({
   workspace: one(workspace, {
@@ -435,6 +479,14 @@ export const coworkerRunRelations = relations(coworkerRun, ({ one, many }) => ({
     fields: [coworkerRun.executionUserId],
     references: [user.id],
     relationName: "coworkerRunExecutionUser",
+  }),
+  automationRegistration: one(coworkerAutomationRegistration, {
+    fields: [coworkerRun.automationRegistrationId],
+    references: [coworkerAutomationRegistration.id],
+  }),
+  scheduleOccurrence: one(coworkerScheduleOccurrence, {
+    fields: [coworkerRun.scheduleOccurrenceId],
+    references: [coworkerScheduleOccurrence.id],
   }),
   workspace: one(workspace, {
     fields: [coworkerRun.workspaceId],

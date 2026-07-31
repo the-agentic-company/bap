@@ -19,7 +19,8 @@ const edit = protectedProcedure
     }),
   )
   .handler(async ({ input, context }) => {
-    await requireEditableCoworkerInActiveWorkspace(context, input.coworkerId);
+    const { coworker: editableCoworker, membershipRole } =
+      await requireEditableCoworkerInActiveWorkspace(context, input.coworkerId);
     const dbUser = await context.db.query.user.findFirst({
       where: eq(user.id, context.user.id),
       columns: { role: true },
@@ -28,10 +29,14 @@ const edit = protectedProcedure
     return applyCoworkerEdit({
       database: context.db as unknown,
       userId: context.user.id,
-      userRole: dbUser?.role ?? null,
       coworkerId: input.coworkerId,
       baseUpdatedAt: input.baseUpdatedAt,
       changes: input.changes,
+      expectedRevision: editableCoworker.configurationRevision,
+      actorName: context.user.name ?? null,
+      actorAvatar: context.user.image ?? null,
+      userRole: dbUser?.role === "admin" ? "admin" : membershipRole,
+      origin: "builder_chat",
     });
   });
 

@@ -16,7 +16,7 @@ import {
 import { db } from "@bap/db/client";
 import { generation, coworkerRun } from "@bap/db/schema";
 import { eventIterator, ORPCError } from "@orpc/server";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import { detectMessageLanguage } from "@/server/utils/detect-message-language";
 import { protectedProcedure } from "../middleware";
@@ -179,7 +179,11 @@ const startGeneration = protectedProcedure
         const pendingRun = await context.db.query.coworkerRun.findFirst({
           where: and(
             eq(coworkerRun.conversationId, input.conversationId),
-            eq(coworkerRun.ownerId, context.user.id),
+            or(
+              eq(coworkerRun.initiatedByUserId, context.user.id),
+              // Compatibility for pending runs created before initiator backfill.
+              eq(coworkerRun.ownerId, context.user.id),
+            ),
             eq(coworkerRun.status, "needs_user_input"),
           ),
           columns: { id: true },

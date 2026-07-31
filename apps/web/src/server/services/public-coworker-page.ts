@@ -35,6 +35,7 @@ export type PublicCoworkerPageData = {
   messages: PersistedConversationMessage[];
   outputFile: PublicSandboxFile | null;
   outputHtml: string | null;
+  definitionJson: string;
 };
 
 function serializeDate(value: Date | string | null | undefined): string | null {
@@ -123,7 +124,7 @@ export async function getPublicCoworkerPage(params: {
 
   const coworkerRow = await db.query.coworker.findFirst({
     where: and(
-      isNotNull(coworker.sharedAt),
+      isNotNull(coworker.publishedAt),
       or(eq(coworker.username, decodedSlug), eq(coworker.id, decodedSlug)),
     ),
     columns: {
@@ -131,19 +132,27 @@ export async function getPublicCoworkerPage(params: {
       name: true,
       description: true,
       username: true,
-      sharedAt: true,
+      publishedAt: true,
+      triggerType: true,
+      prompt: true,
+      model: true,
+      autoApprove: true,
+      toolAccessMode: true,
+      allowedIntegrations: true,
+      allowedCustomIntegrations: true,
+      allowedSkillSlugs: true,
+      schedule: true,
+      requiresUserInput: true,
+      userInputPrompt: true,
     },
   });
 
-  if (!coworkerRow?.sharedAt) {
+  if (!coworkerRow?.publishedAt) {
     return null;
   }
 
-  const runRows = await db.query.coworkerRun.findMany({
-    where: and(eq(coworkerRun.coworkerId, coworkerRow.id), isNull(coworkerRun.syntheticKind)),
-    orderBy: (run, { desc }) => [desc(run.startedAt), desc(run.id)],
-    limit: 20,
-  });
+  // Publication is a portable-copy surface, not live access to source Workspace runs.
+  const runRows: Array<typeof coworkerRun.$inferSelect> = [];
 
   const selectedRunRow =
     (params.runId ? runRows.find((run) => run.id === params.runId) : undefined) ?? runRows[0];
@@ -219,7 +228,7 @@ export async function getPublicCoworkerPage(params: {
       name: coworkerRow.name,
       description: coworkerRow.description,
       username: coworkerRow.username,
-      sharedAt: coworkerRow.sharedAt.toISOString(),
+      sharedAt: coworkerRow.publishedAt.toISOString(),
     },
     runs,
     selectedRun: selectedRunRow
@@ -234,5 +243,34 @@ export async function getPublicCoworkerPage(params: {
     messages: messages as PersistedConversationMessage[],
     outputFile,
     outputHtml,
+    definitionJson: JSON.stringify(
+      {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        coworker: {
+          name: coworkerRow.name,
+          description: coworkerRow.description,
+          username: coworkerRow.username,
+          status: "off",
+          triggerType: coworkerRow.triggerType,
+          prompt: coworkerRow.prompt,
+          model: coworkerRow.model,
+          authSource: null,
+          autoApprove: coworkerRow.autoApprove,
+          toolAccessMode: coworkerRow.toolAccessMode ?? "all",
+          allowedIntegrations: coworkerRow.allowedIntegrations,
+          allowedCustomIntegrations: coworkerRow.allowedCustomIntegrations,
+          allowedWorkspaceMcpServerIds: [],
+          allowedSkillSlugs: coworkerRow.allowedSkillSlugs,
+          schedule: coworkerRow.schedule,
+          requiresUserInput: coworkerRow.requiresUserInput,
+          userInputPrompt: coworkerRow.userInputPrompt,
+        },
+        documents: [],
+        artifacts: [],
+      },
+      null,
+      2,
+    ),
   };
 }

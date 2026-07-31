@@ -3,42 +3,22 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../../middleware";
 import { requireActiveWorkspaceAccess } from "../../workspace-access";
-import { requireOwnedCoworkerInActiveWorkspace } from "./access";
+import { requireAccessibleCoworkerInActiveWorkspace } from "./access";
 import {
   exportCoworkerDefinition,
   importCoworkerDefinitionFromJson,
-  importSharedCoworkerDefinition,
 } from "@/server/services/coworker-definition";
 
 const exportDefinition = protectedProcedure
   .input(z.object({ id: z.string() }))
   .handler(async ({ input, context }) => {
-    const { coworker: coworkerRow } = await requireOwnedCoworkerInActiveWorkspace(
+    const { coworker: coworkerRow } = await requireAccessibleCoworkerInActiveWorkspace(
       context,
       input.id,
     );
     return exportCoworkerDefinition({
       context,
       coworker: coworkerRow,
-    });
-  });
-
-const importShared = protectedProcedure
-  .input(z.object({ sourceCoworkerId: z.string() }))
-  .handler(async ({ input, context }) => {
-    const {
-      workspace: { id: workspaceId },
-    } = await requireActiveWorkspaceAccess(context.user.id, context.workspaceId);
-    const dbUser = await context.db.query.user.findFirst({
-      where: eq(user.id, context.user.id),
-      columns: { role: true },
-    });
-
-    return importSharedCoworkerDefinition({
-      context,
-      workspaceId,
-      sourceCoworkerId: input.sourceCoworkerId,
-      userRole: dbUser?.role ?? null,
     });
   });
 
@@ -63,6 +43,5 @@ const importDefinition = protectedProcedure
 
 export const coworkerDefinitionProcedures = {
   exportDefinition,
-  importShared,
   importDefinition,
 };

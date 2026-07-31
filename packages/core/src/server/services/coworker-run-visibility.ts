@@ -8,7 +8,8 @@ export type CoworkerRunVisibilityDecision =
       reason:
         | "workspace_membership_required"
         | "private_coworker"
-        | "manual_run_initiator_required";
+        | "manual_run_initiator_required"
+        | "scheduled_run_execution_user_required";
     };
 
 type BaseRunAccessInput = {
@@ -38,6 +39,8 @@ export function decideCoworkerRunContentAccess(
     workspaceRole: string | null;
     startKind: CoworkerStartKind;
     initiatedByUserId: string | null;
+    executionUserId?: string | null;
+    isScheduledRegistrationRun?: boolean;
   },
 ): CoworkerRunVisibilityDecision {
   const metadataDecision = decideCoworkerRunMetadataAccess(input);
@@ -46,6 +49,9 @@ export function decideCoworkerRunContentAccess(
   }
   if (input.startKind === "user_intent" && input.initiatedByUserId !== input.actorUserId) {
     return { allowed: false, reason: "manual_run_initiator_required" };
+  }
+  if (input.isScheduledRegistrationRun && input.executionUserId !== input.actorUserId) {
+    return { allowed: false, reason: "scheduled_run_execution_user_required" };
   }
   return { allowed: true };
 }

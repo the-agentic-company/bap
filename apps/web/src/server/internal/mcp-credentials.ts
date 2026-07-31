@@ -20,8 +20,8 @@ import {
   getModulrWorkspaceConnection,
 } from "@bap/core/server/modulr/service";
 import { db } from "@bap/db/client";
-import { user } from "@bap/db/schema";
-import { eq } from "drizzle-orm";
+import { coworkerRun, user } from "@bap/db/schema";
+import { and, eq } from "drizzle-orm";
 import { isAuthorizedByServerSecret } from "@/server/internal/server-secret";
 
 /**
@@ -151,6 +151,7 @@ export async function handleRuntimeCredentials(request: Request): Promise<Respon
     const body = (await request.json()) as {
       userId?: string;
       workspaceId?: string;
+      conversationId?: string;
       integrationTypes?: string[];
       resolve?: {
         integrationType?: string;
@@ -224,10 +225,29 @@ export async function handleRuntimeCredentials(request: Request): Promise<Respon
         });
       }
       try {
+        const savedPreference =
+          !body.resolve.accountLabel && body.conversationId
+            ? await db.query.coworkerRun.findFirst({
+                where: and(
+                  eq(coworkerRun.conversationId, body.conversationId),
+                  eq(coworkerRun.executionUserId, body.userId),
+                ),
+                columns: { id: true },
+                with: {
+                  automationRegistration: {
+                    columns: { connectedAccountPreferences: true },
+                  },
+                },
+              })
+            : null;
+        const preferredAccountLabel =
+          savedPreference?.automationRegistration?.connectedAccountPreferences[
+            body.resolve.integrationType
+          ]?.accountLabel ?? null;
         const credential = await resolveConnectedAccountCredential({
           userId: body.userId,
           integrationType: body.resolve.integrationType as never,
-          accountLabel: body.resolve.accountLabel,
+          accountLabel: body.resolve.accountLabel ?? preferredAccountLabel,
           allowedIntegrationTypes: body.resolve.allowedIntegrationTypes as never,
         });
         return Response.json({

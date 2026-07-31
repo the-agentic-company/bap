@@ -9,9 +9,9 @@ import {
 import { triggerCoworkerRun } from "@bap/core/server/services/coworker-service";
 import { createFileAssetFromBuffer } from "@bap/core/server/services/file-asset-service";
 import { db } from "@bap/db/client";
-import { coworker, user } from "@bap/db/schema";
+import { conversation, coworker, user } from "@bap/db/schema";
 import { ORPCError } from "@orpc/server";
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { authorizeRuntimeTurn } from "@/server/internal/runtime-auth";
 import { uploadCoworkerDocument } from "@/server/services/coworker-document";
@@ -147,8 +147,15 @@ export async function handleCoworkerEdit(request: Request): Promise<Response> {
 
     const dbUser = await db.query.user.findFirst({
       where: eq(user.id, authorized.userId),
-      columns: { role: true },
+      columns: { role: true, name: true, image: true },
     });
+    const editableCoworker = await db.query.coworker.findFirst({
+      where: eq(coworker.id, parsed.data.coworkerId),
+      columns: { configurationRevision: true },
+    });
+    if (!editableCoworker) {
+      return Response.json({ error: "coworker_builder_context_not_found" }, { status: 404 });
+    }
 
     const result: CoworkerEditApplyResult = await applyCoworkerEdit({
       database: db,
@@ -157,6 +164,10 @@ export async function handleCoworkerEdit(request: Request): Promise<Response> {
       coworkerId: parsed.data.coworkerId,
       baseUpdatedAt: parsed.data.baseUpdatedAt,
       changes: parsed.data.changes,
+      expectedRevision: editableCoworker.configurationRevision,
+      actorName: dbUser?.name ?? null,
+      actorAvatar: dbUser?.image ?? null,
+      origin: "runtime",
     });
 
     return Response.json({
@@ -195,11 +206,23 @@ export async function handleCoworkerInvoke(request: Request): Promise<Response> 
     if (!normalizedUsername) {
       return Response.json({ error: "invalid_username" }, { status: 400 });
     }
+    const sourceConversation = await db.query.conversation.findFirst({
+      where: eq(conversation.id, authorized.conversationId),
+      columns: { workspaceId: true },
+    });
+    if (!sourceConversation?.workspaceId) {
+      return Response.json({ error: "coworker_workspace_not_found" }, { status: 400 });
+    }
 
     const targetCoworker = await db.query.coworker.findFirst({
       where: and(
-        eq(coworker.ownerId, authorized.userId),
+        eq(coworker.workspaceId, sourceConversation.workspaceId),
         eq(coworker.username, normalizedUsername),
+        or(
+          eq(coworker.visibility, "workspace"),
+          eq(coworker.createdByUserId, authorized.userId),
+          eq(coworker.ownerId, authorized.userId),
+        ),
       ),
       columns: {
         id: true,
@@ -211,7 +234,15 @@ export async function handleCoworkerInvoke(request: Request): Promise<Response> 
 
     if (!targetCoworker?.username) {
       const available = await db.query.coworker.findMany({
-        where: and(eq(coworker.ownerId, authorized.userId), isNotNull(coworker.username)),
+        where: and(
+          eq(coworker.workspaceId, sourceConversation.workspaceId),
+          isNotNull(coworker.username),
+          or(
+            eq(coworker.visibility, "workspace"),
+            eq(coworker.createdByUserId, authorized.userId),
+            eq(coworker.ownerId, authorized.userId),
+          ),
+        ),
         columns: {
           username: true,
         },
@@ -305,9 +336,24 @@ export async function handleCoworkerList(request: Request): Promise<Response> {
       }
       return Response.json({ error: "invalid_callback_token" }, { status: 401 });
     }
+    const sourceConversation = await db.query.conversation.findFirst({
+      where: eq(conversation.id, authorized.conversationId),
+      columns: { workspaceId: true },
+    });
+    if (!sourceConversation?.workspaceId) {
+      return Response.json({ error: "coworker_workspace_not_found" }, { status: 400 });
+    }
 
     const coworkers = await db.query.coworker.findMany({
-      where: and(eq(coworker.ownerId, authorized.userId), isNotNull(coworker.username)),
+      where: and(
+        eq(coworker.workspaceId, sourceConversation.workspaceId),
+        isNotNull(coworker.username),
+        or(
+          eq(coworker.visibility, "workspace"),
+          eq(coworker.createdByUserId, authorized.userId),
+          eq(coworker.ownerId, authorized.userId),
+        ),
+      ),
       orderBy: (row) => [desc(row.updatedAt)],
       columns: {
         id: true,

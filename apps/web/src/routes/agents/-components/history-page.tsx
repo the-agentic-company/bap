@@ -173,6 +173,35 @@ function IntegrationLogo({
   );
 }
 
+function RunnerAttribution({ runner }: { runner: RunHistoryEntry["runner"] }) {
+  const name = runner?.name ?? "Former member";
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+
+  return (
+    <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs">
+      {runner?.image ? (
+        <Image
+          src={runner.image}
+          alt=""
+          width={20}
+          height={20}
+          className="size-5 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="bg-muted text-muted-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold"
+        >
+          {initial}
+        </span>
+      )}
+      <span className="truncate">
+        <T>Run by</T> <span className="text-foreground/80 font-medium">{name}</span>
+      </span>
+    </span>
+  );
+}
+
 function RunActivityCard({ entry, isLast }: { entry: RunHistoryEntry; isLast: boolean }) {
   const integration = entry.integration as IntegrationType;
 
@@ -198,6 +227,7 @@ function RunActivityCard({ entry, isLast }: { entry: RunHistoryEntry; isLast: bo
           <span className="text-muted-foreground text-xs">
             {formatRelativeTime(entry.timestamp)}
           </span>
+          <RunnerAttribution runner={entry.runner} />
           <div className="ml-auto flex items-center gap-2">
             <Link
               href={getCoworkerEditHref(entry.coworker)}
@@ -305,6 +335,7 @@ export default function RunHistoryPage() {
         entry.target,
         entry.operationLabel,
         entry.coworker.name,
+        entry.runner?.name,
         JSON.stringify(entry.preview),
       ]
         .join(" ")

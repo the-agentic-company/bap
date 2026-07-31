@@ -133,6 +133,8 @@ export async function getCoworkerRunView(input: {
     workspaceRole: null,
     startKind: run.startKind,
     initiatedByUserId: run.initiatedByUserId,
+    executionUserId: run.executionUserId,
+    isScheduledRegistrationRun: Boolean(run.automationRegistrationId),
   });
   const canReadContent = visibility.allowed;
   const events = canReadContent
@@ -162,6 +164,8 @@ export async function getCoworkerRunView(input: {
     startKind: run.startKind,
     initiatedByUserId: run.initiatedByUserId,
     executionUserId: run.executionUserId,
+    automationRegistrationId: run.automationRegistrationId,
+    scheduleOccurrenceId: run.scheduleOccurrenceId,
     contentVisible: canReadContent,
     triggerPayload: canReadContent ? run.triggerPayload : null,
     generationId: run.generationId,
@@ -203,19 +207,35 @@ export async function listCoworkerRunViews(input: {
     ),
     orderBy: (run, { desc }) => [desc(run.startedAt)],
     limit: input.limit,
+    with: {
+      executionUser: { columns: { id: true, name: true, image: true } },
+      scheduleOccurrence: {
+        columns: { id: true, scheduledFor: true, status: true },
+      },
+    },
   });
 
-  return runs.map((run) => ({
-    id: run.id,
-    status: run.status,
-    startedAt: run.startedAt,
-    finishedAt: run.finishedAt,
-    startKind: run.startKind,
-    initiatedByUserId: run.initiatedByUserId,
-    executionUserId: run.executionUserId,
-    errorMessage: run.errorMessage,
-    failureKind: run.failureKind,
-  }));
+  return runs.map((run) => {
+    const contentVisible = run.automationRegistrationId
+      ? run.executionUserId === input.context.user.id
+      : run.startKind !== "user_intent" || run.initiatedByUserId === input.context.user.id;
+    return {
+      id: run.id,
+      status: run.status,
+      startedAt: run.startedAt,
+      finishedAt: run.finishedAt,
+      startKind: run.startKind,
+      initiatedByUserId: run.initiatedByUserId,
+      executionUserId: run.executionUserId,
+      automationRegistrationId: run.automationRegistrationId,
+      scheduleOccurrenceId: run.scheduleOccurrenceId,
+      scheduleOccurrence: run.scheduleOccurrence,
+      runner: run.executionUser,
+      contentVisible,
+      errorMessage: contentVisible ? run.errorMessage : null,
+      failureKind: contentVisible ? run.failureKind : null,
+    };
+  });
 }
 
 export async function listWorkspaceCoworkerRunViews(input: {
@@ -332,35 +352,43 @@ export async function getAdminWorkspaceCoworkerRunView(input: {
     throw new ORPCError("NOT_FOUND", { message: "Run not found" });
   }
 
-  const events = await input.database.query.coworkerRunEvent.findMany({
-    where: eq(coworkerRunEvent.coworkerRunId, run.id),
-    orderBy: (evt, { asc }) => [asc(evt.createdAt)],
-  });
-  const gen = run.generationId
-    ? await input.database.query.generation.findFirst({
-        where: eq(generation.id, run.generationId),
-        columns: {
-          conversationId: true,
-          debugInfo: true,
-          failureKind: true,
-        },
+  const contentVisible = !run.automationRegistrationId;
+
+  const events = contentVisible
+    ? await input.database.query.coworkerRunEvent.findMany({
+        where: eq(coworkerRunEvent.coworkerRunId, run.id),
+        orderBy: (evt, { asc }) => [asc(evt.createdAt)],
       })
-    : null;
+    : [];
+  const gen =
+    contentVisible && run.generationId
+      ? await input.database.query.generation.findFirst({
+          where: eq(generation.id, run.generationId),
+          columns: {
+            conversationId: true,
+            debugInfo: true,
+            failureKind: true,
+          },
+        })
+      : null;
 
   return {
     id: run.id,
     status: run.status,
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
-    errorMessage: run.errorMessage,
-    failureKind: resolveRunFailureKind({
-      runFailureKind: run.failureKind,
-      runDebugInfo: run.debugInfo,
-      generationFailureKind: gen?.failureKind,
-      generationDebugInfo: gen?.debugInfo,
-    }),
-    debugInfo: run.debugInfo ?? gen?.debugInfo ?? null,
-    conversationId: run.conversationId ?? gen?.conversationId ?? null,
+    contentVisible,
+    errorMessage: contentVisible ? run.errorMessage : null,
+    failureKind: contentVisible
+      ? resolveRunFailureKind({
+          runFailureKind: run.failureKind,
+          runDebugInfo: run.debugInfo,
+          generationFailureKind: gen?.failureKind,
+          generationDebugInfo: gen?.debugInfo,
+        })
+      : null,
+    debugInfo: contentVisible ? (run.debugInfo ?? gen?.debugInfo ?? null) : null,
+    conversationId: contentVisible ? (run.conversationId ?? gen?.conversationId ?? null) : null,
     coworker: run.coworker
       ? {
           id: run.coworker.id,

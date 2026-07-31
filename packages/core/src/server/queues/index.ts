@@ -6,6 +6,7 @@ import {
   isDisabledCoworkerTriggerError,
   triggerCoworkerRun,
 } from "../services/coworker-service";
+import { dispatchScheduledCoworkerOccurrence } from "../services/coworker-schedule-dispatcher";
 import { syncFailureAlertGroupToLinear } from "../services/failure-alert-linear-sync-service";
 import {
   CHAT_GENERATION_JOB_NAME,
@@ -291,15 +292,18 @@ export async function handleScheduledCoworkerJob(job: Parameters<JobHandler>[0])
     typeof job.data?.scheduleType === "string" ? job.data.scheduleType : "unknown";
 
   try {
-    return await triggerCoworkerRun({
+    const scheduledFor = new Date(
+      typeof job.data?.scheduledFor === "string"
+        ? job.data.scheduledFor
+        : typeof job.timestamp === "number"
+          ? job.timestamp
+          : Date.now(),
+    );
+    return await dispatchScheduledCoworkerOccurrence({
       coworkerId,
-      startKind: "external_trigger",
-      triggerPayload: {
-        source: "schedule",
-        coworkerId,
-        scheduleType,
-        scheduledFor: new Date().toISOString(),
-      },
+      scheduleType,
+      scheduledFor,
+      dispatchKey: String(job.id ?? `${coworkerId}:${scheduledFor.toISOString()}`),
     });
   } catch (error) {
     if (isSkippedCoworkerTriggerError(error)) {

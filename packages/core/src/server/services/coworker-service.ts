@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { buildCoworkerModelInput as buildCoworkerModelInputFrame } from "@bap/prompts";
 import type { IntegrationType } from "../oauth/config";
 import { db } from "@bap/db/client";
@@ -9,6 +9,7 @@ import {
   generation,
   message,
   coworker,
+  coworkerAutomationRegistration,
   coworkerRun,
   coworkerRunEvent,
   workspaceMember,
@@ -491,6 +492,8 @@ export async function triggerCoworkerRun(params: {
   debugRunDeadlineMs?: number;
   syntheticKind?: "slo_replay";
   spawnDepth?: number;
+  automationRegistrationId?: string;
+  scheduleOccurrenceId?: string;
 }): Promise<{
   coworkerId: string;
   runId: string;
@@ -499,7 +502,6 @@ export async function triggerCoworkerRun(params: {
 }> {
   const triggerPayload = normalizeTriggerPayload(params.triggerPayload);
   const trustedUserInput = normalizeTrustedUserInput(params.trustedUserInput);
-
   const wf = await db.query.coworker.findFirst({
     where: eq(coworker.id, params.coworkerId),
   });
@@ -507,11 +509,25 @@ export async function triggerCoworkerRun(params: {
   if (!wf) {
     throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
   }
+  const automationRegistration = params.automationRegistrationId
+    ? await db.query.coworkerAutomationRegistration.findFirst({
+        where: and(
+          eq(coworkerAutomationRegistration.id, params.automationRegistrationId),
+          eq(coworkerAutomationRegistration.coworkerId, wf.id),
+          eq(coworkerAutomationRegistration.status, "active"),
+        ),
+      })
+    : null;
+  if (params.automationRegistrationId && !automationRegistration) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Automation registration is not active",
+    });
+  }
 
   const candidateExecutionUserId =
     params.startKind === "user_intent"
       ? (params.userId ?? null)
-      : (wf.automationOwnerUserId ?? null);
+      : (automationRegistration?.userId ?? wf.automationOwnerUserId ?? null);
   const executionMembership =
     candidateExecutionUserId && wf.workspaceId
       ? await db.query.workspaceMember.findFirst({
@@ -535,19 +551,33 @@ export async function triggerCoworkerRun(params: {
       throw new ORPCError("NOT_FOUND", { message: "Coworker not found" });
     }
   }
-  const identity = resolveCoworkerExecutionIdentity({
-    startKind: params.startKind,
-    initiatingUserId: params.userId ?? null,
-    automationOwner: wf.automationOwnerUserId
-      ? {
-          userId: wf.automationOwnerUserId,
-          consentedAt: wf.automationOwnerConsentedAt,
-          isActiveWorkspaceMember: Boolean(executionMembership),
-        }
-      : null,
-  });
+  if (automationRegistration && !executionMembership) {
+    await db
+      .update(coworkerAutomationRegistration)
+      .set({
+        status: "membership_revoked",
+        statusReason: "Workspace membership ended",
+        revokedAt: new Date(),
+      })
+      .where(eq(coworkerAutomationRegistration.id, automationRegistration.id));
+  }
+  const identity = automationRegistration
+    ? executionMembership
+      ? { ok: true as const, executionUserId: automationRegistration.userId }
+      : { ok: false as const, reason: "automation_owner_inactive" as const }
+    : resolveCoworkerExecutionIdentity({
+        startKind: params.startKind,
+        initiatingUserId: params.userId ?? null,
+        automationOwner: wf.automationOwnerUserId
+          ? {
+              userId: wf.automationOwnerUserId,
+              consentedAt: wf.automationOwnerConsentedAt,
+              isActiveWorkspaceMember: Boolean(executionMembership),
+            }
+          : null,
+      });
   if (!identity.ok) {
-    if (params.startKind === "external_trigger") {
+    if (params.startKind === "external_trigger" && !automationRegistration) {
       await db
         .update(coworker)
         .set({
@@ -580,6 +610,9 @@ export async function triggerCoworkerRun(params: {
     where: and(
       eq(coworkerRun.coworkerId, wf.id),
       eq(coworkerRun.status, RUNNING_COWORKER_RUN_STATUS),
+      ...(automationRegistration
+        ? [eq(coworkerRun.automationRegistrationId, automationRegistration.id)]
+        : []),
     ),
     columns: { id: true },
     limit: 1,
@@ -590,6 +623,9 @@ export async function triggerCoworkerRun(params: {
           where: and(
             eq(coworkerRun.coworkerId, wf.id),
             inArray(coworkerRun.status, [...COWORKER_RUN_BACKLOG_STATUSES]),
+            ...(automationRegistration
+              ? [eq(coworkerRun.automationRegistrationId, automationRegistration.id)]
+              : []),
           ),
           columns: { id: true },
           limit: COWORKER_RUN_BACKLOG_LIMIT,
@@ -612,6 +648,19 @@ export async function triggerCoworkerRun(params: {
     throw new ORPCError("BAD_REQUEST", { message: "Coworker is turned off" });
   }
   if (startDecision.type === "auto_disable_due_to_backlog") {
+    if (automationRegistration) {
+      await db
+        .update(coworkerAutomationRegistration)
+        .set({
+          status: "safety_blocked",
+          statusReason: `Paused after reaching the run backlog limit (${startDecision.limit})`,
+          pausedAt: new Date(),
+        })
+        .where(eq(coworkerAutomationRegistration.id, automationRegistration.id));
+      throw new ORPCError("BAD_REQUEST", {
+        message: `Automation registration paused after reaching the run backlog limit (${startDecision.limit}).`,
+      });
+    }
     await db
       .update(coworker)
       .set({
@@ -666,6 +715,8 @@ export async function triggerCoworkerRun(params: {
         ownerId: executionUserId,
         initiatedByUserId: params.userId ?? null,
         executionUserId,
+        automationRegistrationId: automationRegistration?.id ?? null,
+        scheduleOccurrenceId: params.scheduleOccurrenceId ?? null,
         startKind: params.startKind,
         workspaceId: wf.workspaceId,
         status: "needs_user_input",
@@ -710,6 +761,8 @@ export async function triggerCoworkerRun(params: {
       ownerId: executionUserId,
       initiatedByUserId: params.userId ?? null,
       executionUserId,
+      automationRegistrationId: automationRegistration?.id ?? null,
+      scheduleOccurrenceId: params.scheduleOccurrenceId ?? null,
       startKind: params.startKind,
       workspaceId: wf.workspaceId,
       status: "running",
@@ -814,7 +867,11 @@ export async function startPendingCoworkerRun(params: {
   const pendingRun = await db.query.coworkerRun.findFirst({
     where: and(
       eq(coworkerRun.conversationId, params.conversationId),
-      eq(coworkerRun.ownerId, params.userId),
+      or(
+        eq(coworkerRun.initiatedByUserId, params.userId),
+        // Compatibility for pending runs created before initiator backfill.
+        eq(coworkerRun.ownerId, params.userId),
+      ),
       eq(coworkerRun.status, "needs_user_input"),
     ),
     with: {
@@ -931,7 +988,6 @@ export async function startPendingCoworkerRun(params: {
         errorMessage,
       })
       .where(eq(coworkerRun.id, pendingRun.id));
-
     await db.insert(coworkerRunEvent).values({
       coworkerRunId: pendingRun.id,
       type: "error",

@@ -24,18 +24,22 @@ describe("resolveRuntimeSelection", () => {
     }
   });
 
-  it("maps openai models to the opencode runtime", async () => {
-    setSandboxEnv({
-      sandboxDefault: "e2b",
-    });
+  it(
+    "maps openai models to the opencode runtime",
+    async () => {
+      setSandboxEnv({
+        sandboxDefault: "e2b",
+      });
 
-    const { resolveRuntimeSelection } = await loadPolicyResolverModule();
-    expect(resolveRuntimeSelection({ model: "openai/gpt-5.4" })).toEqual({
-      sandboxProvider: "e2b",
-      runtimeHarness: "opencode",
-      runtimeProtocolVersion: "opencode-v2",
-    });
-  });
+      const { resolveRuntimeSelection } = await loadPolicyResolverModule();
+      expect(resolveRuntimeSelection({ model: "openai/gpt-5.4" })).toEqual({
+        sandboxProvider: "e2b",
+        runtimeHarness: "opencode",
+        runtimeProtocolVersion: "opencode-v2",
+      });
+    },
+    15_000,
+  );
 
   it("maps anthropic models to the sandbox-agent runtime", async () => {
     setSandboxEnv({

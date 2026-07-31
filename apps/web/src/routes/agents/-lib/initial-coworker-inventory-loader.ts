@@ -51,11 +51,16 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
       typeof row.createdByNameSnapshot === "string" ? row.createdByNameSnapshot : null,
     createdByAvatarSnapshot:
       typeof row.createdByAvatarSnapshot === "string" ? row.createdByAvatarSnapshot : null,
+    creatorIsActiveMember: row.creatorIsActiveMember !== false,
     username: typeof row.username === "string" ? row.username : null,
     description: typeof row.description === "string" ? row.description : null,
     folderId: typeof row.folderId === "string" ? row.folderId : null,
     status: row.status === "off" ? "off" : "on",
-    disabledReason: row.disabledReason === "run_backlog_limit" ? "run_backlog_limit" : null,
+    disabledReason:
+      row.disabledReason === "run_backlog_limit" ||
+      row.disabledReason === "automation_owner_required"
+        ? row.disabledReason
+        : null,
     disabledAt: serializeDate(row.disabledAt),
     autoApprove: row.autoApprove === true,
     model: typeof row.model === "string" ? row.model : "",
@@ -84,9 +89,8 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
             typeof runRecord.coworkerId === "string" ? runRecord.coworkerId : String(row.id),
           status: typeof runRecord.status === "string" ? runRecord.status : "unknown",
           failureKind: typeof runRecord.failureKind === "string" ? runRecord.failureKind : null,
-          generationId: typeof runRecord.generationId === "string" ? runRecord.generationId : null,
-          conversationId:
-            typeof runRecord.conversationId === "string" ? runRecord.conversationId : null,
+          generationId: null,
+          conversationId: null,
           startedAt: serializeDate(runRecord.startedAt) ?? new Date(0),
           finishedAt: serializeDate(runRecord.finishedAt),
           errorMessage: null,
@@ -98,6 +102,14 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
             typeof runRecord.initiatedByUserId === "string" ? runRecord.initiatedByUserId : null,
           executionUserId:
             typeof runRecord.executionUserId === "string" ? runRecord.executionUserId : null,
+          automationRegistrationId:
+            typeof runRecord.automationRegistrationId === "string"
+              ? runRecord.automationRegistrationId
+              : null,
+          scheduleOccurrenceId:
+            typeof runRecord.scheduleOccurrenceId === "string"
+              ? runRecord.scheduleOccurrenceId
+              : null,
         },
       ];
     }),
@@ -111,6 +123,7 @@ function serializeInitialCoworker(row: Record<string, unknown>): CoworkerItem {
     configurationRevision:
       typeof row.configurationRevision === "number" ? row.configurationRevision : 0,
     sharedAt: serializeDate(row.sharedAt),
+    publishedAt: serializeDate(row.publishedAt),
     updatedAt: serializeDate(row.updatedAt) ?? new Date(0),
     lastRunStatus: typeof row.lastRunStatus === "string" ? row.lastRunStatus : "",
     lastRunAt: serializeDate(row.lastRunAt) ?? new Date(0),
