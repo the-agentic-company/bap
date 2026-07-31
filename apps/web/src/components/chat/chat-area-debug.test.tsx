@@ -4,8 +4,12 @@
 
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  chatAreaMocks,
+  renderInChatHeader,
+  resetChatAreaMocks,
+} from "@/components/chat/chat-area.test-support";
 import { ChatArea } from "./chat-area";
-import { chatAreaMocks, renderInChatHeader, resetChatAreaMocks } from "./chat-area.test-support";
 
 const { mockStartGeneration, mockAdminState, mockActiveGenerationState } = chatAreaMocks;
 
