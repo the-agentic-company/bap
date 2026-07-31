@@ -450,10 +450,7 @@ projects:
               - key: APP_VECTOR_TRACES_PORT
                 value: "5318"
               - key: APP_MCP_BASE_URL
-                fromService:
-                  type: web
-                  name: bap-mcp-staging
-                  envVarKey: RENDER_EXTERNAL_URL
+                value: https://mcp.staging.heybap.com
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
@@ -535,10 +532,7 @@ projects:
               - key: APP_VECTOR_TRACES_PORT
                 value: "5318"
               - key: APP_MCP_BASE_URL
-                fromService:
-                  type: web
-                  name: bap-mcp-staging
-                  envVarKey: RENDER_EXTERNAL_URL
+                value: https://mcp.staging.heybap.com
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
@@ -958,10 +952,7 @@ projects:
               - key: APP_VECTOR_TRACES_PORT
                 value: "5318"
               - key: APP_MCP_BASE_URL
-                fromService:
-                  type: web
-                  name: bap-mcp-prod
-                  envVarKey: RENDER_EXTERNAL_URL
+                value: https://mcp.heybap.com
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
@@ -1043,10 +1034,7 @@ projects:
               - key: APP_VECTOR_TRACES_PORT
                 value: "5318"
               - key: APP_MCP_BASE_URL
-                fromService:
-                  type: web
-                  name: bap-mcp-prod
-                  envVarKey: RENDER_EXTERNAL_URL
+                value: https://mcp.heybap.com
               - key: SANDBOX_AGENT_RUNTIME
                 value: opencode
               - key: SANDBOX_DEFAULT
