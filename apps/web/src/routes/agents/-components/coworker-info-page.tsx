@@ -38,9 +38,9 @@ import {
   useCoworkerRuns,
   useTriggerCoworker,
 } from "@/orpc/hooks/coworkers";
+import { useCurrentUser } from "@/orpc/hooks/user";
 import { AppLink as Link } from "../-lib/app-link";
 import { CoworkerInfoEmptyOutput } from "./coworker-info-empty-state";
-import { CoworkerInfoPrivateRun } from "./coworker-info-private-run";
 import {
   formatDuration,
   formatHeaderTimestamp,
@@ -59,6 +59,8 @@ import {
   RunDetailsPanel,
   type MobilePanel,
 } from "./coworker-info-panels";
+import { CoworkerInfoPrivateRun } from "./coworker-info-private-run";
+import { isCoworkerRunForUser, selectDefaultCoworkerRunId } from "./coworker-info-run-selection";
 
 type Props = {
   coworkerSlug: string;
@@ -70,6 +72,8 @@ type OptimisticTriggeredRun = {
   status: "running" | "needs_user_input";
 };
 
+type HistoryScope = "all" | "mine";
+
 export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const t = useGT();
 
@@ -79,6 +83,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const searchParams = useMemo(() => new URLSearchParams(searchStr ?? ""), [searchStr]);
   const navigate = useNavigate();
   const triggerCoworker = useTriggerCoworker();
+  const currentUser = useCurrentUser();
   const coworkerList = useCoworkerList();
   const coworkerListItem = useMemo(
     () =>
@@ -95,13 +100,22 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   });
   const [optimisticTriggeredRun, setOptimisticTriggeredRun] =
     useState<OptimisticTriggeredRun | null>(null);
+  const [historyScope, setHistoryScope] = useState<HistoryScope>("all");
   const requestedRunId = searchParams.get("run");
-  const latestKnownRunId = coworkerListItem?.recentRuns?.[0]?.id;
   const selectedRunId =
     optimisticTriggeredRun?.id ??
-    (coworkerRuns.data?.some((candidate) => candidate.id === requestedRunId) && requestedRunId
-      ? requestedRunId
-      : (coworkerRuns.data?.[0]?.id ?? latestKnownRunId));
+    selectDefaultCoworkerRunId(coworkerRuns.data ?? [], requestedRunId, currentUser.data?.id);
+  const visibleHistoryRuns = useMemo(
+    () =>
+      historyScope === "all"
+        ? (coworkerRuns.data ?? [])
+        : (coworkerRuns.data ?? []).filter((candidate) =>
+            isCoworkerRunForUser(candidate, currentUser.data?.id),
+          ),
+    [coworkerRuns.data, currentUser.data?.id, historyScope],
+  );
+  const handleShowAllRuns = useCallback(() => setHistoryScope("all"), []);
+  const handleShowMyRuns = useCallback(() => setHistoryScope("mine"), []);
   const run = useCoworkerRun(selectedRunId, {
     enabled: Boolean(selectedRunId),
   });
@@ -113,9 +127,8 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
   const [runClockNow, setRunClockNow] = useState(() => Date.now());
   const mobileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const shouldWaitForCoworkerList = !routeCoworkerId;
-  const shouldWaitForCoworkerRuns = Boolean(requestedRunId || latestKnownRunId);
   const isRunSelectionLoading =
-    shouldWaitForCoworkerRuns && !selectedRunId && coworkerRuns.isLoading;
+    Boolean(resolvedCoworkerId) && (coworkerRuns.isLoading || currentUser.isLoading);
   const selectedOptimisticRun =
     optimisticTriggeredRun?.id === selectedRunId ? optimisticTriggeredRun : null;
   const isRunLoading =
@@ -465,9 +478,40 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                   <T>Switch this page to an older run.</T>
                 </p>
               </div>
+              <fieldset
+                className="bg-muted/60 mx-2 mt-1 grid grid-cols-2 rounded-md p-0.5"
+                aria-label={t("Filter previous runs")}
+              >
+                <button
+                  type="button"
+                  aria-pressed={historyScope === "all"}
+                  className={cn(
+                    "focus-visible:ring-ring rounded-sm px-2 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                    historyScope === "all"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={handleShowAllRuns}
+                >
+                  <T>All runs</T>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={historyScope === "mine"}
+                  className={cn(
+                    "focus-visible:ring-ring rounded-sm px-2 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none",
+                    historyScope === "mine"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={handleShowMyRuns}
+                >
+                  <T>My runs</T>
+                </button>
+              </fieldset>
               <div className="mt-1 max-h-80 space-y-1 overflow-auto">
-                {(coworkerRuns.data ?? []).length > 0 ? (
-                  (coworkerRuns.data ?? []).map((historyRun) => (
+                {visibleHistoryRuns.length > 0 ? (
+                  visibleHistoryRuns.map((historyRun) => (
                     <HistoryRunButton
                       key={historyRun.id}
                       run={historyRun}
@@ -477,7 +521,11 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
                   ))
                 ) : (
                   <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs">
-                    <T>No previous Coworker Runs.</T>
+                    {historyScope === "mine" ? (
+                      <T>You have not run this Coworker yet.</T>
+                    ) : (
+                      <T>No previous Coworker Runs.</T>
+                    )}
                   </p>
                 )}
               </div>
@@ -533,7 +581,7 @@ export function CoworkerInfoPage({ coworkerSlug }: Props) {
     </section>
   );
 
-  if (!run.data && !selectedOptimisticRun && !coworkerRuns.data?.length) {
+  if (!run.data && !selectedOptimisticRun && !selectedRunId) {
     return (
       <main className="bg-background flex h-[calc(100dvh-4rem-var(--safe-area-inset-bottom))] min-h-0 min-w-0 flex-col overflow-hidden md:h-dvh">
         {headerSection}
