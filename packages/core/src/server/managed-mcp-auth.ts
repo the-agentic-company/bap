@@ -13,6 +13,7 @@ export type ManagedMcpTokenClaims = {
   scopes?: string[];
   surface?: ManagedMcpSurface;
   generationId?: string;
+  workspaceMcpServerId?: string;
   conversationId?: string;
   coworkerId?: string;
   coworkerRunId?: string;
@@ -86,6 +87,8 @@ export function verifyManagedMcpToken(
       parsed.surface !== "coworker_builder" &&
       parsed.surface !== "coworker_runner") ||
     (parsed.generationId !== undefined && typeof parsed.generationId !== "string") ||
+    (parsed.workspaceMcpServerId !== undefined &&
+      typeof parsed.workspaceMcpServerId !== "string") ||
     (parsed.conversationId !== undefined && typeof parsed.conversationId !== "string") ||
     (parsed.coworkerId !== undefined && typeof parsed.coworkerId !== "string") ||
     (parsed.coworkerRunId !== undefined && typeof parsed.coworkerRunId !== "string") ||

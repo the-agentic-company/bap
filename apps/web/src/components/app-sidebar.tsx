@@ -20,6 +20,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  ShieldCheck,
   Toolbox,
   UserCog,
   WandSparkles,
@@ -70,6 +71,17 @@ function McpLogoIcon({ className }: { className?: string }) {
     />
   );
 }
+
+const PRODUCT_ADMIN_ITEMS: NavItem[] = [
+  { icon: UserCog, label: "User Management", href: "/admin" },
+  { icon: ShieldCheck, label: "Tool permissions", href: "/admin/tool-permissions" },
+  { icon: Activity, label: "Overview", href: "/admin/overview" },
+  { icon: ScrollText, label: "Audit", href: "/admin/audit-trail" },
+  { icon: Building2, label: "Workspaces", href: "/admin/workspaces" },
+  { icon: Settings, label: "Settings", href: "/admin/settings" },
+  { icon: CreditCard, label: "AI Subscriptions", href: "/admin/subscriptions" },
+  { icon: BarChart3, label: "Usage", href: "/admin/usage" },
+];
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
@@ -422,16 +434,6 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
     { icon: Building2, label: "Workspaces", href: "/internal/workspaces" },
   ];
 
-  const productAdminItems: NavItem[] = [
-    { icon: UserCog, label: "User Management", href: "/admin" },
-    { icon: Activity, label: "Overview", href: "/admin/overview" },
-    { icon: ScrollText, label: "Audit", href: "/admin/audit-trail" },
-    { icon: Building2, label: "Workspaces", href: "/admin/workspaces" },
-    { icon: Settings, label: "Settings", href: "/admin/settings" },
-    { icon: CreditCard, label: "AI Subscriptions", href: "/admin/subscriptions" },
-    { icon: BarChart3, label: "Usage", href: "/admin/usage" },
-  ];
-
   const adminConfigItems: NavItem[] = [
     { icon: LayoutTemplate, label: "Templates", href: "/internal/templates" },
     { icon: CreditCard, label: "AI Subscriptions", href: "/internal/subscriptions" },
@@ -494,7 +496,7 @@ export function AppSidebar({ initialPrincipal = null }: AppSidebarProps) {
           ) : isProductAdminRoute ? (
             <>
               <NavGroup>
-                {productAdminItems.map((item) => (
+                {PRODUCT_ADMIN_ITEMS.map((item) => (
                   <NavLink key={item.href} item={item} active={isActive(item.href)} />
                 ))}
               </NavGroup>

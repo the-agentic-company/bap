@@ -56,6 +56,9 @@ import {
   workspace,
   workspaceMcpAuthorization,
   workspaceMcpServer,
+  workspaceIntegrationOperationPolicy,
+  workspaceIntegrationPolicy,
+  workspaceMcpToolCatalog,
   workspaceMember,
   invitation,
   twoFactor,
@@ -129,6 +132,7 @@ export const workspaceRelations = relations(workspace, ({ many }) => ({
   billingTopUps: many(billingTopUp),
   skills: many(skill),
   workspaceMcpServers: many(workspaceMcpServer),
+  workspaceIntegrationPolicies: many(workspaceIntegrationPolicy),
   runtimeVolumes: many(runtimeVolume),
 }));
 
@@ -718,6 +722,8 @@ export const workspaceMcpServerRelations = relations(workspaceMcpServer, ({ one,
     references: [user.id],
   }),
   credentials: many(workspaceMcpAuthorization),
+  policies: many(workspaceIntegrationPolicy),
+  toolCatalog: many(workspaceMcpToolCatalog),
 }));
 
 export const workspaceMcpAuthorizationRelations = relations(
@@ -733,6 +739,58 @@ export const workspaceMcpAuthorizationRelations = relations(
     }),
   }),
 );
+
+export const workspaceIntegrationPolicyRelations = relations(
+  workspaceIntegrationPolicy,
+  ({ one, many }) => ({
+    workspace: one(workspace, {
+      fields: [workspaceIntegrationPolicy.workspaceId],
+      references: [workspace.id],
+    }),
+    workspaceMcpServer: one(workspaceMcpServer, {
+      fields: [workspaceIntegrationPolicy.workspaceMcpServerId],
+      references: [workspaceMcpServer.id],
+    }),
+    createdByUser: one(user, {
+      fields: [workspaceIntegrationPolicy.createdByUserId],
+      references: [user.id],
+      relationName: "workspaceIntegrationPolicyCreatedByUser",
+    }),
+    updatedByUser: one(user, {
+      fields: [workspaceIntegrationPolicy.updatedByUserId],
+      references: [user.id],
+      relationName: "workspaceIntegrationPolicyUpdatedByUser",
+    }),
+    operationPolicies: many(workspaceIntegrationOperationPolicy),
+  }),
+);
+
+export const workspaceIntegrationOperationPolicyRelations = relations(
+  workspaceIntegrationOperationPolicy,
+  ({ one }) => ({
+    policy: one(workspaceIntegrationPolicy, {
+      fields: [workspaceIntegrationOperationPolicy.workspaceIntegrationPolicyId],
+      references: [workspaceIntegrationPolicy.id],
+    }),
+    createdByUser: one(user, {
+      fields: [workspaceIntegrationOperationPolicy.createdByUserId],
+      references: [user.id],
+      relationName: "workspaceIntegrationOperationPolicyCreatedByUser",
+    }),
+    updatedByUser: one(user, {
+      fields: [workspaceIntegrationOperationPolicy.updatedByUserId],
+      references: [user.id],
+      relationName: "workspaceIntegrationOperationPolicyUpdatedByUser",
+    }),
+  }),
+);
+
+export const workspaceMcpToolCatalogRelations = relations(workspaceMcpToolCatalog, ({ one }) => ({
+  workspaceMcpServer: one(workspaceMcpServer, {
+    fields: [workspaceMcpToolCatalog.workspaceMcpServerId],
+    references: [workspaceMcpServer.id],
+  }),
+}));
 
 export const integrationSkillRelations = relations(integrationSkill, ({ one, many }) => ({
   createdBy: one(user, {

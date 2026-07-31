@@ -110,6 +110,7 @@ export class DecisionFlow {
       command: string;
       providerRequestId?: string;
       runtimeTool?: RuntimeToolRef;
+      deferApplicationClaim?: boolean;
     },
   ): Promise<{
     decision: "allow" | "deny" | "pending";
@@ -192,6 +193,9 @@ export class DecisionFlow {
       integration: string;
       operation: string;
       command: string;
+      providerRequestId?: string;
+      deadlineAt?: Date;
+      deferApplicationClaim?: boolean;
     },
   ): Promise<"allow" | "deny"> {
     return this.lifecycle.waitForApproval(generationId, request);

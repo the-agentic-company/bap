@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { SANDBOX_COMMON_ROOT } from "@bap/sandbox/paths";
 import { buildCustomSkillsAgentsFile } from "@bap/prompts";
+import { build } from "esbuild";
 import type { SandboxHandle } from "../core/types";
 import { resolvePreferredCommunitySkillsForUser } from "../../services/integration-skill-service";
 import { listAccessibleEnabledSkillsForUser } from "../../services/workspace-skill-service";
@@ -50,25 +51,84 @@ async function listCommonLibFiles(dir: string): Promise<string[]> {
   return files.flat();
 }
 
+const MANAGED_INTEGRATION_ENTRYPOINTS = [
+  "airtable/src/airtable.ts",
+  "dynamics/src/dynamics.ts",
+  "github/src/github.ts",
+  "google-calendar/src/google-calendar.ts",
+  "google-docs/src/google-docs.ts",
+  "google-drive/src/google-drive.ts",
+  "google-gmail/src/google-gmail.ts",
+  "google-sheets/src/google-sheets.ts",
+  "hubspot/src/hubspot.ts",
+  "linkedin/src/linkedin.ts",
+  "notion/src/notion.ts",
+  "outlook-calendar/src/outlook-calendar.ts",
+  "outlook-mail/src/outlook-mail.ts",
+  "salesforce/src/salesforce.ts",
+  "slack/src/slack.ts",
+] as const;
+
 export async function writeSandboxCommonLibToSandbox(sandbox: SandboxHandle): Promise<string[]> {
   const sourceRoot = path.join(SANDBOX_COMMON_ROOT, "lib");
+  const integrationPermissionsPlugin = path.join(
+    SANDBOX_COMMON_ROOT,
+    "plugins",
+    "integration-permissions.ts",
+  );
+  const integrationPolicyGate = path.join(SANDBOX_COMMON_ROOT, "cli", "integration-policy-gate.ts");
   const files = await listCommonLibFiles(sourceRoot);
   if (files.length === 0) {
     return [];
   }
 
-  const entries = await Promise.all(
-    files.map(async (filePath) => ({
-      path: path.relative(sourceRoot, filePath),
-      content: await fs.readFile(filePath, "utf8"),
-    })),
-  );
+  const [entries, skillEntries, pluginBuild, gateBuild, setupScript] = await Promise.all([
+    Promise.all(
+      files.map(async (filePath) => ({
+        path: path.relative(sourceRoot, filePath),
+        content: await fs.readFile(filePath, "utf8"),
+      })),
+    ),
+    Promise.all(
+      MANAGED_INTEGRATION_ENTRYPOINTS.map(async (entryPath) => ({
+        path: entryPath,
+        content: await fs.readFile(path.join(SANDBOX_COMMON_ROOT, "skills", entryPath), "utf8"),
+      })),
+    ),
+    build({
+      entryPoints: [integrationPermissionsPlugin],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      minify: false,
+      write: false,
+    }),
+    build({
+      entryPoints: [integrationPolicyGate],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      minify: false,
+      write: false,
+    }),
+    fs.readFile(path.join(SANDBOX_COMMON_ROOT, "setup.sh"), "utf8"),
+  ]);
+  const bundledPlugin = pluginBuild.outputFiles[0]?.text;
+  if (!bundledPlugin) {
+    throw new Error("Integration permissions plugin bundle produced no output.");
+  }
+  const bundledGate = gateBuild.outputFiles[0]?.text;
+  if (!bundledGate) {
+    throw new Error("Integration policy CLI gate bundle produced no output.");
+  }
   const payload = Buffer.from(JSON.stringify(entries), "utf8").toString("base64");
+  const skillPayload = Buffer.from(JSON.stringify(skillEntries), "utf8").toString("base64");
   const command = [
     "python3 - <<'PY'",
     "import base64, json",
     "from pathlib import Path",
     `entries = json.loads(base64.b64decode(${JSON.stringify(payload)}).decode())`,
+    `skill_entries = json.loads(base64.b64decode(${JSON.stringify(skillPayload)}).decode())`,
     "for root in ('/app/.claude/lib', '/app/.agents/lib'):",
     "  root_path = Path(root)",
     "  root_path.mkdir(parents=True, exist_ok=True)",
@@ -76,7 +136,23 @@ export async function writeSandboxCommonLibToSandbox(sandbox: SandboxHandle): Pr
     "    target = root_path / entry['path']",
     "    target.parent.mkdir(parents=True, exist_ok=True)",
     "    target.write_text(entry['content'], encoding='utf8')",
+    "for root in ('/app/.claude/skills', '/app/.agents/skills'):",
+    "  root_path = Path(root)",
+    "  for entry in skill_entries:",
+    "    target = root_path / entry['path']",
+    "    target.parent.mkdir(parents=True, exist_ok=True)",
+    "    target.write_text(entry['content'], encoding='utf8')",
+    "plugin = Path('/app/.opencode/plugins/integration-permissions.js')",
+    "plugin.parent.mkdir(parents=True, exist_ok=True)",
+    `plugin.write_text(${JSON.stringify(bundledPlugin)}, encoding='utf8')`,
+    "Path('/app/.opencode/plugins/integration-permissions.ts').unlink(missing_ok=True)",
+    "gate = Path('/app/.opencode/lib/integration-policy-gate.js')",
+    `gate.write_text(${JSON.stringify(bundledGate)}, encoding='utf8')`,
+    "setup = Path('/app/setup.sh')",
+    `setup.write_text(${JSON.stringify(setupScript)}, encoding='utf8')`,
+    "setup.chmod(0o755)",
     "PY",
+    "bash /app/setup.sh",
   ].join("\n");
 
   const result = await sandbox.exec(command, { timeoutMs: 15_000 });
@@ -86,7 +162,12 @@ export async function writeSandboxCommonLibToSandbox(sandbox: SandboxHandle): Pr
     );
   }
 
-  return entries.map((entry) => entry.path).sort();
+  return [
+    ...entries.map((entry) => entry.path),
+    ...skillEntries.map((entry) => `../skills/${entry.path}`),
+    "integration-policy-gate.js",
+    "../plugins/integration-permissions.js",
+  ].sort();
 }
 
 export async function writeSkillsToSandbox(

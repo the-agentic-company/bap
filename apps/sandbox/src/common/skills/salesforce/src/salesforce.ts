@@ -217,6 +217,7 @@ Options:
 
 // CLI argument parsing
 async function main() {
+  await enforceWorkspaceIntegrationPolicyForCli("salesforce");
   if (IS_HELP_REQUEST) {
     showHelp();
     return;
@@ -321,3 +322,4 @@ async function main() {
 }
 
 main();
+import { enforceWorkspaceIntegrationPolicyForCli } from "../../../lib/integration-policy-gate";

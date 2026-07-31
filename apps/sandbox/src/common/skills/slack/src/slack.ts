@@ -484,6 +484,7 @@ Options:
 }
 
 async function main() {
+  await enforceWorkspaceIntegrationPolicyForCli("slack");
   if (values.help) {
     showHelp();
     return;
@@ -540,3 +541,4 @@ async function main() {
 }
 
 main();
+import { enforceWorkspaceIntegrationPolicyForCli } from "../../../lib/integration-policy-gate";

@@ -577,6 +577,7 @@ OPTIONS
 
 // ========== MAIN ==========
 async function main() {
+  await enforceWorkspaceIntegrationPolicyForCli("hubspot");
   if (values.help) {
     showHelp();
     return;
@@ -722,3 +723,4 @@ async function main() {
 }
 
 main();
+import { enforceWorkspaceIntegrationPolicyForCli } from "../../../lib/integration-policy-gate";

@@ -1,171 +1,33 @@
 /**
- * Server-side permission checker for direct mode.
- * Ported from apps/sandbox/src/common/plugins/integration-permissions.ts.
+ * Server-side integration CLI permission metadata.
  *
- * Checks bash commands for integration CLI usage and enforces
- * read/write permissions and auth requirements.
+ * Managed Integration Type parsing is owned by @bap/integration-policy so the
+ * server and sandbox plugin cannot drift. Coworker and agent-browser remain
+ * display-only runtime tools and are deliberately outside Workspace integration
+ * operation policy.
  */
 
-// Integration CLI names to internal type mapping
-const CLI_TO_INTEGRATION: Record<string, string> = {
-  slack: "slack",
-  "google-gmail": "google_gmail",
-  "outlook-mail": "outlook",
-  "outlook-calendar": "outlook_calendar",
-  "google-calendar": "google_calendar",
-  "google-docs": "google_docs",
-  "google-sheets": "google_sheets",
-  "google-drive": "google_drive",
-  notion: "notion",
-  github: "github",
-  airtable: "airtable",
-  hubspot: "hubspot",
-  linkedin: "linkedin",
-  salesforce: "salesforce",
-  dynamics: "dynamics",
-  coworker: "coworker",
-  "agent-browser": "agent-browser",
-};
+import { parseManagedIntegrationCliCommand } from "@bap/integration-policy";
 
-const TOOL_PERMISSIONS: Record<string, { read: string[]; write: string[] }> = {
-  slack: {
-    read: ["channels", "history", "search", "recent", "users", "user", "thread"],
-    write: ["send", "react", "upload"],
-  },
-  google_gmail: {
-    read: ["list", "search", "get", "unread", "latest"],
-    write: ["send"],
-  },
-  outlook: {
-    read: ["list", "search", "get", "unread", "contact", "contacts.list"],
-    write: ["send"],
-  },
-  outlook_calendar: {
-    read: ["list", "get", "calendars", "today"],
-    write: ["create", "update", "delete"],
-  },
-  google_calendar: {
-    read: ["list", "get", "calendars", "today"],
-    write: ["create", "update", "delete"],
-  },
-  google_docs: {
-    read: ["get", "list", "search"],
-    write: ["create", "append"],
-  },
-  google_sheets: {
-    read: ["get", "list"],
-    write: ["create", "append", "update", "clear", "add-sheet"],
-  },
-  google_drive: {
-    read: ["list", "get", "download", "search", "folders"],
-    write: ["upload", "mkdir", "delete"],
-  },
-  notion: {
-    read: ["search", "get", "databases", "query"],
-    write: ["create", "append"],
-  },
-  github: {
-    read: ["repos", "prs", "pr", "my-prs", "issues", "search"],
-    write: ["create-issue"],
-  },
-  airtable: {
-    read: ["bases", "schema", "list", "get", "search"],
-    write: ["create", "update", "delete"],
-  },
-  hubspot: {
-    read: [
-      "contacts.list",
-      "contacts.get",
-      "contacts.search",
-      "companies.list",
-      "companies.get",
-      "deals.list",
-      "deals.get",
-      "tickets.list",
-      "tickets.get",
-      "tasks.list",
-      "tasks.get",
-      "notes.list",
-      "pipelines.deals",
-      "pipelines.tickets",
-      "owners",
-    ],
-    write: [
-      "contacts.create",
-      "contacts.update",
-      "companies.create",
-      "companies.update",
-      "deals.create",
-      "deals.update",
-      "tickets.create",
-      "tickets.update",
-      "tasks.create",
-      "tasks.complete",
-      "notes.create",
-    ],
-  },
-  linkedin: {
-    read: [
-      "chats.list",
-      "chats.get",
-      "messages.list",
-      "profile.me",
-      "profile.get",
-      "profile.company",
-      "search",
-      "invite.list",
-      "connections.list",
-      "posts.list",
-      "posts.get",
-      "company.posts",
-    ],
-    write: [
-      "messages.send",
-      "messages.start",
-      "invite.send",
-      "connections.remove",
-      "posts.create",
-      "posts.comment",
-      "posts.react",
-      "company.post",
-    ],
-  },
-  salesforce: {
-    read: ["query", "get", "describe", "objects", "search"],
-    write: ["create", "update"],
-  },
-  dynamics: {
-    read: ["whoami", "tables.list", "tables.get", "rows.list", "rows.get"],
-    write: ["rows.create", "rows.update", "rows.delete"],
-  },
+const INTERNAL_DISPLAY_ONLY_TOOLS: Record<
+  string,
+  {
+    integration: "coworker" | "agent-browser";
+    displayName: string;
+    writeOperations: ReadonlySet<string>;
+  }
+> = {
   coworker: {
-    read: ["list", "show", "runs", "logs"],
-    write: ["invoke", "edit", "upload-document", "run", "approve", "builder"],
+    integration: "coworker",
+    displayName: "Coworker",
+    writeOperations: new Set(["invoke", "edit", "upload-document", "run", "approve", "builder"]),
+  },
+  "agent-browser": {
+    integration: "agent-browser",
+    displayName: "Agent Browser",
+    writeOperations: new Set(),
   },
 };
-
-const INTEGRATION_NAMES: Record<string, string> = {
-  slack: "Slack",
-  google_gmail: "Gmail",
-  outlook: "Outlook Mail",
-  outlook_calendar: "Outlook Calendar",
-  google_calendar: "Google Calendar",
-  google_docs: "Google Docs",
-  google_sheets: "Google Sheets",
-  google_drive: "Google Drive",
-  notion: "Notion",
-  github: "GitHub",
-  airtable: "Airtable",
-  hubspot: "HubSpot",
-  linkedin: "LinkedIn",
-  salesforce: "Salesforce",
-  dynamics: "Microsoft Dynamics 365",
-  coworker: "Coworker",
-  "agent-browser": "Agent Browser",
-};
-
-const INTERNAL_DISPLAY_ONLY_INTEGRATIONS = new Set(["coworker", "agent-browser"]);
-const GLOBAL_OPTION_FLAGS_WITH_VALUE = new Set(["--account"]);
 
 export interface ParsedCommand {
   integration: string;
@@ -174,151 +36,85 @@ export interface ParsedCommand {
   isWrite: boolean;
 }
 
-function extractCommandCandidate(command: string): string | null {
+function extractInternalCommand(command: string): string[] | null {
   const segments = command
     .split(/&&|\|\||;|\n/)
     .map((segment) => segment.trim())
     .filter(Boolean);
 
   for (let index = segments.length - 1; index >= 0; index -= 1) {
-    const segment = segments[index];
-    const firstToken = segment.split(/\s+/, 1)[0];
-    if (firstToken && CLI_TO_INTEGRATION[firstToken]) {
-      return segment;
+    const parts = segments[index]?.split(/\s+/) ?? [];
+    if (parts[0] && INTERNAL_DISPLAY_ONLY_TOOLS[parts[0]]) {
+      return parts;
     }
   }
-
-  const fallback = command.trim();
-  return fallback.length > 0 ? fallback : null;
-}
-
-function removeLeadingGlobalOptions(parts: string[]): string[] {
-  let cursor = 1;
-  while (cursor < parts.length) {
-    const part = parts[cursor];
-    if (!part || part === "--") {
-      cursor += 1;
-      break;
-    }
-    if (!part.startsWith("-")) {
-      break;
-    }
-
-    const [flag] = part.split("=", 1);
-    cursor +=
-      flag && GLOBAL_OPTION_FLAGS_WITH_VALUE.has(flag) && !part.includes("=") ? 2 : 1;
-  }
-
-  return [parts[0], ...parts.slice(cursor)];
+  return null;
 }
 
 /**
- * Parse a bash command to extract integration and operation.
+ * Parse an integration CLI command into the metadata used by approval cards and
+ * history. Managed operations come from the canonical catalog.
  */
 export function parseBashCommand(command: string): ParsedCommand | null {
-  const trimmed = extractCommandCandidate(command);
-  if (!trimmed) {
+  const managed = parseManagedIntegrationCliCommand(command);
+  if (managed) {
+    return {
+      integration: managed.integrationType,
+      operation: managed.operationKey,
+      integrationName: managed.integrationDisplayName,
+      isWrite: managed.accessHint === "write",
+    };
+  }
+
+  const parts = extractInternalCommand(command);
+  const internal = parts?.[0] ? INTERNAL_DISPLAY_ONLY_TOOLS[parts[0]] : undefined;
+  const operation = parts?.[1];
+  if (!internal || !operation) {
     return null;
   }
-  const parts = removeLeadingGlobalOptions(trimmed.split(/\s+/));
-  if (parts.length === 0) {
-    return null;
-  }
-
-  const cliName = parts[0];
-  const integration = CLI_TO_INTEGRATION[cliName];
-  if (!integration) {
-    return null;
-  }
-
-  const operation = parts[1];
-  if (!operation) {
-    return null;
-  }
-
-  let finalOperation = operation;
-
-  // HubSpot: hubspot <resource> <action>
-  if (integration === "hubspot" && parts.length >= 3) {
-    const resource = parts[1];
-    const action = parts[2];
-    finalOperation = resource === "owners" ? "owners" : `${resource}.${action}`;
-  }
-
-  // Outlook Mail: outlook-mail contacts list
-  if (integration === "outlook" && parts[1] === "contacts" && parts.length >= 3) {
-    finalOperation = `contacts.${parts[2]}`;
-  }
-
-  // LinkedIn: linkedin <resource> <action>
-  if (integration === "linkedin" && parts.length >= 3) {
-    const resource = parts[1];
-    const action = parts[2];
-    finalOperation = resource === "search" ? "search" : `${resource}.${action}`;
-  }
-
-  // Dynamics: dynamics <resource> <action>
-  if (integration === "dynamics" && parts.length >= 3) {
-    const resource = parts[1];
-    const action = parts[2];
-    finalOperation = resource === "whoami" ? "whoami" : `${resource}.${action}`;
-  }
-
-  const permissions = TOOL_PERMISSIONS[integration];
-  const isWrite = permissions ? permissions.write.includes(finalOperation) : false;
 
   return {
-    integration,
-    operation: finalOperation,
-    integrationName: INTEGRATION_NAMES[integration] || integration,
-    isWrite,
+    integration: internal.integration,
+    operation,
+    integrationName: internal.displayName,
+    isWrite: internal.writeOperations.has(operation),
   };
 }
 
 export interface PermissionCheckResult {
   allowed: boolean;
-  /** If not allowed, why */
   reason?: string;
-  /** Whether user approval is needed (write operation) */
   needsApproval: boolean;
-  /** Whether OAuth auth is needed (missing token) */
   needsAuth: boolean;
-  /** Which integration needs auth */
   integration?: string;
-  /** Human-readable integration name */
   integrationName?: string;
 }
 
 /**
- * Check permissions for a tool call.
- * Returns what actions need to happen (auth, approval, or auto-allow).
+ * Compatibility check used by direct-mode projections. Authoritative Workspace
+ * policy is evaluated separately; this function retains the existing auth and
+ * legacy read/write behavior while consumers migrate.
  */
 export function checkToolPermissions(
   toolName: string,
   toolInput: Record<string, unknown>,
   connectedIntegrations: string[],
 ): PermissionCheckResult {
-  // Only bash commands can trigger integration permissions
   if (toolName !== "bash") {
     return { allowed: true, needsApproval: false, needsAuth: false };
   }
 
   const command = (toolInput.command as string) || "";
   const parsed = parseBashCommand(command);
-
-  // Not an integration command - auto-allow
   if (!parsed) {
     return { allowed: true, needsApproval: false, needsAuth: false };
   }
 
-  if (INTERNAL_DISPLAY_ONLY_INTEGRATIONS.has(parsed.integration)) {
+  if (parsed.integration === "coworker" || parsed.integration === "agent-browser") {
     return { allowed: true, needsApproval: false, needsAuth: false };
   }
 
-  // Check if integration token is available
-  const hasToken = connectedIntegrations.includes(parsed.integration);
-
-  if (!hasToken) {
+  if (!connectedIntegrations.includes(parsed.integration)) {
     return {
       allowed: false,
       needsApproval: false,
@@ -329,7 +125,6 @@ export function checkToolPermissions(
     };
   }
 
-  // Write operations need user approval
   if (parsed.isWrite) {
     return {
       allowed: false,
@@ -340,6 +135,5 @@ export function checkToolPermissions(
     };
   }
 
-  // Read operations auto-allowed
   return { allowed: true, needsApproval: false, needsAuth: false };
 }

@@ -126,4 +126,13 @@ describe("permission-checker", () => {
       needsAuth: false,
     });
   });
+
+  it("uses the canonical catalog for Gmail draft write metadata", () => {
+    expect(parseBashCommand("google-gmail draft --to jane@example.com")).toEqual({
+      integration: "google_gmail",
+      operation: "draft",
+      integrationName: "Gmail",
+      isWrite: true,
+    });
+  });
 });

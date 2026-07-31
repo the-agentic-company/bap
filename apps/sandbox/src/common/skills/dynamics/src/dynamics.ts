@@ -119,6 +119,7 @@ Options:
 }
 
 async function main() {
+  await enforceWorkspaceIntegrationPolicyForCli("dynamics");
   if (IS_HELP_REQUEST) {
     showHelp();
     return;
@@ -226,3 +227,4 @@ async function main() {
 main();
 
 export const __dynamicsCliModule = true;
+import { enforceWorkspaceIntegrationPolicyForCli } from "../../../lib/integration-policy-gate";

@@ -608,6 +608,7 @@ Options:
 }
 
 async function main() {
+  await enforceWorkspaceIntegrationPolicyForCli("outlook-mail");
   if (values.help) {
     showHelp();
     return;
@@ -660,3 +661,4 @@ async function main() {
 }
 
 void main();
+import { enforceWorkspaceIntegrationPolicyForCli } from "../../../lib/integration-policy-gate";

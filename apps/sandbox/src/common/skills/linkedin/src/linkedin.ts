@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { enforceWorkspaceIntegrationPolicyForCli } from "../../../lib/integration-policy-gate";
 import { parseLinkedInArgs, runCommand, showHelp } from "./cli";
 import { createDirectory } from "./directory";
 import { createUnipileClient } from "./unipile-client";
@@ -22,6 +23,7 @@ function ensureConfigured(isConfigured: boolean): void {
 }
 
 async function main(): Promise<void> {
+  await enforceWorkspaceIntegrationPolicyForCli("linkedin");
   const { command, subcommand, args, values } = parseLinkedInArgs(process.argv.slice(2));
 
   if (values.help || !command) {

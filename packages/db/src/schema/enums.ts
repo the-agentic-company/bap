@@ -14,6 +14,16 @@ export const workspaceMcpServerAuthTypeEnum = pgEnum("workspace_mcp_server_auth_
   "bearer",
   "oauth2",
 ]);
+export const workspaceIntegrationPolicyModeEnum = pgEnum("workspace_integration_policy_mode", [
+  "auto_approved",
+  "requires_approval",
+  "denied",
+  "personalized",
+]);
+export const workspaceIntegrationOperationRestrictionEnum = pgEnum(
+  "workspace_integration_operation_restriction",
+  ["requires_approval", "denied"],
+);
 export const inboxItemKindEnum = pgEnum("inbox_item_kind", ["coworker", "chat"]);
 
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system", "tool"]);

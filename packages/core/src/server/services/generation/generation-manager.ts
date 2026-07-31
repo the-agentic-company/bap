@@ -16,10 +16,7 @@ import { clearConversationSessionSnapshot } from "../runtime-session-snapshot-se
 import { SESSION_BOUNDARY_PREFIX } from "../session-constants";
 import { conversationRuntimeService } from "../conversation-runtime-service";
 import { formatErrorMessage } from "./format-error-message";
-import {
-  enqueueGenerationTimeout,
-  enqueuePreparingStuckCheck,
-} from "./generation-job-scheduler";
+import { enqueueGenerationTimeout, enqueuePreparingStuckCheck } from "./generation-job-scheduler";
 import { persistMessageAttachments } from "./message-attachment-persistence";
 import { GenerationControl, getExecutionPolicyFromRecord } from "./control/generation-control";
 import { GenerationLifecycleStore } from "./core/lifecycle-store";
@@ -856,10 +853,7 @@ class GenerationManager {
     });
   }
 
-  /**
-   * Wait for user approval on a write operation (called by internal router from plugin).
-   * This creates a pending approval request and waits for the user to respond.
-   */
+  /** Creates a pending write-operation approval and waits for the user to respond. */
   async waitForApproval(
     generationId: string,
     request: {
@@ -867,6 +861,9 @@ class GenerationManager {
       integration: string;
       operation: string;
       command: string;
+      providerRequestId?: string;
+      deadlineAt?: Date;
+      deferApplicationClaim?: boolean;
     },
   ): Promise<"allow" | "deny"> {
     return this.decisionFlow.waitForApproval(generationId, request);
@@ -881,6 +878,7 @@ class GenerationManager {
       command: string;
       providerRequestId?: string;
       runtimeTool?: RuntimeToolRef;
+      deferApplicationClaim?: boolean;
     },
   ): Promise<{
     decision: "allow" | "deny" | "pending";

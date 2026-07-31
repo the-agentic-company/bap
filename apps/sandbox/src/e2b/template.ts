@@ -1,10 +1,21 @@
 import { Template } from "e2b";
-import { OPENCODE_VERSION } from "../common/versions";
+import { OPENCODE_PLUGIN_VERSION, OPENCODE_VERSION } from "../common/versions";
 
 const COMMON_ROOT = "apps/sandbox/src/common";
 const OPENCODE_AGENT_DEFINITIONS_ROOT = "packages/prompts/src/assets/opencode-agents";
+const INTEGRATION_POLICY_PACKAGE_ROOT = "packages/integration-policy";
+const MESSAGE_FORMAT_PACKAGE_ROOT = "packages/message-format";
 const OPENCODE_PORT = 4096;
 const SANDBOX_AGENT_PORT = 2468;
+const runtimePackageJson = JSON.stringify({
+  name: "sandbox-runtime",
+  private: true,
+  dependencies: {
+    "@bap/integration-policy": "file:./packages/integration-policy",
+    "@bap/message-format": "file:./packages/message-format",
+    "@opencode-ai/plugin": OPENCODE_PLUGIN_VERSION,
+  },
+});
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\"'\"'`)}'`;
@@ -86,6 +97,11 @@ export const template = Template({
   .copy(`${COMMON_ROOT}/plugins`, "/app/.opencode/plugins")
   .copy(`${COMMON_ROOT}/tools`, "/app/.opencode/tools")
   .copy(`${COMMON_ROOT}/lib`, "/app/.opencode/lib")
+  .copy(INTEGRATION_POLICY_PACKAGE_ROOT, "/app/packages/integration-policy")
+  .copy(MESSAGE_FORMAT_PACKAGE_ROOT, "/app/packages/message-format")
+  .runCmd(
+    `bash -lc 'cd /app && printf %s ${JSON.stringify(runtimePackageJson)} > package.json && bun install'`,
+  )
   // Prewarm both runtimes to avoid first-request overhead
   .runCmd("mkdir -p $HOME/.config/opencode /app/.opencode $HOME/.cache/opencode")
   .runCmd("cp /app/opencode.json /app/.opencode/opencode.json")

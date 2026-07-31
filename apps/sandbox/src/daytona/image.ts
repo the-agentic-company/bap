@@ -9,11 +9,13 @@ const __dirname = path.dirname(__filename);
 const SANDBOX_ROOT = path.resolve(__dirname, "../..");
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 const COMMON_ROOT = path.join(SANDBOX_ROOT, "src/common");
+const INTEGRATION_POLICY_PACKAGE_ROOT = path.join(REPO_ROOT, "packages/integration-policy");
 const MESSAGE_FORMAT_PACKAGE_ROOT = path.join(REPO_ROOT, "packages/message-format");
 const runtimePackageJson = JSON.stringify({
   name: "sandbox-runtime",
   private: true,
   dependencies: {
+    "@bap/integration-policy": "file:./packages/integration-policy",
     "@bap/message-format": "file:./packages/message-format",
     "@opencode-ai/plugin": OPENCODE_PLUGIN_VERSION,
   },
@@ -39,6 +41,7 @@ export const image = Image.debianSlim()
   .addLocalDir(`${COMMON_ROOT}/lib`, "/app/.opencode/lib")
   .addLocalDir(`${COMMON_ROOT}/skills`, "/app/.claude/skills")
   .addLocalDir(`${COMMON_ROOT}/lib`, "/app/.claude/lib")
+  .addLocalDir(INTEGRATION_POLICY_PACKAGE_ROOT, "/app/packages/integration-policy")
   .addLocalDir(MESSAGE_FORMAT_PACKAGE_ROOT, "/app/packages/message-format")
   .addLocalFile(`${COMMON_ROOT}/setup.sh`, "/app/setup.sh")
   .addLocalFile(`${COMMON_ROOT}/prewarm-opencode.sh`, "/app/prewarm-opencode.sh")

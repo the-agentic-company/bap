@@ -81,6 +81,7 @@ describe("/settings layout", () => {
     expect(screen.getByText("General")).toBeInTheDocument();
     expect(screen.getByText("Workspace")).toBeInTheDocument();
     expect(screen.getByText("Connected AI Account")).toBeInTheDocument();
+    expect(screen.queryByText("Tool permissions")).not.toBeInTheDocument();
     expect(screen.queryByText("Usage")).not.toBeInTheDocument();
     expect(screen.queryByText("Billing")).not.toBeInTheDocument();
   });

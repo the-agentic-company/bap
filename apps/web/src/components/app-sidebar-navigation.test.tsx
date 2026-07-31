@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
-import * as jestDomVitest from "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type React from "react";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -10,7 +9,8 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import type React from "react";
+import * as jestDomVitest from "@testing-library/jest-dom/vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./app-sidebar";
 
@@ -229,6 +229,7 @@ describe("AppSidebar navigation", () => {
     renderWithRouterAt("/admin/workspaces");
 
     const userManagementLink = await screen.findByRole("link", { name: "User Management" });
+    const toolPermissionsLink = await screen.findByRole("link", { name: "Tool permissions" });
     const overviewLink = await screen.findByRole("link", { name: "Overview" });
     const auditLink = await screen.findByRole("link", { name: "Audit" });
     const workspacesLink = await screen.findByRole("link", { name: "Workspaces" });
@@ -237,6 +238,7 @@ describe("AppSidebar navigation", () => {
     const usageLink = await screen.findByRole("link", { name: "Usage" });
 
     expect(userManagementLink).not.toHaveClass("bg-sidebar-primary");
+    expect(toolPermissionsLink).toBeInTheDocument();
     expect(overviewLink).toBeInTheDocument();
     expect(auditLink).toBeInTheDocument();
     expect(workspacesLink).toHaveClass("bg-sidebar-primary");

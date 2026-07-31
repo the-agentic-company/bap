@@ -266,6 +266,7 @@ Options:
 }
 
 async function main() {
+  await enforceWorkspaceIntegrationPolicyForCli("google-sheets");
   if (values.help) {
     showHelp();
     return;
@@ -304,3 +305,4 @@ async function main() {
 }
 
 main();
+import { enforceWorkspaceIntegrationPolicyForCli } from "../../../lib/integration-policy-gate";

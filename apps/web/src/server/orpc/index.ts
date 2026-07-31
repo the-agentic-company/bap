@@ -7,6 +7,7 @@ import { conversationRouter } from "./routers/conversation";
 import { coworkerFolderRouter } from "./routers/coworker-folder";
 import { coworkerRouter } from "./routers/coworker";
 import { workspaceMcpServerRouter } from "./routers/executor-source";
+import { workspaceIntegrationPolicyRouter } from "./routers/workspace-integration-policy";
 import { fileAssetRouter } from "./routers/file-asset";
 import { galienRouter } from "./routers/galien";
 import { generationRouter } from "./routers/generation";
@@ -40,6 +41,7 @@ export const appRouter = {
   modulr: modulrRouter,
   providerAuth: providerAuthRouter,
   workspaceMcpServer: workspaceMcpServerRouter,
+  workspaceIntegrationPolicy: workspaceIntegrationPolicyRouter,
   skill: skillRouter,
   template: templateRouter,
   user: userRouter,

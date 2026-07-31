@@ -10,7 +10,9 @@ import {
   vector,
   unique,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type {
   TemplateCatalogConnectedApp,
   TemplateCatalogSummaryBlock,
@@ -26,6 +28,8 @@ import {
   skillVisibilityEnum,
   workspaceMcpServerAuthTypeEnum,
   workspaceMcpServerKindEnum,
+  workspaceIntegrationOperationRestrictionEnum,
+  workspaceIntegrationPolicyModeEnum,
 } from "./enums";
 import { conversation, fileAsset, user, workspace } from "./tables";
 
@@ -594,6 +598,122 @@ export const workspaceMcpAuthorization = pgTable(
     unique("workspace_mcp_authorization_user_server_idx").on(
       table.userId,
       table.workspaceMcpServerId,
+    ),
+  ],
+);
+
+export const workspaceIntegrationPolicy = pgTable(
+  "workspace_integration_policy",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    subjectKey: text("subject_key").notNull(),
+    integrationType: integrationTypeEnum("integration_type"),
+    workspaceMcpServerId: text("workspace_mcp_server_id").references(() => workspaceMcpServer.id, {
+      onDelete: "cascade",
+    }),
+    mode: workspaceIntegrationPolicyModeEnum("mode").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedByUserId: text("updated_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("workspace_integration_policy_workspace_idx").on(table.workspaceId),
+    uniqueIndex("workspace_integration_policy_subject_unique").on(
+      table.workspaceId,
+      table.subjectKey,
+    ),
+    uniqueIndex("workspace_integration_policy_managed_unique")
+      .on(table.workspaceId, table.integrationType)
+      .where(sql`${table.integrationType} is not null`),
+    uniqueIndex("workspace_integration_policy_mcp_unique")
+      .on(table.workspaceId, table.workspaceMcpServerId)
+      .where(sql`${table.workspaceMcpServerId} is not null`),
+    check(
+      "workspace_integration_policy_exactly_one_subject",
+      sql`(
+        case when ${table.integrationType} is null then 0 else 1 end +
+        case when ${table.workspaceMcpServerId} is null then 0 else 1 end
+      ) = 1`,
+    ),
+  ],
+);
+
+export const workspaceIntegrationOperationPolicy = pgTable(
+  "workspace_integration_operation_policy",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    workspaceIntegrationPolicyId: text("workspace_integration_policy_id")
+      .notNull()
+      .references(() => workspaceIntegrationPolicy.id, { onDelete: "cascade" }),
+    operationKey: text("operation_key").notNull(),
+    restriction: workspaceIntegrationOperationRestrictionEnum("restriction").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedByUserId: text("updated_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("workspace_integration_operation_policy_parent_idx").on(
+      table.workspaceIntegrationPolicyId,
+    ),
+    uniqueIndex("workspace_integration_operation_policy_operation_unique").on(
+      table.workspaceIntegrationPolicyId,
+      table.operationKey,
+    ),
+  ],
+);
+
+export const workspaceMcpToolCatalog = pgTable(
+  "workspace_mcp_tool_catalog",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    workspaceMcpServerId: text("workspace_mcp_server_id")
+      .notNull()
+      .references(() => workspaceMcpServer.id, { onDelete: "cascade" }),
+    toolName: text("tool_name").notNull(),
+    title: text("title"),
+    description: text("description"),
+    annotations: jsonb("annotations").$type<Record<string, unknown>>(),
+    inputSchema: jsonb("input_schema").$type<Record<string, unknown>>(),
+    available: boolean("available").default(true).notNull(),
+    firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+    removedAt: timestamp("removed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("workspace_mcp_tool_catalog_server_idx").on(table.workspaceMcpServerId),
+    uniqueIndex("workspace_mcp_tool_catalog_tool_unique").on(
+      table.workspaceMcpServerId,
+      table.toolName,
     ),
   ],
 );

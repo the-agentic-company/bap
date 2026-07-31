@@ -382,6 +382,8 @@ export async function runNormalRunnerBootstrap(
         resolveWorkspaceMcpServersForGeneration({
           workspaceId: ctx.workspaceId,
           userId: ctx.userId,
+          generationId: ctx.id,
+          generationDeadlineAt: ctx.deadlineAt,
           allowedWorkspaceMcpServerIds: ctx.allowedWorkspaceMcpServerIds,
           remoteIntegrationSource: ctx.remoteIntegrationSource,
         }),

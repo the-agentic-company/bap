@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@bap/db/client";
 import {
   conversation,
@@ -122,7 +122,9 @@ class GenerationInterruptService {
     );
   }
 
-  async listPendingInterruptsForGeneration(generationId: string): Promise<GenerationInterruptRecord[]> {
+  async listPendingInterruptsForGeneration(
+    generationId: string,
+  ): Promise<GenerationInterruptRecord[]> {
     return await db.query.generationInterrupt.findMany({
       where: and(
         eq(generationInterrupt.generationId, generationId),
@@ -223,6 +225,28 @@ class GenerationInterruptService {
     return updated ?? null;
   }
 
+  async claimInterruptApplicationByProviderRequestId(input: {
+    generationId: string;
+    providerRequestId: string;
+  }): Promise<GenerationInterruptRecord | null> {
+    const interrupt = await this.findInterruptByProviderRequestId(input);
+    if (!interrupt) {
+      return null;
+    }
+    const [updated] = await db
+      .update(generationInterrupt)
+      .set({ appliedAt: new Date() })
+      .where(
+        and(
+          eq(generationInterrupt.id, interrupt.id),
+          eq(generationInterrupt.status, "accepted"),
+          isNull(generationInterrupt.appliedAt),
+        ),
+      )
+      .returning();
+    return updated ?? null;
+  }
+
   async refreshInterruptExpiry(
     interruptId: string,
     expiresAt: Date,
@@ -233,10 +257,7 @@ class GenerationInterruptService {
         expiresAt,
       })
       .where(
-        and(
-          eq(generationInterrupt.id, interruptId),
-          eq(generationInterrupt.status, "pending"),
-        ),
+        and(eq(generationInterrupt.id, interruptId), eq(generationInterrupt.status, "pending")),
       )
       .returning();
 

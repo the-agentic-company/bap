@@ -60,6 +60,7 @@
     "@bap/client": "workspace:*",
     "@bap/core": "workspace:*",
     "@bap/db": "workspace:*",
+    "@bap/integration-policy": "workspace:*",
     "@bap/message-format": "workspace:*",
     "@bap/prompts": "workspace:*",
     "@bap/sandbox": "workspace:*",

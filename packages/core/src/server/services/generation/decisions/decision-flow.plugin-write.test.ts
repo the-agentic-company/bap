@@ -350,8 +350,26 @@ describe("DecisionFlow plugin-write decisions", () => {
         operation: "send",
         command: "slack send -c C123 -t hi",
       }),
-    ).resolves.toEqual({ decision: "allow" });
+    ).resolves.toEqual({
+      decision: "allow",
+      interruptId: "interrupt-pending-reuse",
+    });
     expect(markInterruptAppliedMock).toHaveBeenCalledWith("interrupt-pending-reuse");
+
+    interruptStore.set(pending.id, {
+      ...pending,
+      status: "accepted",
+      appliedAt: new Date("2026-03-11T15:01:01.000Z"),
+    });
+    await expect(
+      flow.requestPluginApproval("gen-plugin", {
+        providerRequestId: "provider-request-1",
+        toolInput: { command: "slack send -c C123 -t hi" },
+        integration: "slack",
+        operation: "send",
+        command: "slack send -c C123 -t hi",
+      }),
+    ).resolves.toEqual({ decision: "deny" });
 
     interruptStore.set(pending.id, { ...pending, status: "rejected" });
     await expect(

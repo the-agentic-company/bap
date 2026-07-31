@@ -364,7 +364,7 @@ async function isManagedSourceConnected(input: {
   return Boolean(tokens.get("google_gmail"));
 }
 
-async function isManagedSourceVisibleForUser(input: {
+export async function isWorkspaceMcpServerVisibleForUser(input: {
   database?: DatabaseLike;
   source: WorkspaceMcpServerRecord;
   userId?: string;
@@ -609,13 +609,13 @@ function toRuntimeMcpTransport(transport: string | null): "http" | "sse" {
   return transport === "sse" ? "sse" : "http";
 }
 
-async function buildWorkspaceMcpRuntimeServer(input: {
+export async function buildWorkspaceMcpUpstreamRuntimeServer(input: {
   database?: DatabaseLike;
   source: WorkspaceMcpServerRecord;
   credential: WorkspaceMcpServerCredentialRecord | null | undefined;
   userId: string;
   remoteIntegrationSource?: RemoteIntegrationSource | null;
-}): Promise<RuntimeMcpServer> {
+}): Promise<Extract<RuntimeMcpServer, { type: "http" | "sse" }>> {
   const headers: Record<string, string> = { ...(input.source.headers ?? {}) };
   const queryParams: Record<string, string> = { ...(input.source.queryParams ?? {}) };
 
@@ -725,7 +725,7 @@ export async function listWorkspaceMcpServers(input: {
     await Promise.all(
       sources.map(async (source) =>
         (input.includeAllCustomSources && !source.internalKey) ||
-        (await isManagedSourceVisibleForUser({
+        (await isWorkspaceMcpServerVisibleForUser({
           database,
           source,
           userId: input.userId,
@@ -780,6 +780,8 @@ export async function resolveWorkspaceMcpServersForGeneration(input: {
   database?: DatabaseLike;
   workspaceId: string | null | undefined;
   userId: string;
+  generationId: string;
+  generationDeadlineAt: Date;
   allowedWorkspaceMcpServerIds?: string[] | null;
   remoteIntegrationSource?: RemoteIntegrationSource | null;
 }): Promise<WorkspaceMcpServerResolution> {
@@ -794,6 +796,13 @@ export async function resolveWorkspaceMcpServersForGeneration(input: {
   }
 
   const database = input.database ?? db;
+  const appUrl = env.APP_URL ?? env.VITE_APP_URL;
+  if (!appUrl) {
+    throw new Error("APP_URL is required for the Workspace MCP policy proxy.");
+  }
+  if (!env.APP_SERVER_SECRET) {
+    throw new Error("APP_SERVER_SECRET is required for the Workspace MCP policy proxy.");
+  }
   await ensureManagedWorkspaceMcpServers({
     database,
     workspaceId: input.workspaceId,
@@ -822,7 +831,7 @@ export async function resolveWorkspaceMcpServersForGeneration(input: {
   const visibleSources = (
     await Promise.all(
       sources.map(async (source) =>
-        (await isManagedSourceVisibleForUser({
+        (await isWorkspaceMcpServerVisibleForUser({
           database,
           source,
           userId: input.userId,
@@ -865,6 +874,16 @@ export async function resolveWorkspaceMcpServersForGeneration(input: {
       });
       continue;
     }
+    if (source.transport === "sse") {
+      unavailableServers.push({
+        id: source.id,
+        name: source.name,
+        namespace: source.namespace,
+        reason:
+          "Legacy SSE transport is unavailable because it cannot be enforced safely by the Workspace policy proxy. Use Streamable HTTP.",
+      });
+      continue;
+    }
     const credential = credentialBySourceId.get(source.id);
     const authorizationUnavailableReason = getWorkspaceMcpAuthorizationUnavailableReason(
       source,
@@ -879,18 +898,37 @@ export async function resolveWorkspaceMcpServersForGeneration(input: {
       });
       continue;
     }
+    const proxyPath = `/api/internal/workspace-mcp-proxy/${encodeURIComponent(source.id)}`;
     try {
       requestedServers.push({
         id: source.id,
         name: source.name,
         namespace: source.namespace,
-        server: await buildWorkspaceMcpRuntimeServer({
-          database,
-          source,
-          credential,
-          userId: input.userId,
-          remoteIntegrationSource: input.remoteIntegrationSource,
-        }),
+        server: {
+          type: toRuntimeMcpTransport(source.transport ?? null),
+          name: source.namespace,
+          url: new URL(proxyPath, appUrl).toString(),
+          headers: [
+            {
+              name: "Authorization",
+              value: `Bearer ${signManagedMcpToken(
+                {
+                  userId: input.userId,
+                  workspaceId: input.workspaceId,
+                  internalKey: "workspace-mcp-policy-proxy",
+                  workspaceMcpServerId: source.id,
+                  generationId: input.generationId,
+                  exp: Math.max(
+                    Math.floor(Date.now() / 1000) + MANAGED_MCP_TOKEN_TTL_SECONDS,
+                    Math.floor(input.generationDeadlineAt.getTime() / 1000) + 5 * 60,
+                  ),
+                  remoteIntegrationSource: input.remoteIntegrationSource ?? undefined,
+                },
+                env.APP_SERVER_SECRET,
+              )}`,
+            },
+          ],
+        },
       });
     } catch (error) {
       unavailableServers.push({

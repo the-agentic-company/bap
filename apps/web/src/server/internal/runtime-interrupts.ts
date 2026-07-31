@@ -1,6 +1,7 @@
 import { getTokensForIntegrations } from "@bap/core/server/integrations/cli-env";
 import { generationInterruptService } from "@bap/core/server/services/generation-interrupt-service";
 import { generationManager } from "@bap/core/server/services/generation-manager";
+import { resolveWorkspaceIntegrationOperationPolicy } from "@bap/core/server/services/workspace-integration-policy";
 import { db } from "@bap/db/client";
 import { generation } from "@bap/db/schema";
 import { eq } from "drizzle-orm";
@@ -19,6 +20,7 @@ const integrationEnum = z.enum([
   "google_sheets",
   "google_drive",
   "notion",
+  "linear",
   "github",
   "airtable",
   "slack",
@@ -30,6 +32,13 @@ const integrationEnum = z.enum([
 
 const interruptCreateSchema = z.discriminatedUnion("kind", [
   z.object({
+    kind: z.literal("policy_check"),
+    runtimeId: z.string().min(1),
+    turnSeq: z.number().int().positive(),
+    integration: integrationEnum,
+    operation: z.string().min(1),
+  }),
+  z.object({
     kind: z.literal("plugin_write"),
     runtimeId: z.string().min(1),
     turnSeq: z.number().int().positive(),
@@ -38,6 +47,7 @@ const interruptCreateSchema = z.discriminatedUnion("kind", [
     command: z.string().optional(),
     toolInput: z.record(z.string(), z.unknown()).optional(),
     providerRequestId: z.string().min(1).optional(),
+    deferApplicationClaim: z.boolean().optional(),
     runtimeTool: z
       .object({
         sessionId: z.string().min(1).optional(),
@@ -97,6 +107,37 @@ export async function handleInterruptCreate(request: Request): Promise<Response>
       return Response.json({ error: "integration_not_allowed" }, { status: 403 });
     }
 
+    if (input.kind === "policy_check") {
+      if (!generationRecord.conversation.workspaceId) {
+        return Response.json({
+          decision: "auto_approved" as const,
+          source: "implicit_default" as const,
+          policyExplicit: false,
+        });
+      }
+
+      const decision = await resolveWorkspaceIntegrationOperationPolicy({
+        workspaceId: generationRecord.conversation.workspaceId,
+        subject: {
+          kind: "integration",
+          integrationType: input.integration,
+        },
+        operationKey: input.operation,
+        generationAutoApprove:
+          generationRecord.executionPolicy?.autoApprove ??
+          generationRecord.conversation.autoApprove,
+      });
+      console.info("[WorkspaceIntegrationPolicy]", {
+        generationId: authorized.generationId,
+        workspaceId: generationRecord.conversation.workspaceId,
+        integrationType: input.integration,
+        operationKey: input.operation,
+        decision: decision.decision,
+        source: decision.source,
+      });
+      return Response.json(decision);
+    }
+
     if (input.kind === "plugin_write") {
       const created = await generationManager.requestPluginApproval(authorized.generationId, {
         integration: input.integration,
@@ -104,11 +145,15 @@ export async function handleInterruptCreate(request: Request): Promise<Response>
         command: input.command ?? "",
         toolInput: input.toolInput ?? {},
         providerRequestId: input.providerRequestId,
+        deferApplicationClaim: input.deferApplicationClaim,
         runtimeTool: input.runtimeTool,
       });
 
       if (created.decision === "allow") {
-        return Response.json({ status: "accepted" as const });
+        return Response.json({
+          status: "accepted" as const,
+          interruptId: created.interruptId,
+        });
       }
       if (created.decision !== "pending" || !created.toolUseId) {
         return Response.json({ status: "rejected" as const });
@@ -196,7 +241,21 @@ export async function handleInterruptStatus(request: Request): Promise<Response>
     }
 
     if (interrupt.kind === "plugin_write" && interrupt.status === "accepted") {
-      await generationInterruptService.markInterruptApplied(interrupt.id);
+      if (!interrupt.providerRequestId) {
+        return Response.json({ error: "missing_provider_request_id" }, { status: 409 });
+      }
+      const claimed = await generationInterruptService.claimInterruptApplicationByProviderRequestId(
+        {
+          generationId: interrupt.generationId,
+          providerRequestId: interrupt.providerRequestId,
+        },
+      );
+      if (!claimed) {
+        return Response.json({
+          interruptId: interrupt.id,
+          status: "already_applied" as const,
+        });
+      }
     }
 
     return Response.json({

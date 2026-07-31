@@ -62,10 +62,7 @@ export class PluginAuthDecisionLifecycle {
     if (!genRecord) {
       return false;
     }
-    if (
-      !genRecord.conversation.userId ||
-      genRecord.conversation.userId !== userId
-    ) {
+    if (!genRecord.conversation.userId || genRecord.conversation.userId !== userId) {
       throw new Error("Access denied");
     }
     if (
@@ -77,9 +74,7 @@ export class PluginAuthDecisionLifecycle {
     }
 
     let pendingInterrupt =
-      await generationInterruptService.getPendingInterruptForGeneration(
-        generationId,
-      );
+      await generationInterruptService.getPendingInterruptForGeneration(generationId);
     if (pendingInterrupt) {
       pendingInterrupt =
         (await generationInterruptService.refreshInterruptExpiry(
@@ -97,10 +92,7 @@ export class PluginAuthDecisionLifecycle {
         : "awaiting_approval"
       : "running";
     let nextExecutionPolicy: DecisionExecutionPolicy =
-      this.dependencies.getExecutionPolicy?.(
-        genRecord,
-        genRecord.conversation.autoApprove,
-      ) ?? {};
+      this.dependencies.getExecutionPolicy?.(genRecord, genRecord.conversation.autoApprove) ?? {};
     if (genRecord.status === "paused") {
       nextExecutionPolicy = {
         ...nextExecutionPolicy,
@@ -121,10 +113,7 @@ export class PluginAuthDecisionLifecycle {
     });
 
     await this.enqueuePendingInterruptTimeout(generationId, pendingInterrupt);
-    await this.dependencies.enqueueGenerationRun?.(
-      generationId,
-      linkedRun ? "coworker" : "chat",
-    );
+    await this.dependencies.enqueueGenerationRun?.(generationId, linkedRun ? "coworker" : "chat");
     return true;
   }
 
@@ -198,7 +187,8 @@ export class PluginAuthDecisionLifecycle {
         operation: request.kind === "runtime_permission" ? request.operation : undefined,
         command: request.kind === "runtime_permission" ? request.command : undefined,
         toolInput: request.toolInput,
-        questionSpec: request.kind === "runtime_question" ? { questions: request.questions } : undefined,
+        questionSpec:
+          request.kind === "runtime_question" ? { questions: request.questions } : undefined,
       },
       provider: RUNTIME_INTERRUPT_PROVIDER,
       providerRequestId: request.providerRequestId,
@@ -231,6 +221,7 @@ export class PluginAuthDecisionLifecycle {
       command: string;
       providerRequestId?: string;
       runtimeTool?: RuntimeToolRef;
+      deferApplicationClaim?: boolean;
     },
   ): Promise<{
     decision: "allow" | "deny" | "pending";
@@ -273,8 +264,13 @@ export class PluginAuthDecisionLifecycle {
     });
     if (existing) {
       if (existing.status === "accepted") {
-        await generationInterruptService.markInterruptApplied(existing.id);
-        return { decision: "allow" };
+        if (existing.appliedAt) {
+          return { decision: "deny" };
+        }
+        if (!request.deferApplicationClaim) {
+          await generationInterruptService.markInterruptApplied(existing.id);
+        }
+        return { decision: "allow", interruptId: existing.id };
       }
       if (existing.status === "pending") {
         return {
@@ -408,6 +404,7 @@ export class PluginAuthDecisionLifecycle {
   async getPluginApprovalStatus(
     generationId: string,
     interruptId: string,
+    deferApplicationClaim = false,
   ): Promise<"pending" | "allow" | "deny"> {
     const genRecord = await db.query.generation.findFirst({
       where: eq(generation.id, generationId),
@@ -457,7 +454,7 @@ export class PluginAuthDecisionLifecycle {
       contentParts: nextContentParts,
       event,
     });
-    if (resolvedDecision === "allow") {
+    if (resolvedDecision === "allow" && !deferApplicationClaim) {
       await generationInterruptService.markInterruptApplied(interrupt.id);
     }
 
@@ -735,6 +732,9 @@ export class PluginAuthDecisionLifecycle {
       integration: string;
       operation: string;
       command: string;
+      providerRequestId?: string;
+      deadlineAt?: Date;
+      deferApplicationClaim?: boolean;
     },
   ): Promise<"allow" | "deny"> {
     const approvalRequest = await this.requestPluginApproval(generationId, request);
@@ -747,10 +747,17 @@ export class PluginAuthDecisionLifecycle {
 
     let resolved: "allow" | "deny" | null = null;
     while (resolved === null) {
+      if (request.deadlineAt && Date.now() >= request.deadlineAt.getTime()) {
+        return "deny";
+      }
       // eslint-disable-next-line no-await-in-loop -- polling by design
       await new Promise((resolve) => setTimeout(resolve, 400));
       // eslint-disable-next-line no-await-in-loop -- polling by design
-      const status = await this.getPluginApprovalStatus(generationId, approvalRequest.interruptId);
+      const status = await this.getPluginApprovalStatus(
+        generationId,
+        approvalRequest.interruptId,
+        request.deferApplicationClaim,
+      );
       if (status !== "pending") {
         resolved = status;
       }
@@ -833,8 +840,7 @@ export class PluginAuthDecisionLifecycle {
 
     const accepted =
       (_input.resolution.kind === "approval" && _input.resolution.decision === "approve") ||
-      (_input.resolution.kind === "runtime_question" &&
-        _input.resolution.decision === "approve") ||
+      (_input.resolution.kind === "runtime_question" && _input.resolution.decision === "approve") ||
       (_input.resolution.kind === "plugin_write" && _input.resolution.decision === "approve") ||
       (_input.resolution.kind === "auth" && _input.resolution.success);
     const responsePayload =

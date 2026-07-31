@@ -27,11 +27,12 @@
     "e2b:sandbox:kill": "bun --env-file=../../.env scripts/e2b-sandboxes.ts kill",
     "e2b:sandbox:kill-all": "bun --env-file=../../.env scripts/e2b-sandboxes.ts kill-all",
     "e2b:sandbox:list": "bun --env-file=../../.env scripts/e2b-sandboxes.ts list",
-    "test:unit": "vitest run --config vitest.config.ts scripts/test-sandbox.test.ts scripts/daytona-sandbox.test.ts src/common/versions.test.ts src/daytona/build.test.ts",
+    "test:unit": "vitest run --config vitest.config.ts scripts/test-sandbox.test.ts scripts/daytona-sandbox.test.ts src/common/versions.test.ts src/common/lib/integration-policy-gate.test.ts src/common/plugins/integration-permissions.test.ts src/daytona/build.test.ts src/runtime-package.test.ts",
     "test:live": "bun --env-file=../../.env vitest run src/common/opencode-agents.live.test.ts"
   },
   "dependencies": {
     "@bap/db": "workspace:*",
+    "@bap/integration-policy": "workspace:*",
     "@bap/message-format": "workspace:*",
     "@bap/prompts": "workspace:*",
     "@daytonaio/sdk": "^0.186.0",

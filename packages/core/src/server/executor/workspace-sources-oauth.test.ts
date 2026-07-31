@@ -8,6 +8,7 @@ process.env.ANTHROPIC_API_KEY ??= "test-anthropic-key";
 process.env.SANDBOX_DEFAULT ??= "docker";
 process.env.ENCRYPTION_KEY ??= "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 process.env.APP_SERVER_SECRET ??= "test-server-secret";
+process.env.APP_URL ??= "http://127.0.0.1:3708";
 process.env.AWS_ENDPOINT_URL ??= "http://localhost:9000";
 process.env.AWS_ACCESS_KEY_ID ??= "test-access-key";
 process.env.AWS_SECRET_ACCESS_KEY ??= "test-secret-key";
@@ -20,9 +21,14 @@ vi.mock("./mcp-oauth", () => ({
   ensureValidMcpOAuthCredential: ensureValidMcpOAuthCredentialMock,
 }));
 
-const [{ encrypt }, { resolveWorkspaceMcpServersForGeneration }] = await Promise.all([
+const [
+  { encrypt },
+  { buildWorkspaceMcpUpstreamRuntimeServer, resolveWorkspaceMcpServersForGeneration },
+  { verifyManagedMcpToken },
+] = await Promise.all([
   import("../utils/encryption"),
   import("./workspace-sources"),
+  import("../managed-mcp-auth"),
 ]);
 
 function createSource() {
@@ -104,7 +110,7 @@ describe("Workspace MCP OAuth resolution", () => {
     });
   });
 
-  it("passes stored OAuth credentials to OpenCode MCP servers as bearer headers", async () => {
+  it("passes a scoped proxy token to OpenCode without exposing OAuth credentials", async () => {
     const source = createSource();
     const database = createDatabase({
       source,
@@ -139,20 +145,39 @@ describe("Workspace MCP OAuth resolution", () => {
       database: database as never,
       workspaceId: "ws-1",
       userId: "user-1",
+      generationId: "generation-1",
+      generationDeadlineAt: new Date(Date.now() + 15 * 60 * 1000),
     });
 
     expect(result.unavailableServers).toEqual([]);
-    expect(result.requestedServers).toEqual([
+    const resolved = result.requestedServers[0];
+    expect(resolved).toEqual(
       expect.objectContaining({
         id: "src-1",
         namespace: "linear-mcp",
         server: expect.objectContaining({
           name: "linear-mcp",
-          url: "https://mcp.linear.app/mcp",
-          headers: [{ name: "Authorization", value: "Bearer oauth-access" }],
+          url: "http://127.0.0.1:3708/api/internal/workspace-mcp-proxy/src-1",
         }),
       }),
-    ]);
+    );
+    const authorization = resolved?.server.headers.find(
+      (header) => header.name === "Authorization",
+    )?.value;
+    expect(authorization).toMatch(/^Bearer /);
+    expect(authorization).not.toContain("oauth-access");
+    expect(
+      verifyManagedMcpToken(
+        authorization?.slice("Bearer ".length) ?? "",
+        process.env.APP_SERVER_SECRET ?? "test-server-secret",
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        internalKey: "workspace-mcp-policy-proxy",
+        workspaceMcpServerId: "src-1",
+        generationId: "generation-1",
+      }),
+    );
   });
 
   it("refreshes expired OAuth credentials before building OpenCode MCP config", async () => {
@@ -207,9 +232,11 @@ describe("Workspace MCP OAuth resolution", () => {
       ],
     });
 
-    const result = await resolveWorkspaceMcpServersForGeneration({
+    const credential = (await database.query.workspaceMcpAuthorization.findMany())[0];
+    const result = await buildWorkspaceMcpUpstreamRuntimeServer({
       database: database as never,
-      workspaceId: "ws-1",
+      source,
+      credential,
       userId: "user-1",
     });
 
@@ -221,9 +248,7 @@ describe("Workspace MCP OAuth resolution", () => {
         expiresAt: expiredAt,
       }),
     );
-    expect(result.requestedServers[0]?.server.headers).toEqual([
-      { name: "Authorization", value: "Bearer fresh-access" },
-    ]);
+    expect(result.headers).toEqual([{ name: "Authorization", value: "Bearer fresh-access" }]);
     expect(database.insert).toHaveBeenCalled();
   });
 
@@ -248,6 +273,8 @@ describe("Workspace MCP OAuth resolution", () => {
       database: database as never,
       workspaceId: "ws-1",
       userId: "user-1",
+      generationId: "generation-1",
+      generationDeadlineAt: new Date(Date.now() + 15 * 60 * 1000),
       allowedWorkspaceMcpServerIds: ["missing-server"],
     });
 

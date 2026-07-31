@@ -2,150 +2,25 @@
  * OpenCode Plugin: Integration Permissions
  *
  * This plugin handles permission control for integration CLI tools:
- * - Auto-approves read operations
- * - Requests user approval for write operations via HTTP callback
+ * - Resolves managed operations through the canonical integration catalog
+ * - Requests user approval for operations that need approval
  * - Requests OAuth authentication for missing tokens via HTTP callback
  */
 
+import {
+  getManagedOperationDescriptor,
+  parseManagedIntegrationCliCommand,
+  parseManagedIntegrationCliCommands,
+} from "@bap/integration-policy";
 import { loadRuntimeEnv } from "../lib/runtime-env";
 
-// Integration CLI names to internal type mapping
-const CLI_TO_INTEGRATION: Record<string, string> = {
-  slack: "slack",
-  "google-gmail": "google_gmail",
-  "outlook-mail": "outlook",
-  "outlook-calendar": "outlook_calendar",
-  "google-calendar": "google_calendar",
-  "google-docs": "google_docs",
-  "google-sheets": "google_sheets",
-  "google-drive": "google_drive",
-  notion: "notion",
-  github: "github",
-  airtable: "airtable",
-  hubspot: "hubspot",
-  linkedin: "linkedin",
-  salesforce: "salesforce",
-  dynamics: "dynamics",
+const LEGACY_NON_POLICY_CLI_TO_INTEGRATION: Record<string, string> = {
   discord: "discord",
   "agent-browser": "agent-browser",
 };
 
-// Tool permissions: read operations auto-approve, write operations require approval
-const TOOL_PERMISSIONS: Record<string, { read: string[]; write: string[] }> = {
-  slack: {
-    read: ["channels", "history", "search", "recent", "users", "user", "thread"],
-    write: ["send", "react", "upload"],
-  },
-  google_gmail: {
-    read: ["list", "search", "get", "unread", "latest"],
-    write: ["send"],
-  },
-  outlook: {
-    read: ["list", "search", "get", "unread", "contact", "contacts.list"],
-    write: ["send"],
-  },
-  outlook_calendar: {
-    read: ["list", "get", "calendars", "today"],
-    write: ["create", "update", "delete"],
-  },
-  google_calendar: {
-    read: ["list", "get", "calendars", "today"],
-    write: ["create", "update", "delete"],
-  },
-  google_docs: {
-    read: ["get", "list", "search"],
-    write: ["create", "append"],
-  },
-  google_sheets: {
-    read: ["get", "list"],
-    write: ["create", "append", "update", "clear", "add-sheet"],
-  },
-  google_drive: {
-    read: ["list", "get", "download", "search", "folders"],
-    write: ["upload", "mkdir", "delete"],
-  },
-  notion: {
-    read: ["search", "get", "databases", "query"],
-    write: ["create", "append"],
-  },
-  github: {
-    read: ["repos", "prs", "pr", "my-prs", "issues", "search"],
-    write: ["create-issue"],
-  },
-  airtable: {
-    read: ["bases", "schema", "list", "get", "search"],
-    write: ["create", "update", "delete"],
-  },
-  hubspot: {
-    read: [
-      "contacts.list",
-      "contacts.get",
-      "contacts.search",
-      "companies.list",
-      "companies.get",
-      "deals.list",
-      "deals.get",
-      "tickets.list",
-      "tickets.get",
-      "tasks.list",
-      "tasks.get",
-      "notes.list",
-      "pipelines.deals",
-      "pipelines.tickets",
-      "owners",
-    ],
-    write: [
-      "contacts.create",
-      "contacts.update",
-      "companies.create",
-      "companies.update",
-      "deals.create",
-      "deals.update",
-      "tickets.create",
-      "tickets.update",
-      "tasks.create",
-      "tasks.complete",
-      "notes.create",
-    ],
-  },
-  linkedin: {
-    read: [
-      "chats.list",
-      "chats.get",
-      "messages.list",
-      "profile.me",
-      "profile.get",
-      "profile.company",
-      "search",
-      "invite.list",
-      "connections.list",
-      "posts.list",
-      "posts.get",
-      "company.posts",
-    ],
-    write: [
-      "messages.send",
-      "messages.start",
-      "invite.send",
-      "connections.remove",
-      "posts.create",
-      "posts.comment",
-      "posts.react",
-      "company.post",
-    ],
-  },
-  salesforce: {
-    read: ["query", "get", "describe", "objects", "search"],
-    write: ["create", "update"],
-  },
-  dynamics: {
-    read: ["whoami", "tables.list", "tables.get", "rows.list", "rows.get"],
-    write: ["rows.create", "rows.update", "rows.delete"],
-  },
-  discord: {
-    read: ["guilds", "channels", "messages"],
-    write: ["send"],
-  },
+const LEGACY_NON_POLICY_WRITE_OPERATIONS: Record<string, ReadonlySet<string>> = {
+  discord: new Set(["send"]),
 };
 
 // Environment variable names for integration tokens
@@ -190,7 +65,6 @@ const INTEGRATION_NAMES: Record<string, string> = {
 };
 
 const INTERNAL_DISPLAY_ONLY_INTEGRATIONS = new Set(["agent-browser"]);
-const GLOBAL_OPTION_FLAGS_WITH_VALUE = new Set(["--account"]);
 
 // Custom integration permissions loaded from env var
 let customPermissions: Record<string, { read: string[]; write: string[] }> = {};
@@ -215,7 +89,10 @@ function extractCommandCandidate(command: string): string | null {
   for (let index = segments.length - 1; index >= 0; index -= 1) {
     const segment = segments[index];
     const firstToken = segment.split(/\s+/, 1)[0];
-    if (firstToken && CLI_TO_INTEGRATION[firstToken]) {
+    if (
+      firstToken &&
+      (LEGACY_NON_POLICY_CLI_TO_INTEGRATION[firstToken] || firstToken.startsWith("custom-"))
+    ) {
       return segment;
     }
   }
@@ -224,37 +101,29 @@ function extractCommandCandidate(command: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function removeLeadingGlobalOptions(parts: string[]): string[] {
-  let cursor = 1;
-  while (cursor < parts.length) {
-    const part = parts[cursor];
-    if (!part || part === "--") {
-      cursor += 1;
-      break;
-    }
-    if (!part.startsWith("-")) {
-      break;
-    }
-
-    const [flag] = part.split("=", 1);
-    cursor += flag && GLOBAL_OPTION_FLAGS_WITH_VALUE.has(flag) && !part.includes("=") ? 2 : 1;
-  }
-
-  return [parts[0], ...parts.slice(cursor)];
-}
-
 /**
  * Parse a Bash command to extract integration and operation
  */
-function parseBashCommand(command: string): { integration: string; operation: string } | null {
+function parseBashCommand(
+  command: string,
+): { integration: string; operation: string; managed: boolean } | null {
+  const managed = parseManagedIntegrationCliCommand(command);
+  if (managed) {
+    return {
+      integration: managed.integrationType,
+      operation: managed.operationKey,
+      managed: true,
+    };
+  }
+
   const trimmed = extractCommandCandidate(command);
   if (!trimmed) {
     return null;
   }
-  const parts = removeLeadingGlobalOptions(trimmed.split(/\s+/));
+  const parts = trimmed.split(/\s+/);
 
   const cliName = parts[0];
-  let integration = CLI_TO_INTEGRATION[cliName];
+  let integration = LEGACY_NON_POLICY_CLI_TO_INTEGRATION[cliName];
 
   // Check for custom integrations (custom-{slug} pattern)
   if (!integration && cliName.startsWith("custom-")) {
@@ -270,42 +139,7 @@ function parseBashCommand(command: string): { integration: string; operation: st
     return null;
   }
 
-  // HubSpot has nested pattern: hubspot <resource> <action>
-  if (integration === "hubspot" && parts.length >= 3) {
-    const resource = parts[1];
-    const action = parts[2];
-    if (resource === "owners") {
-      return { integration, operation: "owners" };
-    }
-    return { integration, operation: `${resource}.${action}` };
-  }
-
-  // Outlook Mail has nested pattern: outlook-mail contacts list
-  if (integration === "outlook" && parts[1] === "contacts" && parts.length >= 3) {
-    return { integration, operation: `contacts.${parts[2]}` };
-  }
-
-  // LinkedIn has nested pattern: linkedin <resource> <action>
-  if (integration === "linkedin" && parts.length >= 3) {
-    const resource = parts[1];
-    const action = parts[2];
-    if (resource === "search") {
-      return { integration, operation: "search" };
-    }
-    return { integration, operation: `${resource}.${action}` };
-  }
-
-  // Dynamics has nested pattern: dynamics <resource> <action>
-  if (integration === "dynamics" && parts.length >= 3) {
-    const resource = parts[1];
-    const action = parts[2];
-    if (resource === "whoami") {
-      return { integration, operation: "whoami" };
-    }
-    return { integration, operation: `${resource}.${action}` };
-  }
-
-  return { integration, operation };
+  return { integration, operation, managed: false };
 }
 
 function commandUsesSlackBotRelay(command: string): boolean {
@@ -323,19 +157,24 @@ function commandUsesSlackBotRelay(command: string): boolean {
  * Check if an operation requires approval (is a write operation)
  */
 function isWriteOperation(integration: string, operation: string): boolean {
-  // Check built-in permissions
-  const permissions = TOOL_PERMISSIONS[integration];
-  if (permissions) {
-    return permissions.write.includes(operation);
+  try {
+    const managed = getManagedOperationDescriptor(
+      integration as Parameters<typeof getManagedOperationDescriptor>[0],
+      operation,
+    );
+    if (managed) {
+      return managed.accessHint === "write";
+    }
+  } catch {
+    // Non-managed integration; continue through legacy/custom metadata.
   }
 
-  // Check custom integration permissions
   const customPerms = customPermissions[integration];
   if (customPerms) {
     return customPerms.write.includes(operation);
   }
 
-  return false;
+  return LEGACY_NON_POLICY_WRITE_OPERATIONS[integration]?.has(operation) ?? false;
 }
 
 function isLoopbackHost(hostname: string): boolean {
@@ -657,6 +496,63 @@ async function requestApproval(params: {
   return { error: "Approval timed out while waiting for user decision" };
 }
 
+async function requestWorkspacePolicyDecision(params: {
+  integration: string;
+  operation: string;
+}): Promise<{
+  decision?: "auto_approved" | "requires_approval" | "denied";
+  source?: string;
+  error?: string;
+}> {
+  const serverUrls = getCallbackBaseUrls();
+  const runtimeContext = await readRuntimeContext();
+  let lastError = "Workspace policy callback is unavailable";
+
+  for (const serverUrl of serverUrls) {
+    try {
+      // eslint-disable-next-line no-await-in-loop -- callback URL failover is sequential
+      const response = await fetch(`${serverUrl}/api/internal/runtime/interrupts/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${runtimeContext.callbackToken}`,
+        },
+        body: JSON.stringify({
+          kind: "policy_check",
+          runtimeId: runtimeContext.runtimeId,
+          turnSeq: runtimeContext.turnSeq,
+          integration: params.integration,
+          operation: params.operation,
+        }),
+      });
+      if (!response.ok) {
+        // eslint-disable-next-line no-await-in-loop -- include the current callback failure
+        const bodyPreview = (await response.text()).slice(0, 200);
+        lastError = `${response.status} ${bodyPreview}`;
+        continue;
+      }
+
+      // eslint-disable-next-line no-await-in-loop -- this is the successful failover response
+      const result = (await response.json()) as {
+        decision?: "auto_approved" | "requires_approval" | "denied";
+        source?: string;
+      };
+      if (
+        result.decision !== "auto_approved" &&
+        result.decision !== "requires_approval" &&
+        result.decision !== "denied"
+      ) {
+        return { error: "Workspace policy callback returned an invalid decision" };
+      }
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  return { error: lastError };
+}
+
 /**
  * Request authentication from the server
  */
@@ -819,6 +715,12 @@ export const IntegrationPermissionsPlugin = async () => {
       }
 
       const command = (output.args.command as string) || "";
+      const managedCommands = parseManagedIntegrationCliCommands(command);
+      if (managedCommands.length > 1) {
+        throw new Error(
+          "WORKSPACE_POLICY_COMPOUND_COMMAND_DENIED: run one managed integration operation per tool call",
+        );
+      }
       const parsed = parseBashCommand(command);
 
       // Not an integration command, allow it
@@ -842,6 +744,23 @@ export const IntegrationPermissionsPlugin = async () => {
       if (INTERNAL_DISPLAY_ONLY_INTEGRATIONS.has(integration)) {
         console.log(`[Plugin] ${integration} is display-only, skipping auth and approval checks`);
         return;
+      }
+
+      let policyRequiresApproval = false;
+      if (parsed.managed) {
+        const policy = await requestWorkspacePolicyDecision({ integration, operation });
+        if (policy.error) {
+          throw new Error(`Workspace policy check failed: ${policy.error}`);
+        }
+        if (policy.decision === "denied") {
+          throw new Error(
+            `WORKSPACE_POLICY_DENIED: ${integration}.${operation} is denied by Workspace policy`,
+          );
+        }
+        policyRequiresApproval = policy.decision === "requires_approval";
+        console.log(
+          `[Plugin] Workspace policy decision for ${integration} ${operation}: ${policy.decision} (${policy.source ?? "unknown"})`,
+        );
       }
 
       // Check if integration token is available
@@ -898,9 +817,9 @@ export const IntegrationPermissionsPlugin = async () => {
         }
       }
 
-      // Check if this is a write operation
-      if (isWriteOperation(integration, operation)) {
-        console.log(`[Plugin] Write operation detected, requesting approval...`);
+      const legacyRequiresApproval = !parsed.managed && isWriteOperation(integration, operation);
+      if (legacyRequiresApproval) {
+        console.log(`[Plugin] Operation requires approval, requesting approval...`);
 
         const decision = await requestApproval({
           integration,
@@ -920,8 +839,12 @@ export const IntegrationPermissionsPlugin = async () => {
         }
 
         console.log(`[Plugin] Approval granted for ${integration} ${operation}`);
+      } else if (policyRequiresApproval) {
+        console.log(
+          `[Plugin] Operation approval will be enforced by the integration entrypoint: ${integration} ${operation}`,
+        );
       } else {
-        console.log(`[Plugin] Read operation auto-approved: ${integration} ${operation}`);
+        console.log(`[Plugin] Operation auto-approved: ${integration} ${operation}`);
       }
     },
   };
