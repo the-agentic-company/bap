@@ -58,13 +58,15 @@ function normalizeCommit(value: string | undefined): string {
 function commitsMatch(actual: string | undefined, expected: string): boolean {
   const normalizedActual = normalizeCommit(actual);
   const normalizedExpected = normalizeCommit(expected);
-  return (
-    normalizedActual.length > 0 &&
-    normalizedExpected.length > 0 &&
-    (normalizedActual === normalizedExpected ||
-      normalizedActual.startsWith(normalizedExpected) ||
-      normalizedExpected.startsWith(normalizedActual))
-  );
+  if (![normalizedActual, normalizedExpected].every((commit) => commit.length > 0)) {
+    return false;
+  }
+
+  return [
+    normalizedActual === normalizedExpected,
+    normalizedActual.startsWith(normalizedExpected),
+    normalizedExpected.startsWith(normalizedActual),
+  ].includes(true);
 }
 
 export function validateBlueprintSyncHookUrl(hookUrl: string, blueprintId: string): URL {
@@ -75,12 +77,13 @@ export function validateBlueprintSyncHookUrl(hookUrl: string, blueprintId: strin
     return fail("RENDER_BLUEPRINT_SYNC_HOOK_URL is not a valid URL.");
   }
 
-  if (
-    url.protocol !== "https:" ||
-    url.hostname !== "api.render.com" ||
-    url.pathname !== `/sync/${blueprintId}` ||
-    !url.searchParams.get("key")
-  ) {
+  const matchesBlueprint = [
+    url.protocol === "https:",
+    url.hostname === "api.render.com",
+    url.pathname === `/sync/${blueprintId}`,
+    Boolean(url.searchParams.get("key")),
+  ].every(Boolean);
+  if (!matchesBlueprint) {
     return fail("RENDER_BLUEPRINT_SYNC_HOOK_URL does not match the configured Blueprint.");
   }
 
@@ -102,6 +105,93 @@ function startedAfter(sync: BlueprintSync, earliestStartMs: number): boolean {
   return Number.isFinite(startedAt) && startedAt >= earliestStartMs;
 }
 
+async function requireSuccessfulResponse(
+  responsePromise: Promise<Response>,
+  errorMessage: (status: number) => string,
+): Promise<Response> {
+  const response = await responsePromise;
+  if (!response.ok) {
+    return fail(errorMessage(response.status));
+  }
+  return response;
+}
+
+async function triggerBlueprintSync(
+  fetchImplementation: typeof fetch,
+  hookUrl: URL,
+): Promise<void> {
+  await requireSuccessfulResponse(
+    fetchImplementation(hookUrl, { method: "POST", redirect: "follow" }),
+    (status) => `Blueprint Sync Hook returned HTTP ${status}.`,
+  );
+}
+
+async function latestRecentSync(
+  options: Pick<BlueprintSyncOptions, "apiKey" | "blueprintId">,
+  fetchImplementation: typeof fetch,
+  earliestStartMs: number,
+): Promise<BlueprintSync | undefined> {
+  const listUrl = `${renderApiBaseUrl}/blueprints/${encodeURIComponent(options.blueprintId)}/syncs?limit=20`;
+  const response = await requireSuccessfulResponse(
+    fetchImplementation(listUrl, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${options.apiKey}`,
+      },
+    }),
+    (status) => `Unable to inspect Blueprint syncs: HTTP ${status}.`,
+  );
+
+  return unwrapSyncs(await response.json())
+    .filter((sync) => startedAfter(sync, earliestStartMs))
+    .sort((left, right) => Date.parse(right.startedAt ?? "") - Date.parse(left.startedAt ?? ""))[0];
+}
+
+function completedExpectedSync(
+  sync: BlueprintSync | undefined,
+  expectedCommit: string,
+): BlueprintSync | undefined {
+  if (!sync) {
+    return undefined;
+  }
+  requireExpectedCommit(sync, expectedCommit);
+  requireNonFailedState(sync);
+  if (sync.state !== "success") {
+    return undefined;
+  }
+  return sync;
+}
+
+function blueprintSyncCommit(sync: BlueprintSync): string | undefined {
+  if (!sync.commit) {
+    return undefined;
+  }
+  return sync.commit.id;
+}
+
+function displayValue(value: string | undefined): string {
+  if (!value) {
+    return "unknown";
+  }
+  return value;
+}
+
+function requireExpectedCommit(sync: BlueprintSync, expectedCommit: string): void {
+  const commit = blueprintSyncCommit(sync);
+  if (!commitsMatch(commit, expectedCommit)) {
+    return fail(
+      `Latest Sync Hook commit is ${displayValue(commit)}, expected ${expectedCommit}.`,
+    );
+  }
+}
+
+function requireNonFailedState(sync: BlueprintSync): void {
+  const state = displayValue(sync.state);
+  if (failedStates.has(state)) {
+    return fail(`Blueprint sync ${sync.id ?? "unknown"} ended in state ${sync.state}.`);
+  }
+}
+
 export async function triggerAndWaitForBlueprintSync(
   options: BlueprintSyncOptions,
   dependencies: BlueprintSyncDependencies = {
@@ -112,51 +202,20 @@ export async function triggerAndWaitForBlueprintSync(
 ): Promise<BlueprintSync> {
   const hookUrl = validateBlueprintSyncHookUrl(options.hookUrl, options.blueprintId);
   const triggeredAt = dependencies.now();
-  const timeoutMs = options.timeoutMs ?? defaultTimeoutMs;
-  const pollMs = options.pollMs ?? defaultPollMs;
+  const { pollMs = defaultPollMs, timeoutMs = defaultTimeoutMs } = options;
 
-  const triggerResponse = await dependencies.fetch(hookUrl, {
-    method: "POST",
-    redirect: "follow",
-  });
-  if (!triggerResponse.ok) {
-    return fail(`Blueprint Sync Hook returned HTTP ${triggerResponse.status}.`);
-  }
+  await triggerBlueprintSync(dependencies.fetch, hookUrl);
 
   const deadline = triggeredAt + timeoutMs;
   const earliestStartMs = triggeredAt - syncStartToleranceMs;
-  const listUrl = `${renderApiBaseUrl}/blueprints/${encodeURIComponent(options.blueprintId)}/syncs?limit=20`;
 
   while (dependencies.now() <= deadline) {
-    const response = await dependencies.fetch(listUrl, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${options.apiKey}`,
-      },
-    });
-    if (!response.ok) {
-      return fail(`Unable to inspect Blueprint syncs: HTTP ${response.status}.`);
-    }
-
-    const recentSyncs = unwrapSyncs(await response.json())
-      .filter((sync) => startedAfter(sync, earliestStartMs))
-      .sort((left, right) => Date.parse(right.startedAt ?? "") - Date.parse(left.startedAt ?? ""));
-    const expectedSync = recentSyncs[0];
-
-    if (expectedSync) {
-      if (!commitsMatch(expectedSync.commit?.id, options.expectedCommit)) {
-        return fail(
-          `Latest Sync Hook commit is ${expectedSync.commit?.id ?? "unknown"}, expected ${options.expectedCommit}.`,
-        );
-      }
-      if (expectedSync.state === "success") {
-        return expectedSync;
-      }
-      if (failedStates.has(expectedSync.state ?? "")) {
-        return fail(
-          `Blueprint sync ${expectedSync.id ?? "unknown"} ended in state ${expectedSync.state}.`,
-        );
-      }
+    const sync = completedExpectedSync(
+      await latestRecentSync(options, dependencies.fetch, earliestStartMs),
+      options.expectedCommit,
+    );
+    if (sync) {
+      return sync;
     }
 
     await dependencies.sleep(pollMs);

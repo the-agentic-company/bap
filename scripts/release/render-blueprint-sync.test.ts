@@ -29,6 +29,14 @@ function syncList(commit: string, state: string) {
   ];
 }
 
+function failureDependencies(fetchMock: typeof fetch) {
+  return {
+    fetch: fetchMock,
+    now: () => Date.parse("2026-07-31T14:29:00.000Z"),
+    sleep: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe("Render Blueprint sync", () => {
   it("accepts only the private hook for the configured Blueprint", () => {
     expect(validateBlueprintSyncHookUrl(hookUrl, blueprintId).pathname).toBe(
@@ -89,11 +97,7 @@ describe("Render Blueprint sync", () => {
           expectedCommit,
           hookUrl,
         },
-        {
-          fetch: fetchMock,
-          now: () => Date.parse("2026-07-31T14:29:00.000Z"),
-          sleep: vi.fn().mockResolvedValue(undefined),
-        },
+        failureDependencies(fetchMock),
       ),
     ).rejects.toThrow("Latest Sync Hook commit");
   });
@@ -112,11 +116,7 @@ describe("Render Blueprint sync", () => {
           expectedCommit,
           hookUrl,
         },
-        {
-          fetch: fetchMock,
-          now: () => Date.parse("2026-07-31T14:29:00.000Z"),
-          sleep: vi.fn().mockResolvedValue(undefined),
-        },
+        failureDependencies(fetchMock),
       ),
     ).rejects.toThrow("ended in state failure");
   });
