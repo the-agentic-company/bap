@@ -48,7 +48,7 @@
     "date-fns": "^4.1.0",
     "dockerode": "^5.0.0",
     "drizzle-orm": "^0.45.1",
-    "esbuild": "0.27.7",
+    "esbuild": "0.28.1",
     "e2b": "^2.12.1",
     "ioredis": "^5.8.2",
     "jose": "^6.1.3",
