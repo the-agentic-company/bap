@@ -1,4 +1,4 @@
-FROM ghcr.io/pyrra-dev/pyrra:v0.9.5 AS pyrra
+FROM ghcr.io/pyrra-dev/pyrra:v0.10.1 AS pyrra
 
 FROM victoriametrics/vmalert:v1.140.0
 
