@@ -54,6 +54,47 @@ jobs:
           audience: ${{ secrets.TAILSCALE_GITHUB_OIDC_AUDIENCE }}
           tags: tag:bap-ci
 
+      - name: Wait for database DNS
+        env:
+          DATABASE_URL_PROD: ${{ secrets.DATABASE_URL_PROD }}
+          DATABASE_URL_STAGING: ${{ secrets.DATABASE_URL_STAGING }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${ENVIRONMENT}" in
+            staging)
+              database_url="${DATABASE_URL_STAGING}"
+              ;;
+            prod)
+              database_url="${DATABASE_URL_PROD}"
+              ;;
+            *)
+              echo "Unsupported environment: ${ENVIRONMENT}" >&2
+              exit 1
+              ;;
+          esac
+
+          database_host="$(DATABASE_URL="${database_url}" bun -e '
+            const databaseUrl = process.env.DATABASE_URL;
+            if (!databaseUrl) throw new Error("Missing database URL");
+            process.stdout.write(new URL(databaseUrl).hostname);
+          ')"
+
+          for attempt in $(seq 1 18); do
+            if getent ahosts "${database_host}" >/dev/null 2>&1; then
+              echo "Database DNS is ready."
+              exit 0
+            fi
+
+            echo "Database DNS is not ready on attempt ${attempt}/18; retrying in 10s."
+            sleep 10
+          done
+
+          echo "Database DNS did not become ready after 3 minutes." >&2
+          exit 1
+
       - name: Push DB changes
         env:
           DATABASE_URL_PROD: ${{ secrets.DATABASE_URL_PROD }}
