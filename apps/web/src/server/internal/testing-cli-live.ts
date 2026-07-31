@@ -1,3 +1,5 @@
+import type { IntegrationType } from "@bap/core/server/oauth/config";
+import { ensureWorkspaceForUser } from "@bap/core/server/billing/workspace-lifecycle";
 import {
   computeWorkspaceMcpServerRevisionHash,
   setWorkspaceMcpServerCredential,
@@ -6,8 +8,11 @@ import {
   getValidConnectedAccountTokensForUser,
   getValidTokensForUser,
 } from "@bap/core/server/integrations/token-refresh";
-import type { IntegrationType } from "@bap/core/server/oauth/config";
 import { getQueue, queueName } from "@bap/core/server/queues";
+import {
+  getWorkspaceIntegrationPolicy,
+  replaceWorkspaceIntegrationPolicy,
+} from "@bap/core/server/services/workspace-integration-policy";
 import { db } from "@bap/db/client";
 import {
   type ContentPart,
@@ -62,6 +67,14 @@ const tokenBackupSchema = z.object({
   tokenType: z.string().nullable(),
   expiresAt: z.string().nullable(),
   idToken: z.string().nullable(),
+});
+
+const slackPolicyBackupSchema = z.object({
+  workspaceId: z.string().min(1),
+  actorUserId: z.string().min(1),
+  mode: z.enum(["auto_approved", "requires_approval", "denied", "personalized"]),
+  explicit: z.boolean(),
+  restrictions: z.record(z.string(), z.enum(["requires_approval", "denied"])),
 });
 
 const requestSchema = z.discriminatedUnion("action", [
@@ -141,6 +154,14 @@ const requestSchema = z.discriminatedUnion("action", [
     action: z.literal("workspace-mcp:linear-api-key:restore"),
     backup: z.unknown(),
   }),
+  z.object({
+    action: z.literal("workspace-policy:slack-requires-approval:apply"),
+    email: z.email(),
+  }),
+  z.object({
+    action: z.literal("workspace-policy:slack-requires-approval:restore"),
+    backup: slackPolicyBackupSchema,
+  }),
 ]);
 
 function uniqueNonEmpty(values: Iterable<string> | undefined): string[] {
@@ -155,13 +176,60 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function findUserByEmail(email: string): Promise<{ id: string } | null> {
+async function findUserByEmail(
+  email: string,
+): Promise<{ id: string; activeWorkspaceId: string | null } | null> {
   const dbUser = await db.query.user.findFirst({
     where: eq(user.email, email),
-    columns: { id: true },
+    columns: { id: true, activeWorkspaceId: true },
   });
 
   return dbUser ?? null;
+}
+
+async function applySlackRequiresApprovalPolicyForLiveTest(email: string): Promise<unknown> {
+  const dbUser = await findUserByEmail(email);
+  if (!dbUser) {
+    throw new Error(`Live e2e user not found: ${email}`);
+  }
+  const workspace = await ensureWorkspaceForUser(dbUser.id, dbUser.activeWorkspaceId);
+  const subject = { kind: "integration" as const, integrationType: "slack" as const };
+  const previous = await getWorkspaceIntegrationPolicy({
+    workspaceId: workspace.id,
+    subject,
+  });
+
+  await replaceWorkspaceIntegrationPolicy({
+    workspaceId: workspace.id,
+    subject,
+    mode: "requires_approval",
+    actorUserId: dbUser.id,
+  });
+
+  return {
+    workspaceId: workspace.id,
+    actorUserId: dbUser.id,
+    ...previous,
+  };
+}
+
+async function restoreSlackPolicyLiveTestBackup(
+  rawBackup: z.infer<typeof slackPolicyBackupSchema>,
+): Promise<{ restored: true }> {
+  const backup = slackPolicyBackupSchema.parse(rawBackup);
+  await replaceWorkspaceIntegrationPolicy({
+    workspaceId: backup.workspaceId,
+    subject: { kind: "integration", integrationType: "slack" },
+    mode: backup.explicit ? backup.mode : "auto_approved",
+    restrictions: backup.explicit
+      ? Object.entries(backup.restrictions).map(([operationKey, restriction]) => ({
+          operationKey,
+          restriction,
+        }))
+      : [],
+    actorUserId: backup.actorUserId,
+  });
+  return { restored: true };
 }
 
 async function getWorkerQueueReadiness(): Promise<{
@@ -776,6 +844,13 @@ async function handleAction(payload: z.infer<typeof requestSchema>): Promise<unk
     }
     case "workspace-mcp:linear-api-key:restore": {
       return restoreLinearMcpApiKeyLiveTestBackup(payload.backup);
+    }
+    case "workspace-policy:slack-requires-approval:apply": {
+      const backup = await applySlackRequiresApprovalPolicyForLiveTest(payload.email);
+      return { backup };
+    }
+    case "workspace-policy:slack-requires-approval:restore": {
+      return restoreSlackPolicyLiveTestBackup(payload.backup);
     }
   }
 }

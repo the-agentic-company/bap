@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
 import { db } from "@bap/db/client";
 import type { ContentPart } from "@bap/db/schema";
-import {
-  type RuntimeToolRef,
-} from "../../../runtime/runtime-driver";
+import { parseManagedIntegrationCliCommand } from "@bap/integration-policy";
+import type { RuntimeToolRef } from "../../../runtime/runtime-driver";
 import { extractRuntimeCallIdFromProviderRequestId } from "../../../runtime/runtime-decision-display";
 import type { GenerationInterruptRecord } from "../../generation-interrupt-service";
 import { generationLifecyclePolicy } from "../../lifecycle-policy";
@@ -157,7 +156,26 @@ export function getRuntimeToolRefForInterrupt(
       part.input.command === params.command,
   );
   if (!matchingToolUse) {
-    return undefined;
+    const target = parseManagedIntegrationCliCommand(params.command);
+    if (!target) {
+      return undefined;
+    }
+    const matchingIntegrationToolUse = ctx?.contentParts
+      .slice()
+      .reverse()
+      .find((part): part is ContentPart & { type: "tool_use" } => {
+        if (part.type !== "tool_use" || typeof part.input.command !== "string") {
+          return false;
+        }
+        const candidate = parseManagedIntegrationCliCommand(part.input.command);
+        return (
+          candidate?.integrationType === target.integrationType &&
+          candidate.operationKey === target.operationKey
+        );
+      });
+    return matchingIntegrationToolUse
+      ? ctx?.runtimeTools?.get(matchingIntegrationToolUse.id)
+      : undefined;
   }
   return ctx?.runtimeTools?.get(matchingToolUse.id);
 }
