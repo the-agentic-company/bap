@@ -8,7 +8,7 @@ describe("isModelAccessibleForNewChat", () => {
     openai: { user: false, shared: false },
   } as const;
 
-  it("returns false for admin-only Claude models when the user is not an admin", () => {
+  it("returns false for retired Anthropic models", () => {
     expect(
       isModelAccessibleForNewChat({
         model: "anthropic/claude-sonnet-4-6",
@@ -17,7 +17,7 @@ describe("isModelAccessibleForNewChat", () => {
     ).toBe(false);
   });
 
-  it("returns true for admin-only Claude models when the user is an admin", () => {
+  it("returns false for retired Anthropic models even when shared auth is available", () => {
     expect(
       isModelAccessibleForNewChat({
         model: "anthropic/claude-sonnet-4-6",
@@ -25,16 +25,6 @@ describe("isModelAccessibleForNewChat", () => {
         providerAvailabilityByProvider: {
           anthropic: { user: false, shared: true },
         },
-      }),
-    ).toBe(true);
-  });
-
-  it("returns false for Claude models when the shared Claude source is unavailable", () => {
-    expect(
-      isModelAccessibleForNewChat({
-        model: "anthropic/claude-sonnet-4-6",
-        isAdmin: true,
-        providerAvailabilityByProvider: noProviderAvailability,
       }),
     ).toBe(false);
   });

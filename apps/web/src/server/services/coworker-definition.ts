@@ -1,4 +1,4 @@
-import { isAdminOnlyChatModel } from "@bap/core/lib/chat-model-policy";
+import { isRetiredChatModel } from "@bap/core/lib/chat-model-policy";
 import {
   COWORKER_TOOL_ACCESS_MODES,
   normalizeCoworkerAllowedSkillSlugs,
@@ -131,10 +131,10 @@ type DefinitionContext = {
   db: typeof import("@bap/db/client").db;
 };
 
-function assertModelAllowedForRole(model: string, role: string | null | undefined): void {
-  if (isAdminOnlyChatModel(model) && role !== "admin") {
-    throw new ORPCError("FORBIDDEN", {
-      message: "Claude Sonnet 4.6 is only available to admins.",
+function assertModelIsSelectable(model: string): void {
+  if (isRetiredChatModel(model)) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Anthropic models are no longer available. Choose a GPT model instead.",
     });
   }
 }
@@ -397,7 +397,7 @@ async function importCoworkerDefinition(input: {
 }) {
   const { definition } = input;
 
-  assertModelAllowedForRole(definition.coworker.model, input.userRole);
+  assertModelIsSelectable(definition.coworker.model);
   assertUserInputConfig({
     requiresUserInput: definition.coworker.requiresUserInput,
     userInputPrompt: definition.coworker.userInputPrompt,

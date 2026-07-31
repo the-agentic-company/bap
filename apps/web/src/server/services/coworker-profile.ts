@@ -1,4 +1,4 @@
-import { isAdminOnlyChatModel } from "@bap/core/lib/chat-model-policy";
+import { isRetiredChatModel } from "@bap/core/lib/chat-model-policy";
 import {
   normalizeCoworkerToolAccessMode,
   normalizeCoworkerAllowedSkillSlugs,
@@ -46,10 +46,10 @@ type ProfileContext = {
   db: typeof import("@bap/db/client").db;
 };
 
-function assertModelAllowedForRole(model: string, role: string | null | undefined): void {
-  if (isAdminOnlyChatModel(model) && role !== "admin") {
-    throw new ORPCError("FORBIDDEN", {
-      message: "Claude Sonnet 4.6 is only available to admins.",
+function assertModelIsSelectable(model: string): void {
+  if (isRetiredChatModel(model)) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Anthropic models are no longer available. Choose a GPT model instead.",
     });
   }
 }
@@ -244,9 +244,9 @@ export async function createCoworkerProfile(input: {
   const coworkerId = crypto.randomUUID();
   const dbUser = await input.context.db.query.user.findFirst({
     where: eq(user.id, input.context.user.id),
-    columns: { role: true, name: true, email: true, image: true },
+    columns: { name: true, email: true, image: true },
   });
-  assertModelAllowedForRole(input.payload.model, dbUser?.role);
+  assertModelIsSelectable(input.payload.model);
   const resolvedAuthSource = resolveCoworkerAuthSource(
     input.payload.model,
     input.payload.authSource,
@@ -386,11 +386,7 @@ export async function updateCoworkerProfile(input: {
 }) {
   const { existing } = input;
   if (input.payload.model !== undefined) {
-    const dbUser = await input.context.db.query.user.findFirst({
-      where: eq(user.id, input.context.user.id),
-      columns: { role: true },
-    });
-    assertModelAllowedForRole(input.payload.model, dbUser?.role);
+    assertModelIsSelectable(input.payload.model);
   }
 
   const updates: Partial<typeof coworker.$inferInsert> = {};

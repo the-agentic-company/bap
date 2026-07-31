@@ -12,10 +12,6 @@ type VitestProcedure = Extract<
 
 void jestDomVitest;
 
-const { mockIsAdmin } = vi.hoisted(() => ({
-  mockIsAdmin: vi.fn<VitestProcedure>(() => false),
-}));
-
 afterEach(() => {
   cleanup();
 });
@@ -54,10 +50,6 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   ),
 }));
 
-vi.mock("@/hooks/use-is-admin", () => ({
-  useIsAdmin: () => ({ isAdmin: mockIsAdmin(), isLoading: false }),
-}));
-
 import { ModelSelector } from "./model-selector";
 
 const NO_PROVIDER_AUTH = {
@@ -77,9 +69,8 @@ const USER_ONLY_AUTH = {
 } as const;
 
 describe("ModelSelector", () => {
-  it("shows shared GPT-5 variants and hides Claude Sonnet 4.6 for non-admins", () => {
+  it("shows shared GPT-5 variants and hides retired Anthropic models", () => {
     const onSelectionChange = vi.fn<VitestProcedure>();
-    mockIsAdmin.mockReturnValue(false);
 
     render(
       <ModelSelector
@@ -102,9 +93,8 @@ describe("ModelSelector", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows Claude Sonnet 4.6 for admins", () => {
+  it("does not reintroduce a retired option for a saved Anthropic selection", () => {
     const onSelectionChange = vi.fn<VitestProcedure>();
-    mockIsAdmin.mockReturnValue(true);
 
     render(
       <ModelSelector
@@ -115,12 +105,13 @@ describe("ModelSelector", () => {
       />,
     );
 
-    expect(screen.getByTestId("chat-model-option-bap-anthropic/claude-sonnet-4-6")).toBeEnabled();
+    expect(
+      screen.queryByTestId("chat-model-option-bap-anthropic/claude-sonnet-4-6"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not allow selecting shared GPT-5.4 when shared auth is unavailable", () => {
     const onSelectionChange = vi.fn<VitestProcedure>();
-    mockIsAdmin.mockReturnValue(false);
 
     render(
       <ModelSelector
@@ -138,7 +129,6 @@ describe("ModelSelector", () => {
 
   it("selects shared GPT-5.4 when shared auth is available", () => {
     const onSelectionChange = vi.fn<VitestProcedure>();
-    mockIsAdmin.mockReturnValue(false);
 
     render(
       <ModelSelector
@@ -159,7 +149,6 @@ describe("ModelSelector", () => {
 
   it("selects shared GPT-5.5 when shared auth is available", () => {
     const onSelectionChange = vi.fn<VitestProcedure>();
-    mockIsAdmin.mockReturnValue(false);
 
     render(
       <ModelSelector
@@ -180,7 +169,6 @@ describe("ModelSelector", () => {
 
   it("selects shared Gemini when shared auth is available", () => {
     const onSelectionChange = vi.fn<VitestProcedure>();
-    mockIsAdmin.mockReturnValue(false);
 
     render(
       <ModelSelector
@@ -201,7 +189,6 @@ describe("ModelSelector", () => {
 
   it("selects personal GPT-5.4 Mini when user auth is available", () => {
     const onSelectionChange = vi.fn<VitestProcedure>();
-    mockIsAdmin.mockReturnValue(false);
 
     render(
       <ModelSelector

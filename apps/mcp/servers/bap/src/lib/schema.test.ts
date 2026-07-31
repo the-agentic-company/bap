@@ -96,6 +96,15 @@ describe("Bap MCP tool contract", () => {
     }
   });
 
+  it("does not allow retired Anthropic models through MCP", () => {
+    const modelSchema = Reflect.get(coworkerSave.values.shape, "model") as {
+      safeParse(value: unknown): { success: boolean };
+    };
+
+    expect(modelSchema.safeParse("openai/gpt-5.5").success).toBe(true);
+    expect(modelSchema.safeParse("anthropic/claude-sonnet-4-6").success).toBe(false);
+  });
+
   it("keeps global and runtime-bound exceptions explicit", () => {
     expect(Object.keys(workspaceList)).toEqual([]);
     expect(() => workspaceSave.workspaceId.parse(undefined)).not.toThrow();

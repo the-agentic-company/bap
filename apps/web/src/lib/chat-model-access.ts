@@ -1,5 +1,4 @@
 import type { ProviderAuthSource } from "@bap/core/lib/provider-auth-source";
-import { isAdminOnlyChatModel } from "@bap/core/lib/chat-model-policy";
 import { parseModelReference } from "@bap/core/lib/model-reference";
 import {
   normalizeModelAuthSource,
@@ -8,7 +7,6 @@ import {
 import type { ProviderAuthAvailabilityByProvider } from "./provider-auth-availability";
 
 const PROVIDER_MODEL_IDS_FOR_NEW_CHAT = new Map<string, Set<string>>([
-  ["anthropic", new Set(["claude-sonnet-4-6"])],
   [
     "openai",
     new Set([
@@ -33,10 +31,6 @@ export function isModelAccessibleForNewChat(params: {
 }): boolean {
   const model = params.model.trim();
   if (!model) {
-    return false;
-  }
-
-  if (isAdminOnlyChatModel(model) && params.isAdmin !== true) {
     return false;
   }
 

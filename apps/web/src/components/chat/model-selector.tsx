@@ -16,11 +16,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useIsAdmin } from "@/hooks/use-is-admin";
 
 type ModelOption = {
   authSource: ProviderAuthSource | null;
-  adminOnly?: boolean;
   id: string;
   name: string;
 };
@@ -96,12 +94,12 @@ const BAP_MODELS: ModelOption[] = [
     id: "google/gemini-3.1-pro-preview",
     name: "Gemini 3.1 Pro Preview",
   },
-  {
-    adminOnly: true,
-    authSource: "shared",
-    id: "anthropic/claude-sonnet-4-6",
-    name: "Claude Sonnet 4.6",
-  },
+  // Anthropic models are retired. Keep this entry commented out so they cannot be selected.
+  // {
+  //   authSource: "shared",
+  //   id: "anthropic/claude-sonnet-4-6",
+  //   name: "Claude Sonnet 4.6",
+  // },
 ];
 
 const PERSONAL_CHATGPT_MODELS: ModelOption[] = [
@@ -122,7 +120,6 @@ const PERSONAL_CHATGPT_MODELS: ModelOption[] = [
   },
 ];
 
-const USER_VISIBLE_BAP_MODELS = BAP_MODELS.filter((model) => !model.adminOnly);
 const SORTED_PERSONAL_CHATGPT_MODELS = sortModels(PERSONAL_CHATGPT_MODELS);
 
 type Props = {
@@ -199,8 +196,6 @@ export function ModelSelector({
   onSelectionChange,
   disabled,
 }: Props) {
-  const { isAdmin } = useIsAdmin();
-  const visibleBapModels = isAdmin ? BAP_MODELS : USER_VISIBLE_BAP_MODELS;
   const allModels = [...BAP_MODELS, ...PERSONAL_CHATGPT_MODELS];
   const currentModel =
     allModels.find(
@@ -231,7 +226,7 @@ export function ModelSelector({
           <T>Bap Models</T>
         </DropdownMenuLabel>
         <ModelSection
-          models={visibleBapModels}
+          models={BAP_MODELS}
           selectedModel={selectedModel}
           selectedAuthSource={selectedAuthSource}
           providerAvailability={providerAvailability}

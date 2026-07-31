@@ -1,4 +1,5 @@
 import { COWORKER_AVAILABLE_INTEGRATION_TYPES } from "@bap/core/lib/coworker-tool-policy";
+import { isRetiredChatModel } from "@bap/core/lib/chat-model-policy";
 import { MODEL_PROVIDER_IDS } from "@bap/core/lib/model-reference";
 import { z } from "zod";
 
@@ -15,8 +16,11 @@ export const integrationTypeSchema = z
 
 export const modelReferenceSchema = z
   .string()
+  .refine((model) => !isRetiredChatModel(model), {
+    message: "Anthropic models are no longer available. Choose a GPT model instead.",
+  })
   .describe(
-    `Model reference in "provider/model" form, for example "openai/gpt-5.4". Provider is one of: ${MODEL_PROVIDER_IDS.join(", ")}.`,
+    `Model reference in "provider/model" form, for example "openai/gpt-5.4". Available providers: ${MODEL_PROVIDER_IDS.filter((provider) => provider !== "anthropic").join(", ")}.`,
   );
 
 export const coworkerReadQuerySchema = z.discriminatedUnion("type", [

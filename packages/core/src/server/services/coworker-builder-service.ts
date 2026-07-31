@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { EMAIL_FORWARDED_TRIGGER_TYPE } from "../../lib/email-forwarding";
-import { isAdminOnlyChatModel } from "../../lib/chat-model-policy";
+import { isRetiredChatModel } from "../../lib/chat-model-policy";
 import { parseModelReference } from "../../lib/model-reference";
 import {
   COWORKER_TOOL_ACCESS_MODES,
@@ -561,10 +561,9 @@ export async function applyCoworkerEdit(params: {
   }
   if (
     params.changes.model !== undefined &&
-    isAdminOnlyChatModel(params.changes.model) &&
-    params.userRole !== "admin"
+    isRetiredChatModel(params.changes.model)
   ) {
-    details.push("Claude Sonnet 4.6 model requires admin role");
+    details.push("Anthropic models are no longer available; choose a GPT model instead");
   }
   if (nextRequiresUserInput && !nextUserInputPrompt) {
     details.push("userInputPrompt is required when requiresUserInput is true");

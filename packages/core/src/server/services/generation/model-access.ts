@@ -1,8 +1,5 @@
-import { db } from "@bap/db/client";
-import { user } from "@bap/db/schema";
-import { eq } from "drizzle-orm";
 import { env } from "../../../env";
-import { isAdminOnlyChatModel } from "../../../lib/chat-model-policy";
+import { isRetiredChatModel } from "../../../lib/chat-model-policy";
 import { parseModelReference } from "../../../lib/model-reference";
 import {
   getProviderAuthProviderID,
@@ -65,25 +62,17 @@ export async function checkModelAccessForUser(params: {
     return {
       allowed: false,
       reason: "opencode_model_unavailable",
-      userMessage: "Selected OpenCode model is no longer available. Choose another model and retry.",
+      userMessage:
+        "Selected OpenCode model is no longer available. Choose another model and retry.",
     };
   }
 
-  if (isAdminOnlyChatModel(params.model)) {
-    const dbUser =
-      "user" in db.query
-        ? await db.query.user.findFirst({
-            where: eq(user.id, params.userId),
-            columns: { role: true },
-          })
-        : null;
-    if (dbUser?.role !== "admin") {
-      return {
-        allowed: false,
-        reason: "admin_only_model",
-        userMessage: "Claude Sonnet 4.6 is only available to admins. Choose another model and retry.",
-      };
-    }
+  if (isRetiredChatModel(params.model)) {
+    return {
+      allowed: false,
+      reason: "retired_model",
+      userMessage: "Anthropic models are no longer available. Choose a GPT model and retry.",
+    };
   }
 
   const authProviderID = getProviderAuthProviderID(providerID);
@@ -156,10 +145,6 @@ export async function checkModelAccessForUser(params: {
         userMessage: `Selected ${providerLabel} model is not available for your current connection. Choose another model and retry.`,
       };
     }
-    return { allowed: true };
-  }
-
-  if (providerID === "anthropic") {
     return { allowed: true };
   }
 

@@ -1,5 +1,5 @@
-export const ADMIN_ONLY_CHAT_MODEL = "anthropic/claude-sonnet-4-6";
+import { normalizeModelReference } from "./model-reference";
 
-export function isAdminOnlyChatModel(model: string | null | undefined): boolean {
-  return model?.trim() === ADMIN_ONLY_CHAT_MODEL;
+export function isRetiredChatModel(model: string | null | undefined): boolean {
+  return normalizeModelReference(model).startsWith("anthropic/");
 }

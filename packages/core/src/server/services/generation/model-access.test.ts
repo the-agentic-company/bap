@@ -153,4 +153,18 @@ describe("checkModelAccessForUser", () => {
       }),
     ).resolves.toEqual({ allowed: true });
   });
+
+  it("rejects retired Anthropic models before checking provider auth", async () => {
+    await expect(
+      checkModelAccessForUser({
+        userId: "user-1",
+        model: "anthropic/claude-sonnet-4-6",
+      }),
+    ).resolves.toEqual({
+      allowed: false,
+      reason: "retired_model",
+      userMessage: "Anthropic models are no longer available. Choose a GPT model and retry.",
+    });
+    expect(hasConnectedProviderAuthForUserMock).not.toHaveBeenCalled();
+  });
 });

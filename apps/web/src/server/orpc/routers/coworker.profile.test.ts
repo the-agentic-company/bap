@@ -253,7 +253,7 @@ describe("coworkerRouter", () => {
     );
   });
 
-  it("rejects admin-only Claude model on create for non-admin users", async () => {
+  it("rejects retired Anthropic models on create", async () => {
     const context = createContext();
 
     await expect(
@@ -268,8 +268,8 @@ describe("coworkerRouter", () => {
         context,
       }),
     ).rejects.toMatchObject({
-      code: "FORBIDDEN",
-      message: "Claude Sonnet 4.6 is only available to admins.",
+      code: "BAD_REQUEST",
+      message: "Anthropic models are no longer available. Choose a GPT model instead.",
     });
   });
 
@@ -785,7 +785,7 @@ describe("coworkerRouter", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
-  it("rejects admin-only Claude model on update for non-admin users", async () => {
+  it("rejects retired Anthropic models on update", async () => {
     const context = createContext();
     context.db.query.coworker.findFirst.mockResolvedValue({
       id: "wf-1",
@@ -811,8 +811,8 @@ describe("coworkerRouter", () => {
         context,
       }),
     ).rejects.toMatchObject({
-      code: "FORBIDDEN",
-      message: "Claude Sonnet 4.6 is only available to admins.",
+      code: "BAD_REQUEST",
+      message: "Anthropic models are no longer available. Choose a GPT model instead.",
     });
   });
 
