@@ -83,10 +83,6 @@ Set these secrets on each GitHub environment named `staging` and `prod` before
 enabling the workflow:
 
 - `RENDER_API_KEY`
-- `RENDER_BLUEPRINT_SYNC_HOOK_URL` in the `prod` GitHub environment. This private
-  hook synchronizes the shared staging-and-production Blueprint when
-  `render.yaml` changes; the release waits until Render reports that the
-  Blueprint used the resolved release commit.
 - `DAYTONA_API_KEY`, or both `DAYTONA_JWT_TOKEN` and `DAYTONA_ORGANIZATION_ID`
 - `DAYTONA_API_URL` if the default Daytona API URL is not correct
 - `DATABASE_URL_STAGING`
@@ -102,6 +98,11 @@ workflow expects these names to exist:
 Stateful infrastructure such as `bap-zero-cache-staging` and
 `bap-zero-cache-prod` is managed by the Render blueprint rather than the
 per-commit deploy workflow because it uses a pinned prebuilt image.
+When `render.yaml` changes on `main`, Release Main waits for Render's automatic
+Blueprint sync to finish on the exact release commit before starting explicit
+service deploys. A PR-branch release skips that wait because the shared
+Blueprint tracks `main`, then deploys the PR commit explicitly for staging
+verification.
 
 Staging is intentionally on-demand. The `staging-resume` job starts every
 staging Render resource listed in `scripts/release/render-staging-lifecycle.ts`

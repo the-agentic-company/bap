@@ -14,7 +14,6 @@ type BlueprintSyncOptions = {
   apiKey: string;
   blueprintId: string;
   expectedCommit: string;
-  hookUrl: string;
   pollMs?: number;
   timeoutMs?: number;
 };
@@ -28,8 +27,7 @@ type BlueprintSyncDependencies = {
 const renderApiBaseUrl = "https://api.render.com/v1";
 const defaultTimeoutMs = 10 * 60 * 1000;
 const defaultPollMs = 5_000;
-const syncStartToleranceMs = 30_000;
-const failedStates = new Set(["canceled", "failure", "failed"]);
+const failedStates = new Set(["canceled", "error", "failure", "failed"]);
 
 function fail(message: string): never {
   throw new Error(`[render-blueprint-sync] ${message}`);
@@ -69,27 +67,6 @@ function commitsMatch(actual: string | undefined, expected: string): boolean {
   ].includes(true);
 }
 
-export function validateBlueprintSyncHookUrl(hookUrl: string, blueprintId: string): URL {
-  let url: URL;
-  try {
-    url = new URL(hookUrl);
-  } catch {
-    return fail("RENDER_BLUEPRINT_SYNC_HOOK_URL is not a valid URL.");
-  }
-
-  const matchesBlueprint = [
-    url.protocol === "https:",
-    url.hostname === "api.render.com",
-    url.pathname === `/sync/${blueprintId}`,
-    Boolean(url.searchParams.get("key")),
-  ].every(Boolean);
-  if (!matchesBlueprint) {
-    return fail("RENDER_BLUEPRINT_SYNC_HOOK_URL does not match the configured Blueprint.");
-  }
-
-  return url;
-}
-
 function unwrapSyncs(value: unknown): BlueprintSync[] {
   if (!Array.isArray(value)) {
     return fail("Render returned an invalid Blueprint sync list.");
@@ -98,11 +75,6 @@ function unwrapSyncs(value: unknown): BlueprintSync[] {
   return value
     .map((item) => (item as BlueprintSyncListItem).sync)
     .filter((sync): sync is BlueprintSync => Boolean(sync));
-}
-
-function startedAfter(sync: BlueprintSync, earliestStartMs: number): boolean {
-  const startedAt = Date.parse(sync.startedAt ?? "");
-  return Number.isFinite(startedAt) && startedAt >= earliestStartMs;
 }
 
 async function requireSuccessfulResponse(
@@ -116,20 +88,9 @@ async function requireSuccessfulResponse(
   return response;
 }
 
-async function triggerBlueprintSync(
+async function expectedSync(
+  options: Pick<BlueprintSyncOptions, "apiKey" | "blueprintId" | "expectedCommit">,
   fetchImplementation: typeof fetch,
-  hookUrl: URL,
-): Promise<void> {
-  await requireSuccessfulResponse(
-    fetchImplementation(hookUrl, { method: "POST", redirect: "follow" }),
-    (status) => `Blueprint Sync Hook returned HTTP ${status}.`,
-  );
-}
-
-async function latestRecentSync(
-  options: Pick<BlueprintSyncOptions, "apiKey" | "blueprintId">,
-  fetchImplementation: typeof fetch,
-  earliestStartMs: number,
 ): Promise<BlueprintSync | undefined> {
   const listUrl = `${renderApiBaseUrl}/blueprints/${encodeURIComponent(options.blueprintId)}/syncs?limit=20`;
   const response = await requireSuccessfulResponse(
@@ -142,19 +103,15 @@ async function latestRecentSync(
     (status) => `Unable to inspect Blueprint syncs: HTTP ${status}.`,
   );
 
-  return unwrapSyncs(await response.json())
-    .filter((sync) => startedAfter(sync, earliestStartMs))
-    .sort((left, right) => Date.parse(right.startedAt ?? "") - Date.parse(left.startedAt ?? ""))[0];
+  return unwrapSyncs(await response.json()).find((sync) =>
+    commitsMatch(blueprintSyncCommit(sync), options.expectedCommit),
+  );
 }
 
-function completedExpectedSync(
-  sync: BlueprintSync | undefined,
-  expectedCommit: string,
-): BlueprintSync | undefined {
+function completedExpectedSync(sync: BlueprintSync | undefined): BlueprintSync | undefined {
   if (!sync) {
     return undefined;
   }
-  requireExpectedCommit(sync, expectedCommit);
   requireNonFailedState(sync);
   if (sync.state !== "success") {
     return undefined;
@@ -176,15 +133,6 @@ function displayValue(value: string | undefined): string {
   return value;
 }
 
-function requireExpectedCommit(sync: BlueprintSync, expectedCommit: string): void {
-  const commit = blueprintSyncCommit(sync);
-  if (!commitsMatch(commit, expectedCommit)) {
-    return fail(
-      `Latest Sync Hook commit is ${displayValue(commit)}, expected ${expectedCommit}.`,
-    );
-  }
-}
-
 function requireNonFailedState(sync: BlueprintSync): void {
   const state = displayValue(sync.state);
   if (failedStates.has(state)) {
@@ -192,7 +140,7 @@ function requireNonFailedState(sync: BlueprintSync): void {
   }
 }
 
-export async function triggerAndWaitForBlueprintSync(
+export async function waitForBlueprintSync(
   options: BlueprintSyncOptions,
   dependencies: BlueprintSyncDependencies = {
     fetch,
@@ -200,20 +148,12 @@ export async function triggerAndWaitForBlueprintSync(
     sleep: (delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)),
   },
 ): Promise<BlueprintSync> {
-  const hookUrl = validateBlueprintSyncHookUrl(options.hookUrl, options.blueprintId);
-  const triggeredAt = dependencies.now();
+  const startedAt = dependencies.now();
   const { pollMs = defaultPollMs, timeoutMs = defaultTimeoutMs } = options;
-
-  await triggerBlueprintSync(dependencies.fetch, hookUrl);
-
-  const deadline = triggeredAt + timeoutMs;
-  const earliestStartMs = triggeredAt - syncStartToleranceMs;
+  const deadline = startedAt + timeoutMs;
 
   while (dependencies.now() <= deadline) {
-    const sync = completedExpectedSync(
-      await latestRecentSync(options, dependencies.fetch, earliestStartMs),
-      options.expectedCommit,
-    );
+    const sync = completedExpectedSync(await expectedSync(options, dependencies.fetch));
     if (sync) {
       return sync;
     }
@@ -226,25 +166,20 @@ export async function triggerAndWaitForBlueprintSync(
 
 async function main(): Promise<void> {
   const apiKey = process.env.RENDER_API_KEY?.trim();
-  const hookUrl = process.env.RENDER_BLUEPRINT_SYNC_HOOK_URL?.trim();
   if (!apiKey) {
     return fail("Missing RENDER_API_KEY.");
-  }
-  if (!hookUrl) {
-    return fail("Missing RENDER_BLUEPRINT_SYNC_HOOK_URL.");
   }
 
   const blueprintId = requireArg("--blueprint-id");
   const expectedCommit = requireArg("--commit");
   console.log(
-    `[render-blueprint-sync] Triggering Blueprint ${blueprintId} for commit ${expectedCommit.slice(0, 12)}.`,
+    `[render-blueprint-sync] Waiting for Blueprint ${blueprintId} to automatically sync commit ${expectedCommit.slice(0, 12)}.`,
   );
 
-  const sync = await triggerAndWaitForBlueprintSync({
+  const sync = await waitForBlueprintSync({
     apiKey,
     blueprintId,
     expectedCommit,
-    hookUrl,
   });
   console.log(
     `[render-blueprint-sync] Blueprint sync ${sync.id ?? "unknown"} completed with the expected commit.`,

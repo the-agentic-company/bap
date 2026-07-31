@@ -26,6 +26,7 @@ jobs:
       commit_sha: ${{ steps.resolve.outputs.commit_sha }}
       source_ref: ${{ steps.resolve.outputs.source_ref }}
       changed_since: ${{ steps.resolve.outputs.changed_since }}
+      on_main: ${{ steps.resolve.outputs.on_main }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -56,14 +57,22 @@ jobs:
             source_ref="${GITHUB_REF_NAME:-${commit_sha}}"
           fi
 
+          on_main=false
+          if git merge-base --is-ancestor "${commit_sha}" origin/main; then
+            on_main=true
+          fi
+
           if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            if git merge-base --is-ancestor "${commit_sha}" origin/main; then
+            if [ "${on_main}" = true ]; then
               changed_since="$(git rev-parse "${commit_sha}^")"
             else
               changed_since="$(git merge-base "${commit_sha}" origin/main)"
             fi
           else
-            git merge-base --is-ancestor "${commit_sha}" origin/main
+            if [ "${on_main}" != true ]; then
+              echo "Push release commit is not on origin/main: ${commit_sha}" >&2
+              exit 1
+            fi
             changed_since="${BEFORE}"
             if [ -z "${changed_since}" ] || [[ "${changed_since}" =~ ^0+$ ]]; then
               changed_since="$(git rev-parse "${commit_sha}^")"
@@ -74,6 +83,7 @@ jobs:
             echo "commit_sha=${commit_sha}"
             echo "source_ref=${source_ref}"
             echo "changed_since=${changed_since}"
+            echo "on_main=${on_main}"
           } >> "$GITHUB_OUTPUT"
           printf 'Resolved release ref "%s" to %s (%s)\n' \
             "${source_ref}" "${commit_sha}" "$(git show -s --format=%s "${commit_sha}")"
@@ -231,7 +241,6 @@ jobs:
     environment: prod
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_BLUEPRINT_SYNC_HOOK_URL: ${{ secrets.RENDER_BLUEPRINT_SYNC_HOOK_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -265,22 +274,24 @@ jobs:
           echo "changed=${changed}" >> "$GITHUB_OUTPUT"
 
       - name: Validate Blueprint sync configuration
-        if: ${{ steps.changes.outputs.changed == 'true' }}
+        if: ${{ steps.changes.outputs.changed == 'true' && needs.resolve.outputs.on_main == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
 
-          missing=()
-          [ -n "${RENDER_API_KEY}" ] || missing+=("RENDER_API_KEY")
-          [ -n "${RENDER_BLUEPRINT_SYNC_HOOK_URL}" ] || missing+=("RENDER_BLUEPRINT_SYNC_HOOK_URL")
-          if [ "${#missing[@]}" -gt 0 ]; then
-            printf 'Missing Render Blueprint secret(s) for GitHub environment "prod": %s\n' \
-              "${missing[*]}" >&2
+          if [ -z "${RENDER_API_KEY}" ]; then
+            echo 'Missing RENDER_API_KEY for GitHub environment "prod".' >&2
             exit 1
           fi
 
-      - name: Sync Render Blueprint
-        if: ${{ steps.changes.outputs.changed == 'true' }}
+      - name: Explain PR Blueprint handling
+        if: ${{ steps.changes.outputs.changed == 'true' && needs.resolve.outputs.on_main != 'true' }}
+        run: >
+          echo "Skipping Blueprint sync wait because the resolved commit is not on main;
+          the PR release deploys that commit explicitly."
+
+      - name: Wait for automatic Render Blueprint sync
+        if: ${{ steps.changes.outputs.changed == 'true' && needs.resolve.outputs.on_main == 'true' }}
         env:
           COMMIT_SHA: ${{ needs.resolve.outputs.commit_sha }}
         run: >

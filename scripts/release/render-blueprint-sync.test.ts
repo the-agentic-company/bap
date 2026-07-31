@@ -1,12 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  triggerAndWaitForBlueprintSync,
-  validateBlueprintSyncHookUrl,
-} from "./render-blueprint-sync";
+import { waitForBlueprintSync } from "./render-blueprint-sync";
 
 const blueprintId = "exs-d7llg1aqqhas73ft4uo0";
 const expectedCommit = "1234567890abcdef1234567890abcdef12345678";
-const hookUrl = `https://api.render.com/sync/${blueprintId}?key=test-secret`;
 
 function response(body: unknown, status = 200): Response {
   return new Response(body === null ? null : JSON.stringify(body), {
@@ -29,95 +25,85 @@ function syncList(commit: string, state: string) {
   ];
 }
 
-function failureDependencies(fetchMock: typeof fetch) {
+function dependencies(fetchMock: typeof fetch, now: () => number = () => 0) {
   return {
     fetch: fetchMock,
-    now: () => Date.parse("2026-07-31T14:29:00.000Z"),
+    now,
     sleep: vi.fn().mockResolvedValue(undefined),
   };
 }
 
 describe("Render Blueprint sync", () => {
-  it("accepts only the private hook for the configured Blueprint", () => {
-    expect(validateBlueprintSyncHookUrl(hookUrl, blueprintId).pathname).toBe(
-      `/sync/${blueprintId}`,
-    );
-    expect(() =>
-      validateBlueprintSyncHookUrl(
-        `https://example.com/sync/${blueprintId}?key=test-secret`,
-        blueprintId,
-      ),
-    ).toThrow("does not match");
-  });
-
-  it("triggers the hook and proves the expected commit synchronized", async () => {
+  it("waits until the automatic sync for the expected commit succeeds", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(response(null, 202))
+      .mockResolvedValueOnce(
+        response(syncList("abcdefabcdefabcdefabcdefabcdefabcdefabcd", "success")),
+      )
       .mockResolvedValueOnce(response(syncList(expectedCommit, "running")))
       .mockResolvedValueOnce(response(syncList(expectedCommit, "success")));
 
-    const result = await triggerAndWaitForBlueprintSync(
+    const result = await waitForBlueprintSync(
       {
         apiKey: "render-api-key",
         blueprintId,
         expectedCommit,
-        hookUrl,
         pollMs: 1,
         timeoutMs: 10_000,
       },
-      {
-        fetch: fetchMock,
-        now: vi
-          .fn()
-          .mockReturnValueOnce(Date.parse("2026-07-31T14:29:00.000Z"))
-          .mockReturnValue(Date.parse("2026-07-31T14:29:02.000Z")),
-        sleep: vi.fn().mockResolvedValue(undefined),
-      },
+      dependencies(fetchMock),
     );
 
     expect(result.state).toBe("success");
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ method: "POST" });
+    expect(fetchMock.mock.calls[0]?.[0]).toContain(`/blueprints/${blueprintId}/syncs`);
   });
 
-  it("fails when the hook synchronizes a different commit", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(response(null, 202))
-      .mockResolvedValueOnce(
-        response(syncList("abcdefabcdefabcdefabcdefabcdefabcdefabcd", "success")),
-      );
+  it("times out when Render never syncs the expected commit", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      response(syncList("abcdefabcdefabcdefabcdefabcdefabcdefabcd", "success")),
+    );
+    const now = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(200);
 
     await expect(
-      triggerAndWaitForBlueprintSync(
+      waitForBlueprintSync(
         {
           apiKey: "render-api-key",
           blueprintId,
           expectedCommit,
-          hookUrl,
+          pollMs: 1,
+          timeoutMs: 100,
         },
-        failureDependencies(fetchMock),
+        dependencies(fetchMock, now),
       ),
-    ).rejects.toThrow("Latest Sync Hook commit");
+    ).rejects.toThrow("Timed out waiting");
   });
 
   it("fails when the expected sync ends unsuccessfully", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(response(null, 202))
-      .mockResolvedValueOnce(response(syncList(expectedCommit, "failure")));
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      response(syncList(expectedCommit, "error")),
+    );
 
     await expect(
-      triggerAndWaitForBlueprintSync(
+      waitForBlueprintSync(
         {
           apiKey: "render-api-key",
           blueprintId,
           expectedCommit,
-          hookUrl,
         },
-        failureDependencies(fetchMock),
+        dependencies(fetchMock),
       ),
-    ).rejects.toThrow("ended in state failure");
+    ).rejects.toThrow("ended in state error");
+  });
+
+  it("fails when the Render sync list cannot be inspected", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(response(null, 503));
+
+    await expect(
+      waitForBlueprintSync(
+        { apiKey: "render-api-key", blueprintId, expectedCommit },
+        dependencies(fetchMock),
+      ),
+    ).rejects.toThrow("HTTP 503");
   });
 });
