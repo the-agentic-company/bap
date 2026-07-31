@@ -27,7 +27,7 @@ type Mode =
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appRoot, "../..");
-const cliLiveTimeoutMs = 25 * 60 * 1000;
+const cliLiveTimeoutMs = 35 * 60 * 1000;
 const defaultCliLiveTestFiles = [
   "tests/e2e-cli/auth.cli.live.e2e.test.ts",
   "tests/e2e-cli/chat.cli.live.test.ts",
@@ -438,6 +438,10 @@ export function buildCliLiveRetryArgs(env: NodeJS.ProcessEnv): string[] {
   return ["--retry", String(retryCount)];
 }
 
+export function buildCliLiveWorkerArgs(env: NodeJS.ProcessEnv): string[] {
+  return isCliLiveFocused(env) ? [] : ["--maxWorkers", "2"];
+}
+
 function isCliLiveFocused(env: NodeJS.ProcessEnv): boolean {
   return Boolean(env.E2E_CLI_LIVE_TEST_FILES?.trim() || getCliLiveTestName(env));
 }
@@ -473,6 +477,7 @@ async function runCliLive(env: NodeJS.ProcessEnv): Promise<void> {
     "run",
     ...testFiles,
     ...(testName ? ["-t", testName] : []),
+    ...buildCliLiveWorkerArgs(env),
     ...buildCliLiveRetryArgs(env),
   ]);
   if (isCliLiveFocused(env)) {
