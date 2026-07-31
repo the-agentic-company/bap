@@ -347,13 +347,92 @@ const managedGatewaySupervisorDependencies: ManagedGatewaySupervisorDependencies
   now: Date.now,
 };
 
+type ManagedGatewaySupervisorInput = {
+  child: ManagedGatewayChild;
+  initialHandle: SpawnedGatewayChild;
+  spawnParams: Parameters<typeof spawnChildProcess>[0];
+  signal: AbortSignal;
+};
+
+async function spawnReadyReplacement(
+  input: ManagedGatewaySupervisorInput,
+  dependencies: ManagedGatewaySupervisorDependencies,
+): Promise<SpawnedGatewayChild | null> {
+  const replacement = await dependencies.spawnChild({
+    ...input.spawnParams,
+    port: input.child.port,
+  });
+  try {
+    if (input.signal.aborted) {
+      dependencies.terminateChild(replacement.process);
+      return null;
+    }
+
+    const listeningPort = await replacement.readyPort;
+    if (input.signal.aborted) {
+      dependencies.terminateChild(replacement.process);
+      return null;
+    }
+    if (listeningPort !== input.child.port) {
+      throw new Error(
+        `MCP child ${input.child.slug} restarted on unexpected port ${listeningPort}; expected ${input.child.port}`,
+      );
+    }
+    return replacement;
+  } catch (error) {
+    dependencies.terminateChild(replacement.process);
+    throw error;
+  }
+}
+
+async function restartManagedGatewayChild(
+  input: ManagedGatewaySupervisorInput,
+  dependencies: ManagedGatewaySupervisorDependencies,
+  restartAttempt: number,
+): Promise<{
+  processHandle: SpawnedGatewayChild;
+  restartAttempt: number;
+  readyAt: number;
+} | null> {
+  let nextAttempt = restartAttempt;
+  while (!input.signal.aborted) {
+    const delayMs = getMcpChildRestartDelayMs(nextAttempt);
+    nextAttempt += 1;
+    // eslint-disable-next-line no-await-in-loop -- restart backoff must complete before respawn
+    await dependencies.waitForDelay(delayMs, input.signal);
+    if (input.signal.aborted) {
+      return null;
+    }
+
+    try {
+      // eslint-disable-next-line no-await-in-loop -- only one replacement may own the fixed port
+      const replacement = await spawnReadyReplacement(input, dependencies);
+      if (!replacement) {
+        return null;
+      }
+      input.child.process = replacement.process;
+      console.log(`[mcp:${input.child.slug}] supervisor restored target ${input.child.target}`);
+      return {
+        processHandle: replacement,
+        restartAttempt: nextAttempt,
+        readyAt: dependencies.now(),
+      };
+    } catch (error) {
+      if (input.signal.aborted) {
+        return null;
+      }
+      console.error(
+        `[mcp:${input.child.slug}] restart failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+  return null;
+}
+
 export async function superviseManagedGatewayChild(
-  input: {
-    child: ManagedGatewayChild;
-    initialHandle: SpawnedGatewayChild;
-    spawnParams: Parameters<typeof spawnChildProcess>[0];
-    signal: AbortSignal;
-  },
+  input: ManagedGatewaySupervisorInput,
   dependencies: ManagedGatewaySupervisorDependencies = managedGatewaySupervisorDependencies,
 ): Promise<void> {
   let processHandle = input.initialHandle;
@@ -378,58 +457,14 @@ export async function superviseManagedGatewayChild(
     );
     dependencies.terminateChild(processHandle.process);
 
-    let restarted = false;
-    while (!restarted && !input.signal.aborted) {
-      const delayMs = getMcpChildRestartDelayMs(restartAttempt);
-      restartAttempt += 1;
-      // eslint-disable-next-line no-await-in-loop -- restart backoff must complete before respawn
-      await dependencies.waitForDelay(delayMs, input.signal);
-      if (input.signal.aborted) {
-        return;
-      }
-
-      let replacement: SpawnedGatewayChild | null = null;
-      try {
-        // eslint-disable-next-line no-await-in-loop -- only one replacement may own the fixed port
-        replacement = await dependencies.spawnChild({
-          ...input.spawnParams,
-          port: input.child.port,
-        });
-        if (input.signal.aborted) {
-          dependencies.terminateChild(replacement.process);
-          return;
-        }
-
-        processHandle = replacement;
-        input.child.process = replacement.process;
-        // eslint-disable-next-line no-await-in-loop -- readiness must precede resuming supervision
-        const listeningPort = await replacement.readyPort;
-        if (input.signal.aborted) {
-          dependencies.terminateChild(replacement.process);
-          return;
-        }
-        if (listeningPort !== input.child.port) {
-          throw new Error(
-            `MCP child ${input.child.slug} restarted on unexpected port ${listeningPort}; expected ${input.child.port}`,
-          );
-        }
-        restarted = true;
-        readyAt = dependencies.now();
-        console.log(`[mcp:${input.child.slug}] supervisor restored target ${input.child.target}`);
-      } catch (error) {
-        if (replacement) {
-          dependencies.terminateChild(replacement.process);
-        }
-        if (input.signal.aborted) {
-          return;
-        }
-        console.error(
-          `[mcp:${input.child.slug}] restart failed: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
+    // eslint-disable-next-line no-await-in-loop -- recovery must finish before supervision resumes
+    const restarted = await restartManagedGatewayChild(input, dependencies, restartAttempt);
+    if (!restarted) {
+      return;
     }
+    processHandle = restarted.processHandle;
+    restartAttempt = restarted.restartAttempt;
+    readyAt = restarted.readyAt;
   }
 }
 

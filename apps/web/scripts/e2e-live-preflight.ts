@@ -2,6 +2,7 @@ import { signManagedMcpToken } from "@bap/core/server/managed-mcp-auth";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { z } from "zod";
 
 type PreflightService = "web server" | "worker" | "local tunnel" | "Bap MCP";
 type PreflightStatus = "ok" | "missing" | "unhealthy";
@@ -180,26 +181,18 @@ function parseMcpJsonRpcText(text: string): unknown | null {
   return null;
 }
 
+const mcpInitializeResponseSchema = z.object({
+  jsonrpc: z.literal("2.0"),
+  id: z.literal("cli-live-preflight"),
+  result: z.object({
+    protocolVersion: z.string(),
+    serverInfo: z.object({}).passthrough(),
+  }),
+  error: z.undefined().optional(),
+});
+
 function acceptsMcpInitializeResponse(body: unknown): boolean {
-  if (typeof body !== "object" || body === null) {
-    return false;
-  }
-  const response = body as { jsonrpc?: unknown; id?: unknown; result?: unknown; error?: unknown };
-  if (
-    response.jsonrpc !== "2.0" ||
-    response.id !== "cli-live-preflight" ||
-    response.error !== undefined ||
-    typeof response.result !== "object" ||
-    response.result === null
-  ) {
-    return false;
-  }
-  const result = response.result as { protocolVersion?: unknown; serverInfo?: unknown };
-  return (
-    typeof result.protocolVersion === "string" &&
-    typeof result.serverInfo === "object" &&
-    result.serverInfo !== null
-  );
+  return mcpInitializeResponseSchema.safeParse(body).success;
 }
 
 function summarizeRemoteWorkerReadiness(body: unknown): {
@@ -440,91 +433,127 @@ async function checkRemoteWorker(
   return poll();
 }
 
-async function checkBapMcp(env: NodeJS.ProcessEnv): Promise<CliLivePreflightCheck> {
+function resolveBapMcpRequest(
+  env: NodeJS.ProcessEnv,
+): { ok: true; url: string; secret: string } | { ok: false; check: CliLivePreflightCheck } {
   const secret = env.APP_SERVER_SECRET?.trim();
   if (!secret) {
-    return missing(
-      "Bap MCP",
-      "APP_SERVER_SECRET is not configured, so platform MCP tokens cannot be minted",
-      bapMcpRecovery,
-    );
+    return {
+      ok: false,
+      check: missing(
+        "Bap MCP",
+        "APP_SERVER_SECRET is not configured, so platform MCP tokens cannot be minted",
+        bapMcpRecovery,
+      ),
+    };
   }
 
   let url: string | null = null;
   try {
     url = resolveCliLiveBapMcpUrl(env);
   } catch (error) {
+    return {
+      ok: false,
+      check: unhealthy(
+        "Bap MCP",
+        `APP_MCP_BASE_URL is invalid: ${formatError(error)}`,
+        bapMcpRecovery,
+      ),
+    };
+  }
+
+  if (!url) {
+    return {
+      ok: false,
+      check: missing("Bap MCP", "APP_MCP_BASE_URL is not configured", bapMcpRecovery),
+    };
+  }
+
+  return { ok: true, url, secret };
+}
+
+function createBapMcpDiagnosticToken(secret: string): string {
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return signManagedMcpToken(
+    {
+      userId: "cli-live-preflight",
+      workspaceId: "cli-live-preflight",
+      internalKey: "bap",
+      scopes: ["bap"],
+      surface: "chat",
+      spawnDepth: 0,
+      exp: nowSeconds + BAP_MCP_DIAGNOSTIC_TOKEN_TTL_SECONDS,
+    },
+    secret,
+  );
+}
+
+async function requestBapMcpInitialize(args: {
+  url: string;
+  secret: string;
+  signal: AbortSignal;
+}): Promise<CliLivePreflightCheck> {
+  const token = createBapMcpDiagnosticToken(args.secret);
+  const response = await fetch(args.url, {
+    method: "POST",
+    headers: {
+      accept: "application/json, text/event-stream",
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: "cli-live-preflight",
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "bap-cli-live-preflight", version: "1" },
+      },
+    }),
+    signal: args.signal,
+  });
+  const text = await response.text();
+  if (!response.ok) {
     return unhealthy(
       "Bap MCP",
-      `APP_MCP_BASE_URL is invalid: ${formatError(error)}`,
+      `authenticated MCP initialize at ${args.url} returned HTTP ${response.status}`,
+      bapMcpRecovery,
+    );
+  }
+  if (/Public URL not available/i.test(text)) {
+    return unhealthy(
+      "Bap MCP",
+      `authenticated MCP initialize at ${args.url} returned a LocalCan unavailable page`,
+      bapMcpRecovery,
+    );
+  }
+  if (!acceptsMcpInitializeResponse(parseMcpJsonRpcText(text))) {
+    return unhealthy(
+      "Bap MCP",
+      `authenticated MCP initialize at ${args.url} did not return a successful JSON-RPC initialize result`,
       bapMcpRecovery,
     );
   }
 
-  if (!url) {
-    return missing("Bap MCP", "APP_MCP_BASE_URL is not configured", bapMcpRecovery);
+  return ok("Bap MCP", `authenticated MCP initialize succeeded at ${args.url}`, bapMcpRecovery);
+}
+
+async function checkBapMcp(env: NodeJS.ProcessEnv): Promise<CliLivePreflightCheck> {
+  const request = resolveBapMcpRequest(env);
+  if (!request.ok) {
+    return request.check;
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_MCP_HEALTH_TIMEOUT_MS);
 
   try {
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    const token = signManagedMcpToken(
-      {
-        userId: "cli-live-preflight",
-        workspaceId: "cli-live-preflight",
-        internalKey: "bap",
-        scopes: ["bap"],
-        surface: "chat",
-        spawnDepth: 0,
-        exp: nowSeconds + BAP_MCP_DIAGNOSTIC_TOKEN_TTL_SECONDS,
-      },
-      secret,
-    );
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        accept: "application/json, text/event-stream",
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: "cli-live-preflight",
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-06-18",
-          capabilities: {},
-          clientInfo: { name: "bap-cli-live-preflight", version: "1" },
-        },
-      }),
+    return await requestBapMcpInitialize({
+      url: request.url,
+      secret: request.secret,
       signal: controller.signal,
     });
-    const text = await response.text();
-    if (!response.ok) {
-      return unhealthy(
-        "Bap MCP",
-        `authenticated MCP initialize at ${url} returned HTTP ${response.status}`,
-        bapMcpRecovery,
-      );
-    }
-    if (/Public URL not available/i.test(text)) {
-      return unhealthy(
-        "Bap MCP",
-        `authenticated MCP initialize at ${url} returned a LocalCan unavailable page`,
-        bapMcpRecovery,
-      );
-    }
-    if (!acceptsMcpInitializeResponse(parseMcpJsonRpcText(text))) {
-      return unhealthy(
-        "Bap MCP",
-        `authenticated MCP initialize at ${url} did not return a successful JSON-RPC initialize result`,
-        bapMcpRecovery,
-      );
-    }
-
-    return ok("Bap MCP", `authenticated MCP initialize succeeded at ${url}`, bapMcpRecovery);
   } catch (error) {
     const reason =
       error instanceof Error && error.name === "AbortError"
@@ -532,7 +561,7 @@ async function checkBapMcp(env: NodeJS.ProcessEnv): Promise<CliLivePreflightChec
         : formatError(error);
     return missing(
       "Bap MCP",
-      `authenticated MCP initialize at ${url} failed: ${reason}`,
+      `authenticated MCP initialize at ${request.url} failed: ${reason}`,
       bapMcpRecovery,
     );
   } finally {

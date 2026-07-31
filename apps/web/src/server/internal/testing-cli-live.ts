@@ -8,7 +8,6 @@ import {
   getValidConnectedAccountTokensForUser,
   getValidTokensForUser,
 } from "@bap/core/server/integrations/token-refresh";
-import { getQueue, queueName } from "@bap/core/server/queues";
 import {
   getWorkspaceIntegrationPolicy,
   replaceWorkspaceIntegrationPolicy,
@@ -34,6 +33,10 @@ import { z } from "zod";
 import { env } from "@/env";
 import { isAuthorizedByServerSecret } from "@/server/internal/server-secret";
 import { getCliLiveFailureDiagnostics } from "@/server/internal/testing-cli-live-diagnostics";
+import {
+  getWorkerQueueReadiness,
+  uniqueNonEmpty,
+} from "@/server/internal/testing-cli-live-support";
 
 type SandboxProvider = "e2b" | "daytona" | "docker";
 
@@ -164,10 +167,6 @@ const requestSchema = z.discriminatedUnion("action", [
   }),
 ]);
 
-function uniqueNonEmpty(values: Iterable<string> | undefined): string[] {
-  return Array.from(new Set(Array.from(values ?? []).filter((value) => value.trim().length > 0)));
-}
-
 function toNullableDate(value: unknown): Date | null {
   return value instanceof Date ? value : typeof value === "string" ? new Date(value) : null;
 }
@@ -230,26 +229,6 @@ async function restoreSlackPolicyLiveTestBackup(
     actorUserId: backup.actorUserId,
   });
   return { restored: true };
-}
-
-async function getWorkerQueueReadiness(): Promise<{
-  ready: boolean;
-  queueName: string;
-  workerCount: number;
-  counts: Record<string, number>;
-}> {
-  const queue = getQueue();
-  const [workerCount, counts] = await Promise.all([
-    queue.getWorkersCount(),
-    queue.getJobCounts("waiting", "active", "delayed", "failed", "paused"),
-  ]);
-
-  return {
-    ready: workerCount > 0,
-    queueName,
-    workerCount,
-    counts,
-  };
 }
 
 async function applyLinearMcpApiKeyForLiveTest(email: string): Promise<unknown> {

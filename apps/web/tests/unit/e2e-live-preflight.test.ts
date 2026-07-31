@@ -52,6 +52,36 @@ function mockRemotePreflightFetch(
   });
 }
 
+async function expectBapMcpPreflightFailure(args: {
+  response: () => Response;
+  detail: string;
+}): Promise<void> {
+  const fetchMock = mockRemotePreflightFetch(
+    () => ({
+      ready: true,
+      queueName: "bap-staging",
+      workerCount: 1,
+      counts: {},
+    }),
+    args.response,
+  );
+
+  try {
+    const result = await runCliLivePreflight({
+      env: stagingPreflightEnv,
+      repoRoot: "/does/not/exist",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.checks.find((check) => check.service === "Bap MCP")).toMatchObject({
+      status: "unhealthy",
+      detail: expect.stringContaining(args.detail),
+    });
+  } finally {
+    fetchMock.mockRestore();
+  }
+}
+
 describe("e2e-live cli preflight", () => {
   test("resolves the web health URL from APP_SERVER_URL", () => {
     expect(resolveCliLiveWebHealthUrl({ APP_SERVER_URL: "http://127.0.0.1:3707/base" })).toBe(
@@ -150,66 +180,26 @@ describe("e2e-live cli preflight", () => {
   });
 
   test("rejects a reachable Bap MCP server that cannot verify managed tokens", async () => {
-    const fetchMock = mockRemotePreflightFetch(
-      () => ({
-        ready: true,
-        queueName: "bap-staging",
-        workerCount: 1,
-        counts: {},
-      }),
-      () =>
+    await expectBapMcpPreflightFailure({
+      response: () =>
         Response.json(
           { error: "Cannot verify a managed MCP token without a secret." },
           { status: 401 },
         ),
-    );
-
-    try {
-      const result = await runCliLivePreflight({
-        env: stagingPreflightEnv,
-        repoRoot: "/does/not/exist",
-      });
-
-      expect(result.ok).toBe(false);
-      expect(result.checks.find((check) => check.service === "Bap MCP")).toMatchObject({
-        status: "unhealthy",
-        detail: expect.stringContaining("returned HTTP 401"),
-      });
-    } finally {
-      fetchMock.mockRestore();
-    }
+      detail: "returned HTTP 401",
+    });
   });
 
   test("rejects a 200 response without a successful MCP initialize result", async () => {
-    const fetchMock = mockRemotePreflightFetch(
-      () => ({
-        ready: true,
-        queueName: "bap-staging",
-        workerCount: 1,
-        counts: {},
-      }),
-      () =>
+    await expectBapMcpPreflightFailure({
+      response: () =>
         Response.json({
           jsonrpc: "2.0",
           id: "cli-live-preflight",
           error: { code: -32_000, message: "Unauthorized" },
         }),
-    );
-
-    try {
-      const result = await runCliLivePreflight({
-        env: stagingPreflightEnv,
-        repoRoot: "/does/not/exist",
-      });
-
-      expect(result.ok).toBe(false);
-      expect(result.checks.find((check) => check.service === "Bap MCP")).toMatchObject({
-        status: "unhealthy",
-        detail: expect.stringContaining("did not return a successful JSON-RPC initialize result"),
-      });
-    } finally {
-      fetchMock.mockRestore();
-    }
+      detail: "did not return a successful JSON-RPC initialize result",
+    });
   });
 
   test("resolves the Bap MCP URL from APP_MCP_BASE_URL", () => {

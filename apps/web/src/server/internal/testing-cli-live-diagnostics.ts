@@ -1,7 +1,10 @@
-import { getQueue, queueName } from "@bap/core/server/queues";
 import { db } from "@bap/db/client";
 import { conversation, conversationRuntime, generation, generationInterrupt } from "@bap/db/schema";
 import { desc, inArray, or } from "drizzle-orm";
+import {
+  getWorkerQueueReadiness,
+  uniqueNonEmpty,
+} from "@/server/internal/testing-cli-live-support";
 
 const interruptDiagnosticColumns = {
   id: true,
@@ -20,10 +23,6 @@ const interruptDiagnosticColumns = {
   appliedAt: true,
 } as const;
 
-function uniqueNonEmpty(values: Iterable<string> | undefined): string[] {
-  return Array.from(new Set(Array.from(values ?? []).filter((value) => value.trim().length > 0)));
-}
-
 function stringifyJsonPreview(value: unknown): string | null {
   if (value === null || value === undefined) {
     return null;
@@ -41,26 +40,6 @@ function truncatePreview(serialized: string, maxLength: number): string {
 function previewJson(value: unknown, maxLength = 4_000): string | null {
   const serialized = stringifyJsonPreview(value);
   return serialized ? truncatePreview(serialized, maxLength) : null;
-}
-
-async function getWorkerQueueReadiness(): Promise<{
-  ready: boolean;
-  queueName: string;
-  workerCount: number;
-  counts: Record<string, number>;
-}> {
-  const queue = getQueue();
-  const [workerCount, counts] = await Promise.all([
-    queue.getWorkersCount(),
-    queue.getJobCounts("waiting", "active", "delayed", "failed", "paused"),
-  ]);
-
-  return {
-    ready: workerCount > 0,
-    queueName,
-    workerCount,
-    counts,
-  };
 }
 
 function buildGenerationWhere(generationIds: string[], conversationIds: string[]) {

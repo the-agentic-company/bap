@@ -6,6 +6,7 @@ import {
   parseMcpChildListeningPort,
   shouldManageGatewayChildren,
   superviseManagedGatewayChild,
+  type ManagedGatewayChild,
   type ManagedGatewaySupervisorDependencies,
 } from "./supervisor";
 
@@ -21,6 +22,31 @@ const spawnParams = {
   env: {},
   rootDir: "/repo/apps/mcp",
 };
+
+function managedChild(process: ChildProcess): ManagedGatewayChild {
+  return {
+    slug: "bap",
+    port: 4101,
+    target: "http://127.0.0.1:4101",
+    process,
+  };
+}
+
+async function runSupervisorScenario(args: {
+  child: ManagedGatewayChild;
+  controller: AbortController;
+  dependencies: ManagedGatewaySupervisorDependencies;
+}): Promise<void> {
+  await superviseManagedGatewayChild(
+    {
+      child: args.child,
+      initialHandle: { process: args.child.process, readyPort: Promise.resolve(4101) },
+      spawnParams,
+      signal: args.controller.signal,
+    },
+    args.dependencies,
+  );
+}
 
 describe("gateway supervisor config", () => {
   it("enables managed children only when requested", () => {
@@ -81,28 +107,19 @@ describe("gateway supervisor config", () => {
       }));
       const waitForDelay = vi.fn(async () => undefined);
       const terminateChild = vi.fn();
-      const child = {
-        slug: "bap" as const,
-        port: 4101,
-        target: "http://127.0.0.1:4101",
-        process: initialProcess,
-      };
+      const child = managedChild(initialProcess);
 
-      await superviseManagedGatewayChild(
-        {
-          child,
-          initialHandle: { process: initialProcess, readyPort: Promise.resolve(4101) },
-          spawnParams,
-          signal: controller.signal,
-        },
-        {
+      await runSupervisorScenario({
+        child,
+        controller,
+        dependencies: {
           waitForFailure,
           spawnChild,
           waitForDelay,
           terminateChild,
           now: () => 0,
-        } as ManagedGatewaySupervisorDependencies,
-      );
+        },
+      });
 
       expect(waitForDelay).toHaveBeenCalledWith(250, controller.signal);
       expect(spawnChild).toHaveBeenCalledWith(expect.objectContaining({ port: 4101 }));
@@ -116,12 +133,7 @@ describe("gateway supervisor config", () => {
     const replacementProcess = fakeChildProcess(202);
     const controller = new AbortController();
     const terminateChild = vi.fn();
-    const child = {
-      slug: "bap" as const,
-      port: 4101,
-      target: "http://127.0.0.1:4101",
-      process: initialProcess,
-    };
+    const child = managedChild(initialProcess);
     const spawnChild = vi.fn(async () => {
       controller.abort();
       return {
@@ -130,21 +142,17 @@ describe("gateway supervisor config", () => {
       };
     });
 
-    await superviseManagedGatewayChild(
-      {
-        child,
-        initialHandle: { process: initialProcess, readyPort: Promise.resolve(4101) },
-        spawnParams,
-        signal: controller.signal,
-      },
-      {
+    await runSupervisorScenario({
+      child,
+      controller,
+      dependencies: {
         waitForFailure: vi.fn(async () => "target_unhealthy" as const),
         spawnChild,
         waitForDelay: vi.fn(async () => undefined),
         terminateChild,
         now: () => 0,
-      } as ManagedGatewaySupervisorDependencies,
-    );
+      },
+    });
 
     expect(terminateChild).toHaveBeenCalledWith(initialProcess);
     expect(terminateChild).toHaveBeenCalledWith(replacementProcess);
@@ -178,28 +186,19 @@ describe("gateway supervisor config", () => {
     const waitForDelay = vi.fn<(ms: number, signal: AbortSignal) => Promise<void>>(
       async () => undefined,
     );
-    const child = {
-      slug: "bap" as const,
-      port: 4101,
-      target: "http://127.0.0.1:4101",
-      process: initialProcess,
-    };
+    const child = managedChild(initialProcess);
 
-    await superviseManagedGatewayChild(
-      {
-        child,
-        initialHandle: { process: initialProcess, readyPort: Promise.resolve(4101) },
-        spawnParams,
-        signal: controller.signal,
-      },
-      {
+    await runSupervisorScenario({
+      child,
+      controller,
+      dependencies: {
         waitForFailure,
         spawnChild,
         waitForDelay,
         terminateChild: vi.fn(),
         now: () => 0,
-      } as ManagedGatewaySupervisorDependencies,
-    );
+      },
+    });
 
     expect(waitForDelay.mock.calls.map(([delay]) => delay)).toEqual([250, 500]);
     expect(child.process).toBe(secondReplacement);

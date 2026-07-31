@@ -1,3 +1,4 @@
+import { uniqueNonEmpty } from "@/server/internal/testing-cli-live-support";
 import type { SandboxProvider } from "../e2e/live-sandbox";
 import { callCliLiveTestingApi } from "./testing-api";
 
@@ -30,10 +31,6 @@ type CliLiveCleanupPlan = {
   conversationIds: string[];
   providerMismatches: string[];
 };
-
-function uniqueNonEmpty(values: Iterable<string> | undefined): string[] {
-  return Array.from(new Set(Array.from(values ?? []).filter((value) => value.trim().length > 0)));
-}
 
 function normalizeCliIdentifier(candidate: string | undefined): string | null {
   const value = candidate?.trim().replace(/[),.;]+$/g, "");
