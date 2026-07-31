@@ -16,12 +16,6 @@ const values = z
       ),
     endpoint: z.string().url().optional().describe("Required when creating. Server base URL."),
     enabled: z.boolean().optional(),
-    sharedWithWorkspace: z
-      .boolean()
-      .optional()
-      .describe(
-        "When true, every Workspace member can discover the server and connect their own authorization. Defaults to false for user-created servers.",
-      ),
     specUrl: z.string().url().nullable().optional(),
     transport: z
       .string()
@@ -51,8 +45,7 @@ const values = z
 export const schema = { workspaceId: workspaceIdSchema, id: z.string().optional(), values };
 export const metadata: ToolMetadata = {
   name: "workspaceMcpServer_save",
-  description:
-    "Create or partially update a Workspace MCP Server, including enabled and Workspace sharing state.",
+  description: "Create or partially update a Workspace MCP Server.",
   annotations: { title: "Save workspace MCP server", readOnlyHint: false, idempotentHint: false },
 };
 export default async function tool(params: InferSchema<typeof schema>, extra?: ToolExtraArguments) {

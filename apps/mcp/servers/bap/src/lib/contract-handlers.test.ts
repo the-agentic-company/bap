@@ -155,7 +155,6 @@ describe("target MCP contract handlers", () => {
       namespace: "github",
       endpoint: "https://new.example/mcp",
       enabled: true,
-      sharedWithWorkspace: false,
       specUrl: null,
       transport: "http",
       headers: { "X-Client": "bap" },
@@ -166,52 +165,6 @@ describe("target MCP contract handlers", () => {
       authQueryParam: null,
       authPrefix: null,
     });
-  });
-
-  it("preserves MCP authorization settings during a sharing-only save", async () => {
-    const client = {
-      workspaceMcpServer: {
-        list: vi.fn().mockResolvedValue({
-          workspaceId: "ws-1",
-          membershipRole: "owner",
-          sources: [
-            {
-              id: "server-1",
-              name: "Linear",
-              namespace: "linear",
-              endpoint: "https://mcp.linear.app/mcp",
-              enabled: true,
-              sharedWithWorkspace: false,
-              specUrl: null,
-              transport: "http",
-              headers: null,
-              queryParams: null,
-              defaultHeaders: null,
-              authType: "oauth2",
-              authHeaderName: null,
-              authQueryParam: null,
-              authPrefix: null,
-            },
-          ],
-        }),
-        update: vi.fn().mockResolvedValue({ success: true }),
-      },
-    };
-
-    await handleWorkspaceMcpServerSave({
-      client: client as never,
-      id: "server-1",
-      values: { sharedWithWorkspace: true },
-    });
-
-    expect(client.workspaceMcpServer.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "server-1",
-        authType: "oauth2",
-        enabled: true,
-        sharedWithWorkspace: true,
-      }),
-    );
   });
 
   it("updates existing skill files and adds nested files in one save", async () => {

@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { T, useMessages } from "gt-react";
 import { ArrowUp, Copy, Pencil, Plug, Share2, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { IntegrationBadges } from "@/components/chat/integration-badges";
 import { WorkspaceMcpServerLogo } from "@/components/executor-source-logo";
 import { Button } from "@/components/ui/button";
@@ -412,14 +412,21 @@ export function WorkspaceMcpServerToolCard({
     enabled: boolean;
     sharedWithWorkspace: boolean;
     managedWorkspaceWideAccess: boolean;
-    createdByCurrentUser: boolean;
     creatorDisplayName: string | null;
+    creatorAvatarUrl: string | null;
     connected: boolean;
     credentialEnabled: boolean;
   };
 }) {
   const isActive = source.enabled && source.connected && source.credentialEnabled;
   const needsSetup = !source.connected;
+  const creatorAvatarStyle = useMemo(
+    () =>
+      source.creatorAvatarUrl
+        ? { backgroundImage: `url("${source.creatorAvatarUrl}")` }
+        : undefined,
+    [source.creatorAvatarUrl],
+  );
 
   return (
     <motion.div
@@ -499,25 +506,40 @@ export function WorkspaceMcpServerToolCard({
               <Plug className="h-3 w-3" />
               MCP
             </span>
-            <span className="text-muted-foreground text-[10px] font-medium">
-              {source.internalKey === "galien" || source.internalKey === "modulr" ? (
-                source.managedWorkspaceWideAccess ? (
+            {source.internalKey === "galien" || source.internalKey === "modulr" ? (
+              <span className="text-muted-foreground text-[10px] font-medium">
+                {source.managedWorkspaceWideAccess ? (
                   <T>Entire workspace</T>
                 ) : (
                   <T>Specific people</T>
-                )
-              ) : source.sharedWithWorkspace ? (
-                source.createdByCurrentUser ? (
-                  <T>Shared by you</T>
-                ) : source.creatorDisplayName ? (
-                  `Shared by ${source.creatorDisplayName}`
-                ) : (
-                  <T>Workspace</T>
-                )
-              ) : (
+                )}
+              </span>
+            ) : source.sharedWithWorkspace ? (
+              <span className="text-muted-foreground inline-flex min-w-0 items-center gap-1.5 text-[10px] font-medium">
+                <span
+                  aria-hidden
+                  className="bg-muted inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-cover bg-center text-[8px] font-medium"
+                  style={creatorAvatarStyle}
+                >
+                  {source.creatorAvatarUrl
+                    ? null
+                    : (source.creatorDisplayName ?? "Workspace").slice(0, 1).toUpperCase()}
+                </span>
+                <span className="truncate">
+                  {source.creatorDisplayName ? (
+                    <>
+                      <T>Added by</T> {source.creatorDisplayName}
+                    </>
+                  ) : (
+                    <T>Added to workspace</T>
+                  )}
+                </span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground text-[10px] font-medium">
                 <T>Personal</T>
-              )}
-            </span>
+              </span>
+            )}
           </div>
           <ArrowUp className="text-muted-foreground/30 group-hover:text-muted-foreground size-3.5 rotate-45 transition-colors" />
         </div>

@@ -12,7 +12,6 @@ import {
 import { WorkspaceMcpServerLogo } from "@/components/executor-source-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { inferBrandNameFromEndpoint } from "@/lib/brandfetch";
 import {
   useWorkspaceMcpServerList,
@@ -41,7 +40,6 @@ export function NewSourcePage() {
   }, []);
 
   const [form, setForm] = useState<WorkspaceMcpServerFormState>(initialForm);
-  const [sharedWithWorkspace, setSharedWithWorkspace] = useState(false);
   const isMcpCreate = form.kind === "mcp";
   const inferredName = useMemo(
     () => (isMcpCreate ? (inferBrandNameFromEndpoint(form.endpoint) ?? "") : ""),
@@ -81,7 +79,6 @@ export function NewSourcePage() {
           ...buildMutationInputFromForm(sourceForm, {
             deriveNamespaceFromName: sourceForm.kind === "mcp",
           }),
-          sharedWithWorkspace,
         });
 
         if (sourceForm.kind === "mcp" && sourceForm.authType === "oauth2" && result?.id) {
@@ -108,17 +105,7 @@ export function NewSourcePage() {
         toast.error(error instanceof Error ? error.message : "Failed to connect source.");
       }
     },
-    [
-      createSource,
-      form,
-      inferredName,
-      isMcpCreate,
-      navigate,
-      setCredential,
-      sharedWithWorkspace,
-      startOAuth,
-      t,
-    ],
+    [createSource, form, inferredName, isMcpCreate, navigate, setCredential, startOAuth, t],
   );
 
   if (listLoading) {
@@ -187,26 +174,6 @@ export function NewSourcePage() {
                 />
               </div>
             ) : null}
-
-            <div className="border-border flex items-start justify-between gap-6 border-t pt-5">
-              <div>
-                <label htmlFor="share-mcp-with-workspace" className="text-sm font-medium">
-                  <T>Share with workspace</T>
-                </label>
-                <p className="text-muted-foreground mt-1 max-w-md text-xs leading-relaxed">
-                  <T>
-                    Workspace members will see this MCP Server and can connect it with their own
-                    authorization.
-                  </T>
-                </p>
-              </div>
-              <Switch
-                id="share-mcp-with-workspace"
-                checked={sharedWithWorkspace}
-                onCheckedChange={setSharedWithWorkspace}
-                aria-label={t("Share with workspace")}
-              />
-            </div>
           </div>
         ) : null}
 

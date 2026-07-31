@@ -29,7 +29,6 @@ export function useCreateWorkspaceMcpServer() {
       authQueryParam?: string | null;
       authPrefix?: string | null;
       enabled?: boolean;
-      sharedWithWorkspace?: boolean;
     }) => client.workspaceMcpServer.create(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });
@@ -57,7 +56,6 @@ export function useUpdateWorkspaceMcpServer() {
       authQueryParam?: string | null;
       authPrefix?: string | null;
       enabled?: boolean;
-      sharedWithWorkspace?: boolean;
     }) => client.workspaceMcpServer.update(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaceMcpServer"] });

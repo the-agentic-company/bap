@@ -716,7 +716,7 @@ export async function listWorkspaceMcpServers(input: {
     creatorIds.length > 0
       ? await database.query.user.findMany({
           where: inArray(user.id, creatorIds),
-          columns: { id: true, name: true, email: true },
+          columns: { id: true, name: true, email: true, image: true },
         })
       : [];
   const creatorById = new Map(creators.map((creator) => [creator.id, creator]));
@@ -747,8 +747,8 @@ export async function listWorkspaceMcpServers(input: {
         ...source,
         canManage:
           !source.internalKey && (!input.userId || source.createdByUserId === input.userId),
-        createdByCurrentUser: source.createdByUserId === input.userId,
         creatorDisplayName: creator?.name ?? creator?.email ?? null,
+        creatorAvatarUrl: creator?.image ?? null,
         connected,
         credentialEnabled:
           source.internalKey || source.authType === "none"

@@ -641,7 +641,6 @@ export async function handleWorkspaceMcpServerSave(params: {
     namespace: current.namespace,
     endpoint: current.endpoint,
     enabled: current.enabled,
-    sharedWithWorkspace: current.sharedWithWorkspace,
     specUrl: current.specUrl,
     transport: current.transport,
     headers: current.headers ?? undefined,

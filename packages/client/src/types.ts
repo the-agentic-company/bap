@@ -117,7 +117,6 @@ export type WorkspaceMcpServerInput = {
   authQueryParam?: string | null;
   authPrefix?: string | null;
   enabled?: boolean;
-  sharedWithWorkspace?: boolean;
 };
 
 export type WorkspaceMcpServerSummary = {

@@ -145,49 +145,12 @@ export function SourceDetailPage() {
           authQueryParam: source.authQueryParam,
           authPrefix: source.authPrefix,
           enabled,
-          sharedWithWorkspace: source.sharedWithWorkspace,
         });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to update source.");
       }
     },
     [source, updateSource],
-  );
-
-  const handleToggleWorkspaceSharing = useCallback(
-    async (sharedWithWorkspace: boolean) => {
-      if (!source) {
-        return;
-      }
-      try {
-        await updateSource.mutateAsync({
-          id: source.id,
-          kind: source.kind,
-          name: source.name,
-          namespace: source.namespace,
-          endpoint: source.endpoint,
-          specUrl: source.specUrl,
-          transport: source.transport,
-          headers: source.headers ?? undefined,
-          queryParams: source.queryParams ?? undefined,
-          defaultHeaders: source.defaultHeaders ?? undefined,
-          authType: source.authType,
-          authHeaderName: source.authHeaderName,
-          authQueryParam: source.authQueryParam,
-          authPrefix: source.authPrefix,
-          enabled: source.enabled,
-          sharedWithWorkspace,
-        });
-        toast.success(
-          sharedWithWorkspace
-            ? t("MCP Server shared with the workspace.")
-            : t("MCP Server is now personal."),
-        );
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to update sharing.");
-      }
-    },
-    [source, t, updateSource],
   );
 
   const handleDelete = useCallback(async () => {
@@ -377,46 +340,7 @@ export function SourceDetailPage() {
           </div>
         </div>
 
-        {!isManagedSource ? (
-          <div className="border-border mt-6 flex items-start justify-between gap-6 border-t pt-5">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="bg-muted mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
-                <Users className="text-muted-foreground size-4" />
-              </div>
-              <div>
-                <label htmlFor="share-source-with-workspace" className="text-sm font-medium">
-                  <T>Share with workspace</T>
-                </label>
-                <p className="text-muted-foreground mt-1 max-w-lg text-xs leading-relaxed">
-                  {source.sharedWithWorkspace ? (
-                    source.createdByCurrentUser ? (
-                      <T>
-                        Every workspace member can find this MCP Server and connect their own
-                        authorization.
-                      </T>
-                    ) : (
-                      <>
-                        {source.creatorDisplayName
-                          ? `Shared by ${source.creatorDisplayName}. `
-                          : null}
-                        <T>Every workspace member can connect their own authorization.</T>
-                      </>
-                    )
-                  ) : (
-                    <T>Only you can see and use this MCP Server.</T>
-                  )}
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="share-source-with-workspace"
-              checked={source.sharedWithWorkspace}
-              disabled={!canManageSource || updateSource.isPending}
-              onCheckedChange={handleToggleWorkspaceSharing}
-              aria-label={t("Share with workspace")}
-            />
-          </div>
-        ) : source.internalKey === "galien" || source.internalKey === "modulr" ? (
+        {isManagedSource && (source.internalKey === "galien" || source.internalKey === "modulr") ? (
           <div className="border-border mt-6 flex items-start gap-3 border-t pt-5">
             <div className="bg-muted mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg">
               <Users className="text-muted-foreground size-4" />

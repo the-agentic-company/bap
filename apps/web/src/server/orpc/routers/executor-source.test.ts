@@ -216,7 +216,7 @@ describe("workspaceMcpServerRouter", () => {
     });
   });
 
-  it("allows Workspace members to create new MCP OAuth servers", async () => {
+  it("creates user-added MCP OAuth servers for the whole Workspace", async () => {
     const context = createContext();
     context.db.query.workspaceMcpServer.findFirst.mockResolvedValue(null);
     const returningMock = vi.fn<VitestProcedure>().mockResolvedValue([{ id: "src-1" }]);
@@ -241,13 +241,13 @@ describe("workspaceMcpServerRouter", () => {
     expect(valuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         authType: "oauth2",
-        sharedWithWorkspace: false,
+        sharedWithWorkspace: true,
         transport: null,
       }),
     );
   });
 
-  it("creates a Workspace-shared MCP Server when requested", async () => {
+  it("ignores the removed personal-sharing option from older clients", async () => {
     const context = createContext();
     context.db.query.workspaceMcpServer.findFirst.mockResolvedValue(null);
     const returningMock = vi.fn<VitestProcedure>().mockResolvedValue([{ id: "src-shared" }]);
@@ -262,7 +262,7 @@ describe("workspaceMcpServerRouter", () => {
         endpoint: "https://mcp.linear.app/mcp",
         authType: "oauth2",
         enabled: true,
-        sharedWithWorkspace: true,
+        sharedWithWorkspace: false,
       },
       context,
     });
@@ -311,7 +311,6 @@ describe("workspaceMcpServerRouter", () => {
           endpoint: "https://mcp.example.com/mcp",
           authType: "none",
           enabled: true,
-          sharedWithWorkspace: true,
           headers: { Authorization: "Bearer shared-secret" },
         },
         context,
@@ -387,6 +386,7 @@ describe("workspaceMcpServerRouter", () => {
       expect.objectContaining({
         specUrl: "https://mcp.example.com/spec",
         defaultHeaders: { "X-Client": "bap" },
+        sharedWithWorkspace: false,
       }),
     );
   });

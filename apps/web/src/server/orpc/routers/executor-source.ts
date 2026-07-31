@@ -45,7 +45,6 @@ const workspaceMcpServerBaseSchema = z.object({
   authQueryParam: z.string().max(120).nullish(),
   authPrefix: z.string().max(120).nullish(),
   enabled: z.boolean().default(true),
-  sharedWithWorkspace: z.boolean().optional(),
 });
 
 function validateWorkspaceMcpServerInput(
@@ -58,7 +57,7 @@ export const workspaceMcpServerInputSchema = workspaceMcpServerBaseSchema.superR
 );
 
 const adminWorkspaceMcpServerBaseSchema = workspaceIdSchema.extend(
-  workspaceMcpServerBaseSchema.shape,
+  workspaceMcpServerBaseSchema.extend({ sharedWithWorkspace: z.boolean().optional() }).shape,
 );
 
 const adminWorkspaceMcpServerInputSchema = adminWorkspaceMcpServerBaseSchema.superRefine(
@@ -371,7 +370,7 @@ const create = protectedProcedure
       });
     }
     assertSafeWorkspaceSharing({
-      sharedWithWorkspace: input.sharedWithWorkspace ?? false,
+      sharedWithWorkspace: true,
       headers: input.headers,
       queryParams: input.queryParams,
       defaultHeaders: input.defaultHeaders,
@@ -408,7 +407,7 @@ const create = protectedProcedure
         authType: input.authType,
         ...normalizeAuthSettings(input),
         enabled: input.enabled,
-        sharedWithWorkspace: input.sharedWithWorkspace ?? false,
+        sharedWithWorkspace: true,
         revisionHash,
         createdByUserId: context.user.id,
         updatedByUserId: context.user.id,
@@ -520,7 +519,7 @@ const update = protectedProcedure
       });
     }
     assertSafeWorkspaceSharing({
-      sharedWithWorkspace: input.sharedWithWorkspace ?? current.sharedWithWorkspace,
+      sharedWithWorkspace: current.sharedWithWorkspace,
       headers: input.headers,
       queryParams: input.queryParams,
       defaultHeaders: input.defaultHeaders,
@@ -557,7 +556,7 @@ const update = protectedProcedure
         authType: input.authType,
         ...normalizeAuthSettings(input),
         enabled: input.enabled,
-        sharedWithWorkspace: input.sharedWithWorkspace ?? current.sharedWithWorkspace,
+        sharedWithWorkspace: current.sharedWithWorkspace,
         revisionHash,
         updatedByUserId: context.user.id,
       })
