@@ -1,4 +1,4 @@
-FROM timberio/vector:0.54.0-alpine
+FROM timberio/vector:0.57.0-alpine
 
 COPY vector.yaml /etc/vector/vector.yaml
 
