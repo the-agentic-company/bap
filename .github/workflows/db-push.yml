@@ -78,8 +78,9 @@ jobs:
                 const status = JSON.parse(await Bun.stdin.text());
                 const peers = Object.values(status.Peer ?? {});
                 const peer = peers.find((candidate) => candidate.HostName === expectedPeer);
-                if (peer?.Online && peer.DNSName) {
-                  process.stdout.write(peer.DNSName.replace(/\.$/, ""));
+                const ipv4 = peer?.TailscaleIPs?.find((address) => address.includes("."));
+                if (peer?.Online && ipv4) {
+                  process.stdout.write(ipv4);
                 }
               '
             )"
