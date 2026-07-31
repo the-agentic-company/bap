@@ -83,6 +83,10 @@ Set these secrets on each GitHub environment named `staging` and `prod` before
 enabling the workflow:
 
 - `RENDER_API_KEY`
+- `RENDER_BLUEPRINT_SYNC_HOOK_URL` in the `prod` GitHub environment. This private
+  hook synchronizes the shared staging-and-production Blueprint when
+  `render.yaml` changes; the release waits until Render reports that the
+  Blueprint used the resolved release commit.
 - `DAYTONA_API_KEY`, or both `DAYTONA_JWT_TOKEN` and `DAYTONA_ORGANIZATION_ID`
 - `DAYTONA_API_URL` if the default Daytona API URL is not correct
 - `DATABASE_URL_STAGING`

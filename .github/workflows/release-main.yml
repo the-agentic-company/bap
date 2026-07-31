@@ -220,6 +220,74 @@ jobs:
       - name: Run CI tests
         run: bun run test:ci
 
+      - name: Test release automation
+        run: bunx vitest run scripts/release/render-blueprint-sync.test.ts
+
+  blueprint-sync:
+    needs:
+      - resolve
+      - checks
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_BLUEPRINT_SYNC_HOOK_URL: ${{ secrets.RENDER_BLUEPRINT_SYNC_HOOK_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Detect Blueprint changes
+        id: changes
+        env:
+          CHANGED_SINCE: ${{ needs.resolve.outputs.changed_since }}
+          HEAD: ${{ needs.resolve.outputs.commit_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          before="${CHANGED_SINCE}"
+          if [ -z "${before}" ] || [[ "${before}" =~ ^0+$ ]]; then
+            before="$(git rev-parse "${HEAD}^")"
+          fi
+
+          changed=false
+          if git diff --name-only "${before}" "${HEAD}" | grep -Eq '^render\.yaml$'; then
+            changed=true
+          fi
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Blueprint sync configuration
+        if: ${{ steps.changes.outputs.changed == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [ -n "${RENDER_API_KEY}" ] || missing+=("RENDER_API_KEY")
+          [ -n "${RENDER_BLUEPRINT_SYNC_HOOK_URL}" ] || missing+=("RENDER_BLUEPRINT_SYNC_HOOK_URL")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing Render Blueprint secret(s) for GitHub environment "prod": %s\n' \
+              "${missing[*]}" >&2
+            exit 1
+          fi
+
+      - name: Sync Render Blueprint
+        if: ${{ steps.changes.outputs.changed == 'true' }}
+        env:
+          COMMIT_SHA: ${{ needs.resolve.outputs.commit_sha }}
+        run: >
+          bun scripts/release/render-blueprint-sync.ts
+          --blueprint-id exs-d7llg1aqqhas73ft4uo0
+          --commit "${COMMIT_SHA}"
+
   staging-resume:
     needs:
       - resolve
@@ -268,6 +336,7 @@ jobs:
     needs:
       - resolve
       - staging-resume
+      - blueprint-sync
     uses: ./.github/workflows/render-deploy.yml
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
@@ -280,6 +349,7 @@ jobs:
       - resolve
       - staging-resume
       - observability-changes
+      - blueprint-sync
     if: ${{ needs.observability-changes.outputs.any == 'true' }}
     uses: ./.github/workflows/render-observability-deploy.yml
     with:
@@ -431,6 +501,7 @@ jobs:
   notify-failure:
     needs:
       - resolve
+      - blueprint-sync
       - staging-resume
       - staging-render
       - staging-verify

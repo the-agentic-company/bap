@@ -1,4 +1,6 @@
 # Render Blueprint for Bap staging and production.
+# Release Main triggers the private Blueprint Sync Hook when this file changes
+# and verifies that Render synchronized the resolved release commit.
 #
 # Current mapping:
 # - Render manages separate staging and production environments in one project.
