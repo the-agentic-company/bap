@@ -87,6 +87,8 @@ projects:
               - fromGroup: staging
               - key: TAILSCALE_VERSION
                 value: 1.96.4
+              - key: TAILSCALE_TAG
+                value: tag:bap-staging
               - key: ADVERTISE_ROUTES
                 value: 10.0.0.0/8
 
@@ -107,6 +109,8 @@ projects:
               - fromGroup: staging
               - key: TAILSCALE_VERSION
                 value: 1.96.4
+              - key: TAILSCALE_TAG
+                value: tag:bap-staging
               - key: TAILSCALE_HOSTNAME
                 value: bap-postgres-tailscale-staging
               - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
@@ -244,6 +248,8 @@ projects:
               - fromGroup: staging
               - key: TAILSCALE_VERSION
                 value: 1.96.4
+              - key: TAILSCALE_TAG
+                value: tag:bap-staging
               - key: TAILSCALE_HOSTNAME
                 value: bap-caddy-tailscale-staging
               - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
@@ -591,6 +597,8 @@ projects:
               - fromGroup: prod
               - key: TAILSCALE_VERSION
                 value: 1.96.4
+              - key: TAILSCALE_TAG
+                value: tag:bap-prod
               - key: ADVERTISE_ROUTES
                 value: 10.0.0.0/8
 
@@ -611,6 +619,8 @@ projects:
               - fromGroup: prod
               - key: TAILSCALE_VERSION
                 value: 1.96.4
+              - key: TAILSCALE_TAG
+                value: tag:bap-prod
               - key: TAILSCALE_HOSTNAME
                 value: bap-postgres-tailscale-prod
               - key: TAILSCALE_TCP_FORWARD_TARGET_HOST
@@ -746,6 +756,8 @@ projects:
               - fromGroup: prod
               - key: TAILSCALE_VERSION
                 value: 1.96.4
+              - key: TAILSCALE_TAG
+                value: tag:bap-prod
               - key: TAILSCALE_HOSTNAME
                 value: bap-caddy-tailscale-prod
               - key: TAILSCALE_TCP_FORWARD_TARGET_HOST

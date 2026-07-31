@@ -10,6 +10,7 @@ RUN apt-get -qq update \
     apt-transport-https \
     ca-certificates \
     dnsutils \
+    jq \
     netcat-openbsd \
     wget \
   > /dev/null \
