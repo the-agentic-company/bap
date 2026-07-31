@@ -398,6 +398,7 @@ jobs:
     with:
       environment: staging
       base_url: https://staging.heybap.com
+      mcp_base_url: https://mcp.staging.heybap.com
       run_replay: true
     secrets: inherit
 
@@ -470,6 +471,7 @@ jobs:
     with:
       environment: prod
       base_url: https://heybap.com
+      mcp_base_url: https://mcp.heybap.com
       run_replay: true
     secrets: inherit
 
