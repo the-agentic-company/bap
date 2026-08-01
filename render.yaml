@@ -425,6 +425,10 @@ projects:
                 value: "10000"
               - key: HOST
                 value: 0.0.0.0
+              - key: NODE_OPTIONS
+                value: --max-old-space-size=256
+              - key: MALLOC_ARENA_MAX
+                value: "2"
               - fromGroup: staging
               - key: DATABASE_URL
                 fromDatabase:
