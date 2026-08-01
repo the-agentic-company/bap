@@ -492,6 +492,7 @@ jobs:
     needs:
       - resolve
       - prod-verify
+    if: ${{ needs.resolve.outputs.on_main == 'true' }}
     uses: ./.github/workflows/create-release-tag.yml
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
