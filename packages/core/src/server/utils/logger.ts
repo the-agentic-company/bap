@@ -52,6 +52,8 @@ const TELEMETRY_SCHEMA_VERSION = "2026-05-22";
 const MAX_SAFE_ARRAY_ITEMS = 25;
 const MAX_SAFE_STRING_LENGTH = 512;
 const MAX_ERROR_STACK_LENGTH = 8_192;
+const MAX_PENDING_VECTOR_LOG_SHIPMENTS = 32;
+const VECTOR_LOG_SHIPMENT_TIMEOUT_MS = 2_000;
 const FORBIDDEN_FIELD_PATTERNS = [
   /(^|[._-])(authorization|cookie|password|secret|token|credential|api[_-]?key|oauth[_-]?code)($|[._-])/i,
   /(^|[._-])(prompt|model[_-]?output|request[_-]?body|response[_-]?body|body|content|document|email)($|[._-])/i,
@@ -70,6 +72,8 @@ const pinoLogger = pino({
   messageKey: "msg",
   timestamp: pino.stdTimeFunctions.isoTime,
 });
+
+const pendingVectorLogShipments = new Set<Promise<void>>();
 
 let logSink: LogSink = (level, record, message) => {
   pinoLogger[level](record, message);
@@ -98,6 +102,13 @@ function shipLogToVector(level: LogLevel, record: NormalizedLogRecord, message: 
     return;
   }
 
+  // Render stdout is the durable fallback. Do not let a slow or unreachable
+  // Vector endpoint retain an unbounded number of request bodies and async
+  // contexts in the web process during a burst of operational logs.
+  if (pendingVectorLogShipments.size >= MAX_PENDING_VECTOR_LOG_SHIPMENTS) {
+    return;
+  }
+
   const serviceName =
     typeof record["service.name"] === "string" ? record["service.name"] : runtimeConfig.serviceName;
   const env =
@@ -113,14 +124,25 @@ function shipLogToVector(level: LogLevel, record: NormalizedLogRecord, message: 
     message,
   };
 
-  void fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  }).catch(() => {
-    // Logging must never break the caller. Render stdout remains the primary fallback.
+  const shipment = (async () => {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(VECTOR_LOG_SHIPMENT_TIMEOUT_MS),
+      });
+      await response.body?.cancel();
+    } catch {
+      // Logging must never break the caller. Render stdout remains the primary fallback.
+    }
+  })();
+
+  pendingVectorLogShipments.add(shipment);
+  void shipment.finally(() => {
+    pendingVectorLogShipments.delete(shipment);
   });
 }
 

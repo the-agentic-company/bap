@@ -14,8 +14,8 @@ import {
 import { decrypt, encrypt } from "../utils/encryption";
 import { type McpOAuthMetadata, ensureValidMcpOAuthCredential } from "./mcp-oauth";
 import type { RuntimeMcpServer } from "../sandbox/core/types";
+import { resolveSandboxRuntimeAppUrl } from "../sandbox/prep/runtime-env-prep";
 import type { RemoteIntegrationSource } from "../integrations/remote-integrations";
-
 type DatabaseLike = typeof db;
 
 export type WorkspaceMcpServerKind = "mcp";
@@ -796,9 +796,9 @@ export async function resolveWorkspaceMcpServersForGeneration(input: {
   }
 
   const database = input.database ?? db;
-  const appUrl = env.APP_URL ?? env.VITE_APP_URL;
+  const appUrl = resolveSandboxRuntimeAppUrl();
   if (!appUrl) {
-    throw new Error("APP_URL is required for the Workspace MCP policy proxy.");
+    throw new Error("A public app URL is required for the Workspace MCP policy proxy.");
   }
   if (!env.APP_SERVER_SECRET) {
     throw new Error("APP_SERVER_SECRET is required for the Workspace MCP policy proxy.");

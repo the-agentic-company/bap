@@ -73,6 +73,7 @@ export async function handleCliSession(request: Request): Promise<Response> {
   await db.insert(session).values({
     id: randomUUID(),
     userId,
+    activeOrganizationId: existingUser?.activeWorkspaceId ?? null,
     token,
     expiresAt,
     createdAt: now,

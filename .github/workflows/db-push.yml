@@ -54,6 +54,52 @@ jobs:
           audience: ${{ secrets.TAILSCALE_GITHUB_OIDC_AUDIENCE }}
           tags: tag:bap-ci
 
+      - name: Wait for database Tailscale peer
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${ENVIRONMENT}" in
+            staging | prod)
+              database_peer="bap-postgres-tailscale-${ENVIRONMENT}"
+              ;;
+            *)
+              echo "Unsupported environment: ${ENVIRONMENT}" >&2
+              exit 1
+              ;;
+          esac
+
+          for attempt in $(seq 1 18); do
+            database_host="$(
+              tailscale status --json | EXPECTED_PEER="${database_peer}" bun -e '
+                const expectedPeer = process.env.EXPECTED_PEER;
+                const status = JSON.parse(await Bun.stdin.text());
+                const peers = Object.values(status.Peer ?? {});
+                const peer = peers.find((candidate) => candidate.HostName === expectedPeer);
+                const ipv4 = peer?.TailscaleIPs?.find((address) => address.includes("."));
+                if (peer?.Online && ipv4) {
+                  process.stdout.write(ipv4);
+                }
+              '
+            )"
+
+            if [ -n "${database_host}" ] && \
+              tailscale ping --until-direct=false --timeout=10s --c=1 "${database_host}" \
+                >/dev/null 2>&1; then
+              echo "DATABASE_HOST_OVERRIDE=${database_host}" >> "${GITHUB_ENV}"
+              echo "Database Tailscale peer is ready."
+              exit 0
+            fi
+
+            echo "Database Tailscale peer is not ready on attempt ${attempt}/18; retrying in 10s."
+            sleep 10
+          done
+
+          echo "Database Tailscale peer did not become ready after 3 minutes." >&2
+          exit 1
+
       - name: Push DB changes
         env:
           DATABASE_URL_PROD: ${{ secrets.DATABASE_URL_PROD }}
@@ -87,6 +133,30 @@ jobs:
                 ;;
             esac
             exit 1
+          fi
+
+          if [ -n "${DATABASE_HOST_OVERRIDE:-}" ]; then
+            resolved_database_url="$(
+              DATABASE_URL="${DATABASE_URL}" \
+                DATABASE_HOST_OVERRIDE="${DATABASE_HOST_OVERRIDE}" \
+                bun -e '
+                  const databaseUrl = process.env.DATABASE_URL;
+                  const databaseHost = process.env.DATABASE_HOST_OVERRIDE;
+                  if (!databaseUrl || !databaseHost) throw new Error("Missing database endpoint");
+                  const url = new URL(databaseUrl);
+                  url.hostname = databaseHost;
+                  process.stdout.write(url.toString());
+                '
+            )"
+            export DATABASE_URL="${resolved_database_url}"
+            case "${ENVIRONMENT}" in
+              staging)
+                export DATABASE_URL_STAGING="${resolved_database_url}"
+                ;;
+              prod)
+                export DATABASE_URL_PROD="${resolved_database_url}"
+                ;;
+            esac
           fi
 
           max_attempts=5

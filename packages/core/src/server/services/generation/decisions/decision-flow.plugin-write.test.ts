@@ -457,10 +457,9 @@ describe("DecisionFlow plugin-write decisions", () => {
         title: "Bash",
         integration: "slack",
         operation: "send",
-        command: "slack send -c C123 -t hi --as bot",
+        command: "slack send -c C123 -t hi there --as bot",
         toolInput: {
-          command: "slack send -c C123 -t hi --as bot",
-          workdir: "/app",
+          command: "slack send -c C123 -t hi there --as bot",
         },
       },
     });
@@ -477,7 +476,7 @@ describe("DecisionFlow plugin-write decisions", () => {
       partId: "part-1",
       callId: "call-tool-1",
       toolName: "bash",
-      input: { command: "slack send -c C123 -t hi --as bot", workdir: "/app" },
+      input: { command: 'slack send -c C123 -t "hi there" --as bot', workdir: "/app" },
     };
     const runtimeClient = {};
 
@@ -497,13 +496,13 @@ describe("DecisionFlow plugin-write decisions", () => {
     });
 
     expect(sandbox.execute).toHaveBeenCalledWith(
-      expect.stringContaining("slack send -c C123 -t hi --as bot"),
+      expect.stringContaining('slack send -c C123 -t "hi there" --as bot'),
       { timeout: 120_000 },
     );
     expect(updateRuntimeToolPart).toHaveBeenCalledWith(runtimeClient, runtimeTool, {
       status: "completed",
       input: {
-        command: "slack send -c C123 -t hi --as bot",
+        command: 'slack send -c C123 -t "hi there" --as bot',
         workdir: "/app",
       },
       output: '[{"ok":true,"ts":"1775739000.000100"}]\n',
@@ -518,10 +517,17 @@ describe("DecisionFlow plugin-write decisions", () => {
       partId: "part-1",
       callId: "call-tool-1",
       toolName: "bash",
-      input: { command: "slack send -c C123 -t hi" },
+      input: { command: 'slack send -c C123 -t "hi there"' },
     };
     const interrupt = createPluginInterrupt({
-      providerRequestId: "plugin-write:runtime-plugin:3:runtime:call-tool-1",
+      providerRequestId: "cli-policy:runtime-plugin:3:command-hash",
+      display: {
+        title: "Slack",
+        integration: "slack",
+        operation: "send",
+        command: "slack send -c C123 -t hi there",
+        toolInput: { command: "slack send -c C123 -t hi there", workdir: "/app" },
+      },
     });
     const ctx = {
       id: "gen-plugin",
@@ -535,7 +541,7 @@ describe("DecisionFlow plugin-write decisions", () => {
           type: "tool_use",
           id: "call-tool-1",
           name: "bash",
-          input: { command: "slack send -c C123 -t hi" },
+          input: { command: 'slack send -c C123 -t "hi there"' },
           integration: "slack",
           operation: "send",
         },

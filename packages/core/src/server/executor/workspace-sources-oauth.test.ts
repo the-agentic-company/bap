@@ -110,7 +110,7 @@ describe("Workspace MCP OAuth resolution", () => {
     });
   });
 
-  it("passes a scoped proxy token to OpenCode without exposing OAuth credentials", async () => {
+  it("passes a public scoped proxy URL to OpenCode without exposing OAuth credentials", async () => {
     const source = createSource();
     const database = createDatabase({
       source,
@@ -157,7 +157,7 @@ describe("Workspace MCP OAuth resolution", () => {
         namespace: "linear-mcp",
         server: expect.objectContaining({
           name: "linear-mcp",
-          url: "http://127.0.0.1:3708/api/internal/workspace-mcp-proxy/src-1",
+          url: "https://localcan.baptistecolle.com/api/internal/workspace-mcp-proxy/src-1",
         }),
       }),
     );

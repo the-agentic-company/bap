@@ -26,6 +26,7 @@ jobs:
       commit_sha: ${{ steps.resolve.outputs.commit_sha }}
       source_ref: ${{ steps.resolve.outputs.source_ref }}
       changed_since: ${{ steps.resolve.outputs.changed_since }}
+      on_main: ${{ steps.resolve.outputs.on_main }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -56,14 +57,22 @@ jobs:
             source_ref="${GITHUB_REF_NAME:-${commit_sha}}"
           fi
 
+          on_main=false
+          if git merge-base --is-ancestor "${commit_sha}" origin/main; then
+            on_main=true
+          fi
+
           if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            if git merge-base --is-ancestor "${commit_sha}" origin/main; then
+            if [ "${on_main}" = true ]; then
               changed_since="$(git rev-parse "${commit_sha}^")"
             else
               changed_since="$(git merge-base "${commit_sha}" origin/main)"
             fi
           else
-            git merge-base --is-ancestor "${commit_sha}" origin/main
+            if [ "${on_main}" != true ]; then
+              echo "Push release commit is not on origin/main: ${commit_sha}" >&2
+              exit 1
+            fi
             changed_since="${BEFORE}"
             if [ -z "${changed_since}" ] || [[ "${changed_since}" =~ ^0+$ ]]; then
               changed_since="$(git rev-parse "${commit_sha}^")"
@@ -74,6 +83,7 @@ jobs:
             echo "commit_sha=${commit_sha}"
             echo "source_ref=${source_ref}"
             echo "changed_since=${changed_since}"
+            echo "on_main=${on_main}"
           } >> "$GITHUB_OUTPUT"
           printf 'Resolved release ref "%s" to %s (%s)\n' \
             "${source_ref}" "${commit_sha}" "$(git show -s --format=%s "${commit_sha}")"
@@ -220,6 +230,75 @@ jobs:
       - name: Run CI tests
         run: bun run test:ci
 
+      - name: Test release automation
+        run: bunx vitest run scripts/release/render-blueprint-sync.test.ts
+
+  blueprint-sync:
+    needs:
+      - resolve
+      - checks
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Detect Blueprint changes
+        id: changes
+        env:
+          CHANGED_SINCE: ${{ needs.resolve.outputs.changed_since }}
+          HEAD: ${{ needs.resolve.outputs.commit_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          before="${CHANGED_SINCE}"
+          if [ -z "${before}" ] || [[ "${before}" =~ ^0+$ ]]; then
+            before="$(git rev-parse "${HEAD}^")"
+          fi
+
+          changed=false
+          if git diff --name-only "${before}" "${HEAD}" | grep -Eq '^render\.yaml$'; then
+            changed=true
+          fi
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Blueprint sync configuration
+        if: ${{ steps.changes.outputs.changed == 'true' && needs.resolve.outputs.on_main == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RENDER_API_KEY}" ]; then
+            echo 'Missing RENDER_API_KEY for GitHub environment "prod".' >&2
+            exit 1
+          fi
+
+      - name: Explain PR Blueprint handling
+        if: ${{ steps.changes.outputs.changed == 'true' && needs.resolve.outputs.on_main != 'true' }}
+        run: >
+          echo "Skipping Blueprint sync wait because the resolved commit is not on main;
+          the PR release deploys that commit explicitly."
+
+      - name: Wait for automatic Render Blueprint sync
+        if: ${{ steps.changes.outputs.changed == 'true' && needs.resolve.outputs.on_main == 'true' }}
+        env:
+          COMMIT_SHA: ${{ needs.resolve.outputs.commit_sha }}
+        run: >
+          bun scripts/release/render-blueprint-sync.ts
+          --blueprint-id exs-d7llg1aqqhas73ft4uo0
+          --commit "${COMMIT_SHA}"
+
   staging-resume:
     needs:
       - resolve
@@ -268,6 +347,7 @@ jobs:
     needs:
       - resolve
       - staging-resume
+      - blueprint-sync
     uses: ./.github/workflows/render-deploy.yml
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
@@ -280,6 +360,7 @@ jobs:
       - resolve
       - staging-resume
       - observability-changes
+      - blueprint-sync
     if: ${{ needs.observability-changes.outputs.any == 'true' }}
     uses: ./.github/workflows/render-observability-deploy.yml
     with:
@@ -317,6 +398,7 @@ jobs:
     with:
       environment: staging
       base_url: https://staging.heybap.com
+      mcp_base_url: https://mcp.staging.heybap.com
       run_replay: true
     secrets: inherit
 
@@ -389,6 +471,7 @@ jobs:
     with:
       environment: prod
       base_url: https://heybap.com
+      mcp_base_url: https://mcp.heybap.com
       run_replay: true
     secrets: inherit
 
@@ -409,6 +492,7 @@ jobs:
     needs:
       - resolve
       - prod-verify
+    if: ${{ needs.resolve.outputs.on_main == 'true' }}
     uses: ./.github/workflows/create-release-tag.yml
     with:
       commit_sha: ${{ needs.resolve.outputs.commit_sha }}
@@ -431,6 +515,7 @@ jobs:
   notify-failure:
     needs:
       - resolve
+      - blueprint-sync
       - staging-resume
       - staging-render
       - staging-verify

@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { buildCliLiveRetryArgs, buildRecordModeEnv } from "../../scripts/e2e-live";
+import {
+  buildCliLiveRetryArgs,
+  buildCliLiveWorkerArgs,
+  buildRecordModeEnv,
+} from "../../scripts/e2e-live";
 
 describe("buildRecordModeEnv", () => {
   test("uses the running worktree server by default", () => {
@@ -49,5 +53,18 @@ describe("buildCliLiveRetryArgs", () => {
   test("allows release environments to override or disable retries", () => {
     expect(buildCliLiveRetryArgs({ E2E_CLI_LIVE_RETRY_COUNT: "2" })).toEqual(["--retry", "2"]);
     expect(buildCliLiveRetryArgs({ E2E_CLI_LIVE_RETRY_COUNT: "0" })).toEqual([]);
+  });
+});
+
+describe("buildCliLiveWorkerArgs", () => {
+  test("limits full live suites to the staging-safe worker count", () => {
+    expect(buildCliLiveWorkerArgs({})).toEqual(["--maxWorkers", "1"]);
+  });
+
+  test("leaves focused live runs unconstrained", () => {
+    expect(buildCliLiveWorkerArgs({ E2E_CLI_LIVE_TEST_FILES: "chat.cli.live.test.ts" })).toEqual(
+      [],
+    );
+    expect(buildCliLiveWorkerArgs({ E2E_CLI_LIVE_TEST_NAME: "sends prompt" })).toEqual([]);
   });
 });

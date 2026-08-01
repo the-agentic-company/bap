@@ -34,11 +34,9 @@ export async function applyParkedPluginWrite(
   const execution = await executeApprovedParkedPluginWriteCommand({
     interrupt: input.interrupt,
     sandbox: input.sandbox,
+    runtimeTool: input.runtimeTool,
   });
-  const toolInput =
-    input.interrupt.display.toolInput && typeof input.interrupt.display.toolInput === "object"
-      ? (input.interrupt.display.toolInput as Record<string, unknown>)
-      : input.runtimeTool.input;
+  const toolInput = input.runtimeTool.input;
 
   if (execution.status === "completed") {
     await deps.updateRuntimeToolPart?.(input.runtimeClient, input.runtimeTool, {
@@ -72,6 +70,7 @@ export async function applyParkedPluginWrite(
 async function executeApprovedParkedPluginWriteCommand(input: {
   interrupt: GenerationInterruptRecord;
   sandbox?: SandboxBackend;
+  runtimeTool: RuntimeToolRef;
 }): Promise<ParkedPluginWriteExecution> {
   if (input.interrupt.status !== "accepted") {
     const error = "User denied this integration write.";
@@ -83,16 +82,15 @@ async function executeApprovedParkedPluginWriteCommand(input: {
     return { status: "error", error, outputForStream: { error } };
   }
 
-  const command = input.interrupt.display.command;
+  const runtimeCommand = input.runtimeTool.input.command;
+  const command =
+    typeof runtimeCommand === "string" ? runtimeCommand : input.interrupt.display.command;
   if (!command) {
     const error =
       "Approved integration write could not run because the saved command is missing.";
     return { status: "error", error, outputForStream: { error } };
   }
-  const toolInput =
-    input.interrupt.display.toolInput && typeof input.interrupt.display.toolInput === "object"
-      ? (input.interrupt.display.toolInput as Record<string, unknown>)
-      : {};
+  const toolInput = input.runtimeTool.input;
   const workdir = typeof toolInput.workdir === "string" ? toolInput.workdir : undefined;
   const result = await input.sandbox.execute(
     buildRuntimeEnvSourcedCommand({ command, workdir }),

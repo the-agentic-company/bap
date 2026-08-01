@@ -102,6 +102,7 @@ describe("handleCliSession", () => {
     findFirstMock.mockResolvedValue({
       id: "existing-user",
       onboardedAt: null,
+      activeWorkspaceId: "workspace-active",
     });
 
     const response = await handleCliSession(
@@ -125,6 +126,7 @@ describe("handleCliSession", () => {
     );
     expect(insertValuesMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        activeOrganizationId: "workspace-active",
         userId: "existing-user",
       }),
     );

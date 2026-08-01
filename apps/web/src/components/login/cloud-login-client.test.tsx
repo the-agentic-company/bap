@@ -58,6 +58,27 @@ vi.mock("motion/react", () => ({
 
 import { CloudLoginClient } from "./cloud-login-client";
 
+const approvedEmail = "pilot@heybap.com";
+
+function queuePasswordAvailability(hasPassword: boolean): void {
+  mocks.fetchMock.mockResolvedValueOnce(
+    new Response(JSON.stringify({ approved: true, hasPassword }), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+    }),
+  );
+}
+
+function startPasswordLogin(): void {
+  render(<CloudLoginClient callbackUrl="/chat" />);
+  fireEvent.change(screen.getByLabelText("Email"), {
+    target: { value: approvedEmail },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Password" }));
+}
+
 describe("CloudLoginClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -112,21 +133,8 @@ describe("CloudLoginClient", () => {
   });
 
   it("signs in with password when the approved email already has one", async () => {
-    mocks.fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ approved: true, hasPassword: true }), {
-        status: 200,
-        headers: {
-          "content-type": "application/json",
-        },
-      }),
-    );
-
-    render(<CloudLoginClient callbackUrl="/chat" />);
-
-    fireEvent.change(screen.getByLabelText("Email"), {
-      target: { value: "pilot@heybap.com" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Password" }));
+    queuePasswordAvailability(true);
+    startPasswordLogin();
 
     await waitFor(() => {
       expect(mocks.fetchMock).toHaveBeenCalledWith("/api/auth/check-email", {
@@ -138,10 +146,10 @@ describe("CloudLoginClient", () => {
           email: "pilot@heybap.com",
         }),
       });
+      expect(screen.getByRole("button", { name: "Forgot password?" })).toBeInTheDocument();
     });
 
     expect(screen.getByRole("heading", { name: "Log in" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Forgot password?" })).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
       target: { value: "hunter2hunter2" },
     });
@@ -158,30 +166,16 @@ describe("CloudLoginClient", () => {
   });
 
   it("shows sign up copy and creates a password when none exists yet", async () => {
-    mocks.fetchMock
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ approved: true, hasPassword: false }), {
-          status: 200,
-          headers: {
-            "content-type": "application/json",
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: {
-            "content-type": "application/json",
-          },
-        }),
-      );
-
-    render(<CloudLoginClient callbackUrl="/chat" />);
-
-    fireEvent.change(screen.getByLabelText("Email"), {
-      target: { value: "pilot@heybap.com" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Password" }));
+    queuePasswordAvailability(false);
+    mocks.fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+      }),
+    );
+    startPasswordLogin();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Sign up" })).toBeInTheDocument();
@@ -216,22 +210,12 @@ describe("CloudLoginClient", () => {
   });
 
   it("verifies the authenticator code before completing password sign-in", async () => {
-    mocks.fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ approved: true, hasPassword: true }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
-    );
+    queuePasswordAvailability(true);
     mocks.signInEmail.mockResolvedValue({
       data: { twoFactorRedirect: true, twoFactorMethods: ["totp"] },
     });
 
-    render(<CloudLoginClient callbackUrl="/chat" />);
-
-    fireEvent.change(screen.getByLabelText("Email"), {
-      target: { value: "pilot@heybap.com" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Password" }));
+    startPasswordLogin();
     await screen.findByPlaceholderText("Enter your password");
     fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
       target: { value: "hunter2hunter2" },

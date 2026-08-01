@@ -502,6 +502,25 @@ export async function withIntegrationTokensTemporarilyRemoved<T>(args: {
   }
 }
 
+export async function withSlackRequiresApprovalPolicy<T>(args: {
+  email: string;
+  run: () => Promise<T>;
+}): Promise<T> {
+  const { backup } = await callCliLiveTestingApi<{ backup: unknown }>({
+    action: "workspace-policy:slack-requires-approval:apply",
+    email: args.email,
+  });
+
+  try {
+    return await args.run();
+  } finally {
+    await callCliLiveTestingApi({
+      action: "workspace-policy:slack-requires-approval:restore",
+      backup,
+    });
+  }
+}
+
 export async function resolveLiveModel(): Promise<string> {
   return resolveLiveE2EModel();
 }

@@ -248,7 +248,7 @@ describe("logger", () => {
     expect(records[0]?.record).not.toHaveProperty("app.event.name");
   });
 
-  it("ships default Pino log records to the configured Vector log endpoint", () => {
+  it("ships default Pino log records to the configured Vector log endpoint", async () => {
     const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
     vi.stubGlobal("fetch", fetchMock);
     configureLoggerRuntime({
@@ -274,6 +274,7 @@ describe("logger", () => {
           "content-type": "application/json",
         },
         body: expect.any(String),
+        signal: expect.any(AbortSignal),
       }),
     );
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
@@ -296,6 +297,37 @@ describe("logger", () => {
     );
     expect(body.ts).toEqual(expect.any(String));
     expect(JSON.stringify(body.err)).not.toBe("{}");
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  });
+
+  it("bounds pending Vector shipments when the endpoint stalls", async () => {
+    const pendingResponses: Array<(response: Response) => void> = [];
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          pendingResponses.push(resolve);
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    configureLoggerRuntime({
+      serviceName: "bap-web",
+      env: "production",
+      vectorLogUrl: "http://bap-vector-prod:8686/logs",
+    });
+
+    for (let index = 0; index < 40; index += 1) {
+      logger.info({ event: "GENERATION_PROGRESS", index });
+    }
+
+    expect(fetchMock).toHaveBeenCalledTimes(32);
+
+    for (const resolve of pendingResponses) {
+      resolve(new Response(null, { status: 204 }));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    logger.info({ event: "GENERATION_PROGRESS", index: 41 });
+    expect(fetchMock).toHaveBeenCalledTimes(33);
   });
 });
 

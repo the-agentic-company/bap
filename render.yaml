@@ -1,4 +1,6 @@
 # Render Blueprint for Bap staging and production.
+# Release Main triggers the private Blueprint Sync Hook when this file changes
+# and verifies that Render synchronized the resolved release commit.
 #
 # Current mapping:
 # - Render manages separate staging and production environments in one project.
@@ -423,6 +425,10 @@ projects:
                 value: "10000"
               - key: HOST
                 value: 0.0.0.0
+              - key: NODE_OPTIONS
+                value: --max-old-space-size=320
+              - key: APP_HEAP_SAMPLING_ENABLED
+                value: "true"
               - fromGroup: staging
               - key: DATABASE_URL
                 fromDatabase:
@@ -478,6 +484,10 @@ projects:
               - key: PORT
                 value: "10000"
               - fromGroup: staging
+              - key: APP_SERVER_URL
+                value: https://staging.heybap.com
+              - key: APP_MCP_BASE_URL
+                value: https://mcp.staging.heybap.com
               - key: AWS_ENDPOINT_URL
                 fromService:
                   type: web
@@ -931,6 +941,8 @@ projects:
                 value: "10000"
               - key: HOST
                 value: 0.0.0.0
+              - key: NODE_OPTIONS
+                value: --max-old-space-size=320
               - fromGroup: prod
               - key: DATABASE_URL
                 fromDatabase:
@@ -986,6 +998,10 @@ projects:
               - key: PORT
                 value: "10000"
               - fromGroup: prod
+              - key: APP_SERVER_URL
+                value: https://heybap.com
+              - key: APP_MCP_BASE_URL
+                value: https://mcp.heybap.com
               - key: AWS_ENDPOINT_URL
                 fromService:
                   type: web

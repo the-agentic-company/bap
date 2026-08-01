@@ -23,6 +23,7 @@ import {
   targetChannelName,
   trackCliOutput,
   withIntegrationTokensTemporarilyRemoved,
+  withSlackRequiresApprovalPolicy,
   waitForGenerationState,
   waitForPendingInterrupt,
   waitForPromptGeneration,
@@ -471,21 +472,25 @@ describe.runIf(liveEnabled)("@live CLI chat interrupt", () => {
         "After it succeeds, reply with only the posted text.",
       ].join("\n");
 
-      const result = await runChatCommand(
-        buildCliCommandArgs(
-          "chat",
-          "--chaos-approval",
-          "defer",
-          "--chaos-approval-park-after",
-          "5s",
-          "--message",
-          prompt,
-          "--model",
-          liveModel,
-          "--no-validate",
-        ),
-        Math.max(responseTimeoutMs, 120_000),
-      );
+      const result = await withSlackRequiresApprovalPolicy({
+        email: expectedUserEmail,
+        run: () =>
+          runChatCommand(
+            buildCliCommandArgs(
+              "chat",
+              "--chaos-approval",
+              "defer",
+              "--chaos-approval-park-after",
+              "5s",
+              "--message",
+              prompt,
+              "--model",
+              liveModel,
+              "--no-validate",
+            ),
+            Math.max(responseTimeoutMs, 120_000),
+          ),
+      });
 
       assertExitOk(result, "chat chaos approval parked");
       expect(result.stdout).toContain("[approval_needed]");

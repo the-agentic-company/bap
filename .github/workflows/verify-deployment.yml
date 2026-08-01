@@ -11,6 +11,10 @@ on:
         description: "Public base URL to verify"
         required: true
         type: string
+      mcp_base_url:
+        description: "Public MCP base URL to verify"
+        required: true
+        type: string
       run_replay:
         description: "Run release replay fixtures"
         required: false
@@ -18,8 +22,6 @@ on:
         default: true
     secrets:
       APP_SERVER_SECRET:
-        required: true
-      APP_MCP_BASE_URL:
         required: true
       APP_DEFAULT_USER_EMAIL:
         required: false
@@ -72,7 +74,7 @@ jobs:
       - name: Run CLI live checks
         env:
           APP_DEFAULT_USER_EMAIL: ${{ secrets.APP_DEFAULT_USER_EMAIL }}
-          APP_MCP_BASE_URL: ${{ secrets.APP_MCP_BASE_URL }}
+          APP_MCP_BASE_URL: ${{ inputs.mcp_base_url }}
           APP_SERVER_SECRET: ${{ secrets.APP_SERVER_SECRET }}
           APP_SERVER_URL: ${{ inputs.base_url }}
           E2E_CLI_LIVE_TEST_FILES: ""
