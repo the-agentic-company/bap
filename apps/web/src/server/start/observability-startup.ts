@@ -4,7 +4,9 @@ export async function initializeWebObservabilityAtStartup(): Promise<void> {
   }
 
   try {
+    const { initializeHeapSamplingDiagnostics } = await import("./heap-sampling");
     const { initializeObservabilityRuntime } = await import("@bap/core/server/utils/observability");
+    initializeHeapSamplingDiagnostics();
     initializeObservabilityRuntime("bap-web");
   } catch (error) {
     console.error("[observability] Failed to initialize web observability runtime", error);

@@ -425,6 +425,8 @@ projects:
                 value: "10000"
               - key: HOST
                 value: 0.0.0.0
+              - key: APP_HEAP_SAMPLING_ENABLED
+                value: "true"
               - fromGroup: staging
               - key: DATABASE_URL
                 fromDatabase:
