@@ -6,7 +6,7 @@ import {
 import { Daytona } from "@daytonaio/sdk";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { beforeAll, describe, expect, test } from "vitest";
-import { liveEnabled } from "../../../web/tests/e2e-cli/live-fixtures";
+import { liveEnabled } from "../../../web/tests/e2e-cli/live-config";
 
 const snapshotName =
   process.env.E2B_DAYTONA_SANDBOX_NAME ||
