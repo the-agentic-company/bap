@@ -241,6 +241,7 @@ jobs:
     environment: prod
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_BLUEPRINT_SYNC_HOOK_URL: ${{ secrets.RENDER_BLUEPRINT_SYNC_HOOK_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -253,7 +254,7 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Detect Blueprint changes
+      - name: Detect Blueprint coordination changes
         id: changes
         env:
           CHANGED_SINCE: ${{ needs.resolve.outputs.changed_since }}
@@ -268,7 +269,8 @@ jobs:
           fi
 
           changed=false
-          if git diff --name-only "${before}" "${HEAD}" | grep -Eq '^render\.yaml$'; then
+          if git diff --name-only "${before}" "${HEAD}" \
+            | grep -Eq '^(render\.yaml|scripts/release/render-blueprint-sync\.ts)$'; then
             changed=true
           fi
           echo "changed=${changed}" >> "$GITHUB_OUTPUT"
@@ -279,8 +281,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${RENDER_API_KEY}" ]; then
-            echo 'Missing RENDER_API_KEY for GitHub environment "prod".' >&2
+          missing=()
+          [ -n "${RENDER_API_KEY}" ] || missing+=("RENDER_API_KEY")
+          [ -n "${RENDER_BLUEPRINT_SYNC_HOOK_URL}" ] || missing+=("RENDER_BLUEPRINT_SYNC_HOOK_URL")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing Render Blueprint secret(s) for GitHub environment "prod": %s\n' \
+              "${missing[*]}" >&2
             exit 1
           fi
 
@@ -290,7 +296,7 @@ jobs:
           echo "Skipping Blueprint sync wait because the resolved commit is not on main;
           the PR release deploys that commit explicitly."
 
-      - name: Wait for automatic Render Blueprint sync
+      - name: Trigger and wait for Render Blueprint sync
         if: ${{ steps.changes.outputs.changed == 'true' && needs.resolve.outputs.on_main == 'true' }}
         env:
           COMMIT_SHA: ${{ needs.resolve.outputs.commit_sha }}
