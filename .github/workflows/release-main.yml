@@ -254,7 +254,7 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Detect Blueprint changes
+      - name: Detect Blueprint coordination changes
         id: changes
         env:
           CHANGED_SINCE: ${{ needs.resolve.outputs.changed_since }}
@@ -269,7 +269,8 @@ jobs:
           fi
 
           changed=false
-          if git diff --name-only "${before}" "${HEAD}" | grep -Eq '^render\.yaml$'; then
+          if git diff --name-only "${before}" "${HEAD}" \
+            | grep -Eq '^(render\.yaml|scripts/release/render-blueprint-sync\.ts)$'; then
             changed=true
           fi
           echo "changed=${changed}" >> "$GITHUB_OUTPUT"
