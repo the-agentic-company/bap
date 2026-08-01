@@ -42,6 +42,9 @@ COPY --from=builder /app/apps/web/.output ./.output
 COPY --from=builder /app/apps/web/node_modules ./node_modules
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/packages /app/packages
+# Nitro leaves native sandbox dependencies external. Verify the runner can resolve them
+# from the deployed app instead of relying on a workspace-only symlink.
+RUN node -e "import('dockerode')"
 EXPOSE 3000
 # Nitro's Node server binds to PORT / HOST (set by Render).
 CMD ["node", ".output/server/index.mjs"]
