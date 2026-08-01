@@ -58,7 +58,7 @@ describe("buildCliLiveRetryArgs", () => {
 
 describe("buildCliLiveWorkerArgs", () => {
   test("limits full live suites to the staging-safe worker count", () => {
-    expect(buildCliLiveWorkerArgs({})).toEqual(["--maxWorkers", "2"]);
+    expect(buildCliLiveWorkerArgs({})).toEqual(["--maxWorkers", "1"]);
   });
 
   test("leaves focused live runs unconstrained", () => {

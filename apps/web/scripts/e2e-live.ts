@@ -439,7 +439,7 @@ export function buildCliLiveRetryArgs(env: NodeJS.ProcessEnv): string[] {
 }
 
 export function buildCliLiveWorkerArgs(env: NodeJS.ProcessEnv): string[] {
-  return isCliLiveFocused(env) ? [] : ["--maxWorkers", "2"];
+  return isCliLiveFocused(env) ? [] : ["--maxWorkers", "1"];
 }
 
 function isCliLiveFocused(env: NodeJS.ProcessEnv): boolean {
