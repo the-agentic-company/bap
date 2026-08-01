@@ -3,16 +3,19 @@ import { describe, expect, test } from "vitest";
 
 const blueprint = readFileSync(new URL("../../../../render.yaml", import.meta.url), "utf8");
 
-function countMcpBaseUrl(value: string): number {
-  return (
-    blueprint.match(new RegExp(`key: APP_MCP_BASE_URL\\n\\s+value: ${value}`, "g"))?.length ?? 0
-  );
+function countStaticEnvUrl(key: string, value: string): number {
+  return blueprint.match(new RegExp(`key: ${key}\\n\\s+value: ${value}`, "g"))?.length ?? 0;
 }
 
 describe("Render Blueprint MCP origins", () => {
-  test("uses the public MCP domain for web and worker in every environment", () => {
-    expect(countMcpBaseUrl("https://mcp\\.staging\\.heybap\\.com")).toBe(2);
-    expect(countMcpBaseUrl("https://mcp\\.heybap\\.com")).toBe(2);
+  test("uses the public MCP domain for web, worker, and MCP in every environment", () => {
+    expect(countStaticEnvUrl("APP_MCP_BASE_URL", "https://mcp\\.staging\\.heybap\\.com")).toBe(3);
+    expect(countStaticEnvUrl("APP_MCP_BASE_URL", "https://mcp\\.heybap\\.com")).toBe(3);
+  });
+
+  test("points each MCP service at its public web API", () => {
+    expect(countStaticEnvUrl("APP_SERVER_URL", "https://staging\\.heybap\\.com")).toBe(1);
+    expect(countStaticEnvUrl("APP_SERVER_URL", "https://heybap\\.com")).toBe(1);
   });
 
   test("does not derive the public MCP origin from Render's native service URL", () => {
