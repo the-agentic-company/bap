@@ -484,6 +484,10 @@ projects:
               - key: PORT
                 value: "10000"
               - fromGroup: staging
+              - key: APP_SERVER_URL
+                value: https://staging.heybap.com
+              - key: APP_MCP_BASE_URL
+                value: https://mcp.staging.heybap.com
               - key: AWS_ENDPOINT_URL
                 fromService:
                   type: web
@@ -994,6 +998,10 @@ projects:
               - key: PORT
                 value: "10000"
               - fromGroup: prod
+              - key: APP_SERVER_URL
+                value: https://heybap.com
+              - key: APP_MCP_BASE_URL
+                value: https://mcp.heybap.com
               - key: AWS_ENDPOINT_URL
                 fromService:
                   type: web
