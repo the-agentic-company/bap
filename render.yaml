@@ -425,6 +425,8 @@ projects:
                 value: "10000"
               - key: HOST
                 value: 0.0.0.0
+              - key: NODE_OPTIONS
+                value: --max-old-space-size=320
               - key: APP_HEAP_SAMPLING_ENABLED
                 value: "true"
               - fromGroup: staging
@@ -935,6 +937,8 @@ projects:
                 value: "10000"
               - key: HOST
                 value: 0.0.0.0
+              - key: NODE_OPTIONS
+                value: --max-old-space-size=320
               - fromGroup: prod
               - key: DATABASE_URL
                 fromDatabase:
